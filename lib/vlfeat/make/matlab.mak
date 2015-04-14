@@ -2,6 +2,7 @@
 # description: Build MATALB toolbox
 # author: Andrea Vedaldi
 
+# Copyright (C) 2013-14 Andrea Vedaldi.
 # Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
 # All rights reserved.
 #
@@ -13,9 +14,12 @@
 # the empty string disables MATLAB support.
 
 MEX ?= mex
-MATLAB_PATH ?= $(strip $(shell test "$$(command -v '$(MEX)')" && \
-  $(MEX) -v 2>&1 | sed -n 's/.*MATLAB *= *\(.*\)/\1/gp'))
+MATLAB_PATH ?= $(subst /bin/mex,,$(realpath $(shell which '$(MEX)')))
 MATLAB_EXE ?= "$(MATLAB_PATH)/bin/matlab"
+MATLAB_VER ?= 0 # will be determined automatically
+
+# transform in immediate for efficiency
+MATLAB_PATH := $(MATLAB_PATH)
 
 # if expand to empty string, set to empty string for use with ifdef
 ifeq ($(MATLAB_PATH),)
@@ -31,54 +35,171 @@ endif
 
 info: mex-info matlab-info
 
+# With 2014a the new mex uses a revamped configuration system. It also
+# breaks in subtle way how variables need to be escaped when passed to the
+# mex command.
+
+# --------------------------------------------------------------------
+#                                                Obtain MATLAB version
+# --------------------------------------------------------------------
+
+ifeq ($(ARCH),maci)
+MEX_SUFFIX := mexmaci
+endif
+
+ifeq ($(ARCH),maci64)
+MEX_SUFFIX := mexmaci64
+endif
+
+ifeq ($(ARCH),glnx86)
+MEX_SUFFIX := mexglx
+endif
+
+ifeq ($(ARCH),glnxa64)
+MEX_SUFFIX := mexa64
+endif
+
+MEX_BINDIR := toolbox/mex/$(MEX_SUFFIX)
+
+# generate the mex-dir target
+$(eval $(call gendir, mex, $(MEX_BINDIR)))
+
+# Cache an integer representing MATLAB's version
+$(MEX_BINDIR)/matlabver.mak: $(mex-dir)
+	rm -f "$(MEX_BINDIR)/matlabver.mak"
+	$(MATLAB_EXE) -nodesktop -nosplash -nojvm \
+	-r \
+"f=fopen('$(MEX_BINDIR)/matlabver.mak','w');"\
+"fprintf(f,'MATLAB_VER=%d',[1e4 1e2 1]*sscanf(version,'%d.%d.%d'));fclose(f);exit();"
+
+ifdef MATLAB_PATH
+ifeq ($(filter $(no_dep_targets), $(MAKECMDGOALS)),)
+-include $(MEX_BINDIR)/matlabver.mak
+endif
+endif
+
+ifeq ($(call gt,$(MATLAB_VER),80300),)
+# new style
+$(info Detected MATLAB 2014a or greater: adjusting escape method for MEX)
+escape =$(1)
+else
+ifeq ($(call gt,$(MATLAB_VER),1),)
+# old style
+$(info Detected MATLAB 2013b or earlier: adjusting escape method for MEX)
+escape =$(subst $$,\\$$,$(1))
+else
+$(info The MALTAB version will be detected in the next phase of Make)
+endif
+endif
+
+# --------------------------------------------------------------------
+#                                                  Prepare MEX options
+# --------------------------------------------------------------------
+#
+# MATLAB provides the MEX command to compile and link MEX files. MEX is
+# in fact a wrapper of the host compiler. By itself, it understand a
+# set of standard compiler flags, but not, in general, flags which are
+# specific to the underlying complier.
+#
+# The MEX command is called as follows:
+#
+#   $(MEX) $(MEX_FLAGS) $(MEX_CFLAGS) $(MEX_LDFLAGS)
+#
+# where
+#
+# * MEX_CLFAGS are standard compiler flags such as -I (include path).
+# * MEX_LDFLAGS are standard linker flags such as -L (library path)
+#   and -l (link library)
+# * MEX_FLAGS are other MEX flags such as -v (verbose). This variable
+#   is also used to contain overrides for the variables used
+#   internally by MEX.
+#
+# The variables STD_CLFAGS and STD_LDFLAGS contain settings which are
+# specific to one complier (e.g. GCC or clang). To pass these to MEX,
+# the following is appended to MEX_FLAGS, and ultimately to the MEX
+# command line:
+#
+#   CFLAGS='$$CFLAGS $(STD_CFLAGS)'
+#   LDFLAGS='$$LDFLAGS $(STD_LDFLAGS)'
+#
+# This causes MEX to append $(STD_CLFAGS) and $(STD_LDFLAGS) to its
+# default settings.
+#
+# While this usually achieves the desired effects, some versions of
+# MATLAB may not be compatible with certain compilers (e.g. MATLAB
+# 2013a and Xcode 5.0 and Mac OS X 10.9). Fixing this requires
+# changing CLFAGS and LDFLAGS completely (i.e.  not just appending to
+# their default values).
+
 MEX_ARCH = $(ARCH)
-
-MEX_CFLAGS = -I$(VLDIR) -I$(VLDIR)/toolbox
-MEX_LDFLAGS = -L$(BINDIR) -lvl
-
-MEX_FLAGS = $(MEXFLAGS)
-MEX_FLAGS += -$(MEX_ARCH)
-MEX_FLAGS += $(if $(DEBUG), -g, -O)
-MEX_FLAGS += $(if $(PROFILE), -O -g,)
-MEX_FLAGS += CFLAGS='$$CFLAGS $(STD_CFLAGS)'
+MEX_CFLAGS = $(LINK_DLL_CFLAGS) -Itoolbox
+MEX_LDFLAGS = $(subst bin/$(ARCH),toolbox/mex/$(MEX_SUFFIX),$(LINK_DLL_LDFLAGS)) -lm
+MEX_FLAGS = \
+$(MEXFLAGS) \
+-$(MEX_ARCH) \
+$(if $(VERB),-v,) \
+$(if $(DEBUG),-g,-O) \
+$(if $(PROFILE),-g -O,)
 
 # Mac OS X on Intel 32 bit processor
 ifeq ($(ARCH),maci)
-MEX_SUFFIX := mexmaci
-MEX_FLAGS += LDFLAGS='$$LDFLAGS $(STD_LDFLAGS)'
 MEX_FLAGS += CC='$(CC)'
 MEX_FLAGS += LD='$(CC)'
+# a hack to support recent Xcode/clang/GCC versions on old MATLABs
+MEX_FLAGS += CFLAGS='\
+-arch i386 \
+-fno-common \
+-fexceptions \
+$(call escape,$(STD_CFLAGS))'
+MEX_FLAGS += LDFLAGS='\
+-arch i386 \
+-Wl,-syslibroot,$(SDKROOT) \
+-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) \
+-bundle -Wl,-exported_symbols_list,$(MATLAB_PATH)/extern/lib/maci/mexFunction.map \
+$(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/sys/os/$(ARCH)/) \
+$(call escape,$(STD_LDFLAGS))'
 endif
 
 # Mac OS X on Intel 64 bit processor
 ifeq ($(ARCH),maci64)
-MEX_SUFFIX := mexmaci64
 MEX_FLAGS += -largeArrayDims
-MEX_FLAGS += LDFLAGS='$$LDFLAGS $(STD_LDFLAGS)'
 MEX_FLAGS += CC='$(CC)'
 MEX_FLAGS += LD='$(CC)'
+MEX_FLAGS += CFLAGS='\
+-arch x86_64 \
+-fno-common \
+-fexceptions \
+$(call escape,$(STD_CFLAGS))'
+MEX_FLAGS += LDFLAGS='\
+-arch x86_64 \
+-Wl,-syslibroot,$(SDKROOT) \
+-mmacosx-version-min=$(MACOSX_DEPLOYMENT_TARGET) \
+-bundle -Wl,-exported_symbols_list,$(MATLAB_PATH)/extern/lib/maci64/mexFunction.map \
+$(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/sys/os/$(ARCH)/) \
+$(call escape,$(STD_LDFLAGS))'
 endif
 
 # Linux on 32 bit processor
 ifeq ($(ARCH),glnx86)
-MEX_SUFFIX := mexglx
-MEX_FLAGS += LDFLAGS='$$LDFLAGS $(STD_LDFLAGS) -Wl,--rpath,\\\$$ORIGIN/'
+MEX_FLAGS += CFLAGS='$$CFLAGS $(call escape,$(STD_CFLAGS))'
+MEX_FLAGS += LDFLAGS='$$LDFLAGS $(call escape,$(STD_LDFLAGS))'
 endif
 
 # Linux on 64 bit processorm
 ifeq ($(ARCH),glnxa64)
-MEX_SUFFIX := mexa64
 MEX_FLAGS += -largeArrayDims
-MEX_FLAGS += LDFLAGS='$$LDFLAGS $(STD_LDFLAGS) -Wl,--rpath,\\\$$ORIGIN/'
+MEX_FLAGS += CFLAGS='$$CFLAGS $(call escape,$(STD_CFLAGS))'
+MEX_FLAGS += LDFLAGS='$$LDFLAGS $(call escape,$(STD_LDFLAGS))'
 endif
 
-MEX_BINDIR := toolbox/mex/$(MEX_SUFFIX)
+# For efficiency reasons, immediately expand this variable once
+MEX_FLAGS := $(MEX_FLAGS)
 
 # --------------------------------------------------------------------
 #                                                         Sanity check
 # --------------------------------------------------------------------
 
-err_no_mex_suffix  = $(shell echo "** Could not set MEX_SUFFIX for ARCH = $(ARCH)"  1>&2)
+err_no_mex_suffix = $(shell echo "** Could not set MEX_SUFFIX for ARCH = $(ARCH)"  1>&2)
 err_no_mex_suffix +=no_mex_suffix
 
 ifeq ($(MEX_SUFFIX),)
@@ -94,6 +215,7 @@ endif
 no_dep_targets += mex-dir mex-info mex-test
 no_dep_targets += mex-clean mex-distclean mex-archclean
 
+mex_sub := $(shell find $(VLDIR)/toolbox -type d)
 mex_src := $(shell find $(VLDIR)/toolbox -name "*.c")
 mex_tgt := $(addprefix $(MEX_BINDIR)/,\
 	   $(notdir $(mex_src:.c=.$(MEX_SUFFIX)) ) )
@@ -106,56 +228,52 @@ comm_bins +=
 deps += $(mex_dep)
 endif
 
-vpath vl_%.c $(shell find $(VLDIR)/toolbox -type d)
+vpath vl_%.c $(mex_sub)
 
 mex-all: $(mex_dll) $(mex_tgt)
 
-# generate the mex-dir target
-$(eval $(call gendir, mex, $(MEX_BINDIR)))
-
-# generate mex-dir target
-$(eval $(call gendir, mex, $(MEX_BINDIR)))
+# Create a copy of the VLFeat DLL that links to MATLAB OpenMP library
+# (Intel OMP 5) rather than the system one. The Intel library is
+# binary compatible with GCC. This avoids running two OpenMP
+# subsystems when VLFeat runs within MATLAB.
 
 $(MEX_BINDIR)/lib$(DLL_NAME).dylib : $(mex-dir) $(dll_obj)
-	$(call C,CC) -m64								\
-                    -dynamiclib								\
-                    -undefined suppress							\
-                    -flat_namespace							\
-                    -install_name @loader_path/lib$(DLL_NAME).dylib			\
-	            -compatibility_version $(VER)					\
-                    -current_version $(VER)						\
-                    -isysroot $(SDKROOT)						\
-		    -mmacosx_version_min=$(MACOSX_DEPLOYMENT_TARGET)			\
-	            $(DLL_LDFLAGS)							\
-	            $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/bin/$(ARCH)/)              \
-	            $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/sys/os/$(ARCH)/ -liomp5)	\
-                    $(dll_obj)								\
-                    -o $@
+	$(call C,CC)                                                            \
+	    -dynamiclib								\
+	    -undefined suppress							\
+	    -flat_namespace							\
+	    -install_name @loader_path/lib$(DLL_NAME).dylib			\
+	    -compatibility_version $(VER)					\
+	    -current_version $(VER)						\
+	    -isysroot $(SDKROOT)						\
+	    $(dll_obj)								\
+	    $(filter-out -fopenmp, $(DLL_LDFLAGS))                              \
+	    $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/bin/$(ARCH)/)              \
+	    $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/sys/os/$(ARCH)/ -liomp5)	\
+	   -o $@
 
 $(MEX_BINDIR)/lib$(DLL_NAME).so : $(mex-dir) $(dll_obj)
-	$(call C,CC) -shared								\
-	    $(dll_obj)									\
-            $(DLL_LDFLAGS)								\
-	    $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/bin/$(ARCH)/)                      \
-            $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/sys/os/$(ARCH)/ -liomp5)		\
-	    -o $(@)
-
-#$(mex_dll) : $(dll_tgt) $(mex-dir)
-#	cp -v "$(<)" "$(@)"
+	$(call C,CC) -shared							\
+	    $(dll_obj)							        \
+	    $(filter-out -fopenmp, $(DLL_LDFLAGS))                              \
+	    $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/bin/$(ARCH)/)              \
+	    $(if $(DISABLE_OPENMP),,-L$(MATLAB_PATH)/sys/os/$(ARCH)/ -liomp5)   \
+	   -o $(@)
 
 $(MEX_BINDIR)/%.d : %.c $(mex-dir)
-	$(call C,CC) \
-	       $(MEX_CFLAGS) \
-	       -I"$(MATLAB_PATH)/extern/include" -M -MT \
-	       '$(MEX_BINDIR)/$*.$(MEX_SUFFIX) $(MEX_BINDIR)/$*.d' \
-	       "$(<)" -MF "$(@)"
+	$(call C,CC)								\
+	    -MM									\
+	    -MF "$(@)"								\
+	    -MT '$(MEX_BINDIR)/$*.$(MEX_SUFFIX) $(MEX_BINDIR)/$*.d'		\
+	    -I"$(MATLAB_PATH)/extern/include"					\
+	    $(MEX_CFLAGS) "$(<)"
 
-$(MEX_BINDIR)/%.$(MEX_SUFFIX) : %.c $(mex-dir)
-	$(call C,MEX) \
-	       $(MEX_FLAGS) \
-               $(MEX_CFLAGS) \
-               "$(<)" \
-	       $(MEX_LDFLAGS) \
+$(MEX_BINDIR)/%.$(MEX_SUFFIX) : %.c $(mex-dir) $(mex_dll)
+	$(call C,MEX)								\
+	    $(MEX_FLAGS)							\
+	    $(MEX_CFLAGS)							\
+	    "$(<)"								\
+	    $(MEX_LDFLAGS)							\
 	       -outdir "$(dir $(@))"
 
 mex-info:
@@ -169,12 +287,19 @@ mex-info:
 
 mex-clean:
 	rm -f $(mex_dep)
+	rm -f $(MEX_BINDIR)/matlabver.mak
 
 mex-archclean: mex-clean
 	rm -rf $(MEX_BINDIR)
 
 mex-distclean:
 	rm -rf "toolbox/mex" ;
+
+mex-test: mex-all
+	cd toolbox ; \
+	$(MATLAB_EXE) \
+	    -$(ARCH) -nodesktop -nosplash \
+	    -r "clear mex;vl_setup test;r=vl_test();if(any(~[r.succeded])),disp('MEX testing failed');end;exit"
 
 # --------------------------------------------------------------------
 #                                                  Prefix-less M files
@@ -215,9 +340,9 @@ matlab-all: matlab-noprefix
 # generate matlab-noprefix-dir target
 $(eval $(call gendir, matlab-noprefix, toolbox/noprefix))
 
-matlab-noprefix: $(matlab-noprefix-dir) $(m_lnk)
+matlab-noprefix: $(m_lnk)
 
-toolbox/noprefix/%.m : vl_%.m
+toolbox/noprefix/%.m : vl_%.m $(matlab-noprefix-dir)
 	@upperName=`echo "$*" | tr [a-z]  [A-Z]` ;              \
 	echo "function varargout = $*(varargin)" > "$@" ;       \
 	cat "$<" | sed -n -e '/^function/b' -e '/^%.*$$/p'      \
@@ -245,6 +370,7 @@ matlab-info:
 	$(call echo-var,mex_dll)
 	$(call echo-var,MATLAB_PATH)
 	$(call echo-var,MATLAB_EXE)
+	$(call echo-var,MATLAB_VER)
 	$(call echo-var,MEX)
 	$(call echo-var,MEX_FLAGS)
 	$(call echo-var,MEX_CFLAGS)

@@ -4,8 +4,8 @@
  **/
 
 /*
-Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
 Copyright (C) 2013 Andrea Vedaldi.
+Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
 All rights reserved.
 
 This file is part of the VLFeat library and is made available under
@@ -24,7 +24,7 @@ the terms of the BSD license (see the COPYING file).
 #include <assert.h>
 
 /** @brief Library version string */
-#define VL_VERSION_STRING "0.9.17"
+#define VL_VERSION_STRING "0.9.20"
 
 /** @brief Maximum length (in characters) of an error message */
 #define VL_ERR_MSG_LEN 1024
@@ -107,13 +107,14 @@ VL_EXPORT vl_bool vl_cpu_has_avx (void) ;
 VL_EXPORT vl_bool vl_cpu_has_sse3 (void) ;
 VL_EXPORT vl_bool vl_cpu_has_sse2 (void) ;
 VL_EXPORT vl_size vl_get_num_cpus (void) ;
-VL_EXPORT vl_size vl_get_max_threads (void) ;
-VL_EXPORT void vl_set_num_threads (vl_size n) ;
 VL_EXPORT VlRand * vl_get_rand (void) ;
 
-#if 0
+/** @name Multi-thread computations
+ ** @{ */
+VL_EXPORT vl_size vl_get_max_threads (void) ;
+VL_EXPORT void vl_set_num_threads (vl_size n) ;
 VL_EXPORT vl_size vl_get_thread_limit (void) ;
-#endif
+/** @} (*/
 
 /** ------------------------------------------------------------------
  ** @name Error handling

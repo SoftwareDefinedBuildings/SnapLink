@@ -17,8 +17,8 @@ function results = vl_test(suite, test)
 
 % Author: Andrea Vedaldi
 
+% Copyright (C) 2013-14 Andrea Vedaldi.
 % Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
-% Copyright (C) 2013 Andrea Vedaldi.
 % All rights reserved.
 %
 % This file is part of the VLFeat library and is made available under
@@ -55,6 +55,9 @@ if nargin < 2
               results(i).exception.message) ;
     end
   end
+
+  fprintf('vl_test: %d tested, %d succeded, %d failed\n', ...
+          numel(results), sum([results.succeded]), sum(~[results.succeded])) ;
 else
   feval(str2func(sprintf('vl_test_%s', suite)), test) ;
 end

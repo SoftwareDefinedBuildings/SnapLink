@@ -17,8 +17,8 @@ the terms of the BSD license (see the COPYING file).
 @mainpage Vision Lab Features Library (VLFeat)
 @version __VLFEAT_VERSION__
 @author The VLFeat Team
+@par Copyright &copy; 2012-14 The VLFeat Authors
 @par Copyright &copy; 2007-11 Andrea Vedaldi and Brian Fulkerson
-@par Copyright &copy; 2012-13 The VLFeat Authors
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
 The VLFeat C library implements common computer
@@ -42,6 +42,7 @@ VLFeat strives to be clutter-free, simple, portable, and well documented.
   - @subpage fisher
   - @subpage vlad
   - @subpage liop
+  - @subpage lbp
 
 - **Clustering and indexing**
   - @subpage kmeans
@@ -62,7 +63,7 @@ VLFeat strives to be clutter-free, simple, portable, and well documented.
 
 - **Utilities**
   - @subpage random
-  - @subpage mathop.h    "Math operations"
+  - @subpage mathop
   - @subpage stringop.h  "String operations"
   - @subpage imopv.h     "Image operations"
   - @subpage pgm.h       "PGM image format"
@@ -71,7 +72,8 @@ VLFeat strives to be clutter-free, simple, portable, and well documented.
   - @subpage mexutils.h  "MATLAB MEX helper functions"
   - @subpage getopt_long.h "Drop-in @c getopt_long replacement"
 
-- **General support functionalities**
+- **General information**
+  - @subpage conventions
   - @subpage generic
   - @subpage portability
   - @ref resources
@@ -109,7 +111,7 @@ global property, shared by all threads.
 VLFeat uses three rules that simplify handling exceptions when used in
 combination which certain environment such as MATLAB.
 
-- The library allocates local memory only through the reprogrammable
+- The library allocates local memory only through the re-programmable
   ::vl_malloc, ::vl_calloc, and ::vl_realloc functions.
 
 - The only resource referenced by VLFeat objects is memory (for
@@ -137,6 +139,50 @@ matlab).
 
 /**
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
+@page conventions Conventions
+@author Andrea Vedaldi
+@tableofcontents
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
+
+This page summarizes some of the conventions used by the library.
+
+@section conventions-storage Matrix and image storage conventions
+
+If not otherwise specified, matrices in VLFeat are stored in memory in
+<em>column major</em> order. Given a matrix $[A_{ij}] \in \real^{m
+\times n}$, this amounts of enumerating the elements one column per
+time: $A_{11}, A_{21}, \dots, A_{m1}, A_{12}, \dots, A_{mn}$. This
+convention is compatible with Fortran, MATLAB, and popular numerical
+libraries.
+
+Matrices are often used in the library to pack a number data vectors
+$\bx_1,\dots,\bx_n \in \real^m$ of equal dimension together. These are
+normally stored as the columns of the matrix:
+
+\[
+X = \begin{bmatrix} \bx_1, \dots, \bx_n \end{bmatrix},
+\qquad
+X \in \real_{m\times n}
+\]
+
+In this manner, consecutive elements of each data vector $\bx_i$ is
+stored in consecutive memory locations, improving memory access
+locality in most algorithms.
+
+Images $I(x,y)$ are stored instead in <em>row-major</em> order,
+i.e. one row after the other. Note that an image can be naturally
+identified as a matrix $I_{yx}$, where the vertical coordinate $y$
+indexes the rows and the horizontal coordinate $x$ the columns. The
+image convention amounts to storing this matrix in row-major rather
+than column-major order, which is in conflict with the rule given
+above. The reason for this choice is that most image processing and
+graphical libraries assume this convention; it is, however,
+<em>not</em> the same as MATLAB's.
+
+**/
+
+/**
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
 @page objects Objects
 @author Andrea Vedaldi
 @tableofcontents
@@ -159,7 +205,7 @@ start with the <code>vl_<object_name>_</code> suffix
 @section objects-lifecycle Object lifecycle
 <!-- ------------------------------------------------------------  -->
 
-Conceptually, an object undergoes four phases during its lifecylce:
+Conceptually, an object undergoes four phases during its lifecycle:
 allocation, initialization, finalization, and deallocation:
 
 - **Allocation.** The memory to hold the object structure is allocated.
@@ -243,11 +289,11 @@ an exception). Because of the restrictions of the library design
 illustrated in @ref resources, this operation is safe and
 correctly dispose of VLFeat local state. As a consequence, it is
 possible to call @c mexErrMsgTxt at any point in the MEX function
-without worring about leaking resources.
+without worrying about leaking resources.
 
 This however comes at the price of some limitations. Beyond the
-restrictions illustred in @ref resources, here we note that no
-VLFeat local resoruce (memory blocks or objects) can persist across
+restrictions illustrated in @ref resources, here we note that no
+VLFeat local resource (memory blocks or objects) can persist across
 MEX file invocations. This implies that any result produced by a
 VLFeat MEX function must be converted back to a MATLAB object such as
 a vector or a structure. In particular, there is no direct way of
@@ -261,7 +307,7 @@ passing it again to another MEX file.
 @author Andrea Vedaldi
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
-Part of VLFeat code uses a simple form of perprocessor metaprogramming.
+Part of VLFeat code uses a simple form of preprocessor metaprogramming.
 This technique is used, similarly to C++ templates, to instantiate
 multiple version of a given algorithm for different data types
 (e.g. @c float and @c double).
@@ -439,7 +485,7 @@ library module, usually corresponding to a certain header file.
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
 A library module groups a number of data types and functions that
-implement a certain functionaltiy of VLFeat. The documentation of a
+implement a certain functionality of VLFeat. The documentation of a
 library module is generally organized as follows:
 
 1. A page introducing the module and including a getting started
@@ -474,7 +520,7 @@ has an heading of the type:
 
 @verbinclude example-module-doc.c
 
-This is similar to the declearation file, except for the content of the
+This is similar to the declaration file, except for the content of the
 brief comment.
 </li>
 </ul>
@@ -673,29 +719,47 @@ rules are followed.
 @section threads-parallel Parallel computations
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
 
-VLFeat uses OpenMP to implement parallel computations. VLFeat avoids
-changing OpenMP global state, such as the desired number of
-computational threads, as this may affect the rest of the application
-(e.g. MATLAB) in undesriable ways. Instead, it duplicates OpenMP
-controls when appropriate (this is similar to the method used by other
-libraries such as Intel MKL).
+VLFeat uses OpenMP to implement parallel computations. Generally, this
+means that multiple cores are uses appropriately and transparently,
+provided that other multi-threaded parts of the application use OpenMP
+and that VLFeat and the application link to the same OpenMP library.
+If finer control is required, read on.
+
+VLFeat functions avoids affecting OpenMP global state, including the
+desired number of computational threads, in order to minimize side
+effects to the linked application (e.g. MATLAB). Instead, VLFeat
+duplicates a few OpenMP control parameters when needed (this approach
+is similar to the method used by other libraries such as Intel MKL).
 
 The maximum number of threads available to the application can be
-obtained by ::vl_get_thread_limit. This limit is controlled by the
-OpenMP library (the function is a wrapper around @c
-omp_get_thread_limit), which in turn may determined that based on the
-number of computational cores or the value of the @c OMP_THREAD_LIMIT
-variable when the program is launched.
+obtained by ::vl_get_thread_limit (for OpenMP version 3.0 and
+greater). This limit is controlled by the OpenMP library (the function
+is a wrapper around @c omp_get_thread_limit), which in turn may
+determined that based on the number of computational cores or the
+value of the @c OMP_THREAD_LIMIT variable when the program is
+launched. This value is an upper bound on the number of computation
+threads that can be used at any time.
 
-The desired number of computational threads is set by
-::vl_set_num_threads() and retrieved by ::vl_get_max_threads().  This
-number is a target value as well as an upper bound to the number of
-threads used by VLFeat. @c vl_set_num_threads(1) disables the use of
-multiple threads and @c vl_set_num_threads(0) uses OpenMP value
-(retrieved by calling @c omp_get_max_threads()). The actual number
-used in a specific computation is decided by OpenMP based on the
-number of threads available, accounting for example for nested
-parallelism when appropriate.
+The maximum number of computational thread that VLFeat should use is
+set by ::vl_set_num_threads() and retrieved by ::vl_get_max_threads().
+This number is a target value as well as an upper bound to the number
+of threads used by VLFeat. This value is stored in the VLFeat private
+state and is not necessarily equal to the corresponding OpenMP state
+variable retrieved by calling @c omp_get_max_threads(). @c
+vl_set_num_threads(1) disables the use of multiple threads and @c
+vl_set_num_threads(0) uses the value returned by the OpenMP call @c
+omp_get_max_threads(). The latter value is controlled, for example, by
+calling @c omp_set_num_threads() in the application. Note that:
+
+- @c vl_set_num_threads(0) determines the number of treads using @c
+  omp_get_max_threads() *when it is called*. Subsequent calls to @c
+  omp_set_num_threads() will therefore *not* affect the number of
+  threads used by VLFeat.
+- @c vl_set_num_threads(vl_get_thread_limit()) causes VLFeat use all
+  the available threads, regardless on the number of threads set
+  within the application by calls to @c omp_set_num_threads().
+- OpenMP may still dynamically decide to use a smaller number of
+  threads in any specific parallel computation.
 
 @sa http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_win/GUID-C2295BC8-DD22-466B-94C9-5FAA79D4F56D.htm
  http://software.intel.com/sites/products/documentation/doclib/mkl_sa/11/mkl_userguide_win/index.htm#GUID-DEEF0363-2B34-4BAB-87FA-A75DBE842040.htm
@@ -866,7 +930,8 @@ do_nothing_printf (char const* format VL_UNUSED, ...)
   return 0 ;
 }
 
-/** @internal@brief Lock VLFeat state
+/** @internal
+ ** @brief Lock VLFeat state
  **
  ** The function locks VLFeat global state mutex.
  **
@@ -902,7 +967,8 @@ vl_lock_state (void)
 #endif
 }
 
-/** @internal@brief Unlock VLFeat state
+/** @internal
+ ** @brief Unlock VLFeat state
  **
  ** The function unlocks VLFeat global state mutex.
  **
@@ -927,7 +993,8 @@ vl_unlock_state (void)
 #endif
 }
 
-/** @internal@brief Return VLFeat global state
+/** @internal
+ ** @brief Return VLFeat global state
  **
  ** The function returns a pointer to VLFeat global state.
  **
@@ -995,7 +1062,7 @@ vl_get_num_cpus (void)
  ** @param x @c true if SIMD instructions are used.
  **
  ** Notice that SIMD instructions are used only if the CPU model
- ** supports them. Note alsoc that data alignment may restrict the use
+ ** supports them. Note also that data alignment may restrict the use
  ** of such instructions.
  **
  ** @see ::vl_cpu_has_sse2(), ::vl_cpu_has_sse3(), etc.
@@ -1061,9 +1128,14 @@ vl_cpu_has_sse2 (void)
 
 /* ---------------------------------------------------------------- */
 
-#if 0
-/** @brief Get the number of computational threads available.
+/** @brief Get the number of computational threads available to the application
  ** @return number of threads.
+ **
+ ** This function wraps the OpenMP function @c
+ ** omp_get_thread_limit(). If VLFeat was compiled without OpenMP
+ ** support, this function returns 1. If VLFeat was compiled with
+ ** OpenMP prior to version 3.0 (2008/05), it returns 0.
+ **
  ** @sa @ref threads-parallel
  **/
 
@@ -1071,15 +1143,31 @@ vl_size
 vl_get_thread_limit (void)
 {
 #if defined(_OPENMP)
+#if _OPENMP >= 200805
+  /* OpenMP version >= 3.0 */
   return omp_get_thread_limit() ;
+#else
+  return 0 ;
+#endif
 #else
   return 1 ;
 #endif
 }
-#endif
 
-/** @brief Get the maximum number of computational threads.
+/** @brief Get the maximum number of computational threads used by VLFeat.
  ** @return number of threads.
+ **
+ ** This function returns the maximum number of thread used by
+ ** VLFeat. VLFeat will try to use this number of computational
+ ** threads and never exceed it.
+ **
+ ** This is similar to the OpenMP function @c omp_get_max_threads();
+ ** however, it reads a parameter private to VLFeat which is
+ ** independent of the value used by the OpenMP library.
+ **
+ ** If VLFeat was compiled without OpenMP support, this function
+ ** returns 1.
+ **
  ** @sa vl_set_num_threads(), @ref threads-parallel
  **/
 
@@ -1093,28 +1181,41 @@ vl_get_max_threads (void)
 #endif
 }
 
-/** @brief Set the number of threads targeted for parallel computations.
+/** @brief Set the maximum number of threads used by VLFeat.
  ** @param numThreads number of threads to use.
+ **
+ ** This function sets the maximum number of computational threads
+ ** that will be used by VLFeat. VLFeat may in practice use fewer
+ ** threads (for example because @a numThreads is larger than the
+ ** number of computational cores in the host, or because the number
+ ** of threads exceeds the limit available to the application).
+ **
+ ** If @c numThreads is set to 0, then VLFeat sets the number of
+ ** threads to the OpenMP current maximum, obtained by calling @c
+ ** omp_get_max_threads().
+ **
+ ** This function is similar to @c omp_set_num_threads() but changes a
+ ** parameter internal to VLFeat rather than affecting OpenMP global
+ ** state.
+ **
+ ** If VLFeat was compiled without, this function does nothing.
+ **
  ** @sa vl_get_max_threads(), @ref threads-parallel
  **/
 
+#if defined(_OPENMP)
 void
-vl_set_num_threads (
-#if defined(_OPENMP)
-                    vl_size numThreads)
-#else
-                    vl_size numThreads VL_UNUSED)
-#endif
+vl_set_num_threads (vl_size numThreads)
 {
-#if defined(_OPENMP)
   if (numThreads == 0) {
     numThreads = omp_get_max_threads() ;
   }
   vl_get_state()->numThreads = numThreads ;
-#else
-  return ;
-#endif
 }
+#else
+void
+vl_set_num_threads (vl_size numThreads VL_UNUSED) { }
+#endif
 
 /* ---------------------------------------------------------------- */
 /** @brief Set last VLFeat error
@@ -1126,7 +1227,7 @@ vl_set_num_threads (
  ** The function sets the code and optionally the error message
  ** of the last encountered error. @a errorMessage is the message
  ** format. It uses the @c printf convention and is followed by
- ** the format arguments. The maximum lenght of the error message is
+ ** the format arguments. The maximum length of the error message is
  ** given by ::VL_ERR_MSG_LEN (longer messages are truncated).
  **
  ** Passing @c NULL as @a errorMessage
@@ -1352,7 +1453,7 @@ vl_toc (void)
  ** @return random number generator.
  **
  ** The function returns a pointer to the default
- ** random number genrator.
+ ** random number generator.
  ** There is one such generator per thread.
  **/
 
@@ -1406,7 +1507,7 @@ vl_thread_specific_state_delete (VlThreadState * self)
 /* ---------------------------------------------------------------- */
 /*                                        DLL entry and exit points */
 /* ---------------------------------------------------------------- */
-/* A constructor and a destructor must be called to initalize or dispose of VLFeat
+/* A constructor and a destructor must be called to initialize or dispose of VLFeat
  * state when the DLL is loaded or unloaded. This is obtained
  * in different ways depending on the operating system.
  */

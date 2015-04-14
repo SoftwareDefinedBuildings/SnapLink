@@ -1,13 +1,13 @@
 #!/usr/bin/python
-# file:        webdoc.py
-# author:      Andrea Vedaldien
-# description: Implementation of webdoc.
+# file: webdoc.py
+# author: Andrea Vedaldi
+# description: A website formatter utility
 
-# Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
+# Copyright (C) 2007-13 Andrea Vedaldi and Brian Fulkerson.
 # All rights reserved.
 #
 # This file is part of the VLFeat library and is made available under
-# the terms of the BSD license (see the COPYING file).s
+# the terms of the BSD license (see the COPYING file).
 
 import cProfile
 import types
@@ -53,6 +53,14 @@ nodeIndex = { }
 nodeUniqueCount = 0
 doxygenIndex = None
 doxygenDir = ''
+
+def getDoxygenURL(tag):
+    url = ''
+    rootURL = nodeIndex['root'].getPublishURL()
+    if rootURL: url += rootURL + '/'
+    if doxygenDir: url += doxygenDir + '/'
+    url += doxygenIndex.index[tag]
+    return url
 
 def getUniqueNodeID(id = None):
     """
@@ -133,7 +141,7 @@ def walkNodes(rootNode, nodeType = None, nodeBarrier = None):
     if nodeBarrier and rootNode.isA(nodeBarrier):
         return
     for n in rootNode.getChildren():
-        for m in walkNodes(n, nodeType):
+        for m in walkNodes(n, nodeType, nodeBarrier):
             yield m
     if not nodeType or rootNode.isA(nodeType):
         yield rootNode
@@ -177,7 +185,7 @@ class DocError(BaseException):
         if len(self.locations) > 0:
             for i in xrange(len(self.locations)-1,0,-1):
                 str += "included from %s:\n" % self.locations[i]
-            return str + "%s:%s" % (self.locations[0], BaseException.__str__(self))
+            return str + "%s: error: %s" % (self.locations[0], BaseException.__str__(self))
         else:
             return self.message
 
@@ -238,7 +246,7 @@ class DocBareNode:
     def getPublishURL(self): pass
     def visit(self, generator): pass
     def publish(self, generator, pageNode = None): pass
-    def publishIndex(self, gen, pageNode, openNodeStack): return False
+    def publishIndex(self, gen, inPage, activePageNodes, full=False): return False
 
 # --------------------------------------------------------------------
 class DocNode(DocBareNode):
@@ -266,7 +274,7 @@ class DocNode(DocBareNode):
         nodeIndex[self.id] = self
 
     def __str__(self):
-        return "%s:%s" % (self.getLocation(), self.getID())
+        return "%s:%s -> %s" % (self.getLocation(), self.getID(), self.getPublishURL())
 
     def dump(self):
         """
@@ -401,19 +409,19 @@ class DocNode(DocBareNode):
 
     publish = makeGuard(publish)
 
-    def publishIndex(self, gen, pageNode, openNodeStack):
+    def publishIndex(self, gen, inPage, activePageNodes, full=False):
         """
         Recursively calls PUBLISHINDEX() on its children.
         """
         hasIndexedChildren = False
         for c in self.getChildren():
-            hasIndexedChildren = c.publishIndex(gen, pageNode, openNodeStack) \
+            hasIndexedChildren = c.publishIndex(gen, inPage, activePageNodes, full) \
                 or hasIndexedChildren
         return hasIndexedChildren
 
     def publishTableOfContents(self, gen, pageNode):
         """
-        Create a TOC by lookin at H1, H2, ... tags in a DocPage."
+        Create a TOC corresponding to the H1, H2, ... tags in a DocPage."
         """
         gen.putString("<div class='toc'>\n")
         gen.putString("<h3>Table of Contents</h3>")
@@ -421,7 +429,7 @@ class DocNode(DocBareNode):
         for q in pageNode.getChildren():
             for x in walkNodes(q, DocHtmlElement, DocPage):
                 if x.tag not in ['h1', 'h2', 'h3', 'h4', 'h5']: continue
-                level = int(x.tag[1])
+                level = int(x.tag[1]) # e.g. h2 -> level = 2
                 title = "".join([y.text for y in walkNodes(x, DocHtmlText)])
                 while previousLevel < level:
                     gen.putString("<ul>")
@@ -455,7 +463,7 @@ class DocNode(DocBareNode):
                 if nodeIndex.has_key(toNodeID):
                     toNodeURL = nodeIndex[toNodeID].getPublishURL()
                 if toNodeURL is None:
-                    print "%s:warning: could not cross-reference '%s'" % (self.getLocation(), toNodeID)
+                    print "%s: warning: could not cross-reference '%s'" % (self.getLocation(), toNodeID)
                     toNodeURL = toNodeID
                 fromPageURL = pageNode.getPublishURL()
                 xvalue += calcRelURL(toNodeURL, fromPageURL)
@@ -466,17 +474,18 @@ class DocNode(DocBareNode):
                 if envName in os.environ:
                     xvalue += os.environ[envName]
                 else:
-                    print "%s:warning: the environment variable '%s' not defined" % (self.getLocation(), envName)
+                    print "%s: warning: the environment variable '%s' not defined" % (self.getLocation(), envName)
                 continue
             mo = re.match('dox:(.*)', directive)
             if mo:
                 if doxygenIndex is None:
-                    print "%s:warning: no Doxygen tag file loaded, skipping this directive." % self.getLocation()
+                    if opts.verb > 1:
+						print "%s: warning: no Doxygen tag file loaded, skipping this directive." % self.getLocation()
                     continue
                 if not mo.group(1) in doxygenIndex.index:
-                    print "%s:warning: the ID %s was not found in the Doxygen tag file." % (self.getLocation(), mo.group(2))
+                    print "%s: warning: the ID %s was not found in the Doxygen tag file." % (self.getLocation(), mo.group(2))
                     continue
-                toNodeURL = nodeIndex['root'].getPublishURL() + '/' + doxygenDir + '/' + doxygenIndex.index[mo.group(1)]
+                toNodeURL = getDoxygenURL(mo.group(1))
                 fromPageURL = pageNode.getPublishURL()
                 xvalue += calcRelURL(toNodeURL, fromPageURL)
                 continue
@@ -572,12 +581,16 @@ class DocHtmlText(DocBareNode):
         # find occurences of %directive; in the text node and do the
         # appropriate substitutions
         next = 0
-        for m in re.finditer("%(\w+)(:.*)?;", self.text):
+        for m in re.finditer("%(\w+)(?::([-\w._#]+))?;", self.text):
             if next < m.start():
                 gen.putXMLString(self.text[next : m.start()])
             next = m.end()
             directive = self.text[m.start()+1 : m.end()-1]
             directive = m.group(1)
+            if m.group(2):
+                options = [x.strip().lower() for x in m.group(2).split(',')]
+            else:
+                options = []
 
             if directive == "content":
                 pageNode.publish(gen, pageNode)
@@ -597,23 +610,38 @@ class DocHtmlText(DocBareNode):
 
             elif directive == "path":
                 ancPages = [x for x in walkAncestors(pageNode, DocPage)]
-                ancPages.reverse()
-                gen.putString(" - ".join([x.title for x in ancPages]))
+                plain=False
+                for option in options:
+                    if option=="plain":
+                        plain=True
+                    else:
+                        print "warning: ignoring unknown option '%s' while expanding 'path'" % option
+                if ancPages is not None:
+                    for i,p in enumerate(reversed(ancPages)):
+                        if plain:
+                            if i > 0: gen.putString(" > ")
+                            gen.putString(p.title)
+                        else:
+                            if i > 0: gen.putString("<span class='separator'>></span>")
+                            gen.putString("<span class='page'><a href=")
+                            gen.putXMLAttr(
+                                pageNode.expandAttr("%%pathto:%s;" % p.getID(), pageNode))
+                            gen.putString(">%s</a></span>" % p.title)
 
             elif directive == "navigation":
                 gen.putString("<ul>\n")
                 # get the branch of DocPage nodes from the site root to this page
-                openNodeStack = [x for x in walkAncestors(pageNode, DocPage)]
+                activePageNodes = [x for x in walkAncestors(pageNode, DocPage)]
                 # find the root site node and publish the contents
                 siteNode = walkAncestors(pageNode, DocSite).next()
-                siteNode.publishIndex(gen, pageNode, openNodeStack)
+                siteNode.publishIndex(gen, pageNode, activePageNodes, True)
                 gen.putString("</ul>\n")
 
             elif directive == "tableofcontents":
                 pageNode.publishTableOfContents(gen, pageNode)
 
             elif directive == "env":
-                envName = m.group(2)[1:]
+                envName = m.group(2)
                 if envName in os.environ:
                     gen.putString(os.environ[envName])
                 else:
@@ -840,29 +868,38 @@ class DocPage(DocNode):
     def publish(self, generator, pageNode = None):
         if pageNode is self:
             # this is the page being published, so go on
-            print "publishing " + self.__str__()
+            if opts.verb: print 'Publishing \'%s\''  % self.getPublishURL()
             DocNode.publish(self, generator, pageNode)
         # otherwise this page has been encountered recursively
         # during publishing
         return None
 
-    def publishIndex(self, gen, pageNode, openNodeStack):
-        if self.hide: return
-        gen.putString("<li><a href=")
+    def publishIndex(self, gen, inPage, activePageNodes, full=False):
+        if self.hide: return False
+        active = (self in activePageNodes)
+        if active:
+            activeLeaf = (activePageNodes.index(self) == 0)#len(activePageNodes)-1)
+        else:
+            activeLeaf = False
+        gen.putString("<li")
+        if active: gen.putString(" class='active'")
+        if activeLeaf: gen.putString(" class='activeLeaf'")
+        gen.putString("><a href=")
         gen.putXMLAttr(
-            self.expandAttr("%%pathto:%s;" % self.getID(), pageNode))
-        if len(openNodeStack) == 1 and self == openNodeStack[0]:
-            gen.putString(" class='active' ")
+            self.expandAttr("%%pathto:%s;" % self.getID(), inPage))
         gen.putString(">")
         gen.putXMLString(self.title)
         gen.putString("</a>\n")
+        # Generate recursively the index of the children
+        # This may or may not produce results; if not we need to backtrack,
+        # so we save the position of the generator.
         pos = gen.tell()
         gen.putString("<ul>\n")
-        hasIndexedChildren = False
-        if len(openNodeStack) > 0 and self == openNodeStack[-1]:
-            openNodeStack.pop()
-            hasIndexedChildren = DocNode.publishIndex(self, gen, pageNode, openNodeStack)
-        if hasIndexedChildren:
+        if active or full:
+            notEmpty = DocNode.publishIndex(self, gen, inPage, activePageNodes, full)
+        else:
+            notEmpty = False
+        if notEmpty:
             gen.putString("</ul>")
         else:
             gen.seek(pos)
@@ -882,6 +919,9 @@ class DocSite(DocNode):
 
     def getPublishURL(self):
         return self.siteURL
+
+    def setPublishURL(self, url):
+        self.siteURL = url
 
     def getPublishDirName(self):
         return ""
@@ -979,7 +1019,6 @@ class DocHandler(ContentHandler):
         self.stack = []
         self.locatorStack = []
         self.filePathStack = []
-        self.verbosity = 1
         self.inDTD = False
 
     def resolveEntity(self, publicid, systemid):
@@ -1039,8 +1078,7 @@ class DocHandler(ContentHandler):
             qualFilePath = self.lookupFile(filePath)
             if qualFilePath is None:
                 raise self.makeError("the file '%s' could not be found while expanding <web:include>" % filePath)
-            if self.verbosity > 0:
-                print "parsing '%s'" % qualFilePath
+            if opts.verb: print "Parsing '%s'" % qualFilePath
             if attrs.has_key("type"):
                 includeType = attrs["type"]
             else:
@@ -1175,36 +1213,54 @@ def start(filePath, opts):
         print e
         sys.exit(-1)
 
-    # configure
+    # configure site
     handler.rootNode.setOutDir(opts.outdir)
+    handler.rootNode.setPublishURL(opts.siteurl)
+
+    # load doxygen tag file
     if opts.doxytag:
-        if opts.verb: print "Loading doxygen tag file", opts.doxytag
+        if opts.verb: print "Loading the Doxygen tag file", opts.doxytag
         try:
             doxygenIndex = Doxytag(opts.doxytag)
             doxygenDir = opts.doxydir
         except Exception, e:
-            print "Error parsing Doxygen tag file ", opts.doxytag
+            print "Error parsing the Doxygen tag file", opts.doxytag
             print e
             sys.exit(-1)
 
-
-    #print "== Index Content =="
-    # dumpIndex()
-    #print
-    #print "== Node Tree =="
-    #handler.rootNode.dump()
-
-    if opts.verb:
+    if opts.verb > 2:
         print "== All pages =="
         for x in walkNodes(handler.rootNode, DocPage):
             print x
 
-    if opts.verb: print "== Publish =="
+    if opts.verb: print "Publishing website..."
     try:
         handler.rootNode.publish()
     except DocError, e:
         print e
         sys.exit(-1)
+
+    if opts.indexfile:
+        if opts.verb: print "Storing the website index to", opts.indexfile
+        try:
+            f = open(opts.indexfile, 'w+')
+            siteurl = nodeIndex['root'].getPublishURL()
+            for (id,x) in sorted(nodeIndex.items()):
+                if (x.isA(DocHtmlElement) or x.isA(DocPage)) and x.attrs.has_key('id'):
+                    url = x.getPublishURL()
+                    if not url: continue
+                    print >>f, '%s|%s' % (x.attrs['id'],
+                                          calcRelURL(url,siteurl))
+            if doxygenIndex:
+                for tag in sorted(doxygenIndex.index):
+                    url = getDoxygenURL(tag)
+                    print >>f, '%s|%s' % (tag,
+                                          calcRelURL(url,siteurl))
+        except Exception, e:
+            print "Error writing the website index file"
+            print e
+            sys.exit(-1)
+
     sys.exit(0)
 
 # --------------------------------------------------------------------
@@ -1216,14 +1272,15 @@ if __name__ == '__main__':
 --verbose   Be verbose
 --doxytag   Doxygen tag file
 --doxydir   Doxygen documentation location
+--profile   Collect and print profiling information
 """
     parser = OptionParser(usage=usage)
     parser.add_option(
         "-v", "--verbose",
         dest    = "verb",
-        default = False,
-        action  = "store_true",
-        help    = "print debug informations")
+        default = 0,
+        action  = "count",
+        help    = "print more debuging information")
     parser.add_option(
         "-o", "--outdir",
         dest    = "outdir",
@@ -1248,6 +1305,18 @@ if __name__ == '__main__':
         default = False,
         action  = "store_true",
         help    = "run the profiler")
+    parser.add_option(
+        "", "--siteurl",
+        dest = "siteurl",
+        default = "",
+        action = "store",
+        help = "set the base URL of the website")
+    parser.add_option(
+        "", "--indexfile",
+        dest = "indexfile",
+        default = None,
+        action = "store",
+        help = "store the website index here")
 
     (opts, args) = parser.parse_args()
 

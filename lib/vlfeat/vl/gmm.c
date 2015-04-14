@@ -262,7 +262,7 @@ modes).
 
 @ref gmm.h supports the following cluster initialization algorithms:
 
-- <b>Random data points.</b> (::vl_gmm_init_with_random_data) This method
+- <b>Random data points.</b> (::vl_gmm_init_with_rand_data) This method
   sets the means of the modes by sampling at random a corresponding
   number of data points, sets the covariance matrices of all the modes
   are to the covariance of the entire dataset, and sets the prior
@@ -345,6 +345,8 @@ _vl_gmm_prepare_for_data (VlGMM* self, vl_size numData)
 
 /** @brief Create a new GMM object
  ** @param dataType type of data (::VL_TYPE_FLOAT or ::VL_TYPE_DOUBLE)
+ ** @param dimension dimension of the data.
+ ** @param numComponents number of Gaussian mixture components.
  ** @return new GMM object instance.
  **/
 
@@ -648,7 +650,7 @@ double const * vl_gmm_get_covariance_lower_bounds (VlGMM const * self)
  ** @param self object.
  ** @param bounds bounds.
  **
- ** There is one lower bound per dimension. Use ::vl:gmm_set_covariance_lower_bound
+ ** There is one lower bound per dimension. Use ::vl_gmm_set_covariance_lower_bound
  ** to set all of them to a given scalar.
  **/
 void vl_gmm_set_covariance_lower_bounds (VlGMM * self, double const * bounds)
@@ -661,7 +663,7 @@ void vl_gmm_set_covariance_lower_bounds (VlGMM * self, double const * bounds)
  ** @param bound bound.
  **
  ** While there is one lower bound per dimension, this function sets
- ** all of them to the specified scalar. Use ::vl:gmm_set_covariance_lower_bounds
+ ** all of them to the specified scalar. Use ::vl_gmm_set_covariance_lower_bounds
  ** to set them individually.
  **/
 void vl_gmm_set_covariance_lower_bound (VlGMM * self, double bound)
@@ -734,7 +736,7 @@ VL_XCAT(vl_get_gmm_data_posteriors_, SFX)
 
   logCovariances = vl_malloc(sizeof(TYPE) * numClusters) ;
   invCovariances = vl_malloc(sizeof(TYPE) * numClusters * dimension) ;
-  logWeights = vl_malloc(numClusters * sizeof(TYPE)) ;
+  logWeights = vl_malloc(sizeof(TYPE) * numClusters) ;
 
 #if defined(_OPENMP)
 #pragma omp parallel for private(i_cl,dim) num_threads(vl_get_max_threads())
@@ -894,23 +896,39 @@ VL_XCAT(_vl_gmm_restart_empty_modes_, SFX) (VlGMM * self, TYPE const * data)
     }
 
     /*
-     Search for the cluster that (approximately)
-     maximally contribute to make the log-likelihood
-     small.
+     Search for the Gaussian components that (approximately)
+     maximally contribute to make the negative log-likelihood of the data
+     large. Then split the worst offender.
+     
+     To do so, we approximate the exptected log-likelihood of the GMM:
+     
+     E[-log(f(x))] = H(f) = - log \int f(x) log f(x)
+    
+     where the density f(x) = sum_k pk gk(x) is a GMM. This is intractable
+     but it is easy to approximate if we suppose that supp gk is disjoint with
+     supp gq for all components k ~= q. In this canse
+     
+     H(f) ~= sum_k [ - pk log(pk) + pk H(gk) ]
+     
+     where H(gk) is the entropy of component k taken alone. The entropy of
+     the latter is given by:
+     
+     H(gk) = D/2 (1 + log(2pi) + 1/2 sum_{i=0}^D log sigma_i^2
+
      */
 
     for (j_cl = 0 ; j_cl < (signed)numClusters ; ++j_cl) {
       double size_ ;
       if (priors[j_cl] < VL_GMM_MIN_PRIOR) { continue ; }
-      size_ = - 0.5 * (1.0 + log(2*VL_PI)) ;
+      size_ = + 0.5 * dimension * (1.0 + log(2*VL_PI)) ;
       for(d = 0 ; d < (signed)dimension ; d++) {
         double sigma2 = covariances[j_cl * dimension + d] ;
-        size_ -= 0.5 * log(sigma2) ;
+        size_ += 0.5 * log(sigma2) ;
       }
-      size_ *= priors[j_cl] ;
+      size_ = priors[j_cl] * (size_ - log(priors[j_cl])) ;
 
-      if (self->verbosity > 2) {
-        VL_PRINTF("gmm: mode %d: prior %f, mass %f, score %f\n",
+      if (self->verbosity > 1) {
+        VL_PRINTF("gmm: mode %d: prior %f, mass %f, entropy contribution %f\n",
                   j_cl, priors[j_cl], mass[j_cl], size_) ;
       }
 
@@ -960,12 +978,12 @@ VL_XCAT(_vl_gmm_restart_empty_modes_, SFX) (VlGMM * self, TYPE const * data)
         TYPE q = posteriors[i_cl + self->numClusters * i_d] ; /* ~= 0 */
         if (data[best + i_d * self->dimension] < mu) {
           /* assign this point to i_cl */
-          posteriors[i_cl + self->numClusters * i_d] += p ;
+          posteriors[i_cl + self->numClusters * i_d] = p + q ;
           posteriors[j_cl + self->numClusters * i_d] = 0 ;
         } else {
           /* assign this point to j_cl */
           posteriors[i_cl + self->numClusters * i_d] = 0 ;
-          posteriors[j_cl + self->numClusters * i_d] += q ;
+          posteriors[j_cl + self->numClusters * i_d] = p + q ;
         }
       }
     }
@@ -1479,9 +1497,7 @@ vl_gmm_new_copy (VlGMM const * self)
 /** @brief Initialize mixture before EM takes place using random initialization
  ** @param self GMM object instance.
  ** @param data data points which should be clustered.
- ** @param dimension dimensionality of the data points.
  ** @param numData number of data points.
- ** @param numClusters number of gaussians which should be estimated.
  **/
 
 void
@@ -1502,9 +1518,7 @@ vl_gmm_init_with_rand_data
 /** @brief Initializes the GMM using KMeans
  ** @param self GMM object instance.
  ** @param data data points which should be clustered.
- ** @param dimension dimensionality of the data points.
  ** @param numData number of data points.
- ** @param numClusters number of gaussians which should be estimated.
  ** @param kmeansInit KMeans object to use.
  **/
 
@@ -1537,9 +1551,7 @@ vl_gmm_init_with_kmeans
 /** @brief Run GMM clustering - includes initialization and EM
  ** @param self GMM object instance.
  ** @param data data points which should be clustered.
- ** @param dimension dimensionality of the data points.
  ** @param numData number of data points.
- ** @param numClusters number of gaussians which should be estimated.
  **/
 
 double vl_gmm_cluster (VlGMM * self,

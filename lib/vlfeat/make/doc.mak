@@ -2,6 +2,7 @@
 # description: Makefile submodule to build the documentation
 # author: Andrea Vedaldi
 
+# Copyright (C) 2013-14 Andrea Vedaldi.
 # Copyright (C) 2007-12 Andrea Vedaldi and Brian Fulkerson.
 # All rights reserved.
 #
@@ -21,7 +22,6 @@ DOXYGEN    ?= doxygen
 
 PDFLATEX   ?= pdflatex
 FIG2DEV    ?= fig2dev
-INKSCAPE   ?= inkscape
 CONVERT    ?= convert
 
 PYTHON     ?= python
@@ -52,7 +52,11 @@ $(eval $(call gendir, results, results))
 .PHONY: doc-deep
 
 ifdef MATLAB_PATH
+ifeq ($(call gt,$(MATLAB_VER),80300),)
+doc-matlab: doc/matlab/helpsearch-v2/segments.gen
+else
 doc-matlab: doc/matlab/helpsearch/deletable
+endif
 endif
 
 # use MATLAB to create the figures for the tutorials
@@ -67,6 +71,14 @@ doc-deep: all $(doc-dir) $(results-dir)
 	$(MAKE) doc
 
 # make documentation searchable in MATLAB
+doc/matlab/helpsearch-v2/segments.gen : doc/build/matlab/helpsearch-v2/segments.gen $(doc-dir)
+	cp -v doc/build/matlab/helptoc.xml doc/matlab/
+	cp -rv doc/build/matlab/helpsearch-v2 doc/matlab/
+
+doc/build/matlab/helpsearch-v2/segments.gen: doc/build/matlab/helptoc.xml
+	$(MATLAB_EXE) -$(ARCH) -nodisplay -r "builddocsearchdb('doc/build/matlab/') ; exit"
+
+# for older MATLABs
 doc/matlab/helpsearch/deletable : doc/build/matlab/helpsearch/deletable $(doc-dir)
 	cp -v doc/build/matlab/helptoc.xml doc/matlab/
 	cp -rv doc/build/matlab/helpsearch doc/matlab/
@@ -171,7 +183,7 @@ doc/build/man/xman.html : $(man_tgt) $(doc-dir)
 
 # Convert the various man pages
 doc/build/man/%.html : src/% $(doc-dir)
-	@$(print-command MAN2HTML, $@)
+	@echo MAN2HTML "$(@)"
 	@( \
 	  echo '<!DOCTYPE group PUBLIC ' ; \
 	  echo '  "-//W3C//DTD XHTML 1.0 Transitional//EN"' ; \
@@ -189,19 +201,18 @@ doc/build/man/%.html : src/% $(doc-dir)
 
 doc_fig_src := $(wildcard docsrc/figures/*.fig)
 doc_svg_src := $(wildcard docsrc/figures/*.svg)
-doc_fig_tgt += $(subst docsrc/,doc/,$(doc_fig_src:.fig=.png)) $(subst docsrc/,doc/,$(doc_svg_src:.svg=.png))
+doc_fig_tgt += \
+$(subst docsrc/,doc/,$(doc_fig_src:.fig=.png)) \
+$(subst docsrc/,doc/,$(doc_svg_src:.svg=.png))
 
 .PRECIOUS: doc/build/figures/%.pdf
 .PRECIOUS: doc/build/figures/%.tex
 
 doc/figures/%.png : doc/build/figures/%.pdf
-	$(call C,CONVERT) -density 300 "$<" -resample $(screen_dpi) -trim  "$@"
+	$(call C,CONVERT) -units PixelsPerInch -density $(screen_dpi) -resample $(screen_dpi) -trim "$<" "$@"
 
-# Inkscape
-doc/build/figures/%-raw.pdf doc/build/figures/%-raw.tex: docsrc/figures/%.svg
-	$(call C,INKSCAPE) --export-pdf=doc/build/figures/$(*)-raw.pdf --export-latex "$<"
-	@$(MV) doc/build/figures/$(*)-raw.pdf_tex doc/build/figures/$(*)-raw.tex
-	@$(SED) -e 's/$(*)-raw/doc\/build\/figures\/$(*)-raw/g' -i.bak 'doc/build/figures/$(*)-raw.tex'
+doc/figures/%.png : docsrc/figures/%.svg
+	$(call C,CONVERT) -units PixelsPerInch -density $(screen_dpi) -resample $(screen_dpi) -trim "$<" "$@"
 
 # Fig
 doc/build/figures/%-raw.tex : docsrc/figures/%.fig $(doc-dir)
@@ -215,7 +226,7 @@ doc/build/figures/%.pdf doc/build/figures/%.aux doc/build/figures/%.log : \
 	$(call C,PDFLATEX) -shell-escape -interaction=batchmode -output-directory="$(dir $@)" "$<" 2>/dev/null
 
 doc/build/figures/%.tex : $(doc-dir)
-	@$(print-command GEN, $@)
+	@echo GEN "$(@)"
 	@/bin/echo '\documentclass[landscape]{article}'                 >$@
 	@/bin/echo '\usepackage[paper=a2paper,margin=0pt]{geometry}'	>>$@
 	@/bin/echo '\usepackage{graphicx,color}'			>>$@
@@ -242,7 +253,7 @@ doc/api/index.html: docsrc/doxygen.conf docsrc/vlfeat.bib VERSION \
 #                                                               Webdoc
 # --------------------------------------------------------------------
 
-webdoc_src = $(wildcard docsrc/*.xml) $(wildcard docsrc/*.html)
+webdoc_src = $(wildcard docsrc/*.xml) $(wildcard docsrc/*.html) $(wildcard docsrc/tutorials/*.html)
 
 doc: doc/index.html doc/vlfeat.css doc/pygmentize.css $(doc_fig_tgt)
 
@@ -277,6 +288,7 @@ doc/index.html: $(webdoc_src) $(doc-dir) \
 	VERSION=$(VER) $(PYTHON) docsrc/webdoc.py \
              --outdir=doc \
 	     --verbose \
+	     --indexfile=doc/index.txt \
 	     --doxytag=doc/doxygen.tag \
 	     --doxydir=api \
 	     docsrc/vlfeat-website.xml
@@ -288,7 +300,7 @@ doc/index.html: $(webdoc_src) $(doc-dir) \
 # --------------------------------------------------------------------
 
 .PHONY: doc-clean, doc-archclean, doc-distclean
-no_dep_targets := doc-clean doc-archclean doc-distclean
+no_dep_targets += doc-clean doc-archclean doc-distclean
 
 VERSION: vl/generic.h
 	echo "$(VER)" > VERSION

@@ -21,11 +21,13 @@ GIT ?= git
 RSYNC ?= rsync
 VER ?= $(shell cat vl/generic.h | sed -n \
     's/.*VL_VERSION_STRING.*\"\([0-9.]*\)\".*/\1/p')
+TMPDIR ?= /tmp
 
 NAME := vlfeat
 DIST := $(NAME)-$(VER)
 BINDIST := $(DIST)-bin
 HOST := vlfeat-admin:vlfeat.org/sandbox
+
 
 # --------------------------------------------------------------------
 #                                                 Build source package
@@ -192,31 +194,30 @@ dist-bin-info:
 #                                             Post packages on the web
 # --------------------------------------------------------------------
 
-.PHONY: post, post-doc
+.PHONY: post, post-doc, post-doc-from-dist
 
 post:
 	$(RSYNC)                                                     \
 	    -aP $(DIST).tar.gz $(BINDIST).tar.gz                     \
 	    $(HOST)/download
 
-post-doc:
-	tar xzvf $(BINDIST).tar.gz -C $(TMPDIR)/ $(NAME)-$(VER)/doc/
+rsync-doc = \
 	$(RSYNC)                                                     \
 	      --recursive                                            \
 	      --perms                                                \
 	      --group=lab                                            \
 	      --chmod=Dg+s,g+w,o-w                                   \
-	      --exclude=*.eps                                        \
+	      --exclude=build                                        \
 	      --exclude=download                                     \
-	      --exclude=cvpr10wiki                                   \
-	      --exclude=benchmarks                                   \
-	      --exclude=man-src                                      \
-	      --exclude=mdoc.build                                   \
-	      --exclude=.htaccess                                    \
-	      --exclude=favicon.ico                                  \
 	      --delete                                               \
 	      --progress                                             \
-	      $(TMPDIR)/$(NAME)-$(VER)/doc/ $(HOST)
+
+post-doc:
+	$(rsync-doc) doc/ $(HOST)
+
+post-doc-from-dist: dist-bin
+	tar xzvf $(BINDIST).tar.gz -C $(TMPDIR)/ $(NAME)-$(VER)/doc/
+	$(rsync-doc) $(TMPDIR)/$(NAME)-$(VER)/doc/ $(HOST)
 
 # Local variables:
 # mode: Makefile

@@ -59,10 +59,8 @@ The image patch must be of odd side length and in single
 precision. There are several parameters affecting the LIOP
 descriptor. An example is the @ref liop-weighing "threshold" used to
 discard low-contrast oder pattern in the computation of the
-statistics. This is changed by using ::vl_liopdesc_set_threshold.
-
+statistics. This is changed by using ::vl_liopdesc_set_intensity_threshold.
 **/
-
 
 /**
 <!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  -->
@@ -399,7 +397,7 @@ vl_liopdesc_new (vl_int numNeighbours, vl_int numSpatialBins,
 }
 
 /** @brief Create a new object with default parameters
- ** @param patchSideLength size of the patches to be processed.
+ ** @param sideLength size of the patches to be processed.
  ** @return new object.
  **
  ** @see ::vl_liopdesc_new. */
@@ -421,6 +419,8 @@ vl_liopdesc_delete (VlLiopDesc * self)
   vl_free (self->patchPixels) ;
   vl_free (self->patchIntensities) ;
   vl_free (self->patchPermutation) ;
+  vl_free (self->neighPermutation) ;
+  vl_free (self->neighIntensities) ;
   vl_free (self->neighSamplesX) ;
   vl_free (self->neighSamplesY) ;
   vl_free (self) ;
@@ -436,7 +436,7 @@ vl_liopdesc_delete (VlLiopDesc * self)
  ** @param patch patch to process
  **
  ** Use ::vl_liopdesc_get_dimension to get the size of the descriptor
- ** @desc. */
+ ** @a desc. */
 
 void
 vl_liopdesc_process (VlLiopDesc * self, float * desc, float const * patch)
@@ -446,7 +446,7 @@ vl_liopdesc_process (VlLiopDesc * self, float * desc, float const * patch)
   vl_index spatialBinArea, spatialBinEnd, spatialBinIndex ;
   float threshold ;
 
-  memset(desc, 0, self->dimension) ;
+  memset(desc, 0, sizeof(float) * self->dimension) ;
 
   /*
    * Sort pixels in the patch by increasing intensity.
@@ -460,7 +460,7 @@ vl_liopdesc_process (VlLiopDesc * self, float * desc, float const * patch)
   patch_sort(self, self->patchSize) ;
 
   /*
-   * Tune the threshold if needed
+   * Tune the threshold if needed.
    */
 
   if (self->intensityThreshold < 0) {
@@ -494,7 +494,7 @@ vl_liopdesc_process (VlLiopDesc * self, float * desc, float const * patch)
       offset += numPermutations ;
     }
 
-    /* get intensities of neighbours of the current patch element and sor them */
+    /* get intensities of neighbours of the current patch element and sort them */
     sx = self->neighSamplesX + self->numNeighbours * self->patchPermutation[i] ;
     sy = self->neighSamplesY + self->numNeighbours * self->patchPermutation[i] ;
     for (t = 0 ; t < self->numNeighbours ; ++t) {
@@ -512,10 +512,10 @@ vl_liopdesc_process (VlLiopDesc * self, float * desc, float const * patch)
 
       int L = (int) self->patchSideLength ;
 
-      if (ix >= 0 && iy >= 0) { a = patch[ix   + iy * L] ; }
-      if (ix <  L && iy >= 0) { b = patch[ix+1 + iy * L] ; }
-      if (ix >= 0 && iy <  L) { c = patch[ix   + (iy+1) * L] ; }
-      if (ix <  L && iy <  L) { d = patch[ix+1 + (iy+1) * L] ; }
+      if (ix >= 0   && iy >= 0  ) { a = patch[ix   + iy * L] ; }
+      if (ix <  L-1 && iy >= 0  ) { b = patch[ix+1 + iy * L] ; }
+      if (ix >= 0   && iy <  L-1) { c = patch[ix   + (iy+1) * L] ; }
+      if (ix <  L-1 && iy <  L-1) { d = patch[ix+1 + (iy+1) * L] ; }
 
       self->neighPermutation[t] = t;
       self->neighIntensities[t] = (1 - wy) * (a + (b - a) * wx) + wy * (c + (d - c) * wx) ;
@@ -562,6 +562,7 @@ vl_liopdesc_process (VlLiopDesc * self, float * desc, float const * patch)
 /* ---------------------------------------------------------------- */
 
 /** @brief Get the dimension of a LIOP descriptor.
+ ** @param self object.
  ** @return dimension. */
 
 vl_size

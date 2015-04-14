@@ -24,7 +24,7 @@
 # Note that some of these variables depend on the architecture
 # (either win32 or win64).
 
-VER = 0.9.17
+VER = 0.9.20
 ARCH = win64
 DEBUG = no
 BRANCH = v$(VER)-$(ARCH)
@@ -47,7 +47,7 @@ WINSDKROOT = C:\Program Files\Microsoft SDKs\Windows\v7.0A
 !if "$(ARCH)" == "win32"
 !message === COMPILING FOR 32-BIT
 
-MATLABROOT = C:\Program Files (x86)\MATLAB\R2009b
+MATLABROOT = C:\Program Files (x86)\MATLAB\R2010b
 MEX = "$(MATLABROOT)\bin\mex.bat"
 MEXOPT = "$(MATLABROOT)\bin\win32\mexopts\msvc$(MSVSVER)opts.bat"
 MEXEXT = mexw32
@@ -65,7 +65,7 @@ LFLAGS = /MACHINE:X86 \
 !elseif "$(ARCH)" == "win64"
 !message === COMPILING FOR 64-BIT
 
-MATLABROOT = C:\Program Files\MATLAB\R2009b
+MATLABROOT = C:\Program Files\MATLAB\R2010b
 MEX = "$(MATLABROOT)\bin\mex.bat"
 MEXOPT = "$(MATLABROOT)\bin\win64\mexopts\msvc$(MSVSVER)opts.bat"
 MEXEXT = mexw64
@@ -214,6 +214,7 @@ cmdsrc = \
   src\test_nan.c \
   src\test_qsort-def.c \
   src\test_rand.c \
+  src\test_sqrti.c \
   src\test_stringop.c \
   src\test_svd2.c \
   src\test_threads.c \
@@ -236,6 +237,7 @@ cmdsrc = \
   src\test_nan.c \
   src\test_qsort-def.c \
   src\test_rand.c \
+  src\test_sqrti.c \
   src\test_stringop.c \
   src\test_svd2.c \
   src\test_threads.c \
