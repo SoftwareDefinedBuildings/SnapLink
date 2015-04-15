@@ -21,4 +21,4 @@ MATLAB and issue
 
 to automatically download the Oxford building dataset and start
 running demo queries. The indexing process takes a while, but can
-acclerated significantly by opening a matlabpool (see MATLABPOOL()).
+acclerated significantly by opening a parpool (see PARPOOL()).

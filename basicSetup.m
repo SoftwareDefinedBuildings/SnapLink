@@ -19,10 +19,10 @@ dbstop if error
 
 run('lib/vlfeat/toolbox/vl_setup');
 
-
-if matlabpool('size') ==0
+poolobj = gcp('nocreate');
+if isempty(poolobj)
     try
-        matlabpool
+        parpool;
     catch
     end
 end

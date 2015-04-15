@@ -8,16 +8,17 @@
 
 function RGBDsfmScript(i)
 
-    if matlabpool('size') ==0
+    poolobj = gcp('nocreate');
+    if isempty(poolobj)
         try
-            matlabpool(6);
+            parpool;
         catch
         end
     end
 
-    load('/n/fs/sun3d/data/SUN3Dv1.mat');
+    load('/home/kaifei/Data/sun3d/data/SUN3Dv1.mat');
 
-    if ~exist(fullfile('/n/fs/sun3d/data/sfm',SUN3D{i}),'dir')
+    if ~exist(fullfile('/home/kaifei/Data/sun3d/data/sfm',SUN3D{i}),'dir')
         try
             disp(i);
             [~,hname] = system('hostname');

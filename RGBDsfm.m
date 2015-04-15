@@ -11,9 +11,9 @@ if ~exist('frameIDs','var')
     frameIDs = [];
 end
 
-%SUN3Dpath = '/n/fs/sun3d/data/';
+%SUN3Dpath = '/home/kaifei/Data/sun3d/data/';
 SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
-write2path = '/n/fs/sun3d/sfm/';
+write2path = '/home/kaifei/Data/sun3d/sfm/';
 
 basicSetup
 

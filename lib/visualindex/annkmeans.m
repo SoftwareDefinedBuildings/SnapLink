@@ -47,7 +47,8 @@ end
 % chunk the data up
 numData = size(X,2) ;
 if opts.parallel
-  numChunks = max(matlabpool('size'), 1) ;
+  poolobj = gcp('nocreate');
+  numChunks = max(poolobj.NumWorkers, 1) ;
   data = Composite() ;
   dist = Composite() ;
   assign = Composite() ;
