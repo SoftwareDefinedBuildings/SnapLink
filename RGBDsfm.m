@@ -11,8 +11,8 @@ if ~exist('frameIDs','var')
     frameIDs = [];
 end
 
-%SUN3Dpath = '/home/kaifei/Data/sun3d/data/';
-SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
+SUN3Dpath = '/home/kaifei/Data/sun3d.csail.mit.edu/data/';
+%SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
 write2path = '/home/kaifei/Data/sun3d/sfm/';
 
 basicSetup
@@ -41,6 +41,7 @@ end
 BOWmodel = BOWtrain(data);
 scores = BOWmodel.index.histograms' * BOWmodel.index.histograms;
 % release memory
+save(fullfile(write2path, sequenceName, 'BOWmodel.mat'),'BOWmodel','-v7.3');
 clear BOWmodel;
 
 % smooth out
@@ -185,7 +186,9 @@ end
 % naive approach: just put all results together
 cameraRtC2W = repmat([eye(3) zeros(3,1)], [1,1,length(data.image)]);
 for frameID = 1:length(data.image)-1
-    cameraRtC2W(:,:,frameID+1) = [cameraRtC2W(:,1:3,frameID) * MatchPairs{frameID}.Rt(:,1:3) cameraRtC2W(:,1:3,frameID) * MatchPairs{frameID}.Rt(:,4) + cameraRtC2W(:,4,frameID)];
+    cameraRtC2W(:,:,frameID+1) = [cameraRtC2W(:,1:3,frameID) * ...
+        MatchPairs{frameID}.Rt(:,1:3) cameraRtC2W(:,1:3,frameID) * ...
+        MatchPairs{frameID}.Rt(:,4) + cameraRtC2W(:,4,frameID)];
 end
 
 if ~exist(fullfile(write2path, sequenceName),'dir')

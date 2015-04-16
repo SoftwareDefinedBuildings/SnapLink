@@ -71,7 +71,7 @@ SIFTloc_i = SIFTloc_i(:,valid);
 posSIFT_j = posSIFT_j(:,valid);
 SIFTloc_j = SIFTloc_j(:,valid);
         
-        
+% pick the pixels that has matching SIFTs and valid depths
 Xcam_i = XYZcam_i(:,:,1);
 Ycam_i = XYZcam_i(:,:,2);
 Zcam_i = XYZcam_i(:,:,3);

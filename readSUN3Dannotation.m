@@ -9,8 +9,8 @@ function [K, frameCount, frameImage, frameDepth] = readSUN3Dannotation(sequenceN
 
     % the root path of SUN3D
     % change it to local
-    %SUN3Dpath = '/data/vision/torralba/sun3d/record/scene_final';
-    SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
+    SUN3Dpath = '/home/kaifei/Data/sun3d.csail.mit.edu/data/';
+    %SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
 
     % read intrinsic
     K = reshape(readValuesFromTxt(fullfile(SUN3Dpath,sequenceName,'intrinsics.txt')),3,3)';
@@ -293,7 +293,7 @@ function data = loadjson(fname,varargin)
 %            date: 2011/09/09
 %         Nedialko Krouchev: http://www.mathworks.com/matlabcentral/fileexchange/25713
 %            date: 2009/11/02
-%         François Glineur: http://www.mathworks.com/matlabcentral/fileexchange/23393
+%         Franï¿½ois Glineur: http://www.mathworks.com/matlabcentral/fileexchange/23393
 %            date: 2009/03/22
 %         Joel Feenstra:
 %         http://www.mathworks.com/matlabcentral/fileexchange/20565

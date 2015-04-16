@@ -15,8 +15,8 @@ end
 
 basicSetup
 
-%SUN3Dpath = '/home/kaifei/Data/sun3d/data/';
-SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
+SUN3Dpath = '/home/kaifei/Data/sun3d.csail.mit.edu/data/';
+%SUN3Dpath = 'http://sun3d.csail.mit.edu/data/';
 write2path = '/home/kaifei/Data/sun3d/sfm/';
 
 %% read data
