@@ -20,6 +20,7 @@ basicSetup
 %% read data
 
 data = loadSUN3D(sequenceName, frameIDs, SUN3Dpath);
+save(fullfile(write2path, sequenceName, 'data.mat'),'data','-v7.3');
 
 % show the video
 %{
@@ -194,7 +195,7 @@ end
 if ~exist(fullfile(write2path, sequenceName),'dir')
     mkdir(fullfile(write2path, sequenceName));
 end
-save(fullfile(write2path, sequenceName, 'cameraRt_RANSAC.mat'),'cameraRtC2W','MatchPairs','-v7.3');
+% save(fullfile(write2path, sequenceName, 'cameraRt_RANSAC.mat'),'cameraRtC2W','MatchPairs','-v7.3');
 
 fprintf('ransac all finished\n');
 
@@ -375,6 +376,9 @@ outputCameraExtrinsics(SUN3Dpath, sequenceName, cameraRtC2W, timeStamp);
 
 %% output thumbnail
 outputThumbnail(SUN3Dpath, sequenceName, cameraRtC2W, timeStamp, data);
+
+save(fullfile(write2path, sequenceName, 'cameraRtC2W.mat'),'cameraRtC2W','-v7.3');
+
 
 end
 

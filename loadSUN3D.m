@@ -75,16 +75,16 @@ function data = loadSUN3D(sequenceName, frameIDs, SUN3Dpath)
 end
 
 %% IO function
-function values = readValuesFromTxt(filename)
-    try
-        values = textscan(urlread(filename),'%f');
-    catch
-        fid = fopen(filename,'r');
-        values = textscan(fid,'%f');
-        fclose(fid);
-    end
-    values = values{1};
-end
+% function values = readValuesFromTxt(filename)
+%     try
+%         values = textscan(urlread(filename),'%f');
+%     catch
+%         fid = fopen(filename,'r');
+%         values = textscan(fid,'%f');
+%         fclose(fid);
+%     end
+%     values = values{1};
+% end
 
 
 function files = dirSmart(page, tag)
