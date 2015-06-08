@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/core/OdometryEvent.h"
-#include "rtabmap/core/CameraThread.h"
+#include "rtabmap/core/DBReader.h"
 
 using namespace rtabmap;
 
@@ -54,8 +54,8 @@ class MapBuilder : public QWidget, public UEventsHandler
 	Q_OBJECT
 public:
 	//Camera ownership is not transferred!
-	MapBuilder(CameraThread * camera = 0) :
-		camera_(camera),
+	MapBuilder(DBReader * dbReader = 0) :
+		dbReader_(dbReader),
 		odometryCorrection_(Transform::getIdentity()),
 		processingStatistics_(false),
 		lastOdometryProcessed_(true)
@@ -73,11 +73,6 @@ public:
 
 		qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
 		qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-
-		QAction * pause = new QAction(this);
-		this->addAction(pause);
-		pause->setShortcut(Qt::Key_Space);
-		connect(pause, SIGNAL(triggered()), this, SLOT(pauseDetection()));
 	}
 
 	virtual ~MapBuilder()
@@ -86,21 +81,6 @@ public:
 	}
 
 protected slots:
-	virtual void pauseDetection()
-	{
-		UWARN("");
-		if(camera_)
-		{
-			if(camera_->isCapturing())
-			{
-				camera_->join(true);
-			}
-			else
-			{
-				camera_->start();
-			}
-		}
-	}
 
 	virtual void processOdometry(const rtabmap::SensorData & data)
 	{
@@ -285,7 +265,7 @@ protected slots:
 
 protected:
 	CloudViewer * cloudViewer_;
-	CameraThread * camera_;
+	DBReader * dbReader_;
 	Transform lastOdomPose_;
 	Transform odometryCorrection_;
 	bool processingStatistics_;

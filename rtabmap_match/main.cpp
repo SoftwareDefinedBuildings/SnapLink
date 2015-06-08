@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
-#include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
@@ -40,8 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping driver\n"
-            "  driver       Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS\n\n");
+            "rtabmap-rgbd_mapping database_file\n");
     exit(1);
 }
 
@@ -51,80 +49,37 @@ int main(int argc, char * argv[])
     ULogger::setType(ULogger::kTypeConsole);
     ULogger::setLevel(ULogger::kWarning);
 
-    int driver = 0;
+    std::string dbfile;
     if(argc < 2)
     {
         showUsage();
     }
     else
     {
-        driver = atoi(argv[argc-1]);
-        if(driver < 0 || driver > 4)
-        {
-            UERROR("driver should be between 0 and 4.");
-            showUsage();
-        }
+        dbfile = std::string(argv[argc-1]);
     }
 
     // Here is the pipeline that we will use:
-    // CameraOpenni -> "CameraEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
+    // DBReader -> "CameraEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
 
     // Create the OpenNI camera, it will send a CameraEvent at the rate specified.
     // Set transform to camera so z is up, y is left and x going forward
-    CameraRGBD * camera = 0;
-    Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
-    if(driver == 1)
-    {
-        if(!CameraOpenNI2::available())
-        {
-            UERROR("Not built with OpenNI2 support...");
-            exit(-1);
-        }
-        camera = new CameraOpenNI2("", 0, opticalRotation);
-    }
-    else if(driver == 2)
-    {
-        if(!CameraFreenect::available())
-        {
-            UERROR("Not built with Freenect support...");
-            exit(-1);
-        }
-        camera = new CameraFreenect(0, 0, opticalRotation);
-    }
-    else if(driver == 3)
-    {
-        if(!CameraOpenNICV::available())
-        {
-            UERROR("Not built with OpenNI from OpenCV support...");
-            exit(-1);
-        }
-        camera = new CameraOpenNICV(false, 0, opticalRotation);
-    }
-    else if(driver == 4)
-    {
-        if(!CameraOpenNICV::available())
-        {
-            UERROR("Not built with OpenNI from OpenCV support...");
-            exit(-1);
-        }
-        camera = new CameraOpenNICV(true, 0, opticalRotation);
-    }
-    else
-    {
-        camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
-    }
+    DBReader * dbReader = NULL;
+    float frameRate = 1.0f;
+    bool odometryIgnored = true;
+    bool ignoreGoalDelay = true;
+    dbReader = new DBReader(dbfile, frameRate, odometryIgnored, ignoreGoalDelay);
 
-    CameraThread cameraThread(camera);
-    if(!cameraThread.init())
+    if(!dbReader->init())
     {
-        UERROR("Camera init failed!");
+        UERROR("Database Reader init failed!");
         exit(1);
     }
 
     // GUI stuff, there the handler will receive RtabmapEvent and construct the map
     // We give it the camera so the GUI can pause/resume the camera
     QApplication app(argc, argv);
-    MapBuilder mapBuilder(&cameraThread);
+    MapBuilder mapBuilder(dbReader);
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
     OdometryThread odomThread(new OdometryBOW());
@@ -146,12 +101,14 @@ int main(int argc, char * argv[])
     // only the odometry will receive CameraEvent from that camera. RTAB-Map is
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
-    UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+    UEventsManager::createPipe(dbReader, &odomThread, "CameraEvent");
+ 
+    rtabmapThread.setDetectorRate(1.0f);
 
     // Let's start the threads
     rtabmapThread.start();
     odomThread.start();
-    cameraThread.start();
+    dbReader->start();
 
     mapBuilder.show();
     app.exec(); // main loop
@@ -162,9 +119,11 @@ int main(int argc, char * argv[])
     odomThread.unregisterFromEventsManager();
 
     // Kill all threads
-    cameraThread.kill();
+    dbReader->join(true);
     odomThread.join(true);
     rtabmapThread.join(true);
+
+    delete dbReader;
 
     return 0;
 }
