@@ -103,6 +103,7 @@ protected slots:
 		}
 		if(!pose.isNull())
 		{
+            
 			lastOdomPose_ = pose;
 
 			// 3d cloud
@@ -155,8 +156,11 @@ protected slots:
 		//============================
 		const std::map<int, Transform> & poses = stats.poses();
 		QMap<std::string, Transform> clouds = cloudViewer_->getAddedClouds();
+        int counter = 0;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
+            counter ++;
+            printf("RGBD pose %d\n", counter);
 			if(!iter->second.isNull())
 			{
 				std::string cloudName = uFormat("cloud%d", iter->first);

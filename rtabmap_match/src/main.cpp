@@ -29,12 +29,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/Odometry.h"
+#include "OdometryMonoLoc.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
 #include <stdio.h>
 
 #include "MapBuilder.h"
+
+#include "WaitCameraThread.h"
+#include "CameraCalibrated.h"
 
 void showUsage()
 {
@@ -66,13 +70,27 @@ int main(int argc, char * argv[])
     // Set transform to camera so z is up, y is left and x going forward
     DBReader * dbReader = NULL;
     float frameRate = 1.0f;
-    bool odometryIgnored = true;
+    bool odometryIgnored = false;
     bool ignoreGoalDelay = true;
     dbReader = new DBReader(dbfile, frameRate, odometryIgnored, ignoreGoalDelay);
-
     if(!dbReader->init())
     {
         UERROR("Database Reader init failed!");
+        exit(1);
+    }
+
+
+    std::string path = "/root/workspace/SDB3D/rtabmap_match/build/data/img";
+    int startAt = 1;
+    bool refreshDir = true;
+    float imageRate = 1.0f;
+    unsigned int imageWidth = 0;
+    unsigned int imageHeight = 0;
+    CameraCalibrated *camera = new CameraCalibratedImages(path, startAt, refreshDir, imageRate, imageWidth, imageHeight);
+    WaitCameraThread *cameraThread = new WaitCameraThread(camera);
+    if(!cameraThread->init())
+    {
+        UERROR("Camera thread init failed!");
         exit(1);
     }
 
@@ -82,13 +100,14 @@ int main(int argc, char * argv[])
     MapBuilder mapBuilder(dbReader);
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometryThread odomThread(new OdometryBOW());
+    OdometryThread odomThread(new OdometryMonoLoc());
 
 
     // Create RTAB-Map to process OdometryEvent
     Rtabmap * rtabmap = new Rtabmap();
     rtabmap->init();
     RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
+    rtabmapThread.setDetectorRate(1.0f);
 
     // Setup handlers
     odomThread.registerToEventsManager();
@@ -102,13 +121,13 @@ int main(int argc, char * argv[])
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
     UEventsManager::createPipe(dbReader, &odomThread, "CameraEvent");
- 
-    rtabmapThread.setDetectorRate(1.0f);
+    UEventsManager::createPipe(cameraThread, &odomThread, "CameraEvent");
 
     // Let's start the threads
     rtabmapThread.start();
     odomThread.start();
     dbReader->start();
+    cameraThread->start();
 
     mapBuilder.show();
     app.exec(); // main loop
@@ -120,10 +139,12 @@ int main(int argc, char * argv[])
 
     // Kill all threads
     dbReader->join(true);
+    cameraThread->join(true);
     odomThread.join(true);
     rtabmapThread.join(true);
 
     delete dbReader;
+    delete cameraThread;
 
     return 0;
 }
