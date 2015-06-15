@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping database_file\n");
+            "rtabmap-rgbd_mapping database_file image_folder\n");
     exit(1);
 }
 
@@ -54,13 +54,15 @@ int main(int argc, char * argv[])
     ULogger::setLevel(ULogger::kWarning);
 
     std::string dbfile;
-    if(argc < 2)
+    std::string imgpath;
+    if(argc != 3)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc-1]);
+        dbfile = std::string(argv[argc-2]);
+        imgpath = std::string(argv[argc-1]);
     }
 
     // Here is the pipeline that we will use:
@@ -80,13 +82,12 @@ int main(int argc, char * argv[])
     }
 
 
-    std::string path = "/root/workspace/SDB3D/rtabmap_match/build/data/img";
     int startAt = 1;
     bool refreshDir = true;
     float imageRate = 1.0f;
     unsigned int imageWidth = 0;
     unsigned int imageHeight = 0;
-    CameraCalibrated *camera = new CameraCalibratedImages(path, startAt, refreshDir, imageRate, imageWidth, imageHeight);
+    CameraCalibrated *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
     WaitCameraThread *cameraThread = new WaitCameraThread(camera);
     if(!cameraThread->init())
     {

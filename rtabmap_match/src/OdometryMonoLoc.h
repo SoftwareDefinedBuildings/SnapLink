@@ -47,33 +47,33 @@ class OdometryInfo;
 class RTABMAP_EXP OdometryMonoLoc : public OdometryMono
 {
 public:
-	OdometryMonoLoc(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryMonoLoc();
-	virtual void reset(const Transform & initialPose);
+    OdometryMonoLoc(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+    virtual ~OdometryMonoLoc();
+    virtual void reset(const Transform & initialPose);
 
 private:
-	virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0);
+    virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0);
 private:
-	//Parameters:
-	int flowWinSize_;
-	int flowIterations_;
-	double flowEps_;
-	int flowMaxLevel_;
+    //Parameters:
+    int flowWinSize_;
+    int flowIterations_;
+    double flowEps_;
+    int flowMaxLevel_;
 
-	Memory * memory_;
-	int localHistoryMaxSize_;
-	float initMinFlow_;
-	float initMinTranslation_;
-	float minTranslation_;
-	float fundMatrixReprojError_;
-	float fundMatrixConfidence_;
+    Memory * memory_;
+    int localHistoryMaxSize_;
+    float initMinFlow_;
+    float initMinTranslation_;
+    float minTranslation_;
+    float fundMatrixReprojError_;
+    float fundMatrixConfidence_;
 
-	cv::Mat refDepth_;
-	std::map<int, cv::Point2f> cornersMap_;
-	std::multimap<int, cv::Point3f> localMap_;
-	std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
-	std::map<int, Transform> keyFramePoses_;
-	float maxVariance_;
+    cv::Mat refDepth_;
+    std::map<int, cv::Point2f> cornersMap_;
+    std::multimap<int, cv::Point3f> localMap_;
+    std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
+    std::map<int, Transform> keyFramePoses_;
+    float maxVariance_;
 };
 
 } /* namespace rtabmap */

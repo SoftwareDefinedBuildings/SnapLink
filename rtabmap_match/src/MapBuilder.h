@@ -51,229 +51,229 @@ using namespace rtabmap;
 // This class receives RtabmapEvent and construct/update a 3D Map
 class MapBuilder : public QWidget, public UEventsHandler
 {
-	Q_OBJECT
+    Q_OBJECT
 public:
-	//Camera ownership is not transferred!
-	MapBuilder(DBReader * dbReader = 0) :
-		dbReader_(dbReader),
-		odometryCorrection_(Transform::getIdentity()),
-		processingStatistics_(false),
-		lastOdometryProcessed_(true)
-	{
-		this->setWindowFlags(Qt::Dialog);
-		this->setWindowTitle(tr("3D Map"));
-		this->setMinimumWidth(800);
-		this->setMinimumHeight(600);
+    //Camera ownership is not transferred!
+    MapBuilder(DBReader * dbReader = 0) :
+        dbReader_(dbReader),
+        odometryCorrection_(Transform::getIdentity()),
+        processingStatistics_(false),
+        lastOdometryProcessed_(true)
+    {
+        this->setWindowFlags(Qt::Dialog);
+        this->setWindowTitle(tr("3D Map"));
+        this->setMinimumWidth(800);
+        this->setMinimumHeight(600);
 
-		cloudViewer_ = new CloudViewer(this);
+        cloudViewer_ = new CloudViewer(this);
 
-		QVBoxLayout *layout = new QVBoxLayout();
-		layout->addWidget(cloudViewer_);
-		this->setLayout(layout);
+        QVBoxLayout *layout = new QVBoxLayout();
+        layout->addWidget(cloudViewer_);
+        this->setLayout(layout);
 
-		qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
-		qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
-	}
+        qRegisterMetaType<rtabmap::Statistics>("rtabmap::Statistics");
+        qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
+    }
 
-	virtual ~MapBuilder()
-	{
-		this->unregisterFromEventsManager();
-	}
+    virtual ~MapBuilder()
+    {
+        this->unregisterFromEventsManager();
+    }
 
 protected slots:
 
-	virtual void processOdometry(const rtabmap::SensorData & data)
-	{
-		if(!this->isVisible())
-		{
-			return;
-		}
+    virtual void processOdometry(const rtabmap::SensorData & data)
+    {
+        if(!this->isVisible())
+        {
+            return;
+        }
 
-		Transform pose = data.pose();
-		if(pose.isNull())
-		{
-			//Odometry lost
-			cloudViewer_->setBackgroundColor(Qt::darkRed);
+        Transform pose = data.pose();
+        if(pose.isNull())
+        {
+            //Odometry lost
+            cloudViewer_->setBackgroundColor(Qt::darkRed);
 
-			pose = lastOdomPose_;
-		}
-		else
-		{
-			cloudViewer_->setBackgroundColor(cloudViewer_->getDefaultBackgroundColor());
-		}
-		if(!pose.isNull())
-		{
+            pose = lastOdomPose_;
+        }
+        else
+        {
+            cloudViewer_->setBackgroundColor(cloudViewer_->getDefaultBackgroundColor());
+        }
+        if(!pose.isNull())
+        {
             
-			lastOdomPose_ = pose;
+            lastOdomPose_ = pose;
 
-			// 3d cloud
-			if(data.depth().cols == data.image().cols &&
-			   data.depth().rows == data.image().rows &&
-			   !data.depth().empty() &&
-			   data.fx() > 0.0f &&
-			   data.fy() > 0.0f)
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
-					data.image(),
-					data.depth(),
-					data.cx(),
-					data.cy(),
-					data.fx(),
-					data.fy(),
-					2); // decimation // high definition
-				if(cloud->size())
-				{
-					cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
-					if(cloud->size())
-					{
-						cloud = util3d::transformPointCloud(cloud, data.localTransform());
-					}
-				}
-				if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
-				{
-					UERROR("Adding cloudOdom to viewer failed!");
-				}
-			}
+            // 3d cloud
+            if(data.depth().cols == data.image().cols &&
+               data.depth().rows == data.image().rows &&
+               !data.depth().empty() &&
+               data.fx() > 0.0f &&
+               data.fy() > 0.0f)
+            {
+                pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
+                    data.image(),
+                    data.depth(),
+                    data.cx(),
+                    data.cy(),
+                    data.fx(),
+                    data.fy(),
+                    2); // decimation // high definition
+                if(cloud->size())
+                {
+                    cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
+                    if(cloud->size())
+                    {
+                        cloud = util3d::transformPointCloud(cloud, data.localTransform());
+                    }
+                }
+                if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
+                {
+                    UERROR("Adding cloudOdom to viewer failed!");
+                }
+            }
 
-			if(!data.pose().isNull())
-			{
-				// update camera position
-				cloudViewer_->updateCameraTargetPosition(odometryCorrection_*data.pose());
-			}
-		}
-		cloudViewer_->update();
+            if(!data.pose().isNull())
+            {
+                // update camera position
+                cloudViewer_->updateCameraTargetPosition(odometryCorrection_*data.pose());
+            }
+        }
+        cloudViewer_->update();
 
-		lastOdometryProcessed_ = true;
-	}
+        lastOdometryProcessed_ = true;
+    }
 
 
-	virtual void processStatistics(const rtabmap::Statistics & stats)
-	{
-		processingStatistics_ = true;
+    virtual void processStatistics(const rtabmap::Statistics & stats)
+    {
+        processingStatistics_ = true;
 
-		//============================
-		// Add RGB-D clouds
-		//============================
-		const std::map<int, Transform> & poses = stats.poses();
-		QMap<std::string, Transform> clouds = cloudViewer_->getAddedClouds();
+        //============================
+        // Add RGB-D clouds
+        //============================
+        const std::map<int, Transform> & poses = stats.poses();
+        QMap<std::string, Transform> clouds = cloudViewer_->getAddedClouds();
         int counter = 0;
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
+        for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+        {
             counter ++;
             printf("RGBD pose %d\n", counter);
-			if(!iter->second.isNull())
-			{
-				std::string cloudName = uFormat("cloud%d", iter->first);
+            if(!iter->second.isNull())
+            {
+                std::string cloudName = uFormat("cloud%d", iter->first);
 
-				// 3d point cloud
-				if(clouds.contains(cloudName))
-				{
-					// Update only if the pose has changed
-					Transform tCloud;
-					cloudViewer_->getPose(cloudName, tCloud);
-					if(tCloud.isNull() || iter->second != tCloud)
-					{
-						if(!cloudViewer_->updateCloudPose(cloudName, iter->second))
-						{
-							UERROR("Updating pose cloud %d failed!", iter->first);
-						}
-					}
-					cloudViewer_->setCloudVisibility(cloudName, true);
-				}
-				else if(iter->first == stats.refImageId() &&
-						stats.getSignature().id() == iter->first)
-				{
-					Signature s = stats.getSignature();
-					s.uncompressData(); // make sure data is uncompressed
-					// Add the new cloud
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
-							s.getImageRaw(),
-							s.getDepthRaw(),
-							s.getCx(),
-							s.getCy(),
-							s.getFx(),
-							s.getFy(),
-						   4); // decimation
+                // 3d point cloud
+                if(clouds.contains(cloudName))
+                {
+                    // Update only if the pose has changed
+                    Transform tCloud;
+                    cloudViewer_->getPose(cloudName, tCloud);
+                    if(tCloud.isNull() || iter->second != tCloud)
+                    {
+                        if(!cloudViewer_->updateCloudPose(cloudName, iter->second))
+                        {
+                            UERROR("Updating pose cloud %d failed!", iter->first);
+                        }
+                    }
+                    cloudViewer_->setCloudVisibility(cloudName, true);
+                }
+                else if(iter->first == stats.refImageId() &&
+                        stats.getSignature().id() == iter->first)
+                {
+                    Signature s = stats.getSignature();
+                    s.uncompressData(); // make sure data is uncompressed
+                    // Add the new cloud
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudFromDepthRGB(
+                            s.getImageRaw(),
+                            s.getDepthRaw(),
+                            s.getCx(),
+                            s.getCy(),
+                            s.getFx(),
+                            s.getFy(),
+                           4); // decimation
 
-					if(cloud->size())
-					{
-						cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
-						if(cloud->size())
-						{
-							cloud = util3d::transformPointCloud(cloud, stats.getSignature().getLocalTransform());
-						}
-					}
-					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))
-					{
-						UERROR("Adding cloud %d to viewer failed!", iter->first);
-					}
-				}
-			}
-		}
+                    if(cloud->size())
+                    {
+                        cloud = util3d::passThrough(cloud, "z", 0, 4.0f);
+                        if(cloud->size())
+                        {
+                            cloud = util3d::transformPointCloud(cloud, stats.getSignature().getLocalTransform());
+                        }
+                    }
+                    if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))
+                    {
+                        UERROR("Adding cloud %d to viewer failed!", iter->first);
+                    }
+                }
+            }
+        }
 
-		//============================
-		// Add 3D graph (show all poses)
-		//============================
-		cloudViewer_->removeAllGraphs();
-		cloudViewer_->removeCloud("graph_nodes");
-		if(poses.size())
-		{
-			// Set graph
-			pcl::PointCloud<pcl::PointXYZ>::Ptr graph(new pcl::PointCloud<pcl::PointXYZ>);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr graphNodes(new pcl::PointCloud<pcl::PointXYZ>);
-			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-			{
-				graph->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
-			}
-			*graphNodes = *graph;
+        //============================
+        // Add 3D graph (show all poses)
+        //============================
+        cloudViewer_->removeAllGraphs();
+        cloudViewer_->removeCloud("graph_nodes");
+        if(poses.size())
+        {
+            // Set graph
+            pcl::PointCloud<pcl::PointXYZ>::Ptr graph(new pcl::PointCloud<pcl::PointXYZ>);
+            pcl::PointCloud<pcl::PointXYZ>::Ptr graphNodes(new pcl::PointCloud<pcl::PointXYZ>);
+            for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+            {
+                graph->push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+            }
+            *graphNodes = *graph;
 
 
-			// add graph
-			cloudViewer_->addOrUpdateGraph("graph", graph, Qt::gray);
-			cloudViewer_->addOrUpdateCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
-			cloudViewer_->setCloudPointSize("graph_nodes", 5);
-		}
+            // add graph
+            cloudViewer_->addOrUpdateGraph("graph", graph, Qt::gray);
+            cloudViewer_->addOrUpdateCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
+            cloudViewer_->setCloudPointSize("graph_nodes", 5);
+        }
 
-		odometryCorrection_ = stats.mapCorrection();
+        odometryCorrection_ = stats.mapCorrection();
 
-		cloudViewer_->update();
+        cloudViewer_->update();
 
-		processingStatistics_ = false;
-	}
+        processingStatistics_ = false;
+    }
 
-	virtual void handleEvent(UEvent * event)
-	{
-		if(event->getClassName().compare("RtabmapEvent") == 0)
-		{
-			RtabmapEvent * rtabmapEvent = (RtabmapEvent *)event;
-			const Statistics & stats = rtabmapEvent->getStats();
-			// Statistics must be processed in the Qt thread
-			if(this->isVisible())
-			{
-				QMetaObject::invokeMethod(this, "processStatistics", Q_ARG(rtabmap::Statistics, stats));
-			}
-		}
-		else if(event->getClassName().compare("OdometryEvent") == 0)
-		{
-			OdometryEvent * odomEvent = (OdometryEvent *)event;
-			// Odometry must be processed in the Qt thread
-			if(this->isVisible() &&
-			   lastOdometryProcessed_ &&
-			   !processingStatistics_)
-			{
-				lastOdometryProcessed_ = false; // if we receive too many odometry events!
-				QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
-			}
-		}
-	}
+    virtual void handleEvent(UEvent * event)
+    {
+        if(event->getClassName().compare("RtabmapEvent") == 0)
+        {
+            RtabmapEvent * rtabmapEvent = (RtabmapEvent *)event;
+            const Statistics & stats = rtabmapEvent->getStats();
+            // Statistics must be processed in the Qt thread
+            if(this->isVisible())
+            {
+                QMetaObject::invokeMethod(this, "processStatistics", Q_ARG(rtabmap::Statistics, stats));
+            }
+        }
+        else if(event->getClassName().compare("OdometryEvent") == 0)
+        {
+            OdometryEvent * odomEvent = (OdometryEvent *)event;
+            // Odometry must be processed in the Qt thread
+            if(this->isVisible() &&
+               lastOdometryProcessed_ &&
+               !processingStatistics_)
+            {
+                lastOdometryProcessed_ = false; // if we receive too many odometry events!
+                QMetaObject::invokeMethod(this, "processOdometry", Q_ARG(rtabmap::SensorData, odomEvent->data()));
+            }
+        }
+    }
 
 protected:
-	CloudViewer * cloudViewer_;
-	DBReader * dbReader_;
-	Transform lastOdomPose_;
-	Transform odometryCorrection_;
-	bool processingStatistics_;
-	bool lastOdometryProcessed_;
+    CloudViewer * cloudViewer_;
+    DBReader * dbReader_;
+    Transform lastOdomPose_;
+    Transform odometryCorrection_;
+    bool processingStatistics_;
+    bool lastOdometryProcessed_;
 };
 
 

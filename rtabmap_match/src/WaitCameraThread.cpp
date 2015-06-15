@@ -39,142 +39,142 @@ namespace rtabmap
 
 // ownership transferred
 WaitCameraThread::WaitCameraThread(Camera * camera) :
-		_camera(camera),
-		_cameraRGBD(0),
-		_cameraCalibrated(0),
-		_seq(0),
+        _camera(camera),
+        _cameraRGBD(0),
+        _cameraCalibrated(0),
+        _seq(0),
         _imageRate(0.0f)
 {
-	UASSERT(_camera != 0);
+    UASSERT(_camera != 0);
 }
 
 // ownership transferred
 WaitCameraThread::WaitCameraThread(CameraRGBD * camera) :
-		_camera(0),
-		_cameraRGBD(camera),
-		_cameraCalibrated(0),
-		_seq(0),
+        _camera(0),
+        _cameraRGBD(camera),
+        _cameraCalibrated(0),
+        _seq(0),
         _imageRate(0.0f)
 {
-	UASSERT(_cameraRGBD != 0);
+    UASSERT(_cameraRGBD != 0);
 }
 
 // ownership transferred
 WaitCameraThread::WaitCameraThread(CameraCalibrated * camera) :
-		_camera(0),
-		_cameraRGBD(0),
-		_cameraCalibrated(camera),
-		_seq(0),
+        _camera(0),
+        _cameraRGBD(0),
+        _cameraCalibrated(camera),
+        _seq(0),
         _imageRate(0.0f)
 {
-	UASSERT(_cameraCalibrated != 0);
+    UASSERT(_cameraCalibrated != 0);
 }
 
 WaitCameraThread::~WaitCameraThread()
 {
-	join(true);
-	if(_camera)
-	{
-		delete _camera;
-	}
-	if(_cameraRGBD)
-	{
-		delete _cameraRGBD;
-	}
-	if(_cameraCalibrated)
-	{
-		delete _cameraCalibrated;
-	}
+    join(true);
+    if(_camera)
+    {
+        delete _camera;
+    }
+    if(_cameraRGBD)
+    {
+        delete _cameraRGBD;
+    }
+    if(_cameraCalibrated)
+    {
+        delete _cameraCalibrated;
+    }
 }
 
 void WaitCameraThread::setImageRate(float imageRate)
 {
     _imageRate = imageRate;
-	if(_camera)
-	{
-		_camera->setImageRate(imageRate);
-	}
-	if(_cameraRGBD)
-	{
-		_cameraRGBD->setImageRate(imageRate);
-	}
-	if(_cameraCalibrated)
-	{
-		_cameraCalibrated->setImageRate(imageRate);
-	}
+    if(_camera)
+    {
+        _camera->setImageRate(imageRate);
+    }
+    if(_cameraRGBD)
+    {
+        _cameraRGBD->setImageRate(imageRate);
+    }
+    if(_cameraCalibrated)
+    {
+        _cameraCalibrated->setImageRate(imageRate);
+    }
 }
 
 bool WaitCameraThread::init()
 {
-	if(!this->isRunning())
-	{
-		_seq = 0;
-		if(_cameraRGBD)
-		{
-			return _cameraRGBD->init();
-		}
-		else if (_camera)
-		{
-			return _camera->init();
-		}
-		else if (_cameraCalibrated)
-		{
-			return _cameraCalibrated->init();
-		}
+    if(!this->isRunning())
+    {
+        _seq = 0;
+        if(_cameraRGBD)
+        {
+            return _cameraRGBD->init();
+        }
+        else if (_camera)
+        {
+            return _camera->init();
+        }
+        else if (_cameraCalibrated)
+        {
+            return _cameraCalibrated->init();
+        }
 
-		// Added sleep time to ignore first frames (which are darker)
-		uSleep(1000);
-	}
-	else
-	{
-		UERROR("Cannot initialize the camera because it is already running...");
-	}
-	return false;
+        // Added sleep time to ignore first frames (which are darker)
+        uSleep(1000);
+    }
+    else
+    {
+        UERROR("Cannot initialize the camera because it is already running...");
+    }
+    return false;
 }
 
 void WaitCameraThread::mainLoop()
 {
-	UTimer timer;
-	UDEBUG("");
-	cv::Mat rgb, depth;
-	float fx = 0.0f;
-	float fy = 0.0f;
-	float cx = 0.0f;
-	float cy = 0.0f;
-	if(_cameraRGBD)
-	{
-		_cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy);
-	}
-	else if (_camera)
-	{
-		rgb = _camera->takeImage();
-	}
+    UTimer timer;
+    UDEBUG("");
+    cv::Mat rgb, depth;
+    float fx = 0.0f;
+    float fy = 0.0f;
+    float cx = 0.0f;
+    float cy = 0.0f;
+    if(_cameraRGBD)
+    {
+        _cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy);
+    }
+    else if (_camera)
+    {
+        rgb = _camera->takeImage();
+    }
     else if (_cameraCalibrated)
     {
-		_cameraCalibrated->takeImage(rgb, depth, fx, fy, cx, cy);
+        _cameraCalibrated->takeImage(rgb, depth, fx, fy, cx, cy);
     }
     printf("Kaifei: trying to get an image\n");
 
-	if(!rgb.empty() && !this->isKilled())
-	{
-		if(_cameraRGBD)
-		{
-			SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
-			this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
-		}
-		else if (_camera)
-		{
-			this->post(new CameraEvent(rgb, ++_seq, UTimer::now()));
-		}
+    if(!rgb.empty() && !this->isKilled())
+    {
+        if(_cameraRGBD)
+        {
+            SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
+            this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
+        }
+        else if (_camera)
+        {
+            this->post(new CameraEvent(rgb, ++_seq, UTimer::now()));
+        }
         else if (_cameraCalibrated)
         {
             // TODO
         }
-	}
-	else if(!this->isKilled())
-	{
+    }
+    else if(!this->isKilled())
+    {
         uSleep(1.0f/_imageRate*1000);
-	}
+    }
 }
 
 } // namespace rtabmap

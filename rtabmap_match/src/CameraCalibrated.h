@@ -50,7 +50,7 @@ class RTABMAP_EXP CameraCalibrated
 {
 public:
     virtual ~CameraCalibrated();
-	void takeImage(cv::Mat & img, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+    void takeImage(cv::Mat & img, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
     virtual bool init() = 0;
 
     //getters
@@ -77,7 +77,7 @@ protected:
             unsigned int imageWidth = 0,
             unsigned int imageHeight = 0);
 
-	virtual void captureImage(cv::Mat & img, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy) = 0;
+    virtual void captureImage(cv::Mat & img, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy) = 0;
 
 private:
     float _imageRate;
@@ -109,7 +109,7 @@ public:
     std::string getPath() const {return _path;}
 
 protected:
-	virtual void captureImage(cv::Mat & img, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+    virtual void captureImage(cv::Mat & img, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
 
 private:
     std::string _path;
