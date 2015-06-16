@@ -82,6 +82,11 @@ void OdometryMonoLocThread::handleEvent(UEvent * event)
                 this->addData(cameraEvent->data());
             }
         }
+        else if(event->getClassName().compare("OdometryEvent") == 0)
+        {
+            OdometryEvent * odomEvent = (OdometryEvent*)event;
+            this->addData(odomEvent->data());
+        }
     }
 }
 

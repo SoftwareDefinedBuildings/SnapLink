@@ -121,7 +121,8 @@ int main(int argc, char * argv[])
     // only the odometry will receive CameraEvent from that camera. RTAB-Map is
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
-    UEventsManager::createPipe(dbReader, &odomThread, "CameraEvent");
+    //UEventsManager::createPipe(dbReader, &odomThread, "CameraEvent");
+    UEventsManager::createPipe(dbReader, &odomThread, "OdometryEvent");
     UEventsManager::createPipe(cameraThread, &odomThread, "CameraCalibratedEvent");
 
     // Let's start the threads
