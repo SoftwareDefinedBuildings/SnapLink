@@ -30,7 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/Odometry.h"
 #include "OdometryMonoLoc.h"
-#include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
 #include <stdio.h>
@@ -39,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "WaitCameraThread.h"
 #include "CameraCalibrated.h"
+#include "OdometryMonoLocThread.h"
 
 void showUsage()
 {
@@ -66,7 +66,7 @@ int main(int argc, char * argv[])
     }
 
     // Here is the pipeline that we will use:
-    // DBReader -> "CameraEvent" -> OdometryThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
+    // DBReader -> "CameraEvent" -> OdometryMonoLocThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
 
     // Create the OpenNI camera, it will send a CameraEvent at the rate specified.
     // Set transform to camera so z is up, y is left and x going forward
@@ -101,7 +101,7 @@ int main(int argc, char * argv[])
     MapBuilder mapBuilder(dbReader);
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometryThread odomThread(new OdometryMonoLoc());
+    OdometryMonoLocThread odomThread(new OdometryMonoLoc());
 
 
     // Create RTAB-Map to process OdometryEvent
@@ -122,7 +122,7 @@ int main(int argc, char * argv[])
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
     UEventsManager::createPipe(dbReader, &odomThread, "CameraEvent");
-    UEventsManager::createPipe(cameraThread, &odomThread, "CameraEvent");
+    UEventsManager::createPipe(cameraThread, &odomThread, "CameraCalibratedEvent");
 
     // Let's start the threads
     rtabmapThread.start();

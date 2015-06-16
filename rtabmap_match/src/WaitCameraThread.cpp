@@ -34,6 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 
+#include "CameraCalibratedEvent.h"
+
 namespace rtabmap
 {
 
@@ -168,7 +170,10 @@ void WaitCameraThread::mainLoop()
         }
         else if (_cameraCalibrated)
         {
-            // TODO
+            Transform temp1;
+            Transform temp2;
+            SensorData data(rgb, depth, fx, fy, cx, cy, temp1, temp2, 1, 1, ++_seq, UTimer::now());
+            this->post(new CameraCalibratedEvent(data, "Image"));
         }
     }
     else if(!this->isKilled())
