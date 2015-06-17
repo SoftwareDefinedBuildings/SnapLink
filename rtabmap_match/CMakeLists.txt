@@ -23,11 +23,9 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-QT4_WRAP_CPP(moc_srcs src/MapBuilder.h)
-
 file(GLOB_RECURSE MATCH_SOURCES "src/*.cpp")
 
-ADD_EXECUTABLE(rgbd_example ${moc_srcs} ${MATCH_SOURCES})
+ADD_EXECUTABLE(rgbd_example ${MATCH_SOURCES})
 
 TARGET_LINK_LIBRARIES(rgbd_example ${LIBRARIES})
 

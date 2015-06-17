@@ -155,7 +155,6 @@ void WaitCameraThread::mainLoop()
     {
         _cameraCalibrated->takeImage(rgb, depth, fx, fy, cx, cy);
     }
-    printf("Kaifei: trying to get an image\n");
 
     if(!rgb.empty() && !this->isKilled())
     {

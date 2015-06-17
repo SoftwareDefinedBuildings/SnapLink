@@ -34,8 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <stdio.h>
 
-#include "MapBuilder.h"
-
 #include "WaitCameraThread.h"
 #include "CameraCalibrated.h"
 #include "OdometryMonoLocThread.h"
@@ -51,7 +49,7 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kWarning);
+    ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
@@ -64,23 +62,6 @@ int main(int argc, char * argv[])
         dbfile = std::string(argv[argc-2]);
         imgpath = std::string(argv[argc-1]);
     }
-
-    // Here is the pipeline that we will use:
-    // DBReader -> "CameraEvent" -> OdometryMonoLocThread -> "OdometryEvent" -> RtabmapThread -> "RtabmapEvent"
-
-    // Create the OpenNI camera, it will send a CameraEvent at the rate specified.
-    // Set transform to camera so z is up, y is left and x going forward
-    DBReader * dbReader = NULL;
-    float frameRate = 1.0f;
-    bool odometryIgnored = false;
-    bool ignoreGoalDelay = true;
-    dbReader = new DBReader(dbfile, frameRate, odometryIgnored, ignoreGoalDelay);
-    if(!dbReader->init())
-    {
-        UERROR("Database Reader init failed!");
-        exit(1);
-    }
-
 
     int startAt = 1;
     bool refreshDir = true;
@@ -95,13 +76,8 @@ int main(int argc, char * argv[])
         exit(1);
     }
 
-    // GUI stuff, there the handler will receive RtabmapEvent and construct the map
-    // We give it the camera so the GUI can pause/resume the camera
-    QApplication app(argc, argv);
-    MapBuilder mapBuilder(dbReader);
-
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometryMonoLocThread odomThread(new OdometryMonoLoc());
+    OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile));
 
 
     // Create RTAB-Map to process OdometryEvent
@@ -113,7 +89,6 @@ int main(int argc, char * argv[])
     // Setup handlers
     odomThread.registerToEventsManager();
     rtabmapThread.registerToEventsManager();
-    mapBuilder.registerToEventsManager();
 
     // The RTAB-Map is subscribed by default to CameraEvent, but we want
     // RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
@@ -121,31 +96,24 @@ int main(int argc, char * argv[])
     // only the odometry will receive CameraEvent from that camera. RTAB-Map is
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
-    //UEventsManager::createPipe(dbReader, &odomThread, "CameraEvent");
-    UEventsManager::createPipe(dbReader, &odomThread, "OdometryEvent");
     UEventsManager::createPipe(cameraThread, &odomThread, "CameraCalibratedEvent");
 
     // Let's start the threads
     rtabmapThread.start();
     odomThread.start();
-    dbReader->start();
     cameraThread->start();
 
-    mapBuilder.show();
-    app.exec(); // main loop
+    pause();
 
     // remove handlers
-    mapBuilder.unregisterFromEventsManager();
     rtabmapThread.unregisterFromEventsManager();
     odomThread.unregisterFromEventsManager();
 
     // Kill all threads
-    dbReader->join(true);
     cameraThread->join(true);
     odomThread.join(true);
     rtabmapThread.join(true);
 
-    delete dbReader;
     delete cameraThread;
 
     return 0;

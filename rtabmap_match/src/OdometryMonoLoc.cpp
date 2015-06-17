@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Odometry.h"
-#include "OdometryMonoLoc.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
@@ -43,9 +42,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/video/tracking.hpp>
 #include <pcl/common/centroid.h>
 
+#include "rtabmap/core/Graph.h"
+
+#include "OdometryMonoLoc.h"
+
 namespace rtabmap {
 
-OdometryMonoLoc::OdometryMonoLoc(const rtabmap::ParametersMap & parameters) :
+OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters) :
     OdometryMono(parameters),
     flowWinSize_(Parameters::defaultOdomFlowWinSize()),
     flowIterations_(Parameters::defaultOdomFlowIterations()),
@@ -57,7 +60,8 @@ OdometryMonoLoc::OdometryMonoLoc(const rtabmap::ParametersMap & parameters) :
     minTranslation_(Parameters::defaultOdomMonoMinTranslation()),
     fundMatrixReprojError_(Parameters::defaultVhEpRansacParam1()),
     fundMatrixConfidence_(Parameters::defaultVhEpRansacParam2()),
-    maxVariance_(Parameters::defaultOdomMonoMaxVariance())
+    maxVariance_(Parameters::defaultOdomMonoMaxVariance()),
+    dbPath_(dbPath)
 {
     Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
     Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
@@ -124,9 +128,51 @@ OdometryMonoLoc::OdometryMonoLoc(const rtabmap::ParametersMap & parameters) :
     }
 
     memory_ = new Memory(customParameters);
-    if(!memory_->init("", false, ParametersMap()))
+    /*if(!memory_->init("", false, ParametersMap()))
     {
         UERROR("Error initializing the memory for Mono Odometry.");
+    }*/
+
+    customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
+    if(!memory_->init(dbPath_, false, ParametersMap()))
+    {
+        UERROR("Error initializing the memory for Mono Odometry.");
+    }
+    else
+    {
+        // get the graph
+        std::map<int, int> ids = memory_->getNeighborsId(memory_->getLastSignatureId(), 0, 0);
+        std::map<int, Transform> poses;
+        std::multimap<int, Link> links;
+        memory_->getMetricConstraints(uKeysSet(ids), poses, links);
+    
+        //optimize the graph
+        graph::TOROOptimizer optimizer;
+        std::map<int, Transform> optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
+    
+        // fill the local map
+        for(std::map<int, Transform>::iterator posesIter=optimizedPoses.begin();
+            posesIter!=optimizedPoses.end();
+            ++posesIter)
+        {
+            const Signature * s = memory_->getSignature(posesIter->first);
+            if(s)
+            {
+                // Transform 3D points accordingly to pose and add them to local map
+                const std::multimap<int, pcl::PointXYZ> & words3D = s->getWords3();
+                for(std::multimap<int, pcl::PointXYZ>::const_iterator pointsIter=words3D.begin();
+                    pointsIter!=words3D.end();
+                    ++pointsIter)
+                {
+                    if(!uContains(localMap_, pointsIter->first))
+                    {
+                        pcl::PointXYZ pointPCL = util3d::transformPoint(pointsIter->second, posesIter->second);
+                        cv::Point3f pointCV(pointPCL.x, pointPCL.y, pointPCL.z);
+                        localMap_.insert(std::make_pair(pointsIter->first, pointCV));
+                    }
+                }
+            }
+        }
     }
 }
 

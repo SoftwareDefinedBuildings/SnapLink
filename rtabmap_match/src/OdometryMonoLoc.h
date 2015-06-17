@@ -47,7 +47,7 @@ class OdometryInfo;
 class RTABMAP_EXP OdometryMonoLoc : public OdometryMono
 {
 public:
-    OdometryMonoLoc(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+    OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
     virtual ~OdometryMonoLoc();
     virtual void reset(const Transform & initialPose);
 
@@ -74,6 +74,8 @@ private:
     std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
     std::map<int, Transform> keyFramePoses_;
     float maxVariance_;
+
+    std::string dbPath_;
 };
 
 } /* namespace rtabmap */
