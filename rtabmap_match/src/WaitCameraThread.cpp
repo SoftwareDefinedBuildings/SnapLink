@@ -169,9 +169,10 @@ void WaitCameraThread::mainLoop()
         }
         else if (_cameraCalibrated)
         {
-            Transform temp1;
-            Transform temp2;
-            SensorData data(rgb, depth, fx, fy, cx, cy, temp1, temp2, 1, 1, ++_seq, UTimer::now());
+            Transform localTransform;
+            Transform pose;
+            localTransform.setIdentity();
+            SensorData data(rgb, depth, fx, fy, cx, cy, localTransform, pose, 1, 1, ++_seq, UTimer::now());
             this->post(new CameraCalibratedEvent(data, "Image"));
         }
     }
@@ -181,4 +182,4 @@ void WaitCameraThread::mainLoop()
     }
 }
 
-} // namespace rtabmap
+} // namespace 

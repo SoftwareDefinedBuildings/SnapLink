@@ -325,6 +325,17 @@ void CameraCalibratedImages::captureImage(cv::Mat & img, cv::Mat & depth, float 
         cv::resize(img, resampled, cv::Size(w, h));
         img = resampled;
     }
+            
+    // TODO read fx and fy from EXIF
+    // now it is hardcoded for lg g2 mini
+    fx = 2248.90280131777f;
+    fy = 2249.05827505121f;
+    cx = 1303.16905149739f;
+    cy = 936.309085911272f;
+
+    // TODO undistort img (or call it rectify here, not same rectification as eipometry)
+    // k1 = 0.134408880645970, k2 = -0.177147104797916
+
 }
 
 } // namespace rtabmap
