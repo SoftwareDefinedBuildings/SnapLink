@@ -69,8 +69,8 @@ int main(int argc, char * argv[])
     unsigned int imageWidth = 0;
     unsigned int imageHeight = 0;
     CameraCalibrated *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
-    WaitCameraThread *cameraThread = new WaitCameraThread(camera);
-    if(!cameraThread->init())
+    WaitCameraThread cameraThread(camera);
+    if(!cameraThread.init())
     {
         UERROR("Camera thread init failed!");
         exit(1);
@@ -96,12 +96,12 @@ int main(int argc, char * argv[])
     // only the odometry will receive CameraEvent from that camera. RTAB-Map is
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
-    UEventsManager::createPipe(cameraThread, &odomThread, "CameraCalibratedEvent");
+    UEventsManager::createPipe(&cameraThread, &odomThread, "CameraCalibratedEvent");
 
     // Let's start the threads
     rtabmapThread.start();
     odomThread.start();
-    cameraThread->start();
+    cameraThread.start();
 
     pause();
 
@@ -110,11 +110,9 @@ int main(int argc, char * argv[])
     odomThread.unregisterFromEventsManager();
 
     // Kill all threads
-    cameraThread->join(true);
+    cameraThread.join(true);
     odomThread.join(true);
     rtabmapThread.join(true);
-
-    delete cameraThread;
 
     return 0;
 }

@@ -169,9 +169,9 @@ void WaitCameraThread::mainLoop()
         }
         else if (_cameraCalibrated)
         {
-            Transform localTransform;
+            // hardcoded local transform that's applied to all RGBD cameras (I guess)
+            Transform localTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
             Transform pose;
-            localTransform.setIdentity();
             SensorData data(rgb, depth, fx, fy, cx, cy, localTransform, pose, 1, 1, ++_seq, UTimer::now());
             this->post(new CameraCalibratedEvent(data, "Image"));
         }

@@ -55,7 +55,7 @@ public:
     const std::string & cameraName() const {return cameraName_;}
 
     virtual ~CameraCalibratedEvent() {}
-    virtual std::string getClassName() const {return std::string("CameraEvent");}
+    virtual std::string getClassName() const {return std::string("CameraCalibratedEvent");}
 
 private:
     SensorData data_;

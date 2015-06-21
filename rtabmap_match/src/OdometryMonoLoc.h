@@ -42,6 +42,9 @@ namespace rtabmap {
 
 class Feature2D;
 class OdometryInfo;
+class Memory;
+class BayesFilter; 
+
 
 // inherit from OdometryMono rather than Odometry because RTABMap checks whether the instance of Odometry is OdometryMono
 class RTABMAP_EXP OdometryMonoLoc : public OdometryMono
@@ -53,6 +56,8 @@ public:
 
 private:
     virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0);
+    // same function copied from RTABMap
+    void adjustLikelihood(std::map<int, float> & likelihood) const;
 private:
     //Parameters:
     int flowWinSize_;
@@ -76,6 +81,7 @@ private:
     float maxVariance_;
 
     std::string dbPath_;
+    BayesFilter * bayesFilter_;
 };
 
 } /* namespace rtabmap */
