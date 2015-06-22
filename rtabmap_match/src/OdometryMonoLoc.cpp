@@ -79,6 +79,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
 
     Parameters::parse(parameters, Parameters::kVhEpRansacParam1(), fundMatrixReprojError_);
     Parameters::parse(parameters, Parameters::kVhEpRansacParam2(), fundMatrixConfidence_);
+    Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType_);
 
     // Setup memory
     ParametersMap customParameters;
@@ -92,15 +93,14 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     customParameters.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
     int nn = Parameters::defaultOdomBowNNType();
     float nndr = Parameters::defaultOdomBowNNDR();
-    int featureType = Parameters::defaultOdomFeatureType();
     int maxFeatures = Parameters::defaultOdomMaxFeatures();
     Parameters::parse(parameters, Parameters::kOdomBowNNType(), nn);
     Parameters::parse(parameters, Parameters::kOdomBowNNDR(), nndr);
-    Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType);
+    Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType_);
     Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), maxFeatures);
     customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
     customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
-    customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
+    customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType_)));
     customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
 
     int subPixWinSize = Parameters::defaultOdomSubPixWinSize();
@@ -212,6 +212,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
     int inliers = 0;
     int correspondences = 0;
     int nFeatures = 0;
+    Transform mapTransform; 
 
     cv::Mat newFrame;
     // convert to grayscale
@@ -224,6 +225,8 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         newFrame = data.image().clone();
     }
 
+    SensorData newData(newFrame);
+
     if(memory_->getWorkingMem().size())
     {
         //PnP
@@ -235,15 +238,14 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         }
 
         // generate kpts
-        if(memory_->update(SensorData(newFrame)))
+        if(memory_->update(newData))
         {
             UDEBUG("");
-            bool newPtsAdded = false;
             const Signature * newS = memory_->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
             nFeatures = (int)newS->getWords().size();
             UDEBUG("(int)newS->getWords().size() = %d", (int)newS->getWords().size());
-            //if((int)newS->getWords().size() > this->getMinInliers())
+            if((int)newS->getWords().size() > this->getMinInliers())
             {
                 std::map<int, float> rawLikelihood;
                 std::map<int, float> adjustedLikelihood;
@@ -259,16 +261,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 likelihood = rawLikelihood;
                 this->adjustLikelihood(likelihood);
                     
-                for(std::map<int, float>::const_reverse_iterator iter = likelihood.rbegin(); iter != likelihood.rend(); ++iter)
-                {
-                    if(iter->first > 0 && iter->second > highestHypothesis.second)
-                    {
-                        highestHypothesis = *iter;
-                    }
-                    UDEBUG("lh.first = %d", iter->first);
-                    UDEBUG("lh.second = %d", iter->second);
-                }
-/*
                 posterior = bayesFilter_->computePosterior(memory_, likelihood);
                 if(posterior.size())
                 {
@@ -280,306 +272,36 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         }
                     }
                 }
-*/
+
                 UDEBUG("highestHypothesis.first = %d", highestHypothesis.first);
-                // With the virtual place, use sum of LC probabilities (1 - virtual place hypothesis).
-                highestHypothesis.second = 1 - posterior.begin()->second;
 
+                // calculate transform between data and the most similar pose
+                std::string rejectedMsg;
+                int loopClosureVisualInliers = 0;
+                double variance = 1;
+                SensorData dataFrom = newData;
+                newData.setId(newS->id());
+                Signature tmpTo = memory_->getSignatureData(highestHypothesis.first, true);
+                SensorData dataTo = tmpTo.toSensorData();
 
-
-                /*
-                cv::Mat K = (cv::Mat_<double>(3,3) <<
-                    data.fx(), 0, data.cx(),
-                    0, data.fy()==0?data.fx():data.fy(), data.cy(),
-                    0, 0, 1);
-                Transform guess = (this->getPose() * data.localTransform()).inverse();
-                cv::Mat R = (cv::Mat_<double>(3,3) <<
-                        (double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-                        (double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-                        (double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-                cv::Mat rvec(1,3, CV_64FC1);
-                cv::Rodrigues(R, rvec);
-                cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
-
-                std::vector<cv::Point3f> objectPoints;
-                std::vector<cv::Point2f> imagePoints;
-                std::vector<int> matches;
-
-                UDEBUG("compute PnP from optical flow");
-
-                std::vector<int> ids = uKeys(localMap_);
-                objectPoints = uValues(localMap_);
-
-                // compute last projection
-                UDEBUG("project points to previous image");
-                std::vector<cv::Point2f> prevImagePoints;
-                const Signature * prevS = memory_->getSignature(*(++memory_->getStMem().rbegin()));
-                Transform prevGuess = (keyFramePoses_.at(prevS->id()) * data.localTransform()).inverse();
-                cv::Mat prevR = (cv::Mat_<double>(3,3) <<
-                        (double)prevGuess.r11(), (double)prevGuess.r12(), (double)prevGuess.r13(),
-                        (double)prevGuess.r21(), (double)prevGuess.r22(), (double)prevGuess.r23(),
-                        (double)prevGuess.r31(), (double)prevGuess.r32(), (double)prevGuess.r33());
-                cv::Mat prevRvec(1,3, CV_64FC1);
-                cv::Rodrigues(prevR, prevRvec);
-                cv::Mat prevTvec = (cv::Mat_<double>(1,3) << (double)prevGuess.x(), (double)prevGuess.y(), (double)prevGuess.z());
-                cv::projectPoints(objectPoints, prevRvec, prevTvec, K, cv::Mat(), prevImagePoints);
-
-                // compute current projection
-                UDEBUG("project points to previous image");
-                cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(), imagePoints);
-
-                //filter points not in the image and set guess from unique correspondences
-                std::vector<cv::Point3f> objectPointsTmp(objectPoints.size());
-                std::vector<cv::Point2f> refCorners(objectPoints.size());
-                std::vector<cv::Point2f> newCorners(objectPoints.size());
-                matches.resize(objectPoints.size());
-                int oi=0;
-                for(unsigned int i=0; i<objectPoints.size(); ++i)
+                if(dataFrom.isValid() &&
+                   dataFrom.isMetric() &&
+                   dataTo.isValid() &&
+                   dataTo.isMetric() &&
+                   dataFrom.id() != Memory::kIdInvalid &&
+                   tmpTo.id() != Memory::kIdInvalid)
                 {
-                    if(uIsInBounds(int(imagePoints[i].x), 0, newFrame.cols) &&
-                       uIsInBounds(int(imagePoints[i].y), 0, newFrame.rows) &&
-                       uIsInBounds(int(prevImagePoints[i].x), 0, prevS->getImageRaw().cols) &&
-                       uIsInBounds(int(prevImagePoints[i].y), 0, prevS->getImageRaw().rows))
-                    {
-                        refCorners[oi] = prevImagePoints[i];
-                        newCorners[oi] = imagePoints[i];
-                        if(localMap_.count(ids[i]) == 1)
-                        {
-                            if(prevS->getWords().count(ids[i]) == 1)
-                            {
-                                // set guess if unique
-                                refCorners[oi] = prevS->getWords().find(ids[i])->second.pt;
-                            }
-                            if(newS->getWords().count(ids[i]) == 1)
-                            {
-                                // set guess if unique
-                                newCorners[oi] = newS->getWords().find(ids[i])->second.pt;
-                            }
-                        }
-                        objectPointsTmp[oi] = objectPoints[i];
-                        matches[oi] = ids[i];
-                        ++oi;
-                    }
+                    memory_->update(dataTo);
+                    memory_->update(dataFrom);
+                    Transform transform = memory_->computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
+                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
+                    mapTransform = mostSimilarS->getPose() * transform.inverse() * newS->getPose().inverse(); // this is the final R and t
                 }
-                objectPointsTmp.resize(oi);
-                refCorners.resize(oi);
-                newCorners.resize(oi);
-                matches.resize(oi);
 
-                // Refine imagePoints using optical flow
-                std::vector<unsigned char> statusFlowInliers;
-                std::vector<float> err;
-                UDEBUG("cv::calcOpticalFlowPyrLK() begin");
-                cv::calcOpticalFlowPyrLK(
-                        prevS->getImageRaw(),
-                        newFrame,
-                        refCorners,
-                        newCorners,
-                        statusFlowInliers,
-                        err,
-                        cv::Size(flowWinSize_, flowWinSize_), flowMaxLevel_,
-                        cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, flowIterations_, flowEps_),
-                        cv::OPTFLOW_LK_GET_MIN_EIGENVALS | cv::OPTFLOW_USE_INITIAL_FLOW, 1e-4);
-                UDEBUG("cv::calcOpticalFlowPyrLK() end");
-
-                objectPoints.resize(statusFlowInliers.size());
-                imagePoints.resize(statusFlowInliers.size());
-                std::vector<int> matchesTmp(statusFlowInliers.size());
-                oi = 0;
-                for(unsigned int i=0; i<statusFlowInliers.size(); ++i)
-                {
-                    if(statusFlowInliers[i])
-                    {
-                        objectPoints[oi] = objectPointsTmp[i];
-                        imagePoints[oi] = newCorners[i];
-                        matchesTmp[oi] = matches[i];
-                        ++oi;
-
-                        if(this->isInfoDataFilled() && info)
-                        {
-                            cv::KeyPoint kpt;
-                            if(newS->getWords().count(matches[i]) == 1)
-                            {
-                                kpt = newS->getWords().find(matches[i])->second;
-                            }
-                            kpt.pt = newCorners[i];
-                            info->words.insert(std::make_pair(matches[i], kpt));
-                        }
-                    }
-                }
-                UDEBUG("Flow inliers= %d/%d", oi, (int)statusFlowInliers.size());
-                objectPoints.resize(oi);
-                imagePoints.resize(oi);
-                matchesTmp.resize(oi);
-                matches = matchesTmp;
-
-                if(this->isInfoDataFilled() && info)
-                {
-                    info->wordMatches.insert(info->wordMatches.end(), matches.begin(), matches.end());
-                }
-                correspondences = (int)matches.size();
-
-                if((int)matches.size() < this->getMinInliers())
-                {
-                    UWARN("not enough matches (%d < %d)...", (int)matches.size(), this->getMinInliers());
-                }
-                else
-                {
-                    //PnPRansac
-                    std::vector<int> inliersV;
-                    cv::solvePnPRansac(
-                            objectPoints,
-                            imagePoints,
-                            K,
-                            cv::Mat(),
-                            rvec,
-                            tvec,
-                            true,
-                            this->getIterations(),
-                            this->getPnPReprojError(),
-                            0,
-                            inliersV,
-                            this->getPnPFlags());
-
-                    UDEBUG("inliers=%d/%d", (int)inliersV.size(), (int)objectPoints.size());
-
-                    inliers = (int)inliersV.size();
-                    if((int)inliersV.size() < this->getMinInliers())
-                    {
-                        UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
-                    }
-                    else
-                    {
-                        cv::Mat R(3,3,CV_64FC1);
-                        cv::Rodrigues(rvec, R);
-                        Transform pnp = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
-                                                  R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
-                                                  R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-                        output = this->getPose().inverse() * pnp.inverse() * data.localTransform().inverse();
-
-                        if(this->isInfoDataFilled() && info && inliersV.size())
-                        {
-                            info->wordInliers.resize(inliersV.size());
-                            for(unsigned int i=0; i<inliersV.size(); ++i)
-                            {
-                                info->wordInliers[i] = matches[inliersV[i]]; // index and ID should match (index starts at 0, ID starts at 1)
-                            }
-                        }
-
-                        //Find the frame with the most similar features
-                        std::set<int> stMem =  memory_->getStMem();
-                        stMem.erase(newS->id());
-                        std::map<int, float> likelihood = memory_->computeLikelihood(newS, std::list<int>(stMem.begin(), stMem.end()));
-                        int maxLikelihoodId = -1;
-                        float maxLikelihood = 0;
-                        for(std::map<int, float>::iterator iter=likelihood.begin(); iter!=likelihood.end(); ++iter)
-                        {
-                            if(iter->second > maxLikelihood)
-                            {
-                                maxLikelihood = iter->second;
-                                maxLikelihoodId = iter->first;
-                            }
-                        }
-                        UASSERT(maxLikelihoodId != -1);
-
-                        // Add new points to local map
-                        const Signature* previousS = memory_->getSignature(maxLikelihoodId);
-                        UASSERT(previousS!=0);
-                        Transform cameraTransform = keyFramePoses_.at(previousS->id()).inverse()*this->getPose()*output;
-                        UDEBUG("cameraTransform guess=  %s (norm^2=%f)", cameraTransform.prettyPrint().c_str(), cameraTransform.getNormSquared());
-                        if(cameraTransform.getNorm() < minTranslation_)
-                        {
-                            UWARN("Translation with the nearest frame is too small (%f<%f) to add new points to local map",
-                                    cameraTransform.getNorm(), minTranslation_);
-                        }
-                        else
-                        {
-
-                            double variance = 0;
-                            const std::multimap<int, pcl::PointXYZ> & previousGuess = keyFrameWords3D_.find(previousS->id())->second;
-                            std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMono(
-                                    previousS->getWords(),
-                                    newS->getWords(),
-                                    data.fx(), data.fy()?data.fy():data.fx(),
-                                    data.cx(), data.cy(),
-                                    data.localTransform(),
-                                    cameraTransform,
-                                    this->getIterations(),
-                                    this->getPnPReprojError(),
-                                    this->getPnPFlags(),
-                                    fundMatrixReprojError_,
-                                    fundMatrixConfidence_,
-                                    previousGuess,
-                                    &variance);
-
-                            if((int)inliers3D.size() < this->getMinInliers())
-                            {
-                                UWARN("Epipolar geometry not enough inliers (%d < %d), rejecting the transform (%s)...",
-                                (int)inliers3D.size(), this->getMinInliers(), cameraTransform.prettyPrint().c_str());
-                            }
-                            else if(variance == 0 || variance > maxVariance_)
-                            {
-                                UWARN("Variance too high %f (max = %f)", variance, maxVariance_);
-                            }
-                            else
-                            {
-                                UDEBUG("inliers3D=%d/%d variance=  %f", inliers3D.size(), newS->getWords().size(), variance);
-                                Transform newPose = keyFramePoses_.at(previousS->id())*cameraTransform;
-                                UDEBUG("cameraTransform=  %s", cameraTransform.prettyPrint().c_str());
-
-                                std::multimap<int, cv::Point3f> wordsToAdd;
-                                for(std::multimap<int, pcl::PointXYZ>::iterator iter=inliers3D.begin();
-                                    iter != inliers3D.end();
-                                    ++iter)
-                                {
-                                    // transform inliers3D in new signature referential
-                                    iter->second = util3d::transformPoint(iter->second, cameraTransform.inverse());
-
-                                    if(!uContains(localMap_, iter->first))
-                                    {
-                                        //UDEBUG("Add new point %d to local map", iter->first);
-                                        pcl::PointXYZ newPt = util3d::transformPoint(iter->second, newPose);
-                                        wordsToAdd.insert(std::make_pair(iter->first, cv::Point3f(newPt.x, newPt.y, newPt.z)));
-                                    }
-                                }
-
-                                if((int)wordsToAdd.size())
-                                {
-                                    localMap_.insert(wordsToAdd.begin(), wordsToAdd.end());
-                                    newPtsAdded = true;
-                                    UDEBUG("Added %d words", (int)wordsToAdd.size());
-                                }
-
-                                if(newPtsAdded)
-                                {
-                                    keyFrameWords3D_.insert(std::make_pair(newS->id(), inliers3D));
-                                    keyFramePoses_.insert(std::make_pair(newS->id(), newPose));
-
-                                    // keep only the two last signatures
-                                    while(localHistoryMaxSize_ && (int)localMap_.size() > localHistoryMaxSize_ && memory_->getStMem().size()>2)
-                                    {
-                                        int nodeId = *memory_->getStMem().begin();
-                                        std::list<int> removedPts;
-                                        memory_->deleteLocation(nodeId, &removedPts);
-                                        keyFrameWords3D_.erase(nodeId);
-                                        keyFramePoses_.erase(nodeId);
-                                        for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
-                                        {
-                                            localMap_.erase(*iter);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }*/
             }
 
-            if(!newPtsAdded)
-            {
-                // remove new words from dictionary
-                memory_->deleteLocation(newS->id());
-            }
+            // remove new words from dictionary
+            memory_->deleteLocation(newS->id());
         }
     }
     else
@@ -598,6 +320,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         info->localMapSize = (int)localMap_.size();
         info->localMap = localMap_;
     }
+
+    // TODO make current funtion calcualte global trasform
+    output = mapTransform;
 
     UINFO("Odom update=%fs tf=[%s] inliers=%d/%d, local_map[%d]=%d, accepted=%s",
             timer.elapsed(),

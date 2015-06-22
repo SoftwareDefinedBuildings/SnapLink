@@ -82,6 +82,7 @@ private:
 
     std::string dbPath_;
     BayesFilter * bayesFilter_;
+    int featureType_;
 };
 
 } /* namespace rtabmap */

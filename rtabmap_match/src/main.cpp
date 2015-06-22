@@ -37,6 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "WaitCameraThread.h"
 #include "CameraCalibrated.h"
 #include "OdometryMonoLocThread.h"
+#include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/Parameters.h"
+#include "rtabmap/utilite/UConversion.h"
 
 void showUsage()
 {
@@ -77,7 +80,9 @@ int main(int argc, char * argv[])
     }
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile));
+    rtabmap::ParametersMap parameters;
+    parameters.insert(ParametersPair(Parameters::kOdomFeatureType(), uNumber2Str(Feature2D::kFeatureSurf)));
+    OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile, parameters));
 
 
     // Create RTAB-Map to process OdometryEvent
