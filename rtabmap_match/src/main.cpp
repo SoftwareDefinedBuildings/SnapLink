@@ -82,6 +82,8 @@ int main(int argc, char * argv[])
     // Create an odometry thread to process camera events, it will send OdometryEvent.
     rtabmap::ParametersMap parameters;
     parameters.insert(ParametersPair(Parameters::kOdomFeatureType(), uNumber2Str(Feature2D::kFeatureSurf)));
+    parameters.insert(ParametersPair(Parameters::kLccBowEpipolarGeometry(), uBool2Str(true)));
+    parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(20)));
     OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile, parameters));
 
 

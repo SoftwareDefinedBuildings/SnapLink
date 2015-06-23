@@ -82,7 +82,11 @@ private:
 
     std::string dbPath_;
     BayesFilter * bayesFilter_;
+
+    //used by memory
     int featureType_;
+    bool bowEpipolarGeometry_;
+    int bowMinInliers_;
 };
 
 } /* namespace rtabmap */

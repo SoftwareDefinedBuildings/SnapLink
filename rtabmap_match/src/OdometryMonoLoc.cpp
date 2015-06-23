@@ -80,6 +80,8 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     Parameters::parse(parameters, Parameters::kVhEpRansacParam1(), fundMatrixReprojError_);
     Parameters::parse(parameters, Parameters::kVhEpRansacParam2(), fundMatrixConfidence_);
     Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType_);
+    Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometry(), bowEpipolarGeometry_);
+    Parameters::parse(parameters, Parameters::kLccBowMinInliers(), bowMinInliers_);
 
     // Setup memory
     ParametersMap customParameters;
@@ -102,6 +104,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
     customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType_)));
     customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
+    customParameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(bowMinInliers_)));
 
     int subPixWinSize = Parameters::defaultOdomSubPixWinSize();
     int subPixIterations = Parameters::defaultOdomSubPixIterations();
@@ -112,6 +115,8 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     customParameters.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize)));
     customParameters.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations)));
     customParameters.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps)));
+    
+    customParameters.insert(ParametersPair(Parameters::kLccBowEpipolarGeometry(), uBool2Str(bowEpipolarGeometry_)));
 
     // add only feature stuff
     for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
@@ -130,10 +135,11 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
         }
     }
 
-    memory_ = new Memory(customParameters);
-
     customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
-    if(!memory_->init(dbPath_, false, ParametersMap()))
+    
+    memory_ = new Memory();
+
+    if(!memory_->init(dbPath_, false, customParameters))
     {
         UERROR("Error initializing the memory for Mono Odometry.");
     }
@@ -205,6 +211,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 {
     UASSERT(!data.image().empty());
     UASSERT(data.fx());
+    UASSERT(data.image().channels() == 1);
 
     UTimer timer;
     Transform output;
@@ -212,26 +219,14 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
     int inliers = 0;
     int correspondences = 0;
     int nFeatures = 0;
-    Transform mapTransform; 
+    Transform mapTransform;
 
-    cv::Mat newFrame;
-    // convert to grayscale
-    if(data.image().channels() > 1)
-    {
-        cv::cvtColor(data.image(), newFrame, cv::COLOR_BGR2GRAY);
-    }
-    else
-    {
-        newFrame = data.image().clone();
-    }
-
-    SensorData newData(newFrame);
+    const SensorData & newData = data; 
+    
+    UDEBUG("fx = %f, fy = %f, cx = %f, cy = %f", newData.fx(), newData.fy(), newData.cx(), newData.cy());
 
     if(memory_->getWorkingMem().size())
     {
-        //PnP
-        UDEBUG("PnP");
-
         if(this->isInfoDataFilled() && info)
         {
             info->type = 0;
@@ -280,7 +275,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 int loopClosureVisualInliers = 0;
                 double variance = 1;
                 SensorData dataFrom = newData;
-                newData.setId(newS->id());
+                dataFrom.setId(newS->id());
                 Signature tmpTo = memory_->getSignatureData(highestHypothesis.first, true);
                 SensorData dataTo = tmpTo.toSensorData();
 
@@ -291,11 +286,17 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                    dataFrom.id() != Memory::kIdInvalid &&
                    tmpTo.id() != Memory::kIdInvalid)
                 {
-                    memory_->update(dataTo);
-                    memory_->update(dataFrom);
+                    UDEBUG("Calculate map transform");
+                    //memory_->update(dataTo);
+                    //memory_->update(dataFrom);
                     Transform transform = memory_->computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
                     const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
                     mapTransform = mostSimilarS->getPose() * transform.inverse() * newS->getPose().inverse(); // this is the final R and t
+                }
+                else
+                {
+                    UWARN("Cannot calculate transform between signatures. dataFrom.isValid() = %d, dataFrom.isMetric() = %d, dataTo.isValid() = %d, dataTo.isMetric() = %d, dataFrom.id() = %d, tmpTo.id() = %d", 
+                          dataFrom.isValid(), dataFrom.isMetric(), dataTo.isValid(), dataTo.isMetric(), dataFrom.id(), tmpTo.id());
                 }
 
             }

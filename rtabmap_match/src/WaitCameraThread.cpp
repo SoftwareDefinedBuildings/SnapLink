@@ -138,11 +138,12 @@ void WaitCameraThread::mainLoop()
 {
     UTimer timer;
     UDEBUG("");
-    cv::Mat rgb, depth;
+    cv::Mat rgb, depth, gray;
     float fx = 0.0f;
     float fy = 0.0f;
     float cx = 0.0f;
     float cy = 0.0f;
+
     if(_cameraRGBD)
     {
         _cameraRGBD->takeImage(rgb, depth, fx, fy, cx, cy);
@@ -158,21 +159,28 @@ void WaitCameraThread::mainLoop()
 
     if(!rgb.empty() && !this->isKilled())
     {
+        // enforce gray scale images
+        if (rgb.channels() > 1) {
+            cv::cvtColor(rgb, gray, cv::COLOR_BGR2GRAY);
+        } else {
+            gray = rgb.clone();
+        }
+
         if(_cameraRGBD)
         {
-            SensorData data(rgb, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
+            SensorData data(gray, depth, fx, fy, cx, cy, _cameraRGBD->getLocalTransform(), Transform(), 1, 1, ++_seq, UTimer::now());
             this->post(new CameraEvent(data, _cameraRGBD->getSerial()));
         }
         else if (_camera)
         {
-            this->post(new CameraEvent(rgb, ++_seq, UTimer::now()));
+            this->post(new CameraEvent(gray, ++_seq, UTimer::now()));
         }
         else if (_cameraCalibrated)
         {
             // hardcoded local transform that's applied to all RGBD cameras (I guess)
             Transform localTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
             Transform pose;
-            SensorData data(rgb, depth, fx, fy, cx, cy, localTransform, pose, 1, 1, ++_seq, UTimer::now());
+            SensorData data(gray, depth, fx, fy, cx, cy, localTransform, pose, 1, 1, ++_seq, UTimer::now());
             this->post(new CameraCalibratedEvent(data, "Image"));
         }
     }
