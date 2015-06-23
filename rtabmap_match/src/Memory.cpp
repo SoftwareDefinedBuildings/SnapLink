@@ -55,8 +55,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 
-#include "util3d_features_asym.h"
-
 namespace rtabmap {
 
 const int Memory::kIdStart = 0;
@@ -1924,7 +1922,7 @@ Transform Memory::computeVisualTransform(
         {
             Transform cameraTransform;
             double variance = 1;
-            std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMonoAsym(
+            std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMono(
                     oldS.getWords(),
                     newS.getWords(),
                     oldS.getFx(),
@@ -1932,11 +1930,6 @@ Transform Memory::computeVisualTransform(
                     oldS.getCx(),
                     oldS.getCy(),
                     oldS.getLocalTransform(),
-                    newS.getFx(),
-                    newS.getFy(),
-                    newS.getCx(),
-                    newS.getCy(),
-                    newS.getLocalTransform(),
                     cameraTransform,
                     100,
                     4.0f,
@@ -4068,11 +4061,11 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
             rtabmap::compressData2(laserScan),
             cv::Mat(),
             cv::Mat(),
-            fx,
-            fyOrBaseline,
-            cx,
-            cy,
-            data.localTransform(),
+            0,
+            0,
+            0,
+            0,
+            Transform(),
             data.laserScanMaxPts());
     }
     if(this->isRawDataKept())

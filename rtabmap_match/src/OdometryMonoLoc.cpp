@@ -291,7 +291,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                     //memory_->update(dataFrom);
                     Transform transform = memory_->computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
                     const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                    mapTransform = mostSimilarS->getPose() * transform.inverse() * newS->getPose().inverse(); // this is the final R and t
+                    mapTransform = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
                 }
                 else
                 {
