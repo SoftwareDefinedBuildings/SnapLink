@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <stdio.h>
 
-#include "CameraThread.h"
+#include "CameraThreadNonStop.h"
 #include "CameraCalibrated.h"
 #include "OdometryMonoLocThread.h"
 #include "rtabmap/core/Features2d.h"
@@ -72,8 +72,8 @@ int main(int argc, char * argv[])
     float imageRate = 1.0f;
     unsigned int imageWidth = 0;
     unsigned int imageHeight = 0;
-    CameraCalibrated *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
-    WaitCameraThread cameraThread(camera);
+    Camera *camera = new CameraImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
+    CameraThread cameraThread(camera);
     if(!cameraThread.init())
     {
         UERROR("Camera thread init failed!");
