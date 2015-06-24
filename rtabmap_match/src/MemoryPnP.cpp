@@ -32,9 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UProcessInfo.h>
 #include <rtabmap/utilite/UMath.h>
 
-#include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
-#include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include "rtabmap/core/VWDictionary.h"
 #include <rtabmap/core/EpipolarGeometry.h>
@@ -55,13 +53,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 
+#include "MemoryPnP.h"
+#include "Parameters.h"
+
 namespace rtabmap {
 
-const int Memory::kIdStart = 0;
-const int Memory::kIdVirtual = -1;
-const int Memory::kIdInvalid = 0;
+const int MemoryPnP::kIdStart = 0;
+const int MemoryPnP::kIdVirtual = -1;
+const int MemoryPnP::kIdInvalid = 0;
 
-Memory::Memory(const ParametersMap & parameters) :
+MemoryPnP::MemoryPnP(const ParametersMap & parameters) :
     _dbDriver(0),
     _similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
     _rawDataKept(Parameters::defaultMemImageKept()),
@@ -103,6 +104,9 @@ Memory::Memory(const ParametersMap & parameters) :
     _bowForce2D(Parameters::defaultLccBowForce2D()),
     _bowEpipolarGeometry(Parameters::defaultLccBowEpipolarGeometry()),
     _bowEpipolarGeometryVar(Parameters::defaultLccBowEpipolarGeometryVar()),
+    _bowPnPEstimation(Parameters::defaultLccBowPnPEstimation()),
+    _bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
+    _bowPnPFlags(Parameters::defaultLccBowPnPFlags()),
 
     _icpMaxTranslation(Parameters::defaultLccIcpMaxTranslation()),
     _icpMaxRotation(Parameters::defaultLccIcpMaxRotation()),
@@ -137,7 +141,7 @@ Memory::Memory(const ParametersMap & parameters) :
     this->parseParameters(parameters);
 }
 
-bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters, bool postInitClosingEvents)
+bool MemoryPnP::init(const std::string & dbUrl, bool dbOverwritten, const ParametersMap & parameters, bool postInitClosingEvents)
 {
     _postInitClosingEvents = postInitClosingEvents;
     if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
@@ -329,7 +333,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
     return success;
 }
 
-Memory::~Memory()
+MemoryPnP::~MemoryPnP()
 {
     if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
     UDEBUG("");
@@ -388,7 +392,7 @@ Memory::~Memory()
     if(_postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
 }
 
-void Memory::parseParameters(const ParametersMap & parameters)
+void MemoryPnP::parseParameters(const ParametersMap & parameters)
 {
     UDEBUG("");
     ParametersMap::const_iterator iter;
@@ -440,6 +444,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
     Parameters::parse(parameters, Parameters::kLccBowForce2D(), _bowForce2D);
     Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometry(), _bowEpipolarGeometry);
     Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometryVar(), _bowEpipolarGeometryVar);
+    Parameters::parse(parameters, Parameters::kLccBowPnPEstimation(), _bowPnPEstimation);
+    Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
+    Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
     Parameters::parse(parameters, Parameters::kLccIcpMaxTranslation(), _icpMaxTranslation);
     Parameters::parse(parameters, Parameters::kLccIcpMaxRotation(), _icpMaxRotation);
     Parameters::parse(parameters, Parameters::kLccIcp3Decimation(), _icpDecimation);
@@ -526,7 +533,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
     }
 }
 
-void Memory::preUpdate()
+void MemoryPnP::preUpdate()
 {
     _signaturesAdded = 0;
     this->cleanUnusedWords();
@@ -537,7 +544,7 @@ void Memory::preUpdate()
     }
 }
 
-bool Memory::update(const SensorData & data, Statistics * stats)
+bool MemoryPnP::update(const SensorData & data, Statistics * stats)
 {
     UDEBUG("");
     UTimer timer;
@@ -647,7 +654,7 @@ bool Memory::update(const SensorData & data, Statistics * stats)
 
 
 
-void Memory::setRoi(const std::string & roi)
+void MemoryPnP::setRoi(const std::string & roi)
 {
     std::list<std::string> strValues = uSplit(roi, ' ');
     if(strValues.size() != 4)
@@ -678,7 +685,7 @@ void Memory::setRoi(const std::string & roi)
     }
 }
 
-void Memory::addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance)
+void MemoryPnP::addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance)
 {
     UTimer timer;
     // add signature on top of the short-term memory
@@ -747,7 +754,7 @@ void Memory::addSignatureToStm(Signature * signature, float poseRotVariance, flo
     UDEBUG("time = %fs", timer.ticks());
 }
 
-void Memory::addSignatureToWm(Signature * signature)
+void MemoryPnP::addSignatureToWm(Signature * signature)
 {
     if(signature)
     {
@@ -762,22 +769,22 @@ void Memory::addSignatureToWm(Signature * signature)
     }
 }
 
-const Signature * Memory::getSignature(int id) const
+const Signature * MemoryPnP::getSignature(int id) const
 {
     return _getSignature(id);
 }
 
-Signature * Memory::_getSignature(int id) const
+Signature * MemoryPnP::_getSignature(int id) const
 {
     return uValue(_signatures, id, (Signature*)0);
 }
 
-const VWDictionary * Memory::getVWDictionary() const
+const VWDictionary * MemoryPnP::getVWDictionary() const
 {
     return _vwd;
 }
 
-std::map<int, Link> Memory::getNeighborLinks(
+std::map<int, Link> MemoryPnP::getNeighborLinks(
         int signatureId,
         bool lookInDatabase) const
 {
@@ -807,7 +814,7 @@ std::map<int, Link> Memory::getNeighborLinks(
     return links;
 }
 
-std::map<int, Link> Memory::getLoopClosureLinks(
+std::map<int, Link> MemoryPnP::getLoopClosureLinks(
         int signatureId,
         bool lookInDatabase) const
 {
@@ -846,7 +853,7 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 // return map<Id,Margin>, including signatureId
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
-std::map<int, int> Memory::getNeighborsId(int signatureId,
+std::map<int, int> MemoryPnP::getNeighborsId(int signatureId,
         int maxGraphDepth, // 0 means infinite margin
         int maxCheckedInDatabase, // default -1 (no limit)
         bool incrementMarginOnLoop, // default false
@@ -939,7 +946,7 @@ std::map<int, int> Memory::getNeighborsId(int signatureId,
 }
 
 // return map<Id,sqrdDistance>, including signatureId
-std::map<int, float> Memory::getNeighborsIdRadius(
+std::map<int, float> MemoryPnP::getNeighborsIdRadius(
         int signatureId,
         float radius, // 0 means ignore radius
         const std::map<int, Transform> & optimizedPoses,
@@ -1005,12 +1012,12 @@ std::map<int, float> Memory::getNeighborsIdRadius(
     return ids;
 }
 
-int Memory::getNextId()
+int MemoryPnP::getNextId()
 {
     return ++_idCount;
 }
 
-int Memory::incrementMapId()
+int MemoryPnP::incrementMapId()
 {
     //don't increment if there is no location in the current map
     const Signature * s = getLastWorkingSignature();
@@ -1052,7 +1059,7 @@ int Memory::incrementMapId()
     return _idMapCount;
 }
 
-void Memory::updateAge(int signatureId)
+void MemoryPnP::updateAge(int signatureId)
 {
     std::map<int, double>::iterator iter=_workingMem.find(signatureId);
     if(iter!=_workingMem.end())
@@ -1061,7 +1068,7 @@ void Memory::updateAge(int signatureId)
     }
 }
 
-int Memory::getDatabaseMemoryUsed() const
+int MemoryPnP::getDatabaseMemoryUsed() const
 {
     int memoryUsed = 0;
     if(_dbDriver)
@@ -1071,12 +1078,12 @@ int Memory::getDatabaseMemoryUsed() const
     return memoryUsed;
 }
 
-double Memory::getDbSavingTime() const
+double MemoryPnP::getDbSavingTime() const
 {
     return _dbDriver?_dbDriver->getEmptyTrashesTime():0;
 }
 
-std::set<int> Memory::getAllSignatureIds() const
+std::set<int> MemoryPnP::getAllSignatureIds() const
 {
     std::set<int> ids;
     if(_dbDriver)
@@ -1090,7 +1097,7 @@ std::set<int> Memory::getAllSignatureIds() const
     return ids;
 }
 
-void Memory::clear()
+void MemoryPnP::clear()
 {
     UDEBUG("");
 
@@ -1192,7 +1199,7 @@ void Memory::clear()
  * Important: Assuming that all other ids are under 'signature' id.
  * If an error occurs, the result is empty.
  */
-std::map<int, float> Memory::computeLikelihood(const Signature * signature, const std::list<int> & ids)
+std::map<int, float> MemoryPnP::computeLikelihood(const Signature * signature, const std::list<int> & ids)
 {
     if(!_tfIdfLikelihoodUsed)
     {
@@ -1308,7 +1315,7 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 }
 
 // Weights of the signatures in the working memory <signature id, weight>
-std::map<int, int> Memory::getWeights() const
+std::map<int, int> MemoryPnP::getWeights() const
 {
     std::map<int, int> weights;
     for(std::map<int, double>::const_iterator iter=_workingMem.begin(); iter!=_workingMem.end(); ++iter)
@@ -1330,7 +1337,7 @@ std::map<int, int> Memory::getWeights() const
     return weights;
 }
 
-std::list<int> Memory::forget(const std::set<int> & ignoredIds)
+std::list<int> MemoryPnP::forget(const std::set<int> & ignoredIds)
 {
     UDEBUG("");
     std::list<int> signaturesRemoved;
@@ -1386,7 +1393,7 @@ std::list<int> Memory::forget(const std::set<int> & ignoredIds)
 }
 
 
-std::list<int> Memory::cleanup(const std::list<int> & ignoredIds)
+std::list<int> MemoryPnP::cleanup(const std::list<int> & ignoredIds)
 {
     UDEBUG("");
     std::list<int> signaturesRemoved;
@@ -1405,7 +1412,7 @@ std::list<int> Memory::cleanup(const std::list<int> & ignoredIds)
     return signaturesRemoved;
 }
 
-void Memory::emptyTrash()
+void MemoryPnP::emptyTrash()
 {
     if(_dbDriver)
     {
@@ -1413,7 +1420,7 @@ void Memory::emptyTrash()
     }
 }
 
-void Memory::joinTrashThread()
+void MemoryPnP::joinTrashThread()
 {
     if(_dbDriver)
     {
@@ -1454,7 +1461,7 @@ public:
     }
     int weight, age, id;
 };
-std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
+std::list<Signature *> MemoryPnP::getRemovableSignatures(int count, const std::set<int> & ignoredIds)
 {
     //UDEBUG("");
     std::list<Signature *> removableSignatures;
@@ -1588,7 +1595,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 /**
  * If saveToDatabase=false, deleted words are filled in deletedWords.
  */
-void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> * deletedWords)
+void MemoryPnP::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> * deletedWords)
 {
     UDEBUG("id=%d", s?s->id():0);
     if(s)
@@ -1688,18 +1695,18 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
     }
 }
 
-int Memory::getLastSignatureId() const
+int MemoryPnP::getLastSignatureId() const
 {
     return _idCount;
 }
 
-const Signature * Memory::getLastWorkingSignature() const
+const Signature * MemoryPnP::getLastWorkingSignature() const
 {
     UDEBUG("");
     return _lastSignature;
 }
 
-int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase) const
+int MemoryPnP::getSignatureIdByLabel(const std::string & label, bool lookInDatabase) const
 {
     UDEBUG("label=%s", label.c_str());
     int id = 0;
@@ -1722,7 +1729,7 @@ int Memory::getSignatureIdByLabel(const std::string & label, bool lookInDatabase
     return id;
 }
 
-bool Memory::labelSignature(int id, const std::string & label)
+bool MemoryPnP::labelSignature(int id, const std::string & label)
 {
     // verify that this label is not used
     int idFound=getSignatureIdByLabel(label);
@@ -1759,7 +1766,7 @@ bool Memory::labelSignature(int id, const std::string & label)
     return false;
 }
 
-std::map<int, std::string> Memory::getAllLabels() const
+std::map<int, std::string> MemoryPnP::getAllLabels() const
 {
     std::map<int, std::string> labels;
     for(std::map<int, Signature*>::const_iterator iter = _signatures.begin(); iter!=_signatures.end(); ++iter)
@@ -1776,7 +1783,7 @@ std::map<int, std::string> Memory::getAllLabels() const
     return labels;
 }
 
-bool Memory::setUserData(int id, const std::vector<unsigned char> & data)
+bool MemoryPnP::setUserData(int id, const std::vector<unsigned char> & data)
 {
     Signature * s  = this->_getSignature(id);
     if(s)
@@ -1804,7 +1811,7 @@ bool Memory::setUserData(int id, const std::vector<unsigned char> & data)
     return false;
 }
 
-void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
+void MemoryPnP::deleteLocation(int locationId, std::list<int> * deletedWords)
 {
     UDEBUG("Deleting location %d", locationId);
     Signature * location = _getSignature(locationId);
@@ -1814,7 +1821,7 @@ void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
     }
 }
 
-void Memory::removeLink(int oldId, int newId)
+void MemoryPnP::removeLink(int oldId, int newId)
 {
     //this method assumes receiving oldId < newId, if not switch them
     Signature * oldS = this->_getSignature(oldId<newId?oldId:newId);
@@ -1875,7 +1882,7 @@ void Memory::removeLink(int oldId, int newId)
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(
+Transform MemoryPnP::computeVisualTransform(
         int oldId,
         int newId,
         std::string * rejectedMsg,
@@ -1904,7 +1911,7 @@ Transform Memory::computeVisualTransform(
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeVisualTransform(
+Transform MemoryPnP::computeVisualTransform(
         const Signature & oldS,
         const Signature & newS,
         std::string * rejectedMsg,
@@ -1915,6 +1922,152 @@ Transform Memory::computeVisualTransform(
     std::string msg;
     // Guess transform from visual words
 
+    if(_bowPnPEstimation)
+    {
+        if(_bowEpipolarGeometry)
+        {
+            UWARN("PnP estimation and Epipolar geometry estimation are set, only PnP is used.");
+        }
+
+        // TODO change to new signature
+        if((!newS.SensorData().rightRaw().empty() ||
+           !newS.SensorData().stereoCameraModel().isValid()) &&
+           (!newS.SensorData().depthRaw().empty() ||
+            newS.SensorData().cameraModels().size() != 1 ||
+            !newS.SensorData().cameraModels()[0].isValid()))
+        {
+            UERROR("Calibrated camera required (multi-cameras not supported).");
+        }
+        else
+        {
+            cv::Mat K;
+            Transform localTransform;
+            if(newS.toSensorData().cameraModels().size())
+            {
+                K = newS.SensorData().cameraModels()[0].K();
+                localTransform = newS.toSensorData().cameraModels()[0].localTransform();
+            }
+            else
+            {
+                K = newS.sensorData().stereoCameraModel().left().K();
+                localTransform = newS.sensorData().stereoCameraModel().left().localTransform();
+            }
+            UASSERT(!K.empty() && !localTransform.isNull());
+            // 2D -> 3D
+            if(!oldS.getWords3().empty() && !newS.getWords().empty())
+            {
+                // find correspondences
+                std::vector<int> ids = uListToVector(uUniqueKeys(newS.getWords()));
+                std::vector<cv::Point3f> objectPoints(ids.size());
+                std::vector<cv::Point2f> imagePoints(ids.size());
+                int oi=0;
+                std::vector<int> matches(ids.size());
+                for(unsigned int i=0; i<ids.size(); ++i)
+                {
+                    if(oldS.getWords3().count(ids[i]) == 1)
+                    {
+                        pcl::PointXYZ pt = oldS.getWords3().find(ids[i])->second;
+                        if(pcl::isFinite(pt))
+                        {
+                            objectPoints[oi].x = pt.x;
+                            objectPoints[oi].y = pt.y;
+                            objectPoints[oi].z = pt.z;
+                            imagePoints[oi] = newS.getWords().find(ids[i])->second.pt;
+                            matches[oi++] = ids[i];
+                        }
+                    }
+                }
+
+                objectPoints.resize(oi);
+                imagePoints.resize(oi);
+                matches.resize(oi);
+
+                if((int)matches.size() >= _bowMinInliers)
+                {
+                    //PnPRansac
+                    Transform guess = localTransform.inverse();
+                    cv::Mat R = (cv::Mat_<double>(3,3) <<
+                            (double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
+                            (double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
+                            (double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+                    cv::Mat rvec(1,3, CV_64FC1);
+                    cv::Rodrigues(R, rvec);
+                    cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+                    std::vector<int> inliersV;
+                    cv::solvePnPRansac(objectPoints,
+                            imagePoints,
+                            K,
+                            cv::Mat(),
+                            rvec,
+                            tvec,
+                            true,
+                            _bowIterations,
+                            _bowPnPReprojError,
+                            0,
+                            inliersV,
+                            _bowPnPFlags);
+
+                    if(inliers)
+                    {
+                        *inliers = (int)inliersV.size();
+                    }
+                    if((int)inliersV.size() >= _bowMinInliers)
+                    {
+                        cv::Rodrigues(rvec, R);
+                        Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+                                       R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+                                       R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+                        transform = localTransform * pnp;
+
+                        UDEBUG("Odom transform = %s", transform.prettyPrint().c_str());
+
+                        // compute variance (like in PCL computeVariance() method of sac_model.h)
+                        if(varianceOut)
+                        {
+                            std::vector<float> errorSqrdDists(inliersV.size());
+                            oi = 0;
+                            for(unsigned int i=0; i<inliersV.size(); ++i)
+                            {
+                                std::multimap<int, pcl::PointXYZ>::const_iterator iter = newS.getWords3().find(matches[inliersV[i]]);
+                                if(iter != newS.getWords3().end() && pcl::isFinite(iter->second))
+                                {
+                                    const cv::Point3f & objPt = objectPoints[inliersV[i]];
+                                    pcl::PointXYZ newPt = util3d::transformPoint(iter->second, transform);
+                                    errorSqrdDists[oi++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+                                }
+                            }
+                            errorSqrdDists.resize(oi);
+                            *varianceOut= 0;
+                            if(errorSqrdDists.size())
+                            {
+                                std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+                                double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+                                *varianceOut = 2.1981 * median_error_sqr;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        msg = uFormat("PnP not enough inliers (%d[%d] < %d), rejecting the transform...",
+                                (int)inliersV.size(), (int)matches.size(), _bowMinInliers);
+                        UINFO(msg.c_str());
+                    }
+                }
+                else
+                {
+                    msg = uFormat("Not enough inliers %d < %d", (int)matches.size(), _bowMinInliers);
+                    UINFO(msg.c_str());
+                }
+            }
+            else
+            {
+                msg = uFormat("Not enough features in the new image (old=%d new=%d min=%d)",
+                        (int)oldS.getWords3().size(), (int)newS.getWords().size(), _bowMinInliers);
+                UINFO(msg.c_str());
+            }
+        }
+    } 
     if(_bowEpipolarGeometry)
     {
         // we only need the camera transform, send guess words3 for scale estimation
@@ -2086,7 +2239,7 @@ Transform Memory::computeVisualTransform(
 }
 
 // compute transform newId -> oldId
-Transform Memory::computeIcpTransform(
+Transform MemoryPnP::computeIcpTransform(
         int oldId,
         int newId,
         Transform guess,
@@ -2167,7 +2320,7 @@ Transform Memory::computeIcpTransform(
 }
 
 // get transform from the new to old node
-Transform Memory::computeIcpTransform(
+Transform MemoryPnP::computeIcpTransform(
         const Signature & oldS,
         const Signature & newS,
         Transform guess,
@@ -2472,7 +2625,7 @@ Transform Memory::computeIcpTransform(
 }
 
 // poses of newId and oldId must be in "poses"
-Transform Memory::computeScanMatchingTransform(
+Transform MemoryPnP::computeScanMatchingTransform(
         int newId,
         int oldId,
         const std::map<int, Transform> & poses,
@@ -2617,7 +2770,7 @@ Transform Memory::computeScanMatchingTransform(
 }
 
 // Transform from new to old
-bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Type type, float rotVariance, float transVariance)
+bool MemoryPnP::addLink(int oldId, int newId, const Transform & transform, Link::Type type, float rotVariance, float transVariance)
 {
     UASSERT(type > Link::kNeighbor && type != Link::kUndef);
 
@@ -2686,7 +2839,7 @@ bool Memory::addLink(int oldId, int newId, const Transform & transform, Link::Ty
     return false;
 }
 
-void Memory::updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance)
+void MemoryPnP::updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance)
 {
     Signature * fromS = this->_getSignature(fromId);
     Signature * toS = this->_getSignature(toId);
@@ -2711,7 +2864,7 @@ void Memory::updateLink(int fromId, int toId, const Transform & transform, float
     }
 }
 
-void Memory::removeAllVirtualLinks()
+void MemoryPnP::removeAllVirtualLinks()
 {
     UDEBUG("");
     for(std::map<int, Signature*>::iterator iter=_signatures.begin(); iter!=_signatures.end(); ++iter)
@@ -2720,7 +2873,7 @@ void Memory::removeAllVirtualLinks()
     }
 }
 
-void Memory::removeVirtualLinks(int signatureId)
+void MemoryPnP::removeVirtualLinks(int signatureId)
 {
     UDEBUG("");
     Signature * s = this->_getSignature(signatureId);
@@ -2750,7 +2903,7 @@ void Memory::removeVirtualLinks(int signatureId)
     }
 }
 
-void Memory::dumpMemory(std::string directory) const
+void MemoryPnP::dumpMemory(std::string directory) const
 {
     UINFO("Dumping memory to directory \"%s\"", directory.c_str());
     this->dumpDictionary((directory+"DumpMemoryWordRef.txt").c_str(), (directory+"DumpMemoryWordDesc.txt").c_str());
@@ -2759,7 +2912,7 @@ void Memory::dumpMemory(std::string directory) const
     this->dumpMemoryTree((directory + "DumpMemoryTree.txt").c_str());
 }
 
-void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
+void MemoryPnP::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
 {
     if(_vwd)
     {
@@ -2767,7 +2920,7 @@ void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc)
     }
 }
 
-void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
+void MemoryPnP::dumpSignatures(const char * fileNameSign, bool words3D) const
 {
     FILE* foutSign = 0;
 #ifdef _MSC_VER
@@ -2822,7 +2975,7 @@ void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
     }
 }
 
-void Memory::dumpMemoryTree(const char * fileNameTree) const
+void MemoryPnP::dumpMemoryTree(const char * fileNameTree) const
 {
     FILE* foutTree = 0;
     #ifdef _MSC_VER
@@ -2878,7 +3031,7 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 
 }
 
-void Memory::rehearsal(Signature * signature, Statistics * stats)
+void MemoryPnP::rehearsal(Signature * signature, Statistics * stats)
 {
     UTimer timer;
     if(signature->getLinks().size() != 1)
@@ -2955,7 +3108,7 @@ void Memory::rehearsal(Signature * signature, Statistics * stats)
     UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
 }
 
-bool Memory::rehearsalMerge(int oldId, int newId)
+bool MemoryPnP::rehearsalMerge(int oldId, int newId)
 {
     ULOGGER_INFO("old=%d, new=%d", oldId, newId);
     Signature * oldS = _getSignature(oldId);
@@ -3047,7 +3200,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
     return false;
 }
 
-Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
+Transform MemoryPnP::getOdomPose(int signatureId, bool lookInDatabase) const
 {
     Transform pose;
     int mapId, weight;
@@ -3058,7 +3211,7 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
     return pose;
 }
 
-bool Memory::getNodeInfo(int signatureId,
+bool MemoryPnP::getNodeInfo(int signatureId,
         Transform & odomPose,
         int & mapId,
         int & weight,
@@ -3085,7 +3238,7 @@ bool Memory::getNodeInfo(int signatureId,
     return false;
 }
 
-cv::Mat Memory::getImageCompressed(int signatureId) const
+cv::Mat MemoryPnP::getImageCompressed(int signatureId) const
 {
     cv::Mat image;
     const Signature * s = this->getSignature(signatureId);
@@ -3100,7 +3253,7 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
     return image;
 }
 
-Signature Memory::getSignatureData(int locationId, bool uncompressedData)
+Signature MemoryPnP::getSignatureData(int locationId, bool uncompressedData)
 {
     UDEBUG("locationId=%d", locationId);
     Signature r;
@@ -3168,7 +3321,7 @@ Signature Memory::getSignatureData(int locationId, bool uncompressedData)
     return r;
 }
 
-Signature Memory::getSignatureDataConst(int locationId) const
+Signature MemoryPnP::getSignatureDataConst(int locationId) const
 {
     UDEBUG("");
     Signature r;
@@ -3218,7 +3371,7 @@ Signature Memory::getSignatureDataConst(int locationId) const
     return r;
 }
 
-void Memory::generateGraph(const std::string & fileName, std::set<int> ids)
+void MemoryPnP::generateGraph(const std::string & fileName, std::set<int> ids)
 {
     if(!_dbDriver)
     {
@@ -3437,7 +3590,7 @@ private:
 };
 
 //recursive
-void Memory::createGraph(GraphNode * parent, unsigned int maxDepth, const std::set<int> & endIds)
+void MemoryPnP::createGraph(GraphNode * parent, unsigned int maxDepth, const std::set<int> & endIds)
 {
     if(maxDepth == 0 || !parent)
     {
@@ -3457,7 +3610,7 @@ void Memory::createGraph(GraphNode * parent, unsigned int maxDepth, const std::s
     }
 }
 
-int Memory::getNi(int signatureId) const
+int MemoryPnP::getNi(int signatureId) const
 {
     int ni = 0;
     const Signature * s = this->getSignature(signatureId);
@@ -3473,7 +3626,7 @@ int Memory::getNi(int signatureId) const
 }
 
 
-void Memory::copyData(const Signature * from, Signature * to)
+void MemoryPnP::copyData(const Signature * from, Signature * to)
 {
     UTimer timer;
     timer.start();
@@ -3537,7 +3690,7 @@ private:
     VWDictionary * _vwp;
 };
 
-Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
+Signature * MemoryPnP::createSignature(const SensorData & data, Statistics * stats)
 {
     UDEBUG("");
     UASSERT(data.image().empty() || data.image().type() == CV_8UC1 || data.image().type() == CV_8UC3);
@@ -4086,7 +4239,7 @@ Signature * Memory::createSignature(const SensorData & data, Statistics * stats)
     return s;
 }
 
-void Memory::disableWordsRef(int signatureId)
+void MemoryPnP::disableWordsRef(int signatureId)
 {
     UDEBUG("id=%d", signatureId);
 
@@ -4108,7 +4261,7 @@ void Memory::disableWordsRef(int signatureId)
     }
 }
 
-void Memory::cleanUnusedWords()
+void MemoryPnP::cleanUnusedWords()
 {
     if(_vwd->isIncremental())
     {
@@ -4134,7 +4287,7 @@ void Memory::cleanUnusedWords()
     }
 }
 
-void Memory::enableWordsRef(const std::list<int> & signatureIds)
+void MemoryPnP::enableWordsRef(const std::list<int> & signatureIds)
 {
     UDEBUG("size=%d", signatureIds.size());
     UTimer timer;
@@ -4238,7 +4391,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
     UDEBUG("%d words total ref added from %d signatures, time=%fs...", count, surfSigns.size(), timer.ticks());
 }
 
-std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess)
+std::set<int> MemoryPnP::reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess)
 {
     // get the signatures, if not in the working memory, they
     // will be loaded from the database in an more efficient way
@@ -4282,7 +4435,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> & ids, unsigned 
 
 // return all non-null poses
 // return unique links between nodes (for neighbors: old->new, for loops: parent->child)
-void Memory::getMetricConstraints(
+void MemoryPnP::getMetricConstraints(
         const std::set<int> & ids,
         std::map<int, Transform> & poses,
         std::multimap<int, Link> & links,

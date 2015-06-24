@@ -38,8 +38,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CameraCalibrated.h"
 #include "OdometryMonoLocThread.h"
 #include "rtabmap/core/Features2d.h"
-#include "rtabmap/core/Parameters.h"
 #include "rtabmap/utilite/UConversion.h"
+
+#include "Parameters.h"
 
 void showUsage()
 {
@@ -82,7 +83,7 @@ int main(int argc, char * argv[])
     // Create an odometry thread to process camera events, it will send OdometryEvent.
     rtabmap::ParametersMap parameters;
     parameters.insert(ParametersPair(Parameters::kOdomFeatureType(), uNumber2Str(Feature2D::kFeatureSurf)));
-    parameters.insert(ParametersPair(Parameters::kLccBowEpipolarGeometry(), uBool2Str(true)));
+    parameters.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), uBool2Str(true)));
     parameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), uNumber2Str(20)));
     OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile, parameters));
 

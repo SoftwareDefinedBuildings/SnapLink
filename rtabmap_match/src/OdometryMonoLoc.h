@@ -32,9 +32,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
-#include <rtabmap/core/Parameters.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+
+#include "Parameters.h"
 
 class UTimer;
 
@@ -85,7 +86,7 @@ private:
 
     //used by memory
     int featureType_;
-    bool bowEpipolarGeometry_;
+    bool bowPnPEstimation_;
     int bowMinInliers_;
 };
 

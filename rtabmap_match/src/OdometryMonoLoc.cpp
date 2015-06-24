@@ -27,7 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryInfo.h"
-#include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d.h"
@@ -47,6 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OdometryMonoLoc.h"
 #include "BayesFilter.h"
 #include <list>
+#include "MemoryPnP.h"
 
 namespace rtabmap {
 
@@ -80,7 +80,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     Parameters::parse(parameters, Parameters::kVhEpRansacParam1(), fundMatrixReprojError_);
     Parameters::parse(parameters, Parameters::kVhEpRansacParam2(), fundMatrixConfidence_);
     Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType_);
-    Parameters::parse(parameters, Parameters::kLccBowEpipolarGeometry(), bowEpipolarGeometry_);
+    Parameters::parse(parameters, Parameters::kLccBowPnPEstimation(), bowPnPEstimation_);
     Parameters::parse(parameters, Parameters::kLccBowMinInliers(), bowMinInliers_);
 
     // Setup memory
@@ -116,7 +116,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     customParameters.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations)));
     customParameters.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps)));
     
-    customParameters.insert(ParametersPair(Parameters::kLccBowEpipolarGeometry(), uBool2Str(bowEpipolarGeometry_)));
+    customParameters.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), uBool2Str(bowPnPEstimation_)));
 
     // add only feature stuff
     for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)

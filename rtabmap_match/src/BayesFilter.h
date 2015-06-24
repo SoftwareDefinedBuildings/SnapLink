@@ -34,7 +34,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include <set>
 #include "rtabmap/utilite/UEventsHandler.h"
-#include "rtabmap/core/Parameters.h"
+
+#include "Parameters.h"
 
 namespace rtabmap {
 
