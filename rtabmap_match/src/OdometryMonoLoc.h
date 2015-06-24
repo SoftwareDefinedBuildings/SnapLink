@@ -46,7 +46,8 @@ class ParticleFilter;
 
 class Memory;
 
-// inherit from OdometryMono rather than Odometry because RTABMap checks whether the instance of Odometry is OdometryMono
+class BayesFilter; 
+
 class RTABMAP_EXP OdometryMonoLoc : public OdometryMono
 {
 public:

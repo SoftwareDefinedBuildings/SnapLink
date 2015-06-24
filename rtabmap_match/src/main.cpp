@@ -70,8 +70,8 @@ int main(int argc, char * argv[])
     float imageRate = 1.0f;
     unsigned int imageWidth = 0;
     unsigned int imageHeight = 0;
-    Camera *camera = new CameraImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
-    CameraThread cameraThread(camera);
+    CameraCalibrated *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
+    CameraThreadNonStop cameraThread(camera);
     if(!cameraThread.init())
     {
         UERROR("Camera thread init failed!");

@@ -46,11 +46,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BayesFilter.h"
 #include <list>
 #include "rtabmap/core/Features2d.h"
+#include "rtabmap/core/Graph.h"
 
 namespace rtabmap {
 
 OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters) :
-    Odometry(parameters),
+    OdometryMono(parameters),
     flowWinSize_(Parameters::defaultOdomFlowWinSize()),
     flowIterations_(Parameters::defaultOdomFlowIterations()),
     flowEps_(Parameters::defaultOdomFlowEps()),
@@ -90,7 +91,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     customParameters.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
     int nn = Parameters::defaultOdomBowNNType();
     float nndr = Parameters::defaultOdomBowNNDR();
-    int featureType = Feature2D::kFeatureSur
+    int featureType = Feature2D::kFeatureSurf;
     int maxFeatures = Parameters::defaultOdomMaxFeatures();
     Parameters::parse(parameters, Parameters::kOdomBowNNType(), nn);
     Parameters::parse(parameters, Parameters::kOdomBowNNDR(), nndr);
@@ -233,118 +234,86 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
     Transform mapTransform;
 
-    if(memory_->getStMem().size() >= 1)
+    if(memory_->getWorkingMem().size() >= 1)
     {
-        if(localMap_.size())
+        //PnP
+        UDEBUG("PnP");
+
+        if(this->isInfoDataFilled() && info)
         {
-            //PnP
-            UDEBUG("PnP");
+            info->type = 0;
+        }
 
-            if(this->isInfoDataFilled() && info)
+        // generate kpts
+        if(memory_->update(data))
+        {
+            UDEBUG("");
+            const Signature * newS = memory_->getLastWorkingSignature();
+            UDEBUG("newWords=%d", (int)newS->getWords().size());
+            nFeatures = (int)newS->getWords().size();
+            if((int)newS->getWords().size() > this->getMinInliers())
             {
-                info->type = 0;
-            }
+                std::map<int, float> rawLikelihood;
+                std::map<int, float> adjustedLikelihood;
+                std::map<int, float> likelihood;
+                std::map<int, float> posterior;
+                std::pair<int, float> highestHypothesis(0, 0.0f);
 
-            // generate kpts
-            if(memory_->update(data))
-            {
-                UDEBUG("");
-                const Signature * newS = memory_->getLastWorkingSignature();
-                UDEBUG("newWords=%d", (int)newS->getWords().size());
-                nFeatures = (int)newS->getWords().size();
-                if((int)newS->getWords().size() > this->getMinInliers())
+                ULOGGER_INFO("computing likelihood...");
+                std::list<int> signaturesToCompare = uKeysList(memory_->getWorkingMem());
+                UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
+                rawLikelihood = memory_->computeLikelihood(newS, signaturesToCompare);
+                
+                likelihood = rawLikelihood;
+                this->adjustLikelihood(likelihood);
+
+                posterior = bayesFilter_->computePosterior(memory_, likelihood);
+                if(posterior.size())
                 {
-                    std::map<int, float> rawLikelihood;
-                    std::map<int, float> adjustedLikelihood;
-                    std::map<int, float> likelihood;
-                    std::map<int, float> posterior;
-                    std::pair<int, float> highestHypothesis(0, 0.0f);
-
-                    ULOGGER_INFO("computing likelihood...");
-                    std::list<int> signaturesToCompare = uKeysList(memory_->getWorkingMem());
-                    UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-                    rawLikelihood = memory_->computeLikelihood(newS, signaturesToCompare);
-                    
-                    likelihood = rawLikelihood;
-                    if(posterior.size())
+                    for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
                     {
-                        for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
+                        if(iter->first > 0 && iter->second > highestHypothesis.second)
                         {
-                            if(iter->first > 0 && iter->second > highestHypothesis.second)
-                            {
-                                highestHypothesis = *iter;
-                            }
+                            highestHypothesis = *iter;
                         }
-                    }
-
-
-
-                    // calculate transform between data and the most similar pose
-                    std::string rejectedMsg;
-                    int loopClosureVisualInliers = 0;
-                    double variance = 1;
-                    SensorData dataFrom = newData;
-                    dataFrom.setId(newS->id());
-                    Signature tmpTo = memory_->getSignatureData(highestHypothesis.first, true);
-                    SensorData dataTo = tmpTo.toSensorData();
-
-                    if(dataFrom.isValid() &&
-                       dataFrom.isMetric() &&
-                       dataTo.isValid() &&
-                       dataTo.isMetric() &&
-                       dataFrom.id() != Memory::kIdInvalid &&
-                       tmpTo.id() != Memory::kIdInvalid)
-                    {
-                        UDEBUG("Calculate map transform");
-                        Transform transform = memory_->computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
-                        const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                        mapTransform = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
-                    }
-                    else
-                    {
-                        UWARN("Cannot calculate transform between signatures. dataFrom.isValid() = %d, dataFrom.isMetric() = %d, dataTo.isValid() = %d, dataTo.isMetric() = %d, dataFrom.id() = %d, tmpTo.id() = %d", 
-                               dataFrom.isValid(), dataFrom.isMetric(), dataTo.isValid(), dataTo.isMetric(), dataFrom.id(), tmpTo.id());
+                        //UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
                     }
                 }
 
-                // remove new words from dictionary
-                memory_->deleteLocation(newS->id());
+                UDEBUG("highestHypothesis.first = %d", highestHypothesis.first);
+
+                // calculate transform between data and the most similar pose
+                std::string rejectedMsg;
+                int loopClosureVisualInliers = 0;
+                double variance = 1;
+                SensorData dataFrom = data;
+                dataFrom.setId(newS->id());
+                SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
+
+                if(!dataFrom.depthOrRightRaw().empty() &&
+                   !dataTo.depthOrRightRaw().empty() &&
+                   dataFrom.id() != Memory::kIdInvalid &&
+                   dataTo.id() != Memory::kIdInvalid)
+                {
+                    // really?  
+                }
+                else
+                {
+                    UDEBUG("Calculate map transform");
+                    Transform transform = memory_->computeVisualTransform(highestHypothesis.first, newS->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
+                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
+                    mapTransform = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
+
+                }
             }
-        }
-        else if(cornersMap_.size())
-        {
-            UERROR("Flow not enough high! flow=%f ki=%d", flow, oi);
+
+            // remove new words from dictionary
+            memory_->deleteLocation(newS->id());
         }
     }
     else
     {
-        //return Identity
-        output = Transform::getIdentity();
-
-            // generate kpts
-        if(memory_->update(SensorData(newFrame)))
-        {
-            const std::multimap<int, cv::KeyPoint> & words = memory_->getLastWorkingSignature()->getWords();
-            if((int)words.size() > this->getMinInliers())
-            {
-                for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
-                {
-                    cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
-                }
-                refDepth_ = data.depthOrRightRaw().clone();
-                keyFramePoses_.insert(std::make_pair(memory_->getLastSignatureId(), Transform::getIdentity()));
-            }
-            else
-            {
-                UWARN("Too low 2D corners (%d), ignoring new frame...",
-                        (int)words.size());
-                memory_->deleteLocation(memory_->getLastSignatureId());
-            }
-        }
-        else
-        {
-            UERROR("Failed creating signature");
-        }
+        UERROR("Memory not initialized. memory_->getWorkingMem().size() = %d", memory_->getWorkingMem().size());
     }
 
     memory_->emptyTrash();
@@ -369,6 +338,77 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
             !output.isNull()?"true":"false");
 
     return output;
+}
+
+void OdometryMonoLoc::adjustLikelihood(std::map<int, float> & likelihood) const
+{
+    ULOGGER_DEBUG("likelihood.size()=%d", likelihood.size());
+    UTimer timer;
+    timer.start();
+    if(likelihood.size()==0)
+    {
+        return;
+    }
+
+    // Use only non-null values (ignore virtual place)
+    std::list<float> values;
+    bool likelihoodNullValuesIgnored = true;
+    for(std::map<int, float>::iterator iter = ++likelihood.begin(); iter!=likelihood.end(); ++iter)
+    {
+        if((iter->second >= 0 && !likelihoodNullValuesIgnored) ||
+           (iter->second > 0 && likelihoodNullValuesIgnored))
+        {
+            values.push_back(iter->second);
+        }
+    }
+    UDEBUG("values.size=%d", values.size());
+
+    float mean = uMean(values);
+    float stdDev = std::sqrt(uVariance(values, mean));
+
+
+    //Adjust likelihood with mean and standard deviation (see Angeli phd)
+    float epsilon = 0.0001;
+    float max = 0.0f;
+    int maxId = 0;
+    for(std::map<int, float>::iterator iter=++likelihood.begin(); iter!= likelihood.end(); ++iter)
+    {
+        float value = iter->second;
+        if(value > mean+stdDev && mean)
+        {
+            iter->second = (value-(stdDev-epsilon))/mean;
+            if(value > max)
+            {
+                max = value;
+                maxId = iter->first;
+            }
+        }
+        else if(value == 1.0f && stdDev == 0)
+        {
+            iter->second = 1.0f;
+            if(value > max)
+            {
+                max = value;
+                maxId = iter->first;
+            }
+        }
+        else
+        {
+            iter->second = 1.0f;
+        }
+    }
+
+    if(stdDev > epsilon && max)
+    {
+        likelihood.begin()->second = mean/stdDev + 1.0f;
+    }
+    else
+    {
+        likelihood.begin()->second = 2.0f; //2 * std dev
+    }
+
+    double time = timer.ticks();
+    UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
 }
 
 } // namespace rtabmap
