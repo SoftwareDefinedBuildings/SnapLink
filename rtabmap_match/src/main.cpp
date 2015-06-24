@@ -29,18 +29,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/Parameters.h"
 #include "OdometryMonoLoc.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
 #include <stdio.h>
 
-#include "WaitCameraThread.h"
+#include "CameraThread.h"
 #include "CameraCalibrated.h"
 #include "OdometryMonoLocThread.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/utilite/UConversion.h"
 
-#include "Parameters.h"
 
 void showUsage()
 {
