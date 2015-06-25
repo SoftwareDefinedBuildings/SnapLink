@@ -82,14 +82,14 @@ int main(int argc, char * argv[])
     OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile));
 
     // Create RTAB-Map to process OdometryEvent
-    Rtabmap * rtabmap = new Rtabmap();
-    rtabmap->init();
-    RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
-    rtabmapThread.setDetectorRate(1.0f);
+    //Rtabmap * rtabmap = new Rtabmap();
+    //rtabmap->init();
+    //RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
+    //rtabmapThread.setDetectorRate(1.0f);
 
     // Setup handlers
     odomThread.registerToEventsManager();
-    rtabmapThread.registerToEventsManager();
+    //rtabmapThread.registerToEventsManager();
 
     // The RTAB-Map is subscribed by default to CameraEvent, but we want
     // RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
@@ -100,20 +100,20 @@ int main(int argc, char * argv[])
     UEventsManager::createPipe(&cameraThread, &odomThread, "CameraCalibratedEvent");
 
     // Let's start the threads
-    rtabmapThread.start();
+    //rtabmapThread.start();
     odomThread.start();
     cameraThread.start();
 
     pause();
 
     // remove handlers
-    rtabmapThread.unregisterFromEventsManager();
+    //rtabmapThread.unregisterFromEventsManager();
     odomThread.unregisterFromEventsManager();
 
     // Kill all threads
     cameraThread.join(true);
     odomThread.join(true);
-    rtabmapThread.join(true);
+    //rtabmapThread.join(true);
 
     return 0;
 }

@@ -132,6 +132,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     // parameters that makes memory do PnP localization for RGB images
     customParameters.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), "true"));
     customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
+    customParameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), "4")); 
 
     memory_ = new Memory(customParameters);
     if(!memory_->init(dbPath_, false, ParametersMap()))
@@ -228,12 +229,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
     UTimer timer;
 
-    int inliers = 0;
-    int correspondences = 0;
-    int nFeatures = 0;
-
-    Transform mapTransform;
-
     if(memory_->getWorkingMem().size() >= 1)
     {
         //PnP
@@ -250,11 +245,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
             UDEBUG("");
             const Signature * newS = memory_->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
-            nFeatures = (int)newS->getWords().size();
             if((int)newS->getWords().size() > this->getMinInliers())
             {
                 std::map<int, float> rawLikelihood;
-                std::map<int, float> adjustedLikelihood;
                 std::map<int, float> likelihood;
                 std::map<int, float> posterior;
                 std::pair<int, float> highestHypothesis(0, 0.0f);
@@ -276,7 +269,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         {
                             highestHypothesis = *iter;
                         }
-                        //UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
+                        UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
                     }
                 }
 
@@ -286,25 +279,11 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 std::string rejectedMsg;
                 int loopClosureVisualInliers = 0;
                 double variance = 1;
-                SensorData dataFrom = data;
-                dataFrom.setId(newS->id());
-                SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
 
-                if(!dataFrom.depthOrRightRaw().empty() &&
-                   !dataTo.depthOrRightRaw().empty() &&
-                   dataFrom.id() != Memory::kIdInvalid &&
-                   dataTo.id() != Memory::kIdInvalid)
-                {
-                    // really?  
-                }
-                else
-                {
-                    UDEBUG("Calculate map transform");
-                    Transform transform = memory_->computeVisualTransform(highestHypothesis.first, newS->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
-                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                    mapTransform = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
-
-                }
+                UDEBUG("Calculate map transform");
+                Transform transform = memory_->computeVisualTransform(highestHypothesis.first, newS->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
+                const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
+                output = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
             }
 
             // remove new words from dictionary
@@ -320,22 +299,10 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
     if(this->isInfoDataFilled() && info)
     {
-        //info->variance = variance;
-        info->inliers = inliers;
-        info->matches = correspondences;
-        info->features = nFeatures;
-        info->localMapSize = (int)localMap_.size();
-        info->localMap = localMap_;
+        // TODO is this function returning global transform?
     }
 
-    UINFO("Odom update=%fs tf=[%s] inliers=%d/%d, local_map[%d]=%d, accepted=%s",
-            timer.elapsed(),
-            output.prettyPrint().c_str(),
-            inliers,
-            correspondences,
-            (int)memory_->getStMem().size(),
-            (int)localMap_.size(),
-            !output.isNull()?"true":"false");
+    UDEBUG("output transform = %s", output.prettyPrint().c_str());
 
     return output;
 }
