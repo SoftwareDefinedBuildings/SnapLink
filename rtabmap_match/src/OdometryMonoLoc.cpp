@@ -80,15 +80,14 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     Parameters::parse(parameters, Parameters::kVhEpRansacParam2(), fundMatrixConfidence_);
 
     // Setup memory
-    ParametersMap customParameters;
-    customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
-    customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
-    customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-    customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-    customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
-    customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-    customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
-    customParameters.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
+    memoryParameters_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+    memoryParameters_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
+    memoryParameters_.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
+    memoryParameters_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+    memoryParameters_.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
     int nn = Parameters::defaultOdomBowNNType();
     float nndr = Parameters::defaultOdomBowNNDR();
     int featureType = Feature2D::kFeatureSurf;
@@ -97,10 +96,10 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     Parameters::parse(parameters, Parameters::kOdomBowNNDR(), nndr);
     Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType);
     Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), maxFeatures);
-    customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
-    customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
-    customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
-    customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
 
     int subPixWinSize = Parameters::defaultOdomSubPixWinSize();
     int subPixIterations = Parameters::defaultOdomSubPixIterations();
@@ -108,9 +107,9 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize);
     Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations);
     Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps);
-    customParameters.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize)));
-    customParameters.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations)));
-    customParameters.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations)));
+    memoryParameters_.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps)));
 
     // add only feature stuff
     for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
@@ -125,16 +124,16 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
             group.compare("GFTT") == 0 ||
             group.compare("BRISK") == 0)
         {
-            customParameters.insert(*iter);
+            memoryParameters_.insert(*iter);
         }
     }
 
     // parameters that makes memory do PnP localization for RGB images
-    customParameters.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), "true"));
-    customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
-    customParameters.insert(ParametersPair(Parameters::kLccBowMinInliers(), "4")); 
+    memoryParameters_.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), "true"));
+    memoryParameters_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
+    memoryParameters_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
 
-    memory_ = new Memory(customParameters);
+    memory_ = new Memory(memoryParameters_);
     if(!memory_->init(dbPath_, false, ParametersMap()))
     {
         UERROR("Error initializing the memory for Mono Odometry.");
@@ -190,6 +189,11 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
 OdometryMonoLoc::~OdometryMonoLoc()
 {
     delete memory_;
+    if(bayesFilter_)
+    {
+        delete bayesFilter_;
+        bayesFilter_ = 0;
+    }
 }
 
 void OdometryMonoLoc::reset(const Transform & initialPose)
@@ -276,14 +280,54 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 UDEBUG("highestHypothesis.first = %d", highestHypothesis.first);
 
                 // calculate transform between data and the most similar pose
-                std::string rejectedMsg;
-                int loopClosureVisualInliers = 0;
-                double variance = 1;
+                ParametersMap customParameters = memoryParameters_; // get BOW LCC parameters
+                // override some parameters
+                uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
+                uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+                uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
+                uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+                uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // bruteforce
+                uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.5"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
+                uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "2000"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+                uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
+                
+                Memory memory(customParameters);
 
-                UDEBUG("Calculate map transform");
-                Transform transform = memory_->computeVisualTransform(highestHypothesis.first, newS->id(), &rejectedMsg, &loopClosureVisualInliers, &variance);
-                const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                output = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
+                std::string rejectedMsg;
+                int visualInliers = 0;
+                double variance = 1;
+                SensorData dataFrom = data;
+                dataFrom.setId(newS->id());
+                SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
+
+                UINFO("Calculate transform between signatures. dataFrom.depthOrRightRaw().empty() = %d, dataTo.depthOrRightRaw().empty() = %d, dataFrom.id() = %d, dataTo.id() = %d", 
+                       dataFrom.depthOrRightRaw().empty(), dataTo.depthOrRightRaw().empty(), dataFrom.id(), dataTo.id());
+
+                if(//!dataFrom.depthOrRightRaw().empty() &&
+                   !dataTo.depthOrRightRaw().empty() &&
+                   dataFrom.id() != Memory::kIdInvalid &&
+                   dataTo.id() != Memory::kIdInvalid)
+                {
+                    UDEBUG("Calculate map transform with raw data");
+                    memory.update(dataTo);
+                    memory.update(dataFrom);
+                    Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance); 
+                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
+                    output = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
+                }
+                else
+                {
+                    UDEBUG("Calculate map transform with saved signatures");
+                    Transform transform = memory_->computeVisualTransform(highestHypothesis.first, newS->id(), &rejectedMsg, &visualInliers, &variance);
+                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
+                    output = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
+
+                }
             }
 
             // remove new words from dictionary

@@ -84,6 +84,7 @@ private:
 
     std::string dbPath_;
     BayesFilter * bayesFilter_;
+    ParametersMap memoryParameters_;
 };
 
 } /* namespace rtabmap */
