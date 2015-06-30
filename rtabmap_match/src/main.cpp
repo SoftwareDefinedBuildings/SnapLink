@@ -36,7 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 
 #include "CameraThreadNonStop.h"
-#include "CameraCalibrated.h"
+#include "CameraRGBCalibrated.h"
 #include "OdometryMonoLocThread.h"
 
 
@@ -68,13 +68,12 @@ int main(int argc, char * argv[])
     int startAt = 1;
     bool refreshDir = true;
     float imageRate = 1.0f;
-    unsigned int imageWidth = 0;
-    unsigned int imageHeight = 0;
-    CameraCalibrated *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, imageWidth, imageHeight);
+    Transform localTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
+    Camera *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, localTransform);
     CameraThreadNonStop cameraThread(camera);
-    if(!cameraThread.init())
+    if(!camera->init())
     {
-        UERROR("Camera thread init failed!");
+        UERROR("Camera init failed!");
         exit(1);
     }
 

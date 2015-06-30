@@ -25,93 +25,82 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraEvent.h"
+
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "CameraThreadNonStop.h"
-#include "CameraCalibrated.h"
+#include "CameraRGBCalibrated.h"
 #include "CameraCalibratedEvent.h"
 
 namespace rtabmap
 {
 
 // ownership transferred
-CameraThreadNonStop::CameraThreadNonStop(CameraCalibrated * camera) :
-        _cameraCalibrated(camera),
-        _seq(0)
+CameraThreadNonStop::CameraThreadNonStop(Camera * camera) :
+        _camera(camera),
+        _mirroring(false),
+        _colorOnly(true)
 {
-    UASSERT(_cameraCalibrated != 0);
+    UASSERT(_camera != 0);
 }
 
 CameraThreadNonStop::~CameraThreadNonStop()
 {
     join(true);
-    if(_cameraCalibrated)
+    if(_camera)
     {
-        delete _cameraCalibrated;
+        delete _camera;
     }
 }
 
 void CameraThreadNonStop::setImageRate(float imageRate)
 {
     _imageRate = imageRate;
-    if(_cameraCalibrated)
+    if(_camera)
     {
-        _cameraCalibrated->setImageRate(imageRate);
+        _camera->setImageRate(imageRate);
     }
-}
-
-bool CameraThreadNonStop::init()
-{
-    if(!this->isRunning())
-    {
-        _seq = 0;
-        if(_cameraCalibrated)
-        {
-            return _cameraCalibrated->init();
-        }
-
-        // Added sleep time to ignore first frames (which are darker)
-        uSleep(1000);
-    }
-    else
-    {
-        UERROR("Cannot initialize the camera because it is already running...");
-    }
-    return false;
 }
 
 void CameraThreadNonStop::mainLoop()
 {
     UTimer timer;
     UDEBUG("");
-    cv::Mat rgb, depth, gray;
-    float fx = 0.0f;
-    float fyOrBaseline = 0.0f;
-    float cx = 0.0f;
-    float cy = 0.0f;
-    double stamp = UTimer::now();
-    if(_cameraCalibrated)
-    {
-        _cameraCalibrated->takeImage(rgb, fx, fyOrBaseline, cx, cy);
-    }
+    SensorData data = _camera->takeImage();
 
-    if(!rgb.empty())
+    if(!data.imageRaw().empty())
     {
-        // enforce gray scale images
-        if (rgb.channels() > 1) {
-            cv::cvtColor(rgb, gray, cv::COLOR_BGR2GRAY);
-        } else {
-            gray = rgb.clone();
-        }
-
-        if(_cameraCalibrated)
+        if(_colorOnly && !data.depthRaw().empty())
         {
-            // hardcoded local transform that's applied to all RGBD cameras (I guess)
-            Transform localTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
-            SensorData data(gray, depth, CameraModel(fx, fyOrBaseline, cx, cy, localTransform), ++_seq, stamp);
-            this->post(new CameraCalibratedEvent(data, "Image"));
+            data.setDepthOrRightRaw(cv::Mat());
         }
+        if(_mirroring && data.cameraModels().size() == 1)
+        {
+            cv::Mat tmpRgb;
+            cv::flip(data.imageRaw(), tmpRgb, 1);
+            data.setImageRaw(tmpRgb);
+            if(data.cameraModels()[0].cx())
+            {
+                CameraModel tmpModel(
+                        data.cameraModels()[0].fx(),
+                        data.cameraModels()[0].fy(),
+                        float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
+                        data.cameraModels()[0].cy(),
+                        data.cameraModels()[0].localTransform());
+                data.setCameraModel(tmpModel);
+            }
+            if(!data.depthRaw().empty())
+            {
+                cv::Mat tmpDepth;
+                cv::flip(data.depthRaw(), tmpDepth, 1);
+                data.setDepthOrRightRaw(tmpDepth);
+            }
+        }
+
+        this->post(new CameraCalibratedEvent(data, _camera->getSerial()));
     }
     else if(!this->isKilled())
     {

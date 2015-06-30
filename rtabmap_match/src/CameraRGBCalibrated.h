@@ -27,51 +27,53 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#include <rtabmap/utilite/UEvent.h>
-#include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
+#include <opencv2/highgui/highgui.hpp>
+#include "rtabmap/core/Camera.h"
+#include <set>
+#include <stack>
+#include <list>
+#include <vector>
+
+class UDirectory;
+class UTimer;
 
 namespace rtabmap
 {
 
-class CameraCalibratedEvent :
-    public UEvent
+/////////////////////////
+// CameraCalibratedImages
+/////////////////////////
+class RTABMAP_EXP CameraCalibratedImages :
+    public Camera
 {
 public:
-    enum Code {
-        kCodeImageCalibrated,
-        kCodeNoMoreImages
-    };
+    CameraCalibratedImages(const std::string & path,
+            int startAt = 1,
+            bool refreshDir = false,
+            float imageRate = 0,
+            const Transform & localTransform = Transform::getIdentity());
+    virtual ~CameraCalibratedImages();
 
-public:
-    CameraCalibratedEvent(const cv::Mat & image, int seq=0, double stamp = 0.0, const std::string & cameraName = "") :
-        UEvent(kCodeImageCalibrated),
-        data_(image, seq, stamp),
-        cameraName_(cameraName)
-    {
-    }
+    virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+    virtual bool isCalibrated() const;
+    virtual std::string getSerial() const;
+    std::string getPath() const {return _path;}
+    unsigned int imagesCount() const;
 
-    CameraCalibratedEvent() :
-        UEvent(kCodeNoMoreImages)
-    {
-    }
-
-    CameraCalibratedEvent(const SensorData & data, const std::string & cameraName = "") :
-        UEvent(kCodeImageCalibrated),
-        data_(data),
-        cameraName_(cameraName)
-    {
-    }
-
-    // Image or descriptors
-    const SensorData & data() const {return data_;}
-    const std::string & cameraName() const {return cameraName_;}
-
-    virtual ~CameraCalibratedEvent() {}
-    virtual std::string getClassName() const {return std::string("CameraCalibratedEvent");}
+protected:
+    virtual SensorData captureImage();
 
 private:
-    SensorData data_;
-    std::string cameraName_;
+    std::string _path;
+    int _startAt;
+    // If the list of files in the directory is refreshed
+    // on each call of takeImage()
+    bool _refreshDir;
+    int _count;
+    UDirectory * _dir;
+    std::string _lastFileName;
 };
 
 } // namespace rtabmap

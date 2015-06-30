@@ -129,7 +129,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     }
 
     // parameters that makes memory do PnP localization for RGB images
-    memoryParameters_.insert(ParametersPair(Parameters::kLccBowPnPEstimation(), "true"));
+    memoryParameters_.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
     memoryParameters_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
     memoryParameters_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
 

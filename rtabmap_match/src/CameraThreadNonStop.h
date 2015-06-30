@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap
 {
 
-class CameraCalibrated;
+class Camera;
 
 /**
  * Class CameraThreadNonStop
@@ -47,24 +47,26 @@ class RTABMAP_EXP CameraThreadNonStop :
 {
 public:
     // ownership transferred
-    CameraThreadNonStop(CameraCalibrated * camera);
+    CameraThreadNonStop(Camera * camera);
     virtual ~CameraThreadNonStop();
 
-    bool init(); // call camera->init()
+    void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
+    void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
 
     //getters
     bool isPaused() const {return !this->isRunning();}
     bool isCapturing() const {return this->isRunning();}
     void setImageRate(float imageRate);
 
-    CameraCalibrated * cameraCalibrated() {return _cameraCalibrated;} // return null if not set, valid until CameraThreadNonStop is deleted
+    Camera * camera() {return _camera;} // return null if not set, valid until CameraThreadNonStop is deleted
 
 private:
     virtual void mainLoop();
 
 private:
-    CameraCalibrated * _cameraCalibrated;
-    int _seq;
+    Camera * _camera;
+    bool _mirroring;
+    bool _colorOnly;
     float _imageRate;
 };
 
