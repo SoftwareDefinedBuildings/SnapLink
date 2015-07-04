@@ -109,7 +109,7 @@ bool CameraCalibratedImages::isCalibrated() const
 
 std::string CameraCalibratedImages::getSerial() const
 {
-    return "";
+    return _lastFileName;  // return last file name for processing later
 }
 
 unsigned int CameraCalibratedImages::imagesCount() const
@@ -156,6 +156,7 @@ SensorData CameraCalibratedImages::captureImage()
                 {
                     fullPath = _path + fileName;
                 }
+                _lastFileName = fileName;
                 if(fileName.size())
                 {
                     ULOGGER_DEBUG("Loading image : %s", fullPath.c_str());
