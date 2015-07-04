@@ -54,13 +54,14 @@ private:
     // MAIN LOOP
     //============================================================
     void mainLoop();
-    void addData(const SensorData & data);
-    bool getData(SensorData & data);
+    void addData(const SensorData & data, const std::string & fileName="");
+    bool getData(SensorData & data, std::string & fileName);
 
 private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
     std::list<SensorData> _dataBuffer;
+    std::list<std::string> _fileNameBuffer;
     Odometry * _odometry;
     unsigned int _dataBufferMaxSize;
     bool _resetOdometry;

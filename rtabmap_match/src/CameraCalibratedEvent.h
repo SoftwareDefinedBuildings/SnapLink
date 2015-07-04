@@ -71,7 +71,7 @@ public:
 
 private:
     SensorData data_;
-    std::string cameraName_;
+    std::string cameraName_; // cameraName is filename in this class
 };
 
 } // namespace rtabmap
