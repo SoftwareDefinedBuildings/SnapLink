@@ -1,0 +1,20 @@
+image_width: 2560
+image_height: 1920
+camera_name: LG_G2_Mini_Back
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [2248.90280131777, 0, 1303.16905149739, 0, 2249.05827505121f, 936.309085911272, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 3
+  data: [0.134408880645970, -0.177147104797916, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [2248.90280131777, 0, 1303.16905149739, 0, 0, 2249.05827505121f, 936.309085911272, 0, 0, 0, 1, 0]

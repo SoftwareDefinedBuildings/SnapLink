@@ -291,10 +291,11 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // bruteforce
                 uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.5"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
-                uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "2000"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "1000"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "20"));
                 
                 Memory memory(customParameters);
 
@@ -305,29 +306,45 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 dataFrom.setId(newS->id());
                 SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
 
-                UINFO("Calculate transform between signatures. dataFrom.depthOrRightRaw().empty() = %d, dataTo.depthOrRightRaw().empty() = %d, dataFrom.id() = %d, dataTo.id() = %d", 
-                       dataFrom.depthOrRightRaw().empty(), dataTo.depthOrRightRaw().empty(), dataFrom.id(), dataTo.id());
-
-                if(//!dataFrom.depthOrRightRaw().empty() &&
-                   !dataTo.depthOrRightRaw().empty() &&
+                if(!dataTo.depthOrRightRaw().empty() &&
                    dataFrom.id() != Memory::kIdInvalid &&
                    dataTo.id() != Memory::kIdInvalid)
                 {
                     UDEBUG("Calculate map transform with raw data");
                     memory.update(dataTo);
                     memory.update(dataFrom);
-                    Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance); 
-                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                    output = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
+                    Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+
+                    if(!transform.isNull()) {
+                        const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
+                        output = mostSimilarS->getPose() * transform.inverse(); // this is the final R and t
+                    }
+                    else
+                    {
+                        UWARN("transform is null");
+                    }
+
+                    /*
+                    CameraModel cmOld = mostSimilarS->sensorData().cameraModels()[0];
+                    UDEBUG("cmOld.fx() = %f, cmOld.fy() = %f, cmOld.cx() = %f, cmOld.cy() = %f, cmOld.localTranform() = %s", cmOld.fx(), cmOld.fy(), cmOld.cx(), cmOld.cy(), cmOld.localTransform().prettyPrint().c_str());
+                    CameraModel cmNew = newS->sensorData().cameraModels()[0];
+                    UDEBUG("cmNew.fx() = %f, cmNew.fy() = %f, cmNew.cx() = %f, cmNew.cy() = %f, cmNew.localTranform() = %s", cmNew.fx(), cmNew.fy(), cmNew.cx(), cmNew.cy(), cmNew.localTransform().prettyPrint().c_str());
+                    UDEBUG("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
+                    UDEBUG("transform = %s", transform.prettyPrint().c_str());
+                    UDEBUG("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
+                    UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
+                    UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
+                    */
                 }
                 else
                 {
-                    UDEBUG("Calculate map transform with saved signatures");
-                    Transform transform = memory_->computeVisualTransform(highestHypothesis.first, newS->id(), &rejectedMsg, &visualInliers, &variance);
-                    const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                    output = mostSimilarS->getPose() * transform.inverse();// * newS->getPose().inverse(); // this is the final R and t
-
+                    UWARN("Data incomplete. dataTo.depthOrRightRaw().empty() = %d, dataFrom.id() = %d, dataTo.id() = %d", 
+                            dataTo.depthOrRightRaw().empty(), dataFrom.id(), dataTo.id());
                 }
+            }
+            else
+            {
+                UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
             }
 
             // remove new words from dictionary
