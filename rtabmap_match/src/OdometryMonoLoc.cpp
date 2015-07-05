@@ -283,7 +283,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         {
                             highestHypothesis = *iter;
                         }
-                        UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
+                        //UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
                     }
                 }
 
@@ -305,7 +305,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "20"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "10"));
                 
                 Memory memory(customParameters);
 
@@ -325,9 +325,22 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                     memory.update(dataFrom);
                     Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
 
+                    infoErr->oldImgId = highestHypothesis.first;
                     if(!transform.isNull()) {
                         const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
                         output = mostSimilarS->getPose() * transform.inverse(); // this is the final R and t
+
+                        /*
+                        CameraModel cmOld = mostSimilarS->sensorData().cameraModels()[0];
+                        UDEBUG("cmOld.fx() = %f, cmOld.fy() = %f, cmOld.cx() = %f, cmOld.cy() = %f, cmOld.localTranform() = %s", cmOld.fx(), cmOld.fy(), cmOld.cx(), cmOld.cy(), cmOld.localTransform().prettyPrint().c_str());
+                        CameraModel cmNew = newS->sensorData().cameraModels()[0];
+                        UDEBUG("cmNew.fx() = %f, cmNew.fy() = %f, cmNew.cx() = %f, cmNew.cy() = %f, cmNew.localTranform() = %s", cmNew.fx(), cmNew.fy(), cmNew.cx(), cmNew.cy(), cmNew.localTransform().prettyPrint().c_str());
+                        */
+                        UDEBUG("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
+                        UDEBUG("transform = %s", transform.prettyPrint().c_str());
+                        UDEBUG("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
+                        UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
+                        UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
                     }
                     else
                     {
@@ -350,18 +363,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                             exit(1);
                         }
                     }
-
-                    /*
-                    CameraModel cmOld = mostSimilarS->sensorData().cameraModels()[0];
-                    UDEBUG("cmOld.fx() = %f, cmOld.fy() = %f, cmOld.cx() = %f, cmOld.cy() = %f, cmOld.localTranform() = %s", cmOld.fx(), cmOld.fy(), cmOld.cx(), cmOld.cy(), cmOld.localTransform().prettyPrint().c_str());
-                    CameraModel cmNew = newS->sensorData().cameraModels()[0];
-                    UDEBUG("cmNew.fx() = %f, cmNew.fy() = %f, cmNew.cx() = %f, cmNew.cy() = %f, cmNew.localTranform() = %s", cmNew.fx(), cmNew.fy(), cmNew.cx(), cmNew.cy(), cmNew.localTransform().prettyPrint().c_str());
-                    UDEBUG("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
-                    UDEBUG("transform = %s", transform.prettyPrint().c_str());
-                    UDEBUG("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
-                    UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
-                    UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
-                    */
                 }
                 else
                 {

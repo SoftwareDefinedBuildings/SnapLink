@@ -118,22 +118,22 @@ void OdometryMonoLocThread::mainLoop()
             if(info.err == 1)
             {
                 UWARN("Fail to localize %s because the new image has no enough words", fileName.c_str());
-                errFileNoWordNewImg << fileName << std::endl;
+                errFileNoWordNewImg << fileName << ", " << info.oldImgId << std::endl;
             }
             else if (info.err == 2)
             {
                 UWARN("Fail to localize %s because they have no enough inliers", fileName.c_str());
-                errFileInlier << fileName << std::endl;
+                errFileInlier << fileName << ", " << info.oldImgId << std::endl;
             }
             else if (info.err == 3)
             {
                 UWARN("Fail to localize %s because the old image has no enough words", fileName.c_str());
-                errFileNoWordOldImg << fileName << std::endl;
+                errFileNoWordOldImg << fileName << ", " << info.oldImgId << std::endl;
             }
             else if (info.err == 4)
             {
                 UWARN("Fail to localize %s because the rotation is too large", fileName.c_str());
-                errFileLargeRot << fileName << std::endl;
+                errFileLargeRot << fileName << ", " << info.oldImgId << std::endl;
             }
             else
             {
