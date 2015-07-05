@@ -63,7 +63,8 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     fundMatrixReprojError_(Parameters::defaultVhEpRansacParam1()),
     fundMatrixConfidence_(Parameters::defaultVhEpRansacParam2()),
     maxVariance_(Parameters::defaultOdomMonoMaxVariance()),
-    dbPath_(dbPath)
+    dbPath_(dbPath),
+    bayesFilter_(0)
 {
     Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
     Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
@@ -334,6 +335,10 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         if(rejectedMsg.find("Not enough inliers ") == 0)
                         {
                             infoErr->err = 2;
+                        }
+                        else if(rejectedMsg.find("Not enough features in images (old=") == 0)
+                        {
+                            infoErr->err = 3;
                         }
                         else
                         {

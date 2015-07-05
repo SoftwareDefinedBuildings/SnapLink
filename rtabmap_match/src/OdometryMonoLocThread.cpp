@@ -43,8 +43,9 @@ OdometryMonoLocThread::OdometryMonoLocThread(Odometry * odometry, unsigned int d
     _resetOdometry(false)
 {
     UASSERT(_odometry != 0);
-    errFileNoWord.open("errFileNoWord.txt");
+    errFileNoWordNewImg.open("errFileNoWordNewImg.txt");
     errFileInlier.open("errFileInlier.txt");
+    errFileNoWordOldImg.open("errFileNoWordOldImg.txt");
 }
 
 OdometryMonoLocThread::~OdometryMonoLocThread()
@@ -55,8 +56,9 @@ OdometryMonoLocThread::~OdometryMonoLocThread()
     {
         delete _odometry;
     }
-    errFileNoWord.close();
+    errFileNoWordNewImg.close();
     errFileInlier.close();
+    errFileNoWordOldImg.close();
     UDEBUG("");
 }
 
@@ -113,13 +115,18 @@ void OdometryMonoLocThread::mainLoop()
         {
             if(info.err == 1)
             {
-                UWARN("Fail to localize %s because it has no enough words", fileName.c_str());
-                errFileNoWord << fileName << std::endl;
+                UWARN("Fail to localize %s because the new image has no enough words", fileName.c_str());
+                errFileNoWordNewImg << fileName << std::endl;
             }
             else if (info.err == 2)
             {
-                UWARN("Fail to localize %s because it has no enough inliers", fileName.c_str());
+                UWARN("Fail to localize %s because they have no enough inliers", fileName.c_str());
                 errFileInlier << fileName << std::endl;
+            }
+            else if (info.err == 3)
+            {
+                UWARN("Fail to localize %s because the old image has no enough words", fileName.c_str());
+                errFileNoWordOldImg << fileName << std::endl;
             }
             else
             {

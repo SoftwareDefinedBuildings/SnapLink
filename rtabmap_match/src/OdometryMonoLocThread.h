@@ -68,8 +68,9 @@ private:
     Odometry * _odometry;
     unsigned int _dataBufferMaxSize;
     bool _resetOdometry;
-    std::ofstream errFileNoWord;
+    std::ofstream errFileNoWordNewImg;
     std::ofstream errFileInlier;
+    std::ofstream errFileNoWordOldImg;
 };
 
 } // namespace rtabmap
