@@ -207,12 +207,14 @@ SensorData CameraCalibratedImages::captureImage()
     //float cx = 1303.16905149739f;
     //float cy = 936.309085911272f;
     //Transform localTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
+    
     // hardcoded for map1_10Hz
     float fx = 525.0f;
     float fyOrBaseline = 525.0f;
-    float cx = 0.0f;
-    float cy = 0.0f;
+    float cx = 320.0f;
+    float cy = 240.0f;
     Transform localTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
+    
     double stamp = UTimer::now();
     int seq = 0;
     

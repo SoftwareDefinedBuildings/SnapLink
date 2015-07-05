@@ -44,6 +44,7 @@ public:
     }
 
     int err; // 0 = success, 1 = no enough words new image, 2 = no enough inliers, 3 = no enough words old image, 4 = too large rotation
+    int oldImgId;
 };
 
 }
