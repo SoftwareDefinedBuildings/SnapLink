@@ -25,54 +25,27 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYTHREAD_H_
-#define ODOMETRYTHREAD_H_
+#ifndef ODOMETRYINFOERR_H_
+#define ODOMETRYINFOERR_H_
 
-#include <rtabmap/core/RtabmapExp.h>
-#include <rtabmap/core/SensorData.h>
-#include <rtabmap/utilite/UThread.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <list>
+#include <map>
 
-#include <iostream>
-#include <fstream>
+#include "rtabmap/core/OdometryInfo.h"
 
 namespace rtabmap {
 
-class Odometry;
-
-class RTABMAP_EXP OdometryMonoLocThread : public UThread, public UEventsHandler {
+class OdometryInfoErr : public OdometryInfo
+{
 public:
-    // take ownership of Odometry
-    OdometryMonoLocThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);
-    virtual ~OdometryMonoLocThread();
+    OdometryInfoErr() :
+        err(0)
+    {
+        OdometryInfo();
+    }
 
-protected:
-    virtual void handleEvent(UEvent * event);
-
-private:
-    void mainLoopKill();
-
-    //============================================================
-    // MAIN LOOP
-    //============================================================
-    void mainLoop();
-    void addData(const SensorData & data, const std::string & fileName="");
-    bool getData(SensorData & data, std::string & fileName);
-
-private:
-    USemaphore _dataAdded;
-    UMutex _dataMutex;
-    std::list<SensorData> _dataBuffer;
-    std::list<std::string> _fileNameBuffer;
-    Odometry * _odometry;
-    unsigned int _dataBufferMaxSize;
-    bool _resetOdometry;
-    std::ofstream errFileNoWord;
-    std::ofstream errFileInlier;
+    int err; // 0 = success, 1 = no enough word, 2 = no enough inliers 
 };
 
-} // namespace rtabmap
+}
 
-
-#endif /* ODOMETRYTHREAD_H_ */
+#endif /* ODOMETRYINFOERR_H_ */

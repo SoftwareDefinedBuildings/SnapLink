@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/util3d_transforms.h"
@@ -47,6 +46,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
+#include "OdometryInfoErr.h"
 
 namespace rtabmap {
 
@@ -229,6 +229,15 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         return output;
     }
 
+    // we don't check whether it is really OdometryInfoErr *
+    // only OdometryMonoLocThread calls this through Odometry.process
+    OdometryInfoErr * infoErr = (OdometryInfoErr *)info;
+    if(infoErr == 0)
+    {
+        UERROR("info has to be not NULL in OdometryMonoLoc");
+        return output;
+    }
+
     const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
 
     UTimer timer;
@@ -238,9 +247,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         //PnP
         UDEBUG("PnP");
 
-        if(this->isInfoDataFilled() && info)
+        if(this->isInfoDataFilled() && infoErr)
         {
-            info->type = 0;
+            infoErr->type = 0;
         }
 
         // generate kpts
@@ -321,7 +330,16 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                     }
                     else
                     {
-                        UWARN("transform is null");
+                        UWARN("transform is null, rejectMsg = %s", rejectedMsg.c_str());
+                        if(rejectedMsg.find("Not enough inliers ") == 0)
+                        {
+                            infoErr->err = 2;
+                        }
+                        else
+                        {
+                            UERROR("Unkonw error");
+                            exit(1);
+                        }
                     }
 
                     /*
@@ -345,6 +363,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
             else
             {
                 UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
+                infoErr->err = 1;
             }
 
             // remove new words from dictionary
@@ -358,7 +377,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
     memory_->emptyTrash();
 
-    if(this->isInfoDataFilled() && info)
+    if(this->isInfoDataFilled() && infoErr)
     {
         // TODO is this function returning global transform?
     }

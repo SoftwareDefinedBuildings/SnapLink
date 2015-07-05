@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -34,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OdometryMonoLocThread.h"
 #include "CameraCalibratedEvent.h"
 #include "OdometryMonoLoc.h"
+#include "OdometryInfoErr.h"
 
 namespace rtabmap {
 
@@ -43,6 +43,8 @@ OdometryMonoLocThread::OdometryMonoLocThread(Odometry * odometry, unsigned int d
     _resetOdometry(false)
 {
     UASSERT(_odometry != 0);
+    errFileNoWord.open("errFileNoWord.txt");
+    errFileInlier.open("errFileInlier.txt");
 }
 
 OdometryMonoLocThread::~OdometryMonoLocThread()
@@ -53,6 +55,8 @@ OdometryMonoLocThread::~OdometryMonoLocThread()
     {
         delete _odometry;
     }
+    errFileNoWord.close();
+    errFileInlier.close();
     UDEBUG("");
 }
 
@@ -100,11 +104,29 @@ void OdometryMonoLocThread::mainLoop()
     std::string fileName;
     if(getData(data, fileName))
     {
-        OdometryInfo info;
+        OdometryInfoErr info;
         Transform pose = _odometry->process(data, &info);
         // a null pose notify that odometry could not be computed
         double variance = info.variance>0?info.variance:1;
         //this->post(new OdometryEvent(data, pose, variance, variance, info));
+        if(pose.isNull())
+        {
+            if(info.err == 1)
+            {
+                UWARN("Fail to localize %s because it has no enough words", fileName.c_str());
+                errFileNoWord << fileName << std::endl;
+            }
+            else if (info.err == 2)
+            {
+                UWARN("Fail to localize %s because it has no enough inliers", fileName.c_str());
+                errFileInlier << fileName << std::endl;
+            }
+            else
+            {
+                UWARN("Unkown error");
+                exit(1);
+            }
+        }
     }
 }
 
