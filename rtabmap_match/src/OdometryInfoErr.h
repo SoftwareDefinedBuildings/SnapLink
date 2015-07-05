@@ -43,7 +43,7 @@ public:
         OdometryInfo();
     }
 
-    int err; // 0 = success, 1 = no enough word, 2 = no enough inliers 
+    int err; // 0 = success, 1 = no enough words new image, 2 = no enough inliers, 3 = no enough words old image
 };
 
 }
