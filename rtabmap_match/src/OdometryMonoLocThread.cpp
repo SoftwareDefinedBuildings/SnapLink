@@ -46,6 +46,7 @@ OdometryMonoLocThread::OdometryMonoLocThread(Odometry * odometry, unsigned int d
     errFileNoWordNewImg.open("errFileNoWordNewImg.txt");
     errFileInlier.open("errFileInlier.txt");
     errFileNoWordOldImg.open("errFileNoWordOldImg.txt");
+    errFileLargeRot.open("errFileLargeRot.txt");
 }
 
 OdometryMonoLocThread::~OdometryMonoLocThread()
@@ -59,6 +60,7 @@ OdometryMonoLocThread::~OdometryMonoLocThread()
     errFileNoWordNewImg.close();
     errFileInlier.close();
     errFileNoWordOldImg.close();
+    errFileLargeRot.close();
     UDEBUG("");
 }
 
@@ -127,6 +129,11 @@ void OdometryMonoLocThread::mainLoop()
             {
                 UWARN("Fail to localize %s because the old image has no enough words", fileName.c_str());
                 errFileNoWordOldImg << fileName << std::endl;
+            }
+            else if (info.err == 4)
+            {
+                UWARN("Fail to localize %s because the rotation is too large", fileName.c_str());
+                errFileLargeRot << fileName << std::endl;
             }
             else
             {
