@@ -340,6 +340,10 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         {
                             infoErr->err = 3;
                         }
+                        else if(rejectedMsg.find("Too large rotation detected! (roll=") == 0)
+                        {
+                            infoErr->err = 4;
+                        }
                         else
                         {
                             UERROR("Unkonw error");

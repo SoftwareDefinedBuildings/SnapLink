@@ -71,6 +71,7 @@ private:
     std::ofstream errFileNoWordNewImg;
     std::ofstream errFileInlier;
     std::ofstream errFileNoWordOldImg;
+    std::ofstream errFileLargeRot;
 };
 
 } // namespace rtabmap
