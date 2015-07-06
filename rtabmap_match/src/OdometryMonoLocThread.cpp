@@ -109,6 +109,7 @@ void OdometryMonoLocThread::mainLoop()
     if(getData(data, fileName))
     {
         OdometryInfoErr info;
+        info.fileName = fileName;
         Transform pose = _odometry->process(data, &info);
         // a null pose notify that odometry could not be computed
         double variance = info.variance>0?info.variance:1;

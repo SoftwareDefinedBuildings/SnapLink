@@ -36,6 +36,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
+#include <iostream>
+#include <fstream>
+
 class UTimer;
 
 namespace rtabmap {
@@ -85,6 +88,7 @@ private:
     std::string dbPath_;
     BayesFilter * bayesFilter_;
     ParametersMap memoryParameters_;
+    std::ofstream transformFile;
 };
 
 } /* namespace rtabmap */
