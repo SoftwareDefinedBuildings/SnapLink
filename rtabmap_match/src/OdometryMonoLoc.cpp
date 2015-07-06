@@ -185,6 +185,9 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     {
         bayesFilter_->parseParameters(parameters);
     }
+    
+    transformFile.open("transform.csv");
+    transformFile << "filename, old_img_id, x, y, z, roll, pitch, yaw, variance" << std::endl;
 }
 
 OdometryMonoLoc::~OdometryMonoLoc()
@@ -195,6 +198,7 @@ OdometryMonoLoc::~OdometryMonoLoc()
         delete bayesFilter_;
         bayesFilter_ = 0;
     }
+    transformFile.close();
 }
 
 void OdometryMonoLoc::reset(const Transform & initialPose)
@@ -324,6 +328,11 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                     memory.update(dataTo);
                     memory.update(dataFrom);
                     Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+
+                    float x, y, z, roll, pitch, yaw;
+                    transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+                    transformFile << infoErr->fileName << ", " << highestHypothesis.first << ", " << x << ", " << y << ", " << z << ", " << roll << ", " << pitch << ", " << yaw << ", " << variance << std::endl; 
+
 
                     infoErr->oldImgId = highestHypothesis.first;
                     if(!transform.isNull()) {
