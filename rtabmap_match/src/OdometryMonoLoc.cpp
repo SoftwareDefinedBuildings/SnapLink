@@ -309,7 +309,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "10"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "7"));
                 
                 Memory memory(customParameters);
 
@@ -383,6 +383,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
             {
                 UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
                 infoErr->err = 1;
+                transformFile << infoErr->fileName << ", , , , , , , , " << std::endl; 
             }
 
             // remove new words from dictionary
