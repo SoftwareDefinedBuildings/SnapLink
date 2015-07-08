@@ -51,7 +51,7 @@ class Memory;
 
 class BayesFilter; 
 
-class RTABMAP_EXP OdometryMonoLoc : public OdometryMono
+class RTABMAP_EXP OdometryMonoLoc : public Odometry
 {
 public:
     OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
@@ -70,6 +70,12 @@ private:
     double flowEps_;
     int flowMaxLevel_;
 
+    int stereoWinSize_;
+    int stereoIterations_;
+    double stereoEps_;
+    int stereoMaxLevel_;
+    float stereoMaxSlope_;
+
     Memory * memory_;
     int localHistoryMaxSize_;
     float initMinFlow_;
@@ -78,7 +84,7 @@ private:
     float fundMatrixReprojError_;
     float fundMatrixConfidence_;
 
-    cv::Mat refDepth_;
+    cv::Mat refDepthOrRight_;    
     std::map<int, cv::Point2f> cornersMap_;
     std::multimap<int, cv::Point3f> localMap_;
     std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
