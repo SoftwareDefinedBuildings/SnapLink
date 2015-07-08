@@ -51,11 +51,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters) :
-    OdometryMono(parameters),
+    Odometry(parameters),
     flowWinSize_(Parameters::defaultOdomFlowWinSize()),
     flowIterations_(Parameters::defaultOdomFlowIterations()),
     flowEps_(Parameters::defaultOdomFlowEps()),
     flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
+    stereoWinSize_(Parameters::defaultStereoWinSize()),
+    stereoIterations_(Parameters::defaultStereoIterations()),
+    stereoEps_(Parameters::defaultStereoEps()),
+    stereoMaxLevel_(Parameters::defaultStereoMaxLevel()),
+    stereoMaxSlope_(Parameters::defaultStereoMaxSlope()),
     localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
     initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
     initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
@@ -71,6 +76,12 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
     Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
     Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
+
+    Parameters::parse(parameters, Parameters::kStereoWinSize(), stereoWinSize_);
+    Parameters::parse(parameters, Parameters::kStereoIterations(), stereoIterations_);
+    Parameters::parse(parameters, Parameters::kStereoEps(), stereoEps_);
+    Parameters::parse(parameters, Parameters::kStereoMaxLevel(), stereoMaxLevel_);
+    Parameters::parse(parameters, Parameters::kStereoMaxSlope(), stereoMaxSlope_);
 
     Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
     Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
@@ -206,7 +217,7 @@ void OdometryMonoLoc::reset(const Transform & initialPose)
     Odometry::reset(initialPose);
     memory_->init("", false, ParametersMap());
     localMap_.clear();
-    refDepth_ = cv::Mat();
+    refDepthOrRight_ = cv::Mat();
     cornersMap_.clear();
     keyFrameWords3D_.clear();
     keyFramePoses_.clear();
