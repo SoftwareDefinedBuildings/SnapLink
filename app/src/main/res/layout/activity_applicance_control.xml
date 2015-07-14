@@ -1,0 +1,67 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".ApplicanceControl">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/imageView"
+        android:contentDescription="@string/img_desc" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/turn_on"
+        android:id="@+id/on_button"
+        android:layout_marginRight="12dp"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="28dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:textSize="11pt" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/turn_off"
+        android:id="@+id/off_button"
+        android:layout_below="@+id/on_button"
+        android:layout_alignLeft="@+id/on_button"
+        android:layout_alignStart="@+id/on_button"
+        android:textSize="11pt" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/dim_up"
+        android:id="@+id/dim_up_button"
+        android:layout_below="@+id/dim_label"
+        android:layout_alignRight="@+id/dim_label"
+        android:layout_alignEnd="@+id/dim_label"
+        android:textSize="12pt" />
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/dim_down"
+        android:id="@+id/dim_down_button"
+        android:layout_below="@+id/dim_up_button"
+        android:layout_alignLeft="@+id/dim_up_button"
+        android:layout_alignStart="@+id/dim_up_button"
+        android:textSize="12pt" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="@string/dim_text"
+        android:id="@+id/dim_label"
+        android:layout_marginTop="23dp"
+        android:layout_below="@+id/off_button"
+        android:layout_alignRight="@+id/off_button"
+        android:layout_alignEnd="@+id/off_button" />
+</RelativeLayout>

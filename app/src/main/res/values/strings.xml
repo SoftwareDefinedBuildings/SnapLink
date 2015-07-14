@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">BuildingModel</string>
+    <string name="img_desc">Background Image</string>
+    <string name="turn_on">ON</string>
+    <string name="turn_off">OFF</string>
+    <string name="dim_text">Dimmer</string>
+    <string name="dim_up">+</string>
+    <string name="dim_down">-</string>
+</resources>
