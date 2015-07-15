@@ -15,7 +15,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class ApplicanceControl extends Activity {
+public class ApplianceControl extends Activity {
 
     private static final int CAPTURE_IMAGE_REQUEST_CODE = 410;
     private Uri mImageUri;
