@@ -2,6 +2,8 @@ package edu.berkeley.cs.sdb.buildingmodel;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -12,6 +14,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -33,9 +36,19 @@ public class ApplianceControl extends Activity {
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (requestCode == CAPTURE_IMAGE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                ImageView imageView = (ImageView) findViewById(R.id.imageView);
-                imageView.setImageURI(mImageUri);
-                setInterfaceVisiblity(View.VISIBLE);
+                try {
+                    ImageView imageView = (ImageView) findViewById(R.id.imageView);
+                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(),
+                            mImageUri);
+                    Matrix m = new Matrix();
+                    m.postRotate(90);
+                    Bitmap bmp = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
+                            bitmap.getHeight(), m, true);
+                    imageView.setImageBitmap(bmp);
+                    setInterfaceVisiblity(View.VISIBLE);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             } else if (resultCode == RESULT_CANCELED) {
                 // If user cancelled operation, just return them to camera app
                 invokeCameraApp();
@@ -77,15 +90,15 @@ public class ApplianceControl extends Activity {
     }
 
     private void setInterfaceVisiblity(int visibility) {
-        Button onButton = (Button)findViewById(R.id.on_button);
+        Button onButton = (Button) findViewById(R.id.on_button);
         onButton.setVisibility(visibility);
-        Button offButton = (Button)findViewById(R.id.off_button);
+        Button offButton = (Button) findViewById(R.id.off_button);
         offButton.setVisibility(visibility);
-        Button dimUpButton = (Button)findViewById(R.id.dim_up_button);
+        Button dimUpButton = (Button) findViewById(R.id.dim_up_button);
         dimUpButton.setVisibility(visibility);
-        Button dimDownButton = (Button)findViewById(R.id.dim_down_button);
+        Button dimDownButton = (Button) findViewById(R.id.dim_down_button);
         dimDownButton.setVisibility(visibility);
-        TextView dimText = (TextView)findViewById(R.id.dim_label);
+        TextView dimText = (TextView) findViewById(R.id.dim_label);
         dimText.setVisibility(visibility);
     }
 }
