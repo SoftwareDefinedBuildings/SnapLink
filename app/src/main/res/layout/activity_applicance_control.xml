@@ -18,12 +18,10 @@
         android:layout_height="wrap_content"
         android:text="@string/turn_on"
         android:id="@+id/on_button"
-        android:layout_marginRight="12dp"
-        android:layout_marginEnd="24dp"
         android:textSize="11pt"
-        android:background="@color/button_background"
+        android:background="@drawable/button_selector"
         android:layout_alignTop="@+id/imageView"
-        android:layout_alignEnd="@+id/imageView" />
+        android:layout_alignParentEnd="true" />
 
     <Button
         android:layout_width="wrap_content"
@@ -31,10 +29,10 @@
         android:text="@string/turn_off"
         android:id="@+id/off_button"
         android:textSize="11pt"
-        android:background="@color/button_background"
+        android:background="@drawable/button_selector"
+        android:layout_marginTop="19dp"
         android:layout_below="@+id/on_button"
-        android:layout_alignStart="@+id/on_button"
-        android:layout_marginTop="20dp" />
+        android:layout_alignParentEnd="true" />
 
     <Button
         android:layout_width="wrap_content"
@@ -45,7 +43,7 @@
         android:layout_alignRight="@+id/dim_label"
         android:layout_alignEnd="@+id/dim_label"
         android:textSize="12pt"
-        android:background="@color/button_background" />
+        android:background="@drawable/button_selector" />
 
     <Button
         android:layout_width="wrap_content"
@@ -53,7 +51,7 @@
         android:text="@string/dim_down"
         android:id="@+id/dim_down_button"
         android:textSize="12pt"
-        android:background="@color/button_background"
+        android:background="@drawable/button_selector"
         android:layout_centerVertical="true"
         android:layout_alignStart="@+id/dim_label" />
 
