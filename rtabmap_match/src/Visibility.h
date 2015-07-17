@@ -5,13 +5,23 @@
 #ifndef VISIBILITY_H_
 #define VISIBILITY_H_
 
-#include <iostream>
-#include <fstream>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 
+#include <numeric>
+#include <iostream>
+#include <fstream>
+
 namespace rtabmap {
+
+struct CompareMeanDist
+{
+    typedef std::pair< std::string, std::vector<double> > PairType;
+
+    static double meanDist(const std::vector<double> & vec);
+    bool operator()(const PairType & left, const PairType & right) const;
+};
 
 class RTABMAP_EXP Visibility {
 public:
@@ -24,9 +34,6 @@ public:
 private:
     bool readLabels(const std::string & labelFolder);
     
-    // for test purpose
-    std::vector<cv::Point2f> Generate2DPoints();
-    std::vector<cv::Point3f> Generate3DPoints();
 
 private:
     CameraModel _model;

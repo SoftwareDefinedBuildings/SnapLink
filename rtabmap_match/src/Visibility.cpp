@@ -16,6 +16,18 @@
 #include "Visibility.h"
 
 namespace rtabmap {
+    
+double CompareMeanDist::meanDist(const std::vector<double> & vec)
+{
+    double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
+    double mean = sum / vec.size();
+    return mean;
+}
+
+bool CompareMeanDist::operator()(const PairType & left, const PairType & right) const
+{
+    return meanDist(left.second) < meanDist(right.second);
+}
 
 Visibility::Visibility(const CameraModel & model):
     _model(model)
@@ -87,6 +99,7 @@ void Visibility::process(SensorData data, Transform pose)
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
+
     cv::Mat K = _model.K();
     Transform P = (pose * _model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3,3) <<
@@ -108,12 +121,17 @@ void Visibility::process(SensorData data, Transform pose)
     // find points in the image
     int cols = data.imageRaw().cols;
     int rows = data.imageRaw().rows;
+    std::map< std::string, std::vector<double> > distances;
     for(unsigned int i = 0; i < _points.size(); ++i)
     {
         if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
            uIsInBounds(int(planePoints[i].y), 0, rows))
         {
-            visibleLabels.push_back(_labels[i]);
+            std::string & label = _labels[i];
+            visibleLabels.push_back(label);
+            cv::Point3f cameraLoc(tvec);
+            double dist = cv::norm(_points[i] - cameraLoc);
+            distances[label].push_back(dist);
             UDEBUG("Find label %s", _labels[i].c_str());
         }
         else 
@@ -122,79 +140,10 @@ void Visibility::process(SensorData data, Transform pose)
                     planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }
-}
 
-
-std::vector<cv::Point2f> Visibility::Generate2DPoints()
-{
-    std::vector<cv::Point2f> points;
-
-    double x,y;
-
-    x=282;y=274;
-    points.push_back(cv::Point2f(x,y));
-
-    x=397;y=227;
-    points.push_back(cv::Point2f(x,y));
-
-    x=577;y=271;
-    points.push_back(cv::Point2f(x,y));
-
-    x=462;y=318;
-    points.push_back(cv::Point2f(x,y));
-
-    x=270;y=479;
-    points.push_back(cv::Point2f(x,y));
-
-    x=450;y=523;
-    points.push_back(cv::Point2f(x,y));
-
-    x=566;y=475;
-    points.push_back(cv::Point2f(x,y));
-    /*
-    for(unsigned int i = 0; i < points.size(); ++i)
-      {
-      std::cout << points[i] << std::endl;
-      }
-    */
-    return points;
-}
-
-
-std::vector<cv::Point3f> Visibility::Generate3DPoints()
-{
-    std::vector<cv::Point3f> points;
-  
-    double x,y,z;
-  
-    x=.5;y=.5;z=-.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    x=.5;y=.5;z=.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    x=-.5;y=.5;z=.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    x=-.5;y=.5;z=-.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    x=.5;y=-.5;z=-.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    x=-.5;y=-.5;z=-.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    x=-.5;y=-.5;z=.5;
-    points.push_back(cv::Point3f(x,y,z));
-  
-    /*
-    for(unsigned int i = 0; i < points.size(); ++i)
-      {
-      std::cout << points[i] << std::endl;
-      }
-    */
-    return points;
+    // find the label with minimum mean distance
+    std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
+    UDEBUG("Nearest label %s with mean disntace %lf", minDist.first.c_str(), CompareMeanDist::meanDist(minDist.second));
 }
 
 } // namespace rtabmap
