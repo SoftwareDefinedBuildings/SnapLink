@@ -66,11 +66,45 @@ int main(int argc, char * argv[])
         imgpath = std::string(argv[argc-1]);
     }
 
+    // Hardcoded for CameraRGBImages for Android LG G2 Mini
+    // TODO read fx and fy from EXIF
+    int cameraType = 2; // lg g2 mini = 1, kinect v1 = 2
+
+    float fx;
+    float fyOrBaseline;
+    float cx;
+    float cy;
+    Transform localTransform;
+    
+    if (cameraType == 1)
+    {
+        // now it is hardcoded for lg g2 mini
+        fx = 2248.90280131777f;
+        fyOrBaseline = 2249.05827505121f;
+        cx = 1303.16905149739f;
+        cy = 936.309085911272f;
+        Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
+    
+        localTransform = tempTransform;
+
+        // TODO undistort img (or call it rectify here, not same rectification as eipometry)
+        // k1 = 0.134408880645970, k2 = -0.177147104797916
+    }
+    else if (cameraType == 2)
+    { 
+        // hardcoded for map1_10Hz
+        fx = 525.0f;
+        fyOrBaseline = 525.0f;
+        cx = 320.0f;
+        cy = 240.0f;
+        Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
+    
+        localTransform = tempTransform;
+    }
     int startAt = 1;
     bool refreshDir = true;
     float imageRate = 1.0f;
-    Transform localTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
-    Camera *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, localTransform);
+    Camera *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, localTransform, fx, fyOrBaseline, cx, cy);
     CameraThreadNonStop cameraThread(camera);
     if(!camera->init())
     {
@@ -86,8 +120,9 @@ int main(int argc, char * argv[])
     //rtabmap->init();
     //RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
     //rtabmapThread.setDetectorRate(1.0f);
-    
-    Visibility * visibility = new Visibility();
+   
+    CameraCalibratedImages * cameraCalibrated = dynamic_cast<CameraCalibratedImages *>(camera); 
+    Visibility * visibility = new Visibility(cameraCalibrated->cameraModel());
     visibility->init("test.ply", ".");
     VisibilityThread visThread(visibility);
 

@@ -52,13 +52,18 @@ CameraCalibratedImages::CameraCalibratedImages(const std::string & path,
                      int startAt,
                      bool refreshDir,
                      float imageRate,
-                     const Transform & localTransform) :
+                     const Transform & localTransform,
+                     float fx,
+                     float fyOrBaseline,
+                     float cx,
+                     float cy) :
     Camera(imageRate, localTransform),
     _path(path),
     _startAt(startAt),
     _refreshDir(refreshDir),
     _count(0),
-    _dir(0)
+    _dir(0),
+    _model(fx, fyOrBaseline, cx, cy, localTransform)
 {
 
 }
@@ -197,8 +202,6 @@ SensorData CameraCalibratedImages::captureImage()
         UWARN("Directory is not set, camera must be initialized.");
     }
 
-    // Hardcoded for CameraRGBImages for Android LG G2 Mini
-
     cv::Mat depth, gray;
     
     // enforce gray scale images
@@ -208,45 +211,10 @@ SensorData CameraCalibratedImages::captureImage()
         gray = img.clone();
     }
     
-    // TODO read fx and fy from EXIF
-    int camera = 2; // lg g2 mini = 1, kinect v1 = 2
-
-    float fx;
-    float fyOrBaseline;
-    float cx;
-    float cy;
-    Transform localTransform;
-    
-    if (camera == 1)
-    {
-        // now it is hardcoded for lg g2 mini
-        fx = 2248.90280131777f;
-        fyOrBaseline = 2249.05827505121f;
-        cx = 1303.16905149739f;
-        cy = 936.309085911272f;
-        Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
-    
-        localTransform = tempTransform;
-
-        // TODO undistort img (or call it rectify here, not same rectification as eipometry)
-        // k1 = 0.134408880645970, k2 = -0.177147104797916
-    }
-    else if (camera == 2)
-    { 
-        // hardcoded for map1_10Hz
-        fx = 525.0f;
-        fyOrBaseline = 525.0f;
-        cx = 320.0f;
-        cy = 240.0f;
-        Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
-    
-        localTransform = tempTransform;
-    }
-
     double stamp = UTimer::now();
     int seq = 0;
 
-    SensorData data(gray, depth, CameraModel(fx, fyOrBaseline, cx, cy, localTransform), seq, stamp);
+    SensorData data(gray, depth, _model, seq, stamp);
 
     return data;
 }

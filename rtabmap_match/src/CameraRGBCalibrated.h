@@ -50,10 +50,14 @@ class RTABMAP_EXP CameraCalibratedImages :
 {
 public:
     CameraCalibratedImages(const std::string & path,
-            int startAt = 1,
-            bool refreshDir = false,
-            float imageRate = 0,
-            const Transform & localTransform = Transform::getIdentity());
+            int startAt,
+            bool refreshDir,
+            float imageRate,
+            const Transform & localTransform,
+            float fx,
+            float fyOrBaseline,
+            float cx,
+            float cy);
     virtual ~CameraCalibratedImages();
 
     virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -61,6 +65,8 @@ public:
     virtual std::string getSerial() const;
     std::string getPath() const {return _path;}
     unsigned int imagesCount() const;
+
+    const CameraModel & cameraModel() const {return _model;}
 
 protected:
     virtual SensorData captureImage();
@@ -74,6 +80,8 @@ private:
     int _count;
     UDirectory * _dir;
     std::string _lastFileName;
+
+    CameraModel _model;
 };
 
 } // namespace rtabmap
