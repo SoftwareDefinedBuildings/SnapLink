@@ -9,12 +9,13 @@
 #include <fstream>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/CameraModel.h>
 
 namespace rtabmap {
 
 class RTABMAP_EXP Visibility {
 public:
-    Visibility();
+    Visibility(const CameraModel & model);
     virtual ~Visibility();
 
     bool init(const std::string & cloudFile, const std::string & labelFolder);
@@ -24,6 +25,7 @@ private:
     // HDR
 
 private:
+    CameraModel _model;
     // ccpointcloud
     // labels
 };
