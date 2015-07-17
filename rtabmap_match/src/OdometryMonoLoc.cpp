@@ -223,6 +223,11 @@ void OdometryMonoLoc::reset(const Transform & initialPose)
     keyFramePoses_.clear();
 }
 
+void OdometryMonoLoc::resetSuperOdom()
+{
+    Odometry::reset(Transform::getIdentity());
+}
+
 Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInfo * info)
 {
     Transform output;
