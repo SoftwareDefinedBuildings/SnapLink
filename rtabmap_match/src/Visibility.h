@@ -18,20 +18,23 @@ public:
     Visibility(const CameraModel & model);
     virtual ~Visibility();
 
-    bool init(const std::string & cloudFile, const std::string & labelFolder);
+    bool init(const std::string & labelFolder);
     void process(SensorData data, Transform pose);
 
 private:
-    // HDR
-
+    bool readLabels(const std::string & labelFolder);
+    
     // for test purpose
     std::vector<cv::Point2f> Generate2DPoints();
     std::vector<cv::Point3f> Generate3DPoints();
 
 private:
     CameraModel _model;
-    // ccpointcloud
+    // we don't need the whole pointcloud
+    
     // labels
+    std::vector<cv::Point3f> _points;
+    std::vector<std::string> _labels;
 };
 
 } // namespace rtabmap

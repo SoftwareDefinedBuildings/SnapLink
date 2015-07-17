@@ -56,19 +56,21 @@ int main(int argc, char * argv[])
 
     std::string dbfile;
     std::string imgpath;
-    if(argc != 3)
+    std::string labelpath;
+    if(argc != 4)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc-2]);
-        imgpath = std::string(argv[argc-1]);
+        dbfile = std::string(argv[argc-3]);
+        imgpath = std::string(argv[argc-2]);
+        labelpath = std::string(argv[argc-1]);
     }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
     // TODO read fx and fy from EXIF
-    int cameraType = 2; // lg g2 mini = 1, kinect v1 = 2
+    int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
 
     float fx;
     float fyOrBaseline;
@@ -123,7 +125,7 @@ int main(int argc, char * argv[])
    
     CameraCalibratedImages * cameraCalibrated = dynamic_cast<CameraCalibratedImages *>(camera); 
     Visibility * visibility = new Visibility(cameraCalibrated->cameraModel());
-    visibility->init("test.ply", ".");
+    visibility->init(labelpath);
     VisibilityThread visThread(visibility);
 
     // Setup handlers
