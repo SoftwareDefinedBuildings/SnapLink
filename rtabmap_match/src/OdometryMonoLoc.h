@@ -57,6 +57,7 @@ public:
     OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
     virtual ~OdometryMonoLoc();
     virtual void reset(const Transform & initialPose);
+    void resetSuperOdom(); // only reset the super odometry
 
 private:
     virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0);

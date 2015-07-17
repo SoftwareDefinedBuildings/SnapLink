@@ -25,7 +25,6 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/Odometry.h"
@@ -38,6 +37,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CameraThreadNonStop.h"
 #include "CameraRGBCalibrated.h"
 #include "OdometryMonoLocThread.h"
+#include "Visibility.h"
+#include "VisibilityThread.h"
 
 
 void showUsage()
@@ -85,10 +86,15 @@ int main(int argc, char * argv[])
     //rtabmap->init();
     //RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
     //rtabmapThread.setDetectorRate(1.0f);
+    
+    Visibility * visibility = new Visibility();
+    visibility->init("test.ply", ".");
+    VisibilityThread visThread(visibility);
 
     // Setup handlers
     odomThread.registerToEventsManager();
     //rtabmapThread.registerToEventsManager();
+    visThread.registerToEventsManager();
 
     // The RTAB-Map is subscribed by default to CameraEvent, but we want
     // RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
@@ -97,15 +103,18 @@ int main(int argc, char * argv[])
     // also subscribed to OdometryEvent by default, so no need to create a pipe between
     // odometry and RTAB-Map.
     UEventsManager::createPipe(&cameraThread, &odomThread, "CameraCalibratedEvent");
+    UEventsManager::createPipe(&odomThread, &visThread, "OdometryEvent");
 
     // Let's start the threads
     //rtabmapThread.start();
     odomThread.start();
     cameraThread.start();
+    visThread.start();
 
     pause();
 
     // remove handlers
+    visThread.unregisterFromEventsManager();
     //rtabmapThread.unregisterFromEventsManager();
     odomThread.unregisterFromEventsManager();
 
@@ -113,6 +122,7 @@ int main(int argc, char * argv[])
     cameraThread.join(true);
     odomThread.join(true);
     //rtabmapThread.join(true);
+    visThread.join(true);
 
     return 0;
 }
