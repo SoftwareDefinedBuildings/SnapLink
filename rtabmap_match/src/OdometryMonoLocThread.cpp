@@ -119,7 +119,6 @@ void OdometryMonoLocThread::mainLoop()
         // a null pose notify that odometry could not be computed
         UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
         double variance = info.variance>0?info.variance:1;
-        this->post(new OdometryEvent(data, pose, variance, variance, info));
         if(pose.isNull())
         {
             if(info.err == 1)
@@ -147,6 +146,10 @@ void OdometryMonoLocThread::mainLoop()
                 UWARN("Unkown error: %d", info.err);
                 exit(1);
             }
+        }
+        else
+        {
+            this->post(new OdometryEvent(data, pose, variance, variance, info));
         }
     }
 }
