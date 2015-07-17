@@ -33,11 +33,13 @@ Visibility::Visibility(const CameraModel & model):
     _model(model)
 {
     UDEBUG("");
+    resultFile.open("result.txt");
 }
 
 Visibility::~Visibility()
 {
     UDEBUG("");
+    resultFile.close();
 }
 
 bool Visibility::init(const std::string & labelFolder)
@@ -99,7 +101,6 @@ void Visibility::process(SensorData data, Transform pose)
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
-
     cv::Mat K = _model.K();
     Transform P = (pose * _model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3,3) <<
@@ -122,6 +123,7 @@ void Visibility::process(SensorData data, Transform pose)
     int cols = data.imageRaw().cols;
     int rows = data.imageRaw().rows;
     std::map< std::string, std::vector<double> > distances;
+    std::map< std::string, std::vector<cv::Point2f> > labelPoints;
     for(unsigned int i = 0; i < _points.size(); ++i)
     {
         if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
@@ -132,6 +134,7 @@ void Visibility::process(SensorData data, Transform pose)
             cv::Point3f cameraLoc(tvec);
             double dist = cv::norm(_points[i] - cameraLoc);
             distances[label].push_back(dist);
+            labelPoints[label].push_back(planePoints[i]);
             UDEBUG("Find label %s", _labels[i].c_str());
         }
         else 
@@ -143,7 +146,17 @@ void Visibility::process(SensorData data, Transform pose)
 
     // find the label with minimum mean distance
     std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
-    UDEBUG("Nearest label %s with mean disntace %lf", minDist.first.c_str(), CompareMeanDist::meanDist(minDist.second));
+    std::string minlabel = minDist.first;
+    UDEBUG("Nearest label %s with mean disntace %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
+
+    //write result to file
+    resultFile << minlabel << std::endl;
+    for(unsigned int i = 0; i < labelPoints[minlabel].size(); ++i)
+    {
+        cv::Point2f p = labelPoints[minlabel][i];
+        resultFile << p.x << "," << p.y << std::endl;
+    }
+    resultFile.flush();
 }
 
 } // namespace rtabmap

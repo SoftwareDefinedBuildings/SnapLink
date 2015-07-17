@@ -33,7 +33,6 @@ public:
 
 private:
     bool readLabels(const std::string & labelFolder);
-    
 
 private:
     CameraModel _model;
@@ -42,6 +41,8 @@ private:
     // labels
     std::vector<cv::Point3f> _points;
     std::vector<std::string> _labels;
+    
+    std::ofstream resultFile;
 };
 
 } // namespace rtabmap
