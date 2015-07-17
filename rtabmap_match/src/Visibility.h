@@ -24,6 +24,10 @@ public:
 private:
     // HDR
 
+    // for test purpose
+    std::vector<cv::Point2f> Generate2DPoints();
+    std::vector<cv::Point3f> Generate3DPoints();
+
 private:
     CameraModel _model;
     // ccpointcloud
