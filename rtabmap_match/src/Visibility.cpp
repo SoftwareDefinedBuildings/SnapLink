@@ -112,9 +112,9 @@ void Visibility::process(SensorData data, Transform pose)
     cv::Mat tvec = (cv::Mat_<double>(1,3) << 
             (double)P.x(), (double)P.y(), (double)P.z());
 
-    std::cout << "K: " << K << std::endl;
-    std::cout << "rvec: " << rvec << std::endl;
-    std::cout << "tvec: " << tvec << std::endl;
+    //std::cout << "K: " << K << std::endl;
+    //std::cout << "rvec: " << rvec << std::endl;
+    //std::cout << "tvec: " << tvec << std::endl;
    
     // do the projection 
     cv::projectPoints(_points, rvec, tvec, K, cv::Mat(), planePoints);
@@ -135,7 +135,8 @@ void Visibility::process(SensorData data, Transform pose)
             double dist = cv::norm(_points[i] - cameraLoc);
             distances[label].push_back(dist);
             labelPoints[label].push_back(planePoints[i]);
-            UDEBUG("Find label %s", _labels[i].c_str());
+            UINFO("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
+                    planePoints[i].x, planePoints[i].y, cols, rows);
         }
         else 
         {
@@ -144,10 +145,14 @@ void Visibility::process(SensorData data, Transform pose)
         }
     }
 
+    if (distances.size() == 0) {
+        return;
+    }
+
     // find the label with minimum mean distance
     std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
     std::string minlabel = minDist.first;
-    UDEBUG("Nearest label %s with mean disntace %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
+    UINFO("Nearest label %s with mean disntace %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
 
     //write result to file
     resultFile << minlabel << std::endl;

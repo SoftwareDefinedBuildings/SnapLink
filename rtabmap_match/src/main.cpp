@@ -52,7 +52,8 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kDebug);
+    ULogger::setLevel(ULogger::kInfo);
+    //ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
@@ -105,7 +106,7 @@ int main(int argc, char * argv[])
     }
     int startAt = 1;
     bool refreshDir = true;
-    float imageRate = 1.0f;
+    float imageRate = 0.1f;
     Camera *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, localTransform, fx, fyOrBaseline, cx, cy);
     CameraThreadNonStop cameraThread(camera);
     if(!camera->init())

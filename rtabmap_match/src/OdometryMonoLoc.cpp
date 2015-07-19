@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UStl.h"
+#include "rtabmap/core/VWDictionary.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/video/tracking.hpp>
@@ -47,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
 #include "OdometryInfoErr.h"
+#include "MemoryLargeRot.h"
 
 namespace rtabmap {
 
@@ -303,11 +305,11 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         {
                             highestHypothesis = *iter;
                         }
-                        //UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
+                        UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
                     }
                 }
 
-                UDEBUG("highestHypothesis.first = %d", highestHypothesis.first);
+                UINFO("highestHypothesis.first = %d", highestHypothesis.first);
 
                 // calculate transform between data and the most similar pose
                 ParametersMap customParameters = memoryParameters_; // get BOW LCC parameters
@@ -318,16 +320,17 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
                 uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // bruteforce
-                uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.5"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
+                uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.8")); 
                 uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
-                uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "1000"));
+                uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "7"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "4"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "5000"));
                 
-                Memory memory(customParameters);
+                MemoryLargeRot memoryLR(customParameters);
 
                 std::string rejectedMsg;
                 int visualInliers = 0;
@@ -337,13 +340,13 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
 
                 if(!dataTo.depthOrRightRaw().empty() &&
-                   dataFrom.id() != Memory::kIdInvalid &&
-                   dataTo.id() != Memory::kIdInvalid)
+                   dataFrom.id() != MemoryLargeRot::kIdInvalid &&
+                   dataTo.id() != MemoryLargeRot::kIdInvalid)
                 {
                     UDEBUG("Calculate map transform with raw data");
-                    memory.update(dataTo);
-                    memory.update(dataFrom);
-                    Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    memoryLR.update(dataTo);
+                    memoryLR.update(dataFrom);
+                    Transform transform = memoryLR.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
 
                     float x, y, z, roll, pitch, yaw;
                     transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -418,7 +421,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         // TODO is this function returning global transform?
     }
 
-    UDEBUG("output transform = %s", output.prettyPrint().c_str());
+    UINFO("output transform = %s", output.prettyPrint().c_str());
 
     return output;
 }
