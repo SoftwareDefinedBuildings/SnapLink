@@ -71,7 +71,7 @@ int main(int argc, char * argv[])
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
     // TODO read fx and fy from EXIF
-    int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
+    int cameraType = 2; // lg g2 mini = 1, kinect v1 = 2
 
     float fx;
     float fyOrBaseline;

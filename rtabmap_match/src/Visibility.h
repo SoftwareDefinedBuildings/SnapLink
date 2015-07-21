@@ -24,15 +24,17 @@ struct CompareMeanDist
 };
 
 class RTABMAP_EXP Visibility {
+
 public:
     Visibility(const CameraModel & model);
     virtual ~Visibility();
 
     bool init(const std::string & labelFolder);
-    void process(SensorData data, Transform pose);
+    void process(const SensorData & data, const Transform & pose);
 
 private:
     bool readLabels(const std::string & labelFolder);
+    bool isInFrontOfCamera(const cv::Point3f & point, const Transform & P);
 
 private:
     CameraModel _model;
