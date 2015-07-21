@@ -9,7 +9,9 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/util3d_transforms.h>
 
+#include <pcl/point_types.h>
 
 #include <stdio.h>
 
@@ -94,7 +96,7 @@ bool Visibility::readLabels(const std::string & labelFolder)
     }
 }
 
-void Visibility::process(SensorData data, Transform pose)
+void Visibility::process(const SensorData & data, const Transform & pose)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
@@ -115,7 +117,7 @@ void Visibility::process(SensorData data, Transform pose)
     //std::cout << "K: " << K << std::endl;
     //std::cout << "rvec: " << rvec << std::endl;
     //std::cout << "tvec: " << tvec << std::endl;
-   
+  
     // do the projection 
     cv::projectPoints(_points, rvec, tvec, K, cv::Mat(), planePoints);
 
@@ -129,14 +131,21 @@ void Visibility::process(SensorData data, Transform pose)
         if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
            uIsInBounds(int(planePoints[i].y), 0, rows))
         {
-            std::string & label = _labels[i];
-            visibleLabels.push_back(label);
-            cv::Point3f cameraLoc(tvec);
-            double dist = cv::norm(_points[i] - cameraLoc);
-            distances[label].push_back(dist);
-            labelPoints[label].push_back(planePoints[i]);
-            UINFO("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
-                    planePoints[i].x, planePoints[i].y, cols, rows);
+            if (isInFrontOfCamera(_points[i], P)) {
+                std::string & label = _labels[i];
+                visibleLabels.push_back(label);
+                cv::Point3f cameraLoc(tvec);
+                double dist = cv::norm(_points[i] - cameraLoc);
+                distances[label].push_back(dist);
+                labelPoints[label].push_back(planePoints[i]);
+                UINFO("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
+                       planePoints[i].x, planePoints[i].y, cols, rows);
+            }
+            else
+            {
+                UINFO("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(),
+                       planePoints[i].x, planePoints[i].y, cols, rows);
+            }
         }
         else 
         {
@@ -162,6 +171,13 @@ void Visibility::process(SensorData data, Transform pose)
         resultFile << p.x << "," << p.y << std::endl;
     }
     resultFile.flush();
+}
+    
+bool Visibility::isInFrontOfCamera(const cv::Point3f & point, const Transform & P)
+{
+    pcl::PointXYZ pointPCL(point.x, point.y, point.z);
+    pcl::PointXYZ newPointPCL = util3d::transformPoint(pointPCL, P);
+    return newPointPCL.z > 0;
 }
 
 } // namespace rtabmap
