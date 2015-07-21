@@ -190,13 +190,19 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     }
 
     // init bayes filters
+    
+    // calculate transform between data and the most similar pose
+    ParametersMap bayesFilterParameters = parameters;
+    // override some parameters
+    uInsert(bayesFilterParameters, ParametersPair(Parameters::kBayesFullPredictionUpdate(), "true")); // make bayes update every time
+    
     if(!bayesFilter_)
     {
-        bayesFilter_ = new BayesFilter(parameters);
+        bayesFilter_ = new BayesFilter(bayesFilterParameters);
     }
     else
     {
-        bayesFilter_->parseParameters(parameters);
+        bayesFilter_->parseParameters(bayesFilterParameters);
     }
     
     transformFile.open("transform.csv");
@@ -296,7 +302,8 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 likelihood = rawLikelihood;
                 this->adjustLikelihood(likelihood);
 
-                posterior = bayesFilter_->computePosterior(memory_, likelihood);
+                // do not do bayes because RGB image is arbitrary
+                posterior = likelihood;//bayesFilter_->computePosterior(memory_, likelihood);
                 if(posterior.size())
                 {
                     for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
