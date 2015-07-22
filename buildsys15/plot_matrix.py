@@ -14,14 +14,14 @@ y_labels = ["Trash Can Blue", \
             "Robot 1", \
             "Ladder", \
             ]
-type_labels = ["a", \
-               "b", \
-               "c", \
-               "d", \
-               "e", \
-               "f", \
-               "g", \
-               "h", \
+type_labels = ["1: Not Visible, Identified", \
+               "2: Not Visible, Not Identified", \
+               "3: Visible, Identified", \
+               "4: Visible, Not Identified", \
+               "5: Occluded, Identified", \
+               "6: Occluded, Not Identified", \
+               "7: Partially Visible, Identified", \
+               "8: Partially Visible, Not Identified", \
                ]
 
 
@@ -115,7 +115,7 @@ def plot_matrix(type_matrix):
     cmap = mpl.colors.ListedColormap(colors)
     
     fig, ax = plt.subplots()
-    cmat = ax.matshow(type_matrix, cmap=cmap, vmin = 0.5, vmax = 8.5)
+    cmat = ax.matshow(type_matrix, cmap=cmap, vmin = 1-0.5, vmax = len(type_labels) + 0.5)
     ax.set_xlim(min_x, max_x)
     ax.set_ylim(min_y, max_y)
     ax.xaxis.set_ticks(x_ticks, minor=True)
@@ -133,9 +133,21 @@ def plot_matrix(type_matrix):
         tick.tick2line.set_markersize(0)
         #tick.label1.set_horizontalalignment('center')
     ax.grid(True, which='minor')
+
+    #text
+    x, y = np.meshgrid(x_ticks, y_ticks)
+    for i in range(len(x_ticks)):
+        for j in range(len(y_ticks)):
+            x_val = x_ticks[i] + 0.5
+            y_val = y_ticks[j] + 0.5
+            type_val = int(type_matrix[int(y_val), int(x_val)])
+            ax.text(x_val, y_val, type_val, va='center', ha='center')
+
     # color
-    cax = plt.colorbar(cmat, ticks=np.arange(1, len(type_labels)+1))
+    cax = plt.colorbar(cmat, ticks=np.arange(1, len(type_labels)+1), shrink=.3, pad=.005)
     cax.set_ticklabels(type_labels)
+
+
     plt.show()
 
 def run():
