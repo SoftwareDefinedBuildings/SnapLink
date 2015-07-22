@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 
 y_labels = ["Trash Can Blue", \
             "Storage Box 1", \
@@ -13,6 +14,17 @@ y_labels = ["Trash Can Blue", \
             "Robot 1", \
             "Ladder", \
             ]
+type_labels = ["a", \
+               "b", \
+               "c", \
+               "d", \
+               "e", \
+               "f", \
+               "g", \
+               "h", \
+               ]
+
+
 def str_to_truth_data(labels, line):
     def update_value(last_value, new_value):
         if last_value == 0:
@@ -91,34 +103,39 @@ def result_type(truth_value, result_value):
     print truth_value, result_value
 
 def plot_matrix(type_matrix):
+    global y_labels
+    
     min_x, max_x = -0.5, type_matrix.shape[1] - 0.5
     min_y, max_y = -0.5, type_matrix.shape[0] - 0.5
-    ind_array_x = np.arange(min_x, max_x, 1.0)
-    ind_array_y = np.arange(min_y, max_y, 1.0)
-    print ind_array_x
-    print ind_array_y
+    x_ticks = np.arange(min_x, max_x, 1.0)
+    y_ticks = np.arange(min_y, max_y, 1.0)
 
+    # color
+    colors = mpl.cm.jet(np.linspace(0, 1, len(type_labels)))
+    cmap = mpl.colors.ListedColormap(colors)
+    
     fig, ax = plt.subplots()
-    ax.matshow(type_matrix, cmap=plt.cm.jet)
+    cmat = ax.matshow(type_matrix, cmap=cmap, vmin = 0.5, vmax = 8.5)
     ax.set_xlim(min_x, max_x)
     ax.set_ylim(min_y, max_y)
-    ax.xaxis.set_ticks(ind_array_x, minor=True)
-    ax.xaxis.set(ticks=ind_array_x + 0.5, ticklabels=range(1, len(ind_array_x)+1))
+    ax.xaxis.set_ticks(x_ticks, minor=True)
+    ax.xaxis.set(ticks=x_ticks + 0.5, ticklabels=range(1, len(x_ticks)+1))
     # remove tick but keep label
     for tick in ax.xaxis.get_major_ticks():
         tick.tick1line.set_markersize(0)
         tick.tick2line.set_markersize(0)
         tick.label1.set_horizontalalignment('center')
-    ax.yaxis.set_ticks(ind_array_y, minor=True)
-    global y_labels
-    ax.yaxis.set(ticks=ind_array_y + 0.5, ticklabels=y_labels)
+    ax.yaxis.set_ticks(y_ticks, minor=True)
+    ax.yaxis.set(ticks=y_ticks + 0.5, ticklabels=y_labels)
     # remove tick but keep label
     for tick in ax.yaxis.get_major_ticks():
         tick.tick1line.set_markersize(0)
         tick.tick2line.set_markersize(0)
         #tick.label1.set_horizontalalignment('center')
     ax.grid(True, which='minor')
-    plt.colorbar()
+    # color
+    cax = plt.colorbar(cmat, ticks=np.arange(1, len(type_labels)+1))
+    cax.set_ticklabels(type_labels)
     plt.show()
 
 def run():
