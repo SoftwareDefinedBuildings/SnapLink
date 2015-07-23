@@ -48,7 +48,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
 #include "OdometryInfoErr.h"
-#include "MemoryLargeRot.h"
 
 namespace rtabmap {
 
@@ -335,9 +334,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "4"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "5000"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "3000"));
                 
-                MemoryLargeRot memoryLR(customParameters);
+                Memory memory(customParameters);
 
                 std::string rejectedMsg;
                 int visualInliers = 0;
@@ -347,13 +346,13 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
 
                 if(!dataTo.depthOrRightRaw().empty() &&
-                   dataFrom.id() != MemoryLargeRot::kIdInvalid &&
-                   dataTo.id() != MemoryLargeRot::kIdInvalid)
+                   dataFrom.id() != Memory::kIdInvalid &&
+                   dataTo.id() != Memory::kIdInvalid)
                 {
                     UDEBUG("Calculate map transform with raw data");
-                    memoryLR.update(dataTo);
-                    memoryLR.update(dataFrom);
-                    Transform transform = memoryLR.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    memory.update(dataTo);
+                    memory.update(dataFrom);
+                    Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
 
                     float x, y, z, roll, pitch, yaw;
                     transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -371,9 +370,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         CameraModel cmNew = newS->sensorData().cameraModels()[0];
                         UDEBUG("cmNew.fx() = %f, cmNew.fy() = %f, cmNew.cx() = %f, cmNew.cy() = %f, cmNew.localTranform() = %s", cmNew.fx(), cmNew.fy(), cmNew.cx(), cmNew.cy(), cmNew.localTransform().prettyPrint().c_str());
                         */
-                        UDEBUG("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
-                        UDEBUG("transform = %s", transform.prettyPrint().c_str());
-                        UDEBUG("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
+                        UINFO("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
+                        UINFO("transform = %s", transform.prettyPrint().c_str());
+                        UINFO("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
                         UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
                         UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
                     }

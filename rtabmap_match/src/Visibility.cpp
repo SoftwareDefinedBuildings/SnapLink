@@ -36,12 +36,14 @@ Visibility::Visibility(const CameraModel & model):
 {
     UDEBUG("");
     resultFile.open("result.txt");
+    resultFileForPlot.open("result_matrix.txt");
 }
 
 Visibility::~Visibility()
 {
     UDEBUG("");
     resultFile.close();
+    resultFileForPlot.close();
 }
 
 bool Visibility::init(const std::string & labelFolder)
@@ -77,6 +79,7 @@ bool Visibility::readLabels(const std::string & labelFolder)
     std::string fullPath;
     double x, y, z;
     std::string label;
+    resultFileForPlot << "Image Name";
     while (true) {
         fileName = dir.getNextFileName();
         if(!fileName.size())
@@ -87,16 +90,20 @@ bool Visibility::readLabels(const std::string & labelFolder)
 
         // read labels from file
         FILE * pFile = fopen(fullPath.c_str(), "r");
+        int count = 0;
         while(fscanf(pFile, "%lf,%lf,%lf", &x, &y, &z) != EOF) {
             _points.push_back(cv::Point3f(x,y,z));
             label = uSplit(fileName, '.').front();
             _labels.push_back(label);
+            resultFileForPlot << ", " << label << " " << count;
+            count++;
             UDEBUG("Read point (%lf,%lf,%lf) with label %s", x, y, z, label.c_str());
         }
     }
+    resultFileForPlot << std::endl;
 }
 
-void Visibility::process(const SensorData & data, const Transform & pose)
+void Visibility::process(const SensorData & data, const Transform & pose, const std::string & imgName)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
@@ -126,6 +133,8 @@ void Visibility::process(const SensorData & data, const Transform & pose)
     int rows = data.imageRaw().rows;
     std::map< std::string, std::vector<double> > distances;
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
+    
+    resultFileForPlot << imgName;
     for(unsigned int i = 0; i < _points.size(); ++i)
     {
         if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
@@ -134,25 +143,32 @@ void Visibility::process(const SensorData & data, const Transform & pose)
             if (isInFrontOfCamera(_points[i], P)) {
                 std::string & label = _labels[i];
                 visibleLabels.push_back(label);
-                cv::Point3f cameraLoc(tvec);
+                float x,y,z,roll,pitch,yaw;
+                pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+                cv::Point3f cameraLoc(x, y, z);
                 double dist = cv::norm(_points[i] - cameraLoc);
                 distances[label].push_back(dist);
                 labelPoints[label].push_back(planePoints[i]);
                 UINFO("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
                        planePoints[i].x, planePoints[i].y, cols, rows);
+                resultFileForPlot  << ", 1";
             }
             else
             {
                 UINFO("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(),
                        planePoints[i].x, planePoints[i].y, cols, rows);
+                resultFileForPlot  << ", 0";
             }
         }
         else 
         {
-            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), 
+            UINFO("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), 
                     planePoints[i].x, planePoints[i].y, cols, rows);
+            resultFileForPlot  << ", 0";
         }
     }
+    resultFileForPlot << std::endl;
+    resultFileForPlot.flush();
 
     if (distances.size() == 0) {
         return;
