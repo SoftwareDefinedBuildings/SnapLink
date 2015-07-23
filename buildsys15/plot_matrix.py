@@ -111,7 +111,7 @@ def plot_matrix(type_matrix):
     y_ticks = np.arange(min_y, max_y, 1.0)
 
     # color
-    colors = mpl.cm.jet(np.linspace(0, 1, len(type_labels)))
+    colors = mpl.cm.cubehelix(np.linspace(0, 1, len(type_labels)))
     cmap = mpl.colors.ListedColormap(colors)
     
     fig, ax = plt.subplots()
