@@ -131,7 +131,7 @@ def plot_matrix(type_matrix):
     for tick in ax.yaxis.get_major_ticks():
         tick.tick1line.set_markersize(0)
         tick.tick2line.set_markersize(0)
-        #tick.label1.set_horizontalalignment('center')
+        tick.label1.set_verticalalignment('center')
     ax.grid(True, which='minor')
 
     #text
@@ -146,6 +146,11 @@ def plot_matrix(type_matrix):
     # color
     cax = plt.colorbar(cmat, ticks=np.arange(1, len(type_labels)+1), shrink=.3, pad=.005)
     cax.set_ticklabels(type_labels)
+    for tick in cax.ax.yaxis.get_major_ticks():
+        tick.tick1line.set_markersize(0)
+        tick.tick2line.set_markersize(0)
+        tick.label1.set_verticalalignment('center')
+
 
 
     plt.show()
