@@ -23,7 +23,7 @@ type_labels = ["1: Not Visible, Identified", \
                "7: Partially Visible, Identified", \
                "8: Partially Visible, Not Identified", \
                ]
-
+stats = {}
 
 def str_to_truth_data(labels, line):
     def update_value(last_value, new_value):
@@ -99,7 +99,6 @@ def result_type(truth_value, result_value):
             return 7
         else:
             return 8
-
     print truth_value, result_value
 
 def plot_matrix(type_matrix):
@@ -177,9 +176,15 @@ def run():
         for j in range(len(truth_data)):
             truth_value = truth_data[j]
             result_value = result_data[j]
-            type_matrix[j, i] = result_type(truth_value, result_value)
+            _type = result_type(truth_value, result_value)
+            type_matrix[j, i] = _type
+            if _type in stats:
+                stats[_type] += 1
+            else:
+                stats[_type] = 1
 
     print type_matrix
+    print stats
     plot_matrix(type_matrix)
 
     
