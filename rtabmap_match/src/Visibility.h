@@ -30,7 +30,7 @@ public:
     virtual ~Visibility();
 
     bool init(const std::string & labelFolder);
-    void process(const SensorData & data, const Transform & pose);
+    void process(const SensorData & data, const Transform & pose, const std::string & imgName);
 
 private:
     bool readLabels(const std::string & labelFolder);
@@ -45,6 +45,7 @@ private:
     std::vector<std::string> _labels;
     
     std::ofstream resultFile;
+    std::ofstream resultFileForPlot;
 };
 
 } // namespace rtabmap

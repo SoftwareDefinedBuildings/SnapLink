@@ -41,7 +41,8 @@ void VisibilityThread::handleEvent(UEvent * event)
             OdometryEvent * odomEvent = (OdometryEvent*)event;
             SensorData data = odomEvent->data();
             Transform pose = odomEvent->pose();
-            this->addData(data, pose);
+            std::string imgName = odomEvent->imageName;
+            this->addData(data, pose, imgName);
         }
     }
 }
@@ -58,26 +59,29 @@ void VisibilityThread::mainLoop()
 {
     SensorData data;
     Transform pose;
-    if(getData(data, pose))
+    std::string imgName;
+    if(getData(data, pose, imgName))
     {
         // HDR
-        _visibility->process(data, pose); 
+        _visibility->process(data, pose, imgName); 
     }
 }
 
-void VisibilityThread::addData(const SensorData & data, const Transform & pose)
+void VisibilityThread::addData(const SensorData & data, const Transform & pose, const std::string & imgName)
 {
     bool notify = true;
     _dataMutex.lock();
     {
         _dataBuffer.push_back(data);
         _poseBuffer.push_back(pose);
+        _imgNameBuffer.push_back(imgName);
 
         while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
             _poseBuffer.pop_front();
+            _imgNameBuffer.pop_front();
             notify = false;
         }
     }
@@ -89,7 +93,7 @@ void VisibilityThread::addData(const SensorData & data, const Transform & pose)
     }
 }
 
-bool VisibilityThread::getData(SensorData & data, Transform & pose)
+bool VisibilityThread::getData(SensorData & data, Transform & pose, std::string & imgName)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
@@ -99,8 +103,10 @@ bool VisibilityThread::getData(SensorData & data, Transform & pose)
         {
             data = _dataBuffer.front();
             pose = _poseBuffer.front();
+            imgName = _imgNameBuffer.front();
             _dataBuffer.pop_front();
             _poseBuffer.pop_front();
+            _imgNameBuffer.pop_front();
             dataFilled = true;
         }
     }

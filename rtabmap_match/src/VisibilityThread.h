@@ -34,14 +34,15 @@ private:
     // MAIN LOOP
     //============================================================
     void mainLoop();
-    void addData(const SensorData & data, const Transform & pose);
-    bool getData(SensorData & data, Transform & pose);
+    void addData(const SensorData & data, const Transform & pose, const std::string & imgName);
+    bool getData(SensorData & data, Transform & pose, std::string & imgName);
 
 private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
     std::list<SensorData> _dataBuffer;
     std::list<Transform> _poseBuffer;
+    std::list<std::string> _imgNameBuffer;
     unsigned int _dataBufferMaxSize;
     Visibility * _visibility;
 };
