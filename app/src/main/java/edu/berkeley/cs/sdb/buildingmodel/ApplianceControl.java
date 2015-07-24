@@ -28,6 +28,8 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.ExecutionException;
@@ -35,7 +37,7 @@ import java.util.concurrent.ExecutionException;
 public class ApplianceControl extends Activity {
 
     private static final int CAPTURE_IMAGE_REQUEST_CODE = 410;
-    private static final String IMAGE_UPLOAD_URL = "castle.cs.berkeley.edu:55000";
+    private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:55000/";
     private Uri mImageUri;
 
     @Override
@@ -148,9 +150,9 @@ public class ApplianceControl extends Activity {
         protected String doInBackground(Void... voids) {
             HttpClient client = AndroidHttpClient.newInstance("ApplianceControl");
             HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
-            httpPost.setEntity(new FileEntity(new File(mImageUri.toString()), "image/jpeg"));
 
             try {
+                httpPost.setEntity(new FileEntity(new File(new URI(mImageUri.toString())), "image/jpeg"));
                 startTime = System.currentTimeMillis();
                 HttpResponse response = client.execute(httpPost);
                 endTime = System.currentTimeMillis();
@@ -164,6 +166,8 @@ public class ApplianceControl extends Activity {
                 return EntityUtils.toString(response.getEntity(), "UTF-8");
 
             } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
             } finally {
                 client.getConnectionManager().shutdown();
