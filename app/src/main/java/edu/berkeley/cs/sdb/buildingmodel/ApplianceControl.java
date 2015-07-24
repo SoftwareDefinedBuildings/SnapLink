@@ -35,7 +35,7 @@ import java.util.concurrent.ExecutionException;
 public class ApplianceControl extends Activity {
 
     private static final int CAPTURE_IMAGE_REQUEST_CODE = 410;
-    private static final String IMAGE_UPLOAD_URL = "castle.cs.berkeley.edu:32768";
+    private static final String IMAGE_UPLOAD_URL = "castle.cs.berkeley.edu:55000";
     private Uri mImageUri;
 
     @Override
@@ -54,7 +54,9 @@ public class ApplianceControl extends Activity {
                 try {
                     String result = new UploadImageTask().execute().get();
                     Log.d("ApplianceControl", result);
-                } catch (InterruptedException | ExecutionException e) {
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
                     throw new RuntimeException(e);
                 }
                 displayImage();
