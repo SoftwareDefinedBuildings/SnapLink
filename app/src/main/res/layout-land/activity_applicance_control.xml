@@ -10,7 +10,6 @@
         android:layout_height="match_parent"
         android:id="@+id/imageView"
         android:contentDescription="@string/img_desc"
-        android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true" />
 
     <Button
@@ -30,7 +29,7 @@
         android:id="@+id/off_button"
         android:textSize="11pt"
         android:background="@drawable/button_selector"
-        android:layout_marginTop="19dp"
+        android:layout_marginTop="14dp"
         android:layout_below="@+id/on_button"
         android:layout_alignParentEnd="true" />
 
@@ -39,11 +38,10 @@
         android:layout_height="wrap_content"
         android:text="@string/dim_up"
         android:id="@+id/dim_up_button"
-        android:layout_below="@+id/dim_label"
-        android:layout_alignRight="@+id/dim_label"
-        android:layout_alignEnd="@+id/dim_label"
         android:textSize="12pt"
-        android:background="@drawable/button_selector" />
+        android:background="@drawable/button_selector"
+        android:layout_below="@+id/dim_label"
+        android:layout_alignParentEnd="true" />
 
     <Button
         android:layout_width="wrap_content"
@@ -52,8 +50,9 @@
         android:id="@+id/dim_down_button"
         android:textSize="12pt"
         android:background="@drawable/button_selector"
-        android:layout_centerVertical="true"
-        android:layout_alignStart="@+id/dim_label" />
+        android:layout_below="@+id/dim_up_button"
+        android:layout_marginTop="12dp"
+        android:layout_alignParentEnd="true" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -61,7 +60,7 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="@string/dim_text"
         android:id="@+id/dim_label"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="15dp"
         android:layout_below="@+id/off_button"
         android:layout_alignRight="@+id/off_button"
         android:layout_alignEnd="@+id/off_button"

@@ -53,14 +53,14 @@ public class ApplianceControl extends Activity {
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         if (requestCode == CAPTURE_IMAGE_REQUEST_CODE) {
             if (resultCode == RESULT_OK) {
-                try {
-                    String result = new UploadImageTask().execute().get();
-                    Log.d("ApplianceControl", result);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
+//                try {
+//                    String result = new UploadImageTask().execute().get();
+//                    Log.d("ApplianceControl", result);
+//                } catch (InterruptedException e) {
+//                    throw new RuntimeException(e);
+//                } catch (ExecutionException e) {
+//                    throw new RuntimeException(e);
+//                }
                 displayImage();
             } else if (resultCode == RESULT_CANCELED) {
                 // If user cancelled operation, just return them to camera app
@@ -77,11 +77,11 @@ public class ApplianceControl extends Activity {
             ImageView imageView = (ImageView) findViewById(R.id.imageView);
             Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(),
                     mImageUri);
-            Matrix m = new Matrix();
-            m.postRotate(90);
-            Bitmap bmp = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
-                    bitmap.getHeight(), m, true);
-            imageView.setImageBitmap(bmp);
+//            Matrix m = new Matrix();
+//            m.postRotate(90);
+//            Bitmap bmp = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
+//                    bitmap.getHeight(), m, true);
+            imageView.setImageBitmap(bitmap);
             setInterfaceVisiblity(View.VISIBLE);
         } catch (IOException e) {
             throw new RuntimeException(e);
