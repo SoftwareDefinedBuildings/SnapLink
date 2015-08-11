@@ -150,7 +150,6 @@ void OdometryMonoLocThread::mainLoop()
         else
         {
             OdometryEvent * odomEvent = new OdometryEvent(data, pose, variance, variance, info);
-            odomEvent->imageName = fileName;
             this->post(odomEvent);
         }
     }

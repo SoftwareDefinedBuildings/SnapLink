@@ -30,7 +30,7 @@ public:
     virtual ~Visibility();
 
     bool init(const std::string & labelFolder);
-    void process(const SensorData & data, const Transform & pose, const std::string & imgName);
+    void process(const SensorData & data, const Transform & pose);
 
 private:
     bool readLabels(const std::string & labelFolder);

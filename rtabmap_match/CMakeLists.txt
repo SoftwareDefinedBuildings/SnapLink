@@ -10,8 +10,8 @@ SET(INCLUDE_DIRS
     ${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
-    "/root/workspace/rtabmap/corelib/include/rtabmap/core"
-    "/root/workspace/rtabmap/corelib/src"
+    "~/workspace/rtabmap/corelib/include/rtabmap/core"
+    "~/workspace/rtabmap/corelib/src"
 )
 
 INCLUDE(${QT_USE_FILE})

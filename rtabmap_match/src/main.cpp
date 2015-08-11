@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping database_file image_folder\n");
+            "rtabmap-rgbd_mapping database_file image_folder label_folder\n");
     exit(1);
 }
 

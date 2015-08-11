@@ -43,7 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/centroid.h>
 
 #include "OdometryMonoLoc.h"
-#include "BayesFilter.h"
 #include <list>
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
@@ -69,8 +68,7 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     fundMatrixReprojError_(Parameters::defaultVhEpRansacParam1()),
     fundMatrixConfidence_(Parameters::defaultVhEpRansacParam2()),
     maxVariance_(Parameters::defaultOdomMonoMaxVariance()),
-    dbPath_(dbPath),
-    bayesFilter_(0)
+    dbPath_(dbPath)
 {
     Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
     Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
@@ -188,22 +186,6 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
         }
     }
 
-    // init bayes filters
-    
-    // calculate transform between data and the most similar pose
-    ParametersMap bayesFilterParameters = parameters;
-    // override some parameters
-    uInsert(bayesFilterParameters, ParametersPair(Parameters::kBayesFullPredictionUpdate(), "true")); // make bayes update every time
-    
-    if(!bayesFilter_)
-    {
-        bayesFilter_ = new BayesFilter(bayesFilterParameters);
-    }
-    else
-    {
-        bayesFilter_->parseParameters(bayesFilterParameters);
-    }
-    
     transformFile.open("transform.csv");
     transformFile << "filename, old_img_id, x, y, z, roll, pitch, yaw, variance" << std::endl;
 }
@@ -211,11 +193,6 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
 OdometryMonoLoc::~OdometryMonoLoc()
 {
     delete memory_;
-    if(bayesFilter_)
-    {
-        delete bayesFilter_;
-        bayesFilter_ = 0;
-    }
     transformFile.close();
 }
 
@@ -288,24 +265,19 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
             UDEBUG("newWords=%d", (int)newS->getWords().size());
             if((int)newS->getWords().size() > this->getMinInliers())
             {
-                std::map<int, float> rawLikelihood;
                 std::map<int, float> likelihood;
-                std::map<int, float> posterior;
                 std::pair<int, float> highestHypothesis(0, 0.0f);
 
                 ULOGGER_INFO("computing likelihood...");
                 std::list<int> signaturesToCompare = uKeysList(memory_->getWorkingMem());
                 UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-                rawLikelihood = memory_->computeLikelihood(newS, signaturesToCompare);
+                likelihood = memory_->computeLikelihood(newS, signaturesToCompare);
                 
-                likelihood = rawLikelihood;
                 this->adjustLikelihood(likelihood);
 
-                // do not do bayes because RGB image is arbitrary
-                posterior = likelihood;//bayesFilter_->computePosterior(memory_, likelihood);
-                if(posterior.size())
+                if(likelihood.size())
                 {
-                    for(std::map<int, float>::const_reverse_iterator iter = posterior.rbegin(); iter != posterior.rend(); ++iter)
+                    for(std::map<int, float>::const_reverse_iterator iter = likelihood.rbegin(); iter != likelihood.rend(); ++iter)
                     {
                         if(iter->first > 0 && iter->second > highestHypothesis.second)
                         {

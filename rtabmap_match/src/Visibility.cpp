@@ -103,7 +103,7 @@ bool Visibility::readLabels(const std::string & labelFolder)
     resultFileForPlot << std::endl;
 }
 
-void Visibility::process(const SensorData & data, const Transform & pose, const std::string & imgName)
+void Visibility::process(const SensorData & data, const Transform & pose)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
@@ -134,7 +134,6 @@ void Visibility::process(const SensorData & data, const Transform & pose, const 
     std::map< std::string, std::vector<double> > distances;
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
     
-    resultFileForPlot << imgName;
     for(unsigned int i = 0; i < _points.size(); ++i)
     {
         if(uIsInBounds(int(planePoints[i].x), 0, cols) &&

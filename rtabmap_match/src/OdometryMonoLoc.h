@@ -49,8 +49,6 @@ class ParticleFilter;
 
 class Memory;
 
-class BayesFilter; 
-
 class RTABMAP_EXP OdometryMonoLoc : public Odometry
 {
 public:
@@ -93,7 +91,6 @@ private:
     float maxVariance_;
 
     std::string dbPath_;
-    BayesFilter * bayesFilter_;
     ParametersMap memoryParameters_;
     std::ofstream transformFile;
 };
