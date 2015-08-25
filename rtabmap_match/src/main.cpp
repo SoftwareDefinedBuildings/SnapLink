@@ -118,12 +118,6 @@ int main(int argc, char * argv[])
     // Create an odometry thread to process camera events, it will send OdometryEvent.
     OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile));
 
-    // Create RTAB-Map to process OdometryEvent
-    //Rtabmap * rtabmap = new Rtabmap();
-    //rtabmap->init();
-    //RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
-    //rtabmapThread.setDetectorRate(1.0f);
-   
     CameraCalibratedImages * cameraCalibrated = dynamic_cast<CameraCalibratedImages *>(camera); 
     Visibility * visibility = new Visibility(cameraCalibrated->cameraModel());
     visibility->init(labelpath);
@@ -131,7 +125,6 @@ int main(int argc, char * argv[])
 
     // Setup handlers
     odomThread.registerToEventsManager();
-    //rtabmapThread.registerToEventsManager();
     visThread.registerToEventsManager();
 
     // The RTAB-Map is subscribed by default to CameraEvent, but we want
@@ -144,7 +137,6 @@ int main(int argc, char * argv[])
     UEventsManager::createPipe(&odomThread, &visThread, "OdometryEvent");
 
     // Let's start the threads
-    //rtabmapThread.start();
     odomThread.start();
     cameraThread.start();
     visThread.start();
@@ -153,13 +145,11 @@ int main(int argc, char * argv[])
 
     // remove handlers
     visThread.unregisterFromEventsManager();
-    //rtabmapThread.unregisterFromEventsManager();
     odomThread.unregisterFromEventsManager();
 
     // Kill all threads
     cameraThread.join(true);
     odomThread.join(true);
-    //rtabmapThread.join(true);
     visThread.join(true);
 
     return 0;
