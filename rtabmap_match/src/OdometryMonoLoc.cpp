@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
 #include "OdometryInfoErr.h"
+#include "MemoryLoc.h"
 
 namespace rtabmap {
 
@@ -307,8 +308,10 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "4"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "3000"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // interactive
                 
-                Memory memory(customParameters);
+                MemoryLoc memoryLoc(customParameters);
 
                 std::string rejectedMsg;
                 int visualInliers = 0;
@@ -322,9 +325,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                    dataTo.id() != Memory::kIdInvalid)
                 {
                     UDEBUG("Calculate map transform with raw data");
-                    memory.update(dataTo);
-                    memory.update(dataFrom);
-                    Transform transform = memory.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    memoryLoc.update(dataTo);
+                    memoryLoc.update(dataFrom);
+                    Transform transform = memoryLoc.computeGlobalVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
 
                     float x, y, z, roll, pitch, yaw;
                     transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
