@@ -28,8 +28,8 @@ class RTABMAP_EXP MemoryLoc : public Memory
 public:
     MemoryLoc(const ParametersMap & parameters = ParametersMap());
 
-    Transform computeGlobalVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-    Transform computeGlobalVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
+    Transform computeGlobalVisualTransform(const std::vector<int> & oldIds, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
+    Transform computeGlobalVisualTransform(const std::vector<Signature> & oldSs, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 
 private:
     int _bowMinInliers;

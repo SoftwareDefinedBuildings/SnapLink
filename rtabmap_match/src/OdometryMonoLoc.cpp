@@ -309,7 +309,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "4"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "3000"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // interactive
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
                 
                 MemoryLoc memoryLoc(customParameters);
 
@@ -319,15 +319,20 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 SensorData dataFrom = data;
                 dataFrom.setId(newS->id());
                 SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
+                const Signature * dataToS = memory_->getSignature(highestHypothesis.first);
 
                 if(!dataTo.depthOrRightRaw().empty() &&
                    dataFrom.id() != Memory::kIdInvalid &&
                    dataTo.id() != Memory::kIdInvalid)
                 {
                     UDEBUG("Calculate map transform with raw data");
-                    memoryLoc.update(dataTo);
+                    //std::cout << "pose before being added: " << dataToS->getPose() << std::endl;
+                    memoryLoc.update(dataTo, dataToS->getPose(), dataToS->getPoseCovariance());
                     memoryLoc.update(dataFrom);
-                    Transform transform = memoryLoc.computeGlobalVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    std::vector<int> oldIds;
+                    oldIds.push_back(dataTo.id());
+                    Transform globalTransform = memoryLoc.computeGlobalVisualTransform(oldIds, dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    Transform transform = memoryLoc.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
 
                     float x, y, z, roll, pitch, yaw;
                     transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -347,6 +352,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         */
                         UINFO("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
                         UINFO("transform = %s", transform.prettyPrint().c_str());
+                        UINFO("global transform = %s", globalTransform.prettyPrint().c_str());
                         UINFO("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
                         UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
                         UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
