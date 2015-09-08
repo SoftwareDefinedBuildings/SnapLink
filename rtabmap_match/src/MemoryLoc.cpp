@@ -110,14 +110,20 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     double variance = 1.0;
 
     std::multimap<int, pcl::PointXYZ> words3;
+    const Transform & basePose = oldSs.begin()->getPose(); 
     for (std::vector<Signature>::const_iterator it1 = oldSs.begin(); it1 != oldSs.end(); ++it1) {
-        const Transform & pose = it1->getPose(); 
+        Transform relativeT = basePose.inverse() * it1->getPose();
         std::multimap<int, pcl::PointXYZ>::const_iterator it2;
         for (it2 = it1->getWords3().begin(); it2 != it1->getWords3().end(); ++it2) {
-            pcl::PointXYZ globalPoint = util3d::transformPoint(it2->second, pose);
-            std::cout<< it2->second << std::endl;
-            //std::cout<< pose << std::endl;
-            std::cout<< globalPoint << std::endl << std::endl << std::endl;
+            pcl::PointXYZ globalPoint = util3d::transformPoint(it2->second, relativeT);
+            std::multimap<int, pcl::PointXYZ>::iterator it3 = words3.find(it2->first);
+            //if (it3 != words3.end()) {
+            //    std::cout<< "existing point in base frame: " << it3->second << std::endl;
+            //    std::cout<< "new point in own frame: " << it2->second << std::endl;
+            //    std::cout<< "new point in base frame: " << globalPoint << std::endl << std::endl;
+            //    std::cout<< "base pose: " << basePose << std::endl;
+            //    std::cout<< "own pose: " << it1->getPose() << std::endl;
+            //}
             words3.insert(std::pair<int, pcl::PointXYZ>(it2->first, globalPoint));
         }
     }
@@ -139,11 +145,6 @@ Transform MemoryLoc::computeGlobalVisualTransform(
             const CameraModel & cameraModel = newS.sensorData().stereoCameraModel().isValid()?newS.sensorData().stereoCameraModel().left():newS.sensorData().cameraModels()[0];
 
             std::vector<int> inliersV;
-            std::cout << words3.size() << std::endl;
-            std::cout << "_bowMinInliers: " <<  _bowMinInliers << std::endl;
-            std::cout << "_bowIterations: " << _bowIterations << std::endl;
-            std::cout << "_bowPnPReprojError: " << _bowPnPReprojError << std::endl;
-            std::cout << "_bowPnPFlags: " << _bowPnPFlags << std::endl;
             transform = util3d::estimateMotion3DTo2D(
                     uMultimapToMap(words3),
                     uMultimapToMap(newS.getWords()),
@@ -177,7 +178,6 @@ Transform MemoryLoc::computeGlobalVisualTransform(
         }
     }
 
-    std::cout << transform.prettyPrint().c_str() << std::endl;
     if(!transform.isNull())
     {
         // verify if it is a 180 degree transform, well verify > 90
@@ -193,6 +193,9 @@ Transform MemoryLoc::computeGlobalVisualTransform(
             UWARN(msg.c_str());
         }
     }
+
+    // transfer to global frame
+    transform = basePose * transform.inverse();
 
     if(rejectedMsg)
     {

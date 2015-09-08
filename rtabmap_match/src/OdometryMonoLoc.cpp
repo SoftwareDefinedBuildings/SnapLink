@@ -267,7 +267,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
             if((int)newS->getWords().size() > this->getMinInliers())
             {
                 std::map<int, float> likelihood;
-                std::pair<int, float> highestHypothesis(0, 0.0f);
 
                 ULOGGER_INFO("computing likelihood...");
                 std::list<int> signaturesToCompare = uKeysList(memory_->getWorkingMem());
@@ -276,19 +275,26 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 
                 this->adjustLikelihood(likelihood);
 
+                std::vector<int> topIds;
+                likelihood.erase(-1);
                 if(likelihood.size())
                 {
-                    for(std::map<int, float>::const_reverse_iterator iter = likelihood.rbegin(); iter != likelihood.rend(); ++iter)
-                    {
-                        if(iter->first > 0 && iter->second > highestHypothesis.second)
-                        {
-                            highestHypothesis = *iter;
-                        }
-                        UDEBUG("id = %d, likelihood = %f", iter->first, iter->second);
+                    std::vector< std::pair<int, float> > top(10);
+                    std::partial_sort_copy(likelihood.begin(),
+                                           likelihood.end(),
+                                           top.begin(),
+                                           top.end(),
+                                           compareLikelihood);
+                    for(std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it) {
+                        topIds.push_back(it->first);
                     }
                 }
 
-                UINFO("highestHypothesis.first = %d", highestHypothesis.first);
+                //std::cout << "topIds: ";
+                //for (std::vector<int>::const_iterator i = topIds.begin(); i != topIds.end(); ++i) {
+                //    std::cout << *i << ' ';
+                //}
+                //std::cout << std::endl;
 
                 // calculate transform between data and the most similar pose
                 ParametersMap customParameters = memoryParameters_; // get BOW LCC parameters
@@ -300,14 +306,14 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
                 uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
-                uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.8")); 
+                uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.3")); 
                 uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
                 uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
                 uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "4"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "3000"));
+                uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "2000"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
                 uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
                 
@@ -316,33 +322,53 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 std::string rejectedMsg;
                 int visualInliers = 0;
                 double variance = 1;
+                bool success = true;
                 SensorData dataFrom = data;
                 dataFrom.setId(newS->id());
-                SensorData dataTo = memory_->getNodeData(highestHypothesis.first, true);
-                const Signature * dataToS = memory_->getSignature(highestHypothesis.first);
+                if(dataFrom.id() == Memory::kIdInvalid) {
+                    success = false;
+                }
 
-                if(!dataTo.depthOrRightRaw().empty() &&
-                   dataFrom.id() != Memory::kIdInvalid &&
-                   dataTo.id() != Memory::kIdInvalid)
-                {
-                    UDEBUG("Calculate map transform with raw data");
-                    //std::cout << "pose before being added: " << dataToS->getPose() << std::endl;
-                    memoryLoc.update(dataTo, dataToS->getPose(), dataToS->getPoseCovariance());
+                if (success) {
+                    std::vector<int> sortedIds = topIds;
+                    std::sort(sortedIds.begin(), sortedIds.end());
+                    for(std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it) {
+                        SensorData data = memory_->getNodeData(*it, true);
+                        const Signature * sig = memory_->getSignature(*it);
+
+                        if(!data.depthOrRightRaw().empty() &&
+                           data.id() != Memory::kIdInvalid &&
+                           sig != NULL)
+                        {
+                            UDEBUG("Calculate map transform with raw data");
+                            //std::cout << "pose before being added: " << dataToS->getPose() << std::endl;
+                            memoryLoc.update(data, sig->getPose(), sig->getPoseCovariance());
+                        }
+                        else
+                        {
+                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, dataFrom.id() = %d, data.id() = %d", 
+                                    data.depthOrRightRaw().empty(), dataFrom.id(), data.id());
+                            success = false;
+                            break;
+                        }
+                    }
+                    
                     memoryLoc.update(dataFrom);
-                    std::vector<int> oldIds;
-                    oldIds.push_back(dataTo.id());
-                    Transform globalTransform = memoryLoc.computeGlobalVisualTransform(oldIds, dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
-                    Transform transform = memoryLoc.computeVisualTransform(dataTo.id(), dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                }
 
-                    float x, y, z, roll, pitch, yaw;
-                    transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-                    transformFile << infoErr->fileName << ", " << highestHypothesis.first << ", " << x << ", " << y << ", " << z << ", " << roll << ", " << pitch << ", " << yaw << ", " << variance << std::endl; 
+                if (success) {
+                    Transform globalTransform = memoryLoc.computeGlobalVisualTransform(topIds, dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    //Transform transform = memoryLoc.computeVisualTransform(topIds[0], dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
 
+                    //float x, y, z, roll, pitch, yaw;
+                    //transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+                    //transformFile << infoErr->fileName << ", " << topIds[0] << ", " << x << ", " << y << ", " << z << ", " << roll << ", " << pitch << ", " << yaw << ", " << variance << std::endl;
 
-                    infoErr->oldImgId = highestHypothesis.first;
-                    if(!transform.isNull()) {
-                        const Signature * mostSimilarS = memory_->getSignature(highestHypothesis.first);
-                        output = mostSimilarS->getPose() * transform.inverse(); // this is the final R and t
+                    infoErr->topIds = topIds;
+                    if(!globalTransform.isNull()) {
+                        //const Signature * mostSimilarS = memory_->getSignature(topIds[0]);
+                        //output = mostSimilarS->getPose() * transform.inverse(); // this is the final R and t
+                        output = globalTransform;
 
                         /*
                         CameraModel cmOld = mostSimilarS->sensorData().cameraModels()[0];
@@ -350,12 +376,12 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         CameraModel cmNew = newS->sensorData().cameraModels()[0];
                         UDEBUG("cmNew.fx() = %f, cmNew.fy() = %f, cmNew.cx() = %f, cmNew.cy() = %f, cmNew.localTranform() = %s", cmNew.fx(), cmNew.fy(), cmNew.cx(), cmNew.cy(), cmNew.localTransform().prettyPrint().c_str());
                         */
-                        UINFO("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
-                        UINFO("transform = %s", transform.prettyPrint().c_str());
-                        UINFO("global transform = %s", globalTransform.prettyPrint().c_str());
-                        UINFO("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
-                        UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
-                        UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
+                        //UINFO("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
+                        //UINFO("transform = %s", transform.prettyPrint().c_str());
+                        UDEBUG("global transform = %s", globalTransform.prettyPrint().c_str());
+                        //UINFO("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
+                        //UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
+                        //UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
                     }
                     else
                     {
@@ -378,11 +404,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                             exit(1);
                         }
                     }
-                }
-                else
-                {
-                    UWARN("Data incomplete. dataTo.depthOrRightRaw().empty() = %d, dataFrom.id() = %d, dataTo.id() = %d", 
-                            dataTo.depthOrRightRaw().empty(), dataFrom.id(), dataTo.id());
                 }
             }
             else
@@ -482,6 +503,10 @@ void OdometryMonoLoc::adjustLikelihood(std::map<int, float> & likelihood) const
 
     double time = timer.ticks();
     UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
+}
+
+bool OdometryMonoLoc::compareLikelihood(std::pair<const int, float> const& l, std::pair<const int, float> const& r) {
+    return l.second > r.second;
 }
 
 } // namespace rtabmap
