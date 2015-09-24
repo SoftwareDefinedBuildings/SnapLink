@@ -44,7 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping database_file image_folder label_folder\n");
+            "rtabmap-rgbd_mapping database_file image_folder label_folder topk\n");
     exit(1);
 }
 
@@ -58,15 +58,17 @@ int main(int argc, char * argv[])
     std::string dbfile;
     std::string imgpath;
     std::string labelpath;
-    if(argc != 4)
+    int topk;
+    if(argc != 5)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc-3]);
-        imgpath = std::string(argv[argc-2]);
-        labelpath = std::string(argv[argc-1]);
+        dbfile = std::string(argv[argc-4]);
+        imgpath = std::string(argv[argc-3]);
+        labelpath = std::string(argv[argc-2]);
+        topk = atoi(argv[argc-1]);
     }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
@@ -94,7 +96,7 @@ int main(int argc, char * argv[])
         // k1 = 0.134408880645970, k2 = -0.177147104797916
     }
     else if (cameraType == 2)
-    { 
+    {
         // hardcoded for map1_10Hz
         fx = 525.0f;
         fyOrBaseline = 525.0f;
@@ -116,7 +118,7 @@ int main(int argc, char * argv[])
     }
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile));
+    OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile, topk));
 
     CameraCalibratedImages * cameraCalibrated = dynamic_cast<CameraCalibratedImages *>(camera); 
     Visibility * visibility = new Visibility(cameraCalibrated->cameraModel());

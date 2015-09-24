@@ -52,7 +52,7 @@ class Memory;
 class RTABMAP_EXP OdometryMonoLoc : public Odometry
 {
 public:
-    OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+    OdometryMonoLoc(const std::string dbPath, const int topk, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
     virtual ~OdometryMonoLoc();
     virtual void reset(const Transform & initialPose);
     void resetSuperOdom(); // only reset the super odometry
@@ -94,6 +94,8 @@ private:
     std::string dbPath_;
     ParametersMap memoryParameters_;
     std::ofstream transformFile;
+
+    int topk_;
 };
 
 } /* namespace rtabmap */

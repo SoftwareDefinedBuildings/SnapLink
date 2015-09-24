@@ -51,7 +51,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::ParametersMap & parameters) :
+OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const int topk, const rtabmap::ParametersMap & parameters) :
     Odometry(parameters),
     flowWinSize_(Parameters::defaultOdomFlowWinSize()),
     flowIterations_(Parameters::defaultOdomFlowIterations()),
@@ -69,7 +69,8 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
     fundMatrixReprojError_(Parameters::defaultVhEpRansacParam1()),
     fundMatrixConfidence_(Parameters::defaultVhEpRansacParam2()),
     maxVariance_(Parameters::defaultOdomMonoMaxVariance()),
-    dbPath_(dbPath)
+    dbPath_(dbPath),
+    topk_(topk)
 {
     Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
     Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
@@ -189,6 +190,8 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const rtabmap::Parame
 
     transformFile.open("transform.csv");
     transformFile << "filename, old_img_id, x, y, z, roll, pitch, yaw, variance" << std::endl;
+    
+    UINFO("Compare with top %d images.", topk);
 }
 
 OdometryMonoLoc::~OdometryMonoLoc()
@@ -279,7 +282,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                 likelihood.erase(-1);
                 if(likelihood.size())
                 {
-                    std::vector< std::pair<int, float> > top(10);
+                    std::vector< std::pair<int, float> > top(topk_);
                     std::partial_sort_copy(likelihood.begin(),
                                            likelihood.end(),
                                            top.begin(),

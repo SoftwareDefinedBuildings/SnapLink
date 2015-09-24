@@ -64,7 +64,6 @@ Transform MemoryLoc::computeGlobalVisualTransform(
         if (*it) {
             const Signature * oldS = this->getSignature(*it);
             const Transform & pose = oldS->getPose(); 
-            //std::cout<< pose << std::endl;
             oldSs.push_back(*oldS);
         } else {
             success = false;
