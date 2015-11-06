@@ -25,6 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+ * Modified: Kaifei Chen <kaifei@cs.berkeley.edu>
+ */
+
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
@@ -46,8 +50,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <list>
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
+#include <rtabmap/utilite/UMath.h>
 #include "OdometryInfoErr.h"
 #include "MemoryLoc.h"
+
 
 namespace rtabmap {
 
