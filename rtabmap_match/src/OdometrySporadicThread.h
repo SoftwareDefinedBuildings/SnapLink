@@ -1,5 +1,4 @@
-#ifndef ODOMETRYMONOLOCTHREAD_H_
-#define ODOMETRYMONOLOCTHREAD_H_
+#pragma once
 
 #include <rtabmap/core/RtabmapExp.h>
 #include <rtabmap/core/SensorData.h>
@@ -26,9 +25,6 @@ protected:
 private:
     void mainLoopKill();
 
-    //============================================================
-    // MAIN LOOP
-    //============================================================
     void mainLoop();
     void addData(const SensorData & data, const std::string & fileName="");
     bool getData(SensorData & data, std::string & fileName);
@@ -44,6 +40,3 @@ private:
 };
 
 } // namespace rtabmap
-
-
-#endif /* ODOMETRYMONOLOCTHREAD_H_ */

@@ -6,7 +6,6 @@
 #include "OdometryMonoLocThread.h"
 #include "CameraCalibratedEvent.h"
 #include "OdometryMonoLoc.h"
-#include "OdometryInfoErr.h"
 
 namespace rtabmap {
 
@@ -15,7 +14,7 @@ OdometryMonoLocThread::OdometryMonoLocThread(Odometry * odometry, unsigned int d
     _dataBufferMaxSize(dataBufferMaxSize),
     _resetOdometry(false)
 {
-    UASSERT(_odometry != 0);
+    UASSERT(_odometry != NULL);
 }
 
 OdometryMonoLocThread::~OdometryMonoLocThread()
@@ -39,15 +38,6 @@ void OdometryMonoLocThread::handleEvent(UEvent * event)
             {
                 this->addData(cameraEvent->data(), cameraEvent->cameraName()); // camera name is file name for CameraCalibratedEvent
             }
-        }
-        else if(event->getClassName().compare("OdometryResetEvent") == 0)
-        {
-            _resetOdometry = true;
-        }
-        else if(event->getClassName().compare("OdometryEvent") == 0)
-        {
-            OdometryEvent * odomEvent = (OdometryEvent*)event;
-            this->addData(odomEvent->data());
         }
     }
 }
@@ -77,40 +67,12 @@ void OdometryMonoLocThread::mainLoop()
     if(getData(data, fileName))
     {
         
-        OdometryInfoErr info;
         info.fileName = fileName;
         Transform pose = _odometry->process(data, &info);
         // a null pose notify that odometry could not be computed
         UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
         double variance = info.variance>0?info.variance:1;
-        if(pose.isNull())
-        {
-            if (info.err == 0) {
-                // TODO
-            }
-            else if(info.err == 1)
-            {
-                UWARN("Fail to localize %s because the new image has no enough words", fileName.c_str());
-            }
-            else if (info.err == 2)
-            {
-                UWARN("Fail to localize %s because they have no enough inliers", fileName.c_str());
-            }
-            else if (info.err == 3)
-            {
-                UWARN("Fail to localize %s because the old image has no enough words", fileName.c_str());
-            }
-            else if (info.err == 4)
-            {
-                UWARN("Fail to localize %s because the rotation is too large", fileName.c_str());
-            }
-            else
-            {
-                UWARN("Unkown error: %d", info.err);
-                exit(1);
-            }
-        }
-        else
+        if(!pose.isNull())
         {
             OdometryEvent * odomEvent = new OdometryEvent(data, pose, variance, variance, info);
             this->post(odomEvent);
