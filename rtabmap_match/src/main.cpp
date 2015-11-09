@@ -25,8 +25,8 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    //ULogger::setLevel(ULogger::kInfo);
-    ULogger::setLevel(ULogger::kDebug);
+    ULogger::setLevel(ULogger::kInfo);
+    //ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
@@ -100,25 +100,20 @@ int main(int argc, char * argv[])
     odomThread.registerToEventsManager();
     visThread.registerToEventsManager();
 
-    // The RTAB-Map is subscribed by default to CameraEvent, but we want
-    // RTAB-Map to process OdometryEvent instead, ignoring the CameraEvent.
-    // We can do that by creating a "pipe" between the camera and odometry, then
-    // only the odometry will receive CameraEvent from that camera. RTAB-Map is
-    // also subscribed to OdometryEvent by default, so no need to create a pipe between
-    // odometry and RTAB-Map.
+    // build "pipes" between threads
     UEventsManager::createPipe(&cameraThread, &odomThread, "CameraCalibratedEvent");
     UEventsManager::createPipe(&odomThread, &visThread, "OdometryEvent");
 
     // Let's start the threads
-    odomThread.start();
     cameraThread.start();
+    odomThread.start();
     visThread.start();
 
     pause();
 
     // remove handlers
-    visThread.unregisterFromEventsManager();
     odomThread.unregisterFromEventsManager();
+    visThread.unregisterFromEventsManager();
 
     // Kill all threads
     cameraThread.join(true);

@@ -29,6 +29,7 @@ OdometrySporadic::OdometrySporadic(const std::string dbPath, const rtabmap::Para
 Odometry(parameters),
 dbPath_(dbPath)
 {
+    UDEBUG("");
     // Setup memory
     memoryParameters_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
     memoryParameters_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
@@ -44,38 +45,28 @@ dbPath_(dbPath)
     memoryParameters_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
     memoryParameters_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
 
-    memory_ = new Memory(memoryParameters_);
-    if(!memory_->init(dbPath_))
+    memory_ = new Memory();
+    if(!memory_ || !memory_->init(dbPath_, false, memoryParameters_))
     {
         UERROR("Error initializing the memory for OdometrySporadic.");
-    }
-    else
-    {
-        // get the graph
-        std::map<int, int> ids = memory_->getNeighborsId(memory_->getLastSignatureId(), 0, 0);
-        std::map<int, Transform> poses;
-        std::multimap<int, Link> links;
-        memory_->getMetricConstraints(uKeysSet(ids), poses, links);
-    
-        //optimize the graph
-        graph::TOROOptimizer optimizer;
-        std::map<int, Transform> optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
     }
 }
 
 OdometrySporadic::~OdometrySporadic()
 {
+    UDEBUG("");
     delete memory_;
 }
 
 void OdometrySporadic::reset(const Transform & initialPose)
 {
+    UDEBUG("");
     Odometry::reset(initialPose);
-    memory_->init("");
 }
 
 Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryInfo *info)
 {
+    UDEBUG("");
     Transform output;
 
     if(data.imageRaw().empty())
