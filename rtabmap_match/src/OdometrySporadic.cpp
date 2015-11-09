@@ -1,25 +1,14 @@
-#include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/Memory.h"
-#include "rtabmap/core/Signature.h"
-#include "rtabmap/core/util3d_transforms.h"
-#include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util3d_features.h"
-#include "rtabmap/core/EpipolarGeometry.h"
-#include "rtabmap/utilite/ULogger.h"
-#include "rtabmap/utilite/UTimer.h"
-#include "rtabmap/utilite/UConversion.h"
-#include "rtabmap/utilite/UStl.h"
-#include "rtabmap/core/VWDictionary.h"
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/calib3d/calib3d.hpp>
-#include <opencv2/video/tracking.hpp>
-#include <pcl/common/centroid.h>
+#include <rtabmap/core/Memory.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UMath.h>
+#include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/core/Rtabmap.h>
 
 #include "OdometrySporadic.h"
-#include <list>
-#include "rtabmap/core/Features2d.h"
-#include "rtabmap/core/Graph.h"
-#include <rtabmap/utilite/UMath.h>
 #include "MemoryLoc.h"
 
 
@@ -29,68 +18,78 @@ OdometrySporadic::OdometrySporadic(const std::string dbPath, const rtabmap::Para
 Odometry(parameters),
 dbPath_(dbPath)
 {
-    UDEBUG("");
     // Setup memory
-    memoryParameters_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-    memoryParameters_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-    memoryParameters_.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
-    memoryParameters_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-    memoryParameters_.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
-    memoryParameters_.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
+    memoryParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+    memoryParams_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
+    memoryParams_.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
+    memoryParams_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+    memoryParams_.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
+    memoryParams_.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
     int featureType = Feature2D::kFeatureSurf;
-    memoryParameters_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
-
+    memoryParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
     // parameters that makes memory do PnP localization for RGB images
-    memoryParameters_.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
-    memoryParameters_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
-    memoryParameters_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
+    memoryParams_.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
+    memoryParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
+    memoryParams_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
 
     memory_ = new Memory();
-    if(!memory_ || !memory_->init(dbPath_, false, memoryParameters_))
+    if(!memory_ || !memory_->init(dbPath_, false, memoryParams_))
     {
         UERROR("Error initializing the memory for OdometrySporadic.");
     }
+
+    memoryLocParams_ = memoryParams_; // get BOW LCC parameters
+    // override some parameters
+    memoryLocParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
+    memoryLocParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+    memoryLocParams_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpNndrRatio(), "0.3")); 
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpBadSignRatio(), "0"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "4"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowIterations(), "2000"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
+    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 }
 
 OdometrySporadic::~OdometrySporadic()
 {
-    UDEBUG("");
     delete memory_;
 }
 
 void OdometrySporadic::reset(const Transform & initialPose)
 {
-    UDEBUG("");
     Odometry::reset(initialPose);
 }
 
-Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryInfo *info)
+Transform OdometrySporadic::computeTransform(const SensorData & data_, OdometryInfo *info)
 {
-    UDEBUG("");
     Transform output;
+    SensorData data = data_; // copy because it will be changed later
 
     if(data.imageRaw().empty())
     {
         UERROR("Image empty! Cannot compute odometry...");
         return output;
     }
-
-    if(!(((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid())))
+    if(!((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid()))
     {
         UERROR("Odometry cannot be done without calibration or on multi-camera!");
         return output;
     }
 
-    if(data.imageRaw().channels() != 1)
+    if(data.imageRaw().channels() > 1)
     {
-        UERROR("OdometrySporadic can only take gray images!");
-        return output;
-    }
-
-    if(info == 0)
-    {
-        UERROR("info has to be not NULL in OdometrySporadic");
-        return output;
+        cv::Mat imageRawGray;
+        cv::cvtColor(data.imageRaw(), imageRawGray, cv::COLOR_BGR2GRAY);
+        data.setImageRaw(imageRawGray);
     }
 
     const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
@@ -100,11 +99,9 @@ Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryIn
     if(memory_->getWorkingMem().size() >= 1)
     {
         //PnP
-        UDEBUG("PnP");
-
         if(this->isInfoDataFilled() && info)
         {
-            info->type = 0; // 0=BOW, 1=Optical Flow, 2=ICP
+            info->type = -1; // 0=BOW, 1=Optical Flow, 2=ICP
         }
 
         // generate kpts
@@ -116,13 +113,12 @@ Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryIn
             if((int)newS->getWords().size() > this->getMinInliers())
             {
                 std::map<int, float> likelihood;
-
-                ULOGGER_INFO("computing likelihood...");
                 std::list<int> signaturesToCompare = uKeysList(memory_->getWorkingMem());
                 UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
                 likelihood = memory_->computeLikelihood(newS, signaturesToCompare);
                 
-                this->adjustLikelihood(likelihood);
+                Rtabmap rtabmap;
+                rtabmap.adjustLikelihood(likelihood);
 
                 std::vector<int> topIds;
                 likelihood.erase(-1);
@@ -139,37 +135,15 @@ Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryIn
                         topIds.push_back(it->first);
                     }
                 }
-
-                // calculate transform between data and the most similar pose
-                ParametersMap customParameters = memoryParameters_; // get BOW LCC parameters
-                // override some parameters
-                uInsert(customParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-                uInsert(customParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-                uInsert(customParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
-                uInsert(customParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-                uInsert(customParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
-                uInsert(customParameters, ParametersPair(Parameters::kKpNndrRatio(), "0.3")); 
-                uInsert(customParameters, ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
-                uInsert(customParameters, ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
-                uInsert(customParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-                uInsert(customParameters, ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-                uInsert(customParameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowMinInliers(), "4"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowIterations(), "2000"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
-                uInsert(customParameters, ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
                 
-                MemoryLoc memoryLoc(customParameters);
+                MemoryLoc memoryLoc(memoryLocParams_);
 
                 std::string rejectedMsg;
                 int visualInliers = 0;
                 double variance = 1;
                 bool success = true;
-                SensorData dataFrom = data;
-                dataFrom.setId(newS->id());
-                if(dataFrom.id() == Memory::kIdInvalid) {
+                data.setId(newS->id());
+                if(data.id() == Memory::kIdInvalid) {
                     success = false;
                 }
 
@@ -190,41 +164,21 @@ Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryIn
                         }
                         else
                         {
-                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, dataFrom.id() = %d, data.id() = %d", 
-                                    data.depthOrRightRaw().empty(), dataFrom.id(), data.id());
+                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d", 
+                                    data.depthOrRightRaw().empty(), data.id());
                             success = false;
                             break;
                         }
                     }
                     
-                    memoryLoc.update(dataFrom);
+                    memoryLoc.update(data);
                 }
 
                 if (success) {
-                    Transform globalTransform = memoryLoc.computeGlobalVisualTransform(topIds, dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
-                    //Transform transform = memoryLoc.computeVisualTransform(topIds[0], dataFrom.id(), &rejectedMsg, &visualInliers, &variance);
+                    output = memoryLoc.computeGlobalVisualTransform(topIds, data.id(), &rejectedMsg, &visualInliers, &variance);
 
-                    //float x, y, z, roll, pitch, yaw;
-                    //transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-                    //transformFile << infoErr->fileName << ", " << topIds[0] << ", " << x << ", " << y << ", " << z << ", " << roll << ", " << pitch << ", " << yaw << ", " << variance << std::endl;
-
-                    if(!globalTransform.isNull()) {
-                        //const Signature * mostSimilarS = memory_->getSignature(topIds[0]);
-                        //output = mostSimilarS->getPose() * transform.inverse(); // this is the final R and t
-                        output = globalTransform;
-
-                        /*
-                        CameraModel cmOld = mostSimilarS->sensorData().cameraModels()[0];
-                        UDEBUG("cmOld.fx() = %f, cmOld.fy() = %f, cmOld.cx() = %f, cmOld.cy() = %f, cmOld.localTranform() = %s", cmOld.fx(), cmOld.fy(), cmOld.cx(), cmOld.cy(), cmOld.localTransform().prettyPrint().c_str());
-                        CameraModel cmNew = newS->sensorData().cameraModels()[0];
-                        UDEBUG("cmNew.fx() = %f, cmNew.fy() = %f, cmNew.cx() = %f, cmNew.cy() = %f, cmNew.localTranform() = %s", cmNew.fx(), cmNew.fy(), cmNew.cx(), cmNew.cy(), cmNew.localTransform().prettyPrint().c_str());
-                        */
-                        //UINFO("mostSimilarS->getPose() = %s", mostSimilarS->getPose().prettyPrint().c_str());
-                        //UINFO("transform = %s", transform.prettyPrint().c_str());
-                        UDEBUG("global transform = %s", globalTransform.prettyPrint().c_str());
-                        //UINFO("transform.inverse() = %s", transform.inverse().prettyPrint().c_str());
-                        //UDEBUG("newS->getPose() = %s", newS->getPose().prettyPrint().c_str());
-                        //UDEBUG("newS->getPose().inverse() = %s", newS->getPose().inverse().prettyPrint().c_str());
+                    if(!output.isNull()) {
+                        UDEBUG("global transform = %s", output.prettyPrint().c_str());
                     }
                     else
                     {
@@ -239,6 +193,7 @@ Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryIn
 
             // remove new words from dictionary
             memory_->deleteLocation(newS->id());
+            memory_->emptyTrash();
         }
     }
     else
@@ -246,88 +201,14 @@ Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryIn
         UERROR("Memory not initialized. memory_->getWorkingMem().size() = %d", memory_->getWorkingMem().size());
     }
 
-    memory_->emptyTrash();
-
     if(this->isInfoDataFilled() && info)
     {
-        // TODO is this function returning global transform?
+        // TODO 
     }
 
     UINFO("output transform = %s", output.prettyPrint().c_str());
 
     return output;
-}
-
-// same function copied from RTABMap
-void OdometrySporadic::adjustLikelihood(std::map<int, float> & likelihood) const
-{
-    ULOGGER_DEBUG("likelihood.size()=%d", likelihood.size());
-    UTimer timer;
-    timer.start();
-    if(likelihood.size()==0)
-    {
-        return;
-    }
-
-    // Use only non-null values (ignore virtual place)
-    std::list<float> values;
-    bool likelihoodNullValuesIgnored = true;
-    for(std::map<int, float>::iterator iter = ++likelihood.begin(); iter!=likelihood.end(); ++iter)
-    {
-        if((iter->second >= 0 && !likelihoodNullValuesIgnored) ||
-           (iter->second > 0 && likelihoodNullValuesIgnored))
-        {
-            values.push_back(iter->second);
-        }
-    }
-    UDEBUG("values.size=%d", values.size());
-
-    float mean = uMean(values);
-    float stdDev = std::sqrt(uVariance(values, mean));
-
-
-    //Adjust likelihood with mean and standard deviation (see Angeli phd)
-    float epsilon = 0.0001;
-    float max = 0.0f;
-    int maxId = 0;
-    for(std::map<int, float>::iterator iter=++likelihood.begin(); iter!= likelihood.end(); ++iter)
-    {
-        float value = iter->second;
-        if(value > mean+stdDev && mean)
-        {
-            iter->second = (value-(stdDev-epsilon))/mean;
-            if(value > max)
-            {
-                max = value;
-                maxId = iter->first;
-            }
-        }
-        else if(value == 1.0f && stdDev == 0)
-        {
-            iter->second = 1.0f;
-            if(value > max)
-            {
-                max = value;
-                maxId = iter->first;
-            }
-        }
-        else
-        {
-            iter->second = 1.0f;
-        }
-    }
-
-    if(stdDev > epsilon && max)
-    {
-        likelihood.begin()->second = mean/stdDev + 1.0f;
-    }
-    else
-    {
-        likelihood.begin()->second = 2.0f; //2 * std dev
-    }
-
-    double time = timer.ticks();
-    UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
 }
 
 bool OdometrySporadic::compareLikelihood(std::pair<const int, float> const& l, std::pair<const int, float> const& r) {
