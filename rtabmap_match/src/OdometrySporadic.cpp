@@ -1,34 +1,3 @@
-/*
-Copyright (c) 2010-2014, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the Universite de Sherbrooke nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-/*
- * Modified: Kaifei Chen <kaifei@cs.berkeley.edu>
- */
-
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
@@ -46,106 +15,29 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/video/tracking.hpp>
 #include <pcl/common/centroid.h>
 
-#include "OdometryMonoLoc.h"
+#include "OdometrySporadic.h"
 #include <list>
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/Graph.h"
 #include <rtabmap/utilite/UMath.h>
-#include "OdometryInfoErr.h"
 #include "MemoryLoc.h"
 
 
 namespace rtabmap {
 
-OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const int topk, const rtabmap::ParametersMap & parameters) :
-    Odometry(parameters),
-    flowWinSize_(Parameters::defaultOdomFlowWinSize()),
-    flowIterations_(Parameters::defaultOdomFlowIterations()),
-    flowEps_(Parameters::defaultOdomFlowEps()),
-    flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
-    stereoWinSize_(Parameters::defaultStereoWinSize()),
-    stereoIterations_(Parameters::defaultStereoIterations()),
-    stereoEps_(Parameters::defaultStereoEps()),
-    stereoMaxLevel_(Parameters::defaultStereoMaxLevel()),
-    stereoMaxSlope_(Parameters::defaultStereoMaxSlope()),
-    localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
-    initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
-    initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
-    minTranslation_(Parameters::defaultOdomMonoMinTranslation()),
-    fundMatrixReprojError_(Parameters::defaultVhEpRansacParam1()),
-    fundMatrixConfidence_(Parameters::defaultVhEpRansacParam2()),
-    maxVariance_(Parameters::defaultOdomMonoMaxVariance()),
-    dbPath_(dbPath),
-    topk_(topk)
+OdometrySporadic::OdometrySporadic(const std::string dbPath, const rtabmap::ParametersMap & parameters) :
+Odometry(parameters),
+dbPath_(dbPath)
 {
-    Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
-    Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
-    Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
-    Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
-    Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
-
-    Parameters::parse(parameters, Parameters::kStereoWinSize(), stereoWinSize_);
-    Parameters::parse(parameters, Parameters::kStereoIterations(), stereoIterations_);
-    Parameters::parse(parameters, Parameters::kStereoEps(), stereoEps_);
-    Parameters::parse(parameters, Parameters::kStereoMaxLevel(), stereoMaxLevel_);
-    Parameters::parse(parameters, Parameters::kStereoMaxSlope(), stereoMaxSlope_);
-
-    Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
-    Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
-    Parameters::parse(parameters, Parameters::kOdomMonoMinTranslation(), minTranslation_);
-    Parameters::parse(parameters, Parameters::kOdomMonoMaxVariance(), maxVariance_);
-
-    Parameters::parse(parameters, Parameters::kVhEpRansacParam1(), fundMatrixReprojError_);
-    Parameters::parse(parameters, Parameters::kVhEpRansacParam2(), fundMatrixConfidence_);
-
     // Setup memory
-    memoryParameters_.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
-    memoryParameters_.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
     memoryParameters_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
     memoryParameters_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
     memoryParameters_.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
     memoryParameters_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
     memoryParameters_.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
     memoryParameters_.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
-    int nn = Parameters::defaultOdomBowNNType();
-    float nndr = Parameters::defaultOdomBowNNDR();
     int featureType = Feature2D::kFeatureSurf;
-    int maxFeatures = Parameters::defaultOdomMaxFeatures();
-    Parameters::parse(parameters, Parameters::kOdomBowNNType(), nn);
-    Parameters::parse(parameters, Parameters::kOdomBowNNDR(), nndr);
-    Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType);
-    Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), maxFeatures);
-    memoryParameters_.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
-    memoryParameters_.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
     memoryParameters_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
-    memoryParameters_.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
-
-    int subPixWinSize = Parameters::defaultOdomSubPixWinSize();
-    int subPixIterations = Parameters::defaultOdomSubPixIterations();
-    double subPixEps = Parameters::defaultOdomSubPixEps();
-    Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize);
-    Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations);
-    Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps);
-    memoryParameters_.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize)));
-    memoryParameters_.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations)));
-    memoryParameters_.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps)));
-
-    // add only feature stuff
-    for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
-    {
-        std::string group = uSplit(iter->first, '/').front();
-        if(group.compare("SURF") == 0 ||
-            group.compare("SIFT") == 0 ||
-            group.compare("BRIEF") == 0 ||
-            group.compare("FAST") == 0 ||
-            group.compare("ORB") == 0 ||
-            group.compare("FREAK") == 0 ||
-            group.compare("GFTT") == 0 ||
-            group.compare("BRISK") == 0)
-        {
-            memoryParameters_.insert(*iter);
-        }
-    }
 
     // parameters that makes memory do PnP localization for RGB images
     memoryParameters_.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
@@ -153,9 +45,9 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const int topk, const
     memoryParameters_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
 
     memory_ = new Memory(memoryParameters_);
-    if(!memory_->init(dbPath_, false, ParametersMap()))
+    if(!memory_->init(dbPath_))
     {
-        UERROR("Error initializing the memory for Mono Odometry.");
+        UERROR("Error initializing the memory for OdometrySporadic.");
     }
     else
     {
@@ -168,61 +60,21 @@ OdometryMonoLoc::OdometryMonoLoc(const std::string dbPath, const int topk, const
         //optimize the graph
         graph::TOROOptimizer optimizer;
         std::map<int, Transform> optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
-    
-        // fill the local map
-        for(std::map<int, Transform>::iterator posesIter=optimizedPoses.begin();
-            posesIter!=optimizedPoses.end();
-            ++posesIter)
-        {
-            const Signature * s = memory_->getSignature(posesIter->first);
-            if(s)
-            {
-                // Transform 3D points accordingly to pose and add them to local map
-                const std::multimap<int, pcl::PointXYZ> & words3D = s->getWords3();
-                for(std::multimap<int, pcl::PointXYZ>::const_iterator pointsIter=words3D.begin();
-                    pointsIter!=words3D.end();
-                    ++pointsIter)
-                {
-                    if(!uContains(localMap_, pointsIter->first))
-                    {
-                        pcl::PointXYZ pointPCL = util3d::transformPoint(pointsIter->second, posesIter->second);
-                        cv::Point3f pointCV(pointPCL.x, pointPCL.y, pointPCL.z);
-                        localMap_.insert(std::make_pair(pointsIter->first, pointCV));
-                    }
-                }
-            }
-        }
     }
-
-    transformFile.open("transform.csv");
-    transformFile << "filename, old_img_id, x, y, z, roll, pitch, yaw, variance" << std::endl;
-    
-    UINFO("Compare with top %d images.", topk);
 }
 
-OdometryMonoLoc::~OdometryMonoLoc()
+OdometrySporadic::~OdometrySporadic()
 {
     delete memory_;
-    transformFile.close();
 }
 
-void OdometryMonoLoc::reset(const Transform & initialPose)
+void OdometrySporadic::reset(const Transform & initialPose)
 {
     Odometry::reset(initialPose);
-    memory_->init("", false, ParametersMap());
-    localMap_.clear();
-    refDepthOrRight_ = cv::Mat();
-    cornersMap_.clear();
-    keyFrameWords3D_.clear();
-    keyFramePoses_.clear();
+    memory_->init("");
 }
 
-void OdometryMonoLoc::resetSuperOdom()
-{
-    Odometry::reset(Transform::getIdentity());
-}
-
-Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInfo * info)
+Transform OdometrySporadic::computeTransform(const SensorData & data, OdometryInfo *info)
 {
     Transform output;
 
@@ -240,16 +92,13 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
     if(data.imageRaw().channels() != 1)
     {
-        UERROR("OdometryMonoLoc can only take gray images!");
+        UERROR("OdometrySporadic can only take gray images!");
         return output;
     }
 
-    // we don't check whether it is really OdometryInfoErr *
-    // only OdometryMonoLocThread calls this through Odometry.process
-    OdometryInfoErr * infoErr = (OdometryInfoErr *)info;
-    if(infoErr == 0)
+    if(info == 0)
     {
-        UERROR("info has to be not NULL in OdometryMonoLoc");
+        UERROR("info has to be not NULL in OdometrySporadic");
         return output;
     }
 
@@ -262,9 +111,9 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
         //PnP
         UDEBUG("PnP");
 
-        if(this->isInfoDataFilled() && infoErr)
+        if(this->isInfoDataFilled() && info)
         {
-            infoErr->type = 0;
+            info->type = 0; // 0=BOW, 1=Optical Flow, 2=ICP
         }
 
         // generate kpts
@@ -286,6 +135,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
                 std::vector<int> topIds;
                 likelihood.erase(-1);
+                int topk_ = 1;
                 if(likelihood.size())
                 {
                     std::vector< std::pair<int, float> > top(topk_);
@@ -298,12 +148,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                         topIds.push_back(it->first);
                     }
                 }
-
-                //std::cout << "topIds: ";
-                //for (std::vector<int>::const_iterator i = topIds.begin(); i != topIds.end(); ++i) {
-                //    std::cout << *i << ' ';
-                //}
-                //std::cout << std::endl;
 
                 // calculate transform between data and the most similar pose
                 ParametersMap customParameters = memoryParameters_; // get BOW LCC parameters
@@ -373,7 +217,6 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                     //transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                     //transformFile << infoErr->fileName << ", " << topIds[0] << ", " << x << ", " << y << ", " << z << ", " << roll << ", " << pitch << ", " << yaw << ", " << variance << std::endl;
 
-                    infoErr->topIds = topIds;
                     if(!globalTransform.isNull()) {
                         //const Signature * mostSimilarS = memory_->getSignature(topIds[0]);
                         //output = mostSimilarS->getPose() * transform.inverse(); // this is the final R and t
@@ -395,31 +238,12 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
                     else
                     {
                         UWARN("transform is null, rejectMsg = %s", rejectedMsg.c_str());
-                        if(rejectedMsg.find("Not enough inliers ") == 0)
-                        {
-                            infoErr->err = 2;
-                        }
-                        else if(rejectedMsg.find("Not enough features in images (old=") == 0)
-                        {
-                            infoErr->err = 3;
-                        }
-                        else if(rejectedMsg.find("Too large rotation detected! (roll=") == 0)
-                        {
-                            infoErr->err = 4;
-                        }
-                        else
-                        {
-                            UERROR("Unkonw error");
-                            exit(1);
-                        }
                     }
                 }
             }
             else
             {
                 UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
-                infoErr->err = 1;
-                transformFile << infoErr->fileName << ", , , , , , , , " << std::endl; 
             }
 
             // remove new words from dictionary
@@ -433,7 +257,7 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
 
     memory_->emptyTrash();
 
-    if(this->isInfoDataFilled() && infoErr)
+    if(this->isInfoDataFilled() && info)
     {
         // TODO is this function returning global transform?
     }
@@ -443,7 +267,8 @@ Transform OdometryMonoLoc::computeTransform(const SensorData & data, OdometryInf
     return output;
 }
 
-void OdometryMonoLoc::adjustLikelihood(std::map<int, float> & likelihood) const
+// same function copied from RTABMap
+void OdometrySporadic::adjustLikelihood(std::map<int, float> & likelihood) const
 {
     ULOGGER_DEBUG("likelihood.size()=%d", likelihood.size());
     UTimer timer;
@@ -514,7 +339,7 @@ void OdometryMonoLoc::adjustLikelihood(std::map<int, float> & likelihood) const
     UDEBUG("mean=%f, stdDev=%f, max=%f, maxId=%d, time=%fs", mean, stdDev, max, maxId, time);
 }
 
-bool OdometryMonoLoc::compareLikelihood(std::pair<const int, float> const& l, std::pair<const int, float> const& r) {
+bool OdometrySporadic::compareLikelihood(std::pair<const int, float> const& l, std::pair<const int, float> const& r) {
     return l.second > r.second;
 }
 

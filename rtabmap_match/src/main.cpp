@@ -6,10 +6,10 @@
 #include <QApplication>
 #include <stdio.h>
 
-#include "OdometryMonoLoc.h"
+#include "OdometrySporadic.h"
 #include "CameraThreadStream.h"
 #include "CameraRGBCalibrated.h"
-#include "OdometryMonoLocThread.h"
+#include "OdometrySporadicThread.h"
 #include "Visibility.h"
 #include "VisibilityThread.h"
 
@@ -17,7 +17,7 @@
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping database_file image_folder label_folder topk\n");
+            "rtabmap-rgbd_mapping database_file image_folder label_folder\n");
     exit(1);
 }
 
@@ -25,23 +25,21 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kInfo);
-    //ULogger::setLevel(ULogger::kDebug);
+    //ULogger::setLevel(ULogger::kInfo);
+    ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
     std::string labelpath;
-    int topk;
-    if(argc != 5)
+    if(argc != 4)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc-4]);
-        imgpath = std::string(argv[argc-3]);
-        labelpath = std::string(argv[argc-2]);
-        topk = atoi(argv[argc-1]);
+        dbfile = std::string(argv[argc-3]);
+        imgpath = std::string(argv[argc-2]);
+        labelpath = std::string(argv[argc-1]);
     }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
@@ -91,7 +89,7 @@ int main(int argc, char * argv[])
     }
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometryMonoLocThread odomThread(new OdometryMonoLoc(dbfile, topk), 1000);
+    OdometrySporadicThread odomThread(new OdometrySporadic(dbfile), 1000);
 
     CameraCalibratedImages *cameraCalibrated = dynamic_cast<CameraCalibratedImages *>(camera); 
     Visibility * visibility = new Visibility(cameraCalibrated->cameraModel());

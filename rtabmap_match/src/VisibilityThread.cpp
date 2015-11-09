@@ -9,8 +9,6 @@
 
 #include "VisibilityThread.h"
 #include "CameraCalibratedEvent.h"
-#include "OdometryMonoLoc.h"
-#include "OdometryInfoErr.h"
 
 namespace rtabmap {
 

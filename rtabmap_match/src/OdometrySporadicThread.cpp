@@ -3,21 +3,20 @@
 #include <rtabmap/core/OdometryEvent.h>
 #include <rtabmap/utilite/ULogger.h>
 
-#include "OdometryMonoLocThread.h"
+#include "OdometrySporadicThread.h"
 #include "CameraCalibratedEvent.h"
-#include "OdometryMonoLoc.h"
+#include "OdometrySporadic.h"
 
 namespace rtabmap {
 
-OdometryMonoLocThread::OdometryMonoLocThread(Odometry * odometry, unsigned int dataBufferMaxSize) :
-    _odometry(odometry),
-    _dataBufferMaxSize(dataBufferMaxSize),
-    _resetOdometry(false)
+OdometrySporadicThread::OdometrySporadicThread(OdometrySporadic * odometry, unsigned int dataBufferMaxSize) :
+_odometry(odometry),
+_dataBufferMaxSize(dataBufferMaxSize)
 {
     UASSERT(_odometry != NULL);
 }
 
-OdometryMonoLocThread::~OdometryMonoLocThread()
+OdometrySporadicThread::~OdometrySporadicThread()
 {
     this->unregisterFromEventsManager();
     this->join(true);
@@ -27,7 +26,7 @@ OdometryMonoLocThread::~OdometryMonoLocThread()
     }
 }
 
-void OdometryMonoLocThread::handleEvent(UEvent * event)
+void OdometrySporadicThread::handleEvent(UEvent * event)
 {
     if(this->isRunning())
     {
@@ -36,13 +35,13 @@ void OdometryMonoLocThread::handleEvent(UEvent * event)
             CameraCalibratedEvent * cameraEvent = (CameraCalibratedEvent*)event;
             if(cameraEvent->getCode() == CameraCalibratedEvent::kCodeImageCalibrated)
             {
-                this->addData(cameraEvent->data(), cameraEvent->cameraName()); // camera name is file name for CameraCalibratedEvent
+                this->addData(cameraEvent->data());
             }
         }
     }
 }
 
-void OdometryMonoLocThread::mainLoopKill()
+void OdometrySporadicThread::mainLoopKill()
 {
     _dataAdded.release();
 }
@@ -50,49 +49,27 @@ void OdometryMonoLocThread::mainLoopKill()
 //============================================================
 // MAIN LOOP
 //============================================================
-void OdometryMonoLocThread::mainLoop()
+void OdometrySporadicThread::mainLoop()
 {
-    if(_resetOdometry)
-    {
-        _odometry->reset();
-        _resetOdometry = false;
-    }
-
-    // reset the super odometry because we use arbitary images
-    OdometryMonoLoc * odomMonoLoc = dynamic_cast<OdometryMonoLoc*>(_odometry);
-    odomMonoLoc->resetSuperOdom();
+    // because the image is from sporadic time and location
+    _odometry->reset(Transform::getIdentity());
 
     SensorData data;
-    std::string fileName;
-    if(getData(data, fileName))
+    if(getData(data))
     {
-        
-        info.fileName = fileName;
+        OdometryInfo info; 
         Transform pose = _odometry->process(data, &info);
         // a null pose notify that odometry could not be computed
-        UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
         double variance = info.variance>0?info.variance:1;
-        if(!pose.isNull())
-        {
-            OdometryEvent * odomEvent = new OdometryEvent(data, pose, variance, variance, info);
-            this->post(odomEvent);
-        }
+        this->post(new OdometryEvent(data, pose, variance, variance, info));
     }
 }
 
-void OdometryMonoLocThread::addData(const SensorData & data, const std::string & fileName)
+void OdometrySporadicThread::addData(const SensorData & data)
 {
-    if(dynamic_cast<OdometryMonoLoc*>(_odometry) != 0)
+    if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
     {
-        if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
-        {
-            ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
-            return;
-        }
-    }
-    else
-    {
-        ULOGGER_ERROR("OdometryMonoLocThread can only work with OdometryMonoLoc");
+        ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
         return;
     }
 
@@ -106,14 +83,6 @@ void OdometryMonoLocThread::addData(const SensorData & data, const std::string &
             _dataBuffer.pop_front();
             notify = false;
         }
-        // Added file name buffer
-        _fileNameBuffer.push_back(fileName);
-        while(_dataBufferMaxSize > 0 && _fileNameBuffer.size() > _dataBufferMaxSize)
-        {
-            UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
-            _fileNameBuffer.pop_front();
-            notify = false;
-        }
     }
     _dataMutex.unlock();
 
@@ -123,7 +92,7 @@ void OdometryMonoLocThread::addData(const SensorData & data, const std::string &
     }
 }
 
-bool OdometryMonoLocThread::getData(SensorData & data, std::string & fileName)
+bool OdometrySporadicThread::getData(SensorData & data)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
@@ -133,13 +102,6 @@ bool OdometryMonoLocThread::getData(SensorData & data, std::string & fileName)
         {
             data = _dataBuffer.front();
             _dataBuffer.pop_front();
-            dataFilled = true;
-        }
-        // Added file name buffer
-        if(!_fileNameBuffer.empty())
-        {
-            fileName = _fileNameBuffer.front();
-            _fileNameBuffer.pop_front();
             dataFilled = true;
         }
     }
