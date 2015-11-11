@@ -1,7 +1,7 @@
 #include <rtabmap/core/Camera.h>
+#include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/utilite/ULogger.h>
 #include "CameraThreadStream.h"
-#include "CameraCalibratedEvent.h"
 
 namespace rtabmap
 {
@@ -35,7 +35,7 @@ void CameraThreadStream::mainLoop()
     SensorData data = _camera->takeImage();
     if(!data.imageRaw().empty())
     {
-        this->post(new CameraCalibratedEvent(data, _camera->getSerial()));
+        this->post(new CameraEvent(data));
     }
 }
 

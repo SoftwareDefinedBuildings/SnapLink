@@ -1,18 +1,13 @@
-/*
- * Author: Kaifei Chen <kaifei@berkeley.edu>
- */
-
-#ifndef VISIBILITYTHREAD_H_
-#define VISIBILITYTHREAD_H_
+#pragma once
 
 #include <rtabmap/core/RtabmapExp.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <rtabmap/core/OdometryEvent.h>
+#include <rtabmap/core/Transform.h>
 #include <list>
 
 #include "Visibility.h"
-#include <rtabmap/core/Transform.h>
 
 namespace rtabmap {
 
@@ -47,6 +42,3 @@ private:
 };
 
 } // namespace rtabmap
-
-
-#endif /* VISIBILITYTHREAD_H_ */

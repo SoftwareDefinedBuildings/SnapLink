@@ -4,7 +4,6 @@
 #include <rtabmap/utilite/ULogger.h>
 
 #include "OdometrySporadicThread.h"
-#include "CameraCalibratedEvent.h"
 #include "OdometrySporadic.h"
 
 namespace rtabmap {
@@ -30,10 +29,10 @@ void OdometrySporadicThread::handleEvent(UEvent * event)
 {
     if(this->isRunning())
     {
-        if(event->getClassName().compare("CameraCalibratedEvent") == 0)
+        if(event->getClassName().compare("CameraEvent") == 0)
         {
-            CameraCalibratedEvent * cameraEvent = (CameraCalibratedEvent*)event;
-            if(cameraEvent->getCode() == CameraCalibratedEvent::kCodeImageCalibrated)
+            CameraEvent * cameraEvent = (CameraEvent*)event;
+            if(cameraEvent->getCode() == CameraEvent::kCodeData)
             {
                 this->addData(cameraEvent->data());
             }

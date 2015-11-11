@@ -1,14 +1,9 @@
-/*
- * Author: Kaifei Chen <kaifei@berkeley.edu>
- */
-
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/utilite/ULogger.h"
 
 #include "VisibilityThread.h"
-#include "CameraCalibratedEvent.h"
 
 namespace rtabmap {
 

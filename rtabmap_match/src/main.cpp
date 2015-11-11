@@ -1,5 +1,5 @@
 #include <rtabmap/core/RtabmapThread.h>
-#include <rtabmap/core/CameraRGBD.h>
+#include <rtabmap/core/CameraRGB.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
@@ -8,7 +8,6 @@
 
 #include "OdometrySporadic.h"
 #include "CameraThreadStream.h"
-#include "CameraRGBCalibrated.h"
 #include "OdometrySporadicThread.h"
 #include "Visibility.h"
 #include "VisibilityThread.h"
@@ -79,10 +78,12 @@ int main(int argc, char * argv[])
     }
     int startAt = 1;
     bool refreshDir = true;
+    bool rectifyImages = false;
+    bool isDepth = false;
     float imageRate = 10.0f;
-    Camera *camera = new CameraCalibratedImages(imgpath, startAt, refreshDir, imageRate, localTransform, fx, fyOrBaseline, cx, cy);
+    Camera *camera = new CameraImages(imgpath, startAt, refreshDir, rectifyImages, isDepth, imageRate, localTransform);
     CameraThreadStream cameraThread(camera);
-    if(!camera->init())
+    if(!camera->init("../cameras/", "kinect"))
     {
         UERROR("Camera init failed!");
         exit(1);
@@ -91,9 +92,11 @@ int main(int argc, char * argv[])
     // Create an odometry thread to process camera events, it will send OdometryEvent.
     OdometrySporadicThread odomThread(new OdometrySporadic(dbfile), 1000);
 
-    CameraCalibratedImages *cameraCalibrated = dynamic_cast<CameraCalibratedImages *>(camera); 
-    Visibility * visibility = new Visibility(cameraCalibrated->cameraModel());
-    visibility->init(labelpath);
+    Visibility * visibility = new Visibility();
+    if(!visibility->init(labelpath)) {
+        UERROR("Visibility init failed!");
+        exit(1);
+    }
     VisibilityThread visThread(visibility);
 
     // Setup handlers
@@ -101,7 +104,7 @@ int main(int argc, char * argv[])
     visThread.registerToEventsManager();
 
     // build "pipes" between threads
-    UEventsManager::createPipe(&cameraThread, &odomThread, "CameraCalibratedEvent");
+    UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
     UEventsManager::createPipe(&odomThread, &visThread, "OdometryEvent");
 
     // Let's start the threads
