@@ -1,7 +1,5 @@
 #pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsSender.h>
 
@@ -10,11 +8,7 @@ namespace rtabmap
 
 class Camera;
 
-/**
- * Class CameraThreadStream
- *
- */
-class RTABMAP_EXP CameraThreadStream :
+class CameraThreadStream :
     public UThread,
     public UEventsSender
 {

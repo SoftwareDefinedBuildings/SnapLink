@@ -130,18 +130,18 @@ void Visibility::process(const SensorData & data, const Transform & pose)
                 double dist = cv::norm(_points[i] - cameraLoc);
                 distances[label].push_back(dist);
                 labelPoints[label].push_back(planePoints[i]);
-                UINFO("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
+                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
                        planePoints[i].x, planePoints[i].y, cols, rows);
             }
             else
             {
-                UINFO("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(),
+                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(),
                        planePoints[i].x, planePoints[i].y, cols, rows);
             }
         }
         else 
         {
-            UINFO("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), 
+            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), 
                     planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }

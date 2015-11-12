@@ -1,32 +1,9 @@
-#include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UProcessInfo.h>
-#include <rtabmap/utilite/UMath.h>
-
-#include "rtabmap/core/Signature.h"
-#include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/RtabmapEvent.h"
-#include "rtabmap/core/VWDictionary.h"
-#include <rtabmap/core/EpipolarGeometry.h>
-#include "rtabmap/core/VisualWord.h"
-#include "rtabmap/core/Features2d.h"
-#include "rtabmap/core/util3d_features.h"
-#include "rtabmap/core/util3d_filtering.h"
-#include "rtabmap/core/util3d_correspondences.h"
-#include "rtabmap/core/util3d_registration.h"
-#include "rtabmap/core/util3d_surface.h"
-#include "rtabmap/core/util3d_transforms.h"
-#include "rtabmap/core/util3d_motion_estimation.h"
-#include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util2d.h"
-#include "rtabmap/core/Statistics.h"
-#include "rtabmap/core/Compression.h"
-#include "rtabmap/core/Graph.h"
-
-#include <pcl/io/pcd_io.h>
-#include <pcl/common/common.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d_motion_estimation.h>
 
 #include "MemoryLoc.h"
 

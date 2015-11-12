@@ -38,8 +38,6 @@ dbPath_(dbPath)
         UERROR("Error initializing the memory for OdometrySporadic.");
     }
 
-    memoryLocParams_ = memoryParams_; // get BOW LCC parameters
-    // override some parameters
     memoryLocParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
     memoryLocParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
     memoryLocParams_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
@@ -48,7 +46,7 @@ dbPath_(dbPath)
     memoryLocParams_.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
     memoryLocParams_.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
     memoryLocParams_.insert(ParametersPair(Parameters::kKpNndrRatio(), "0.3")); 
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf))); // FAST/BRIEF
+    memoryLocParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf)));
     memoryLocParams_.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
     memoryLocParams_.insert(ParametersPair(Parameters::kKpBadSignRatio(), "0"));
     memoryLocParams_.insert(ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));

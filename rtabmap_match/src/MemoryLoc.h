@@ -1,29 +1,13 @@
-#ifndef MEMORYLOC_H_
-#define MEMORYLOC_H_
+#pragma once
 
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
-#include "rtabmap/utilite/UEventsHandler.h"
-#include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/Link.h"
-#include "rtabmap/core/Features2d.h"
-#include <typeinfo>
-#include <list>
-#include <map>
-#include <set>
-#include "rtabmap/utilite/UStl.h"
-#include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
-#include <pcl/point_types.h>
-
-#include "rtabmap/core/Memory.h"
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/Memory.h>
 
 namespace rtabmap {
 
 class Signature;
 
-class RTABMAP_EXP MemoryLoc : public Memory
+class MemoryLoc : public Memory
 {
 public:
     MemoryLoc(const ParametersMap & parameters = ParametersMap());
@@ -40,5 +24,3 @@ private:
 };
 
 } // namespace rtabmap
-
-#endif /* MEMORYLOC_H_ */

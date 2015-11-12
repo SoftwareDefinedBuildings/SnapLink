@@ -16,7 +16,7 @@ class ParticleFilter;
 
 class Memory;
 
-class RTABMAP_EXP OdometrySporadic : public Odometry
+class OdometrySporadic : public Odometry
 {
 public:
     OdometrySporadic(const std::string dbPath, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());

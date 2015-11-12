@@ -15,7 +15,7 @@ struct CompareMeanDist
     bool operator()(const PairType & left, const PairType & right) const;
 };
 
-class RTABMAP_EXP Visibility {
+class Visibility {
 
 public:
     Visibility();

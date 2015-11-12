@@ -1,6 +1,5 @@
 #pragma once
 
-#include <rtabmap/core/RtabmapExp.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
@@ -10,7 +9,7 @@ namespace rtabmap {
 
 class OdometrySporadic;
 
-class RTABMAP_EXP OdometrySporadicThread : public UThread, public UEventsHandler {
+class OdometrySporadicThread : public UThread, public UEventsHandler {
 public:
     // take ownership of Odometry
     OdometrySporadicThread(OdometrySporadic *odometry, unsigned int dataBufferMaxSize = 1);
