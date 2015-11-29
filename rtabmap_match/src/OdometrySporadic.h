@@ -6,15 +6,14 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 
+#include "MemoryLoc.h"
+
 class UTimer;
 
 namespace rtabmap {
 
-class Feature2D;
 class OdometryInfo;
-class ParticleFilter;
-
-class Memory;
+class MemoryLoc;
 
 class OdometrySporadic : public Odometry
 {
@@ -28,7 +27,7 @@ private:
     static bool compareLikelihood(std::pair<const int, float> const& l, std::pair<const int, float> const& r);
 
 private:
-    Memory *memory_;
+    MemoryLoc *memory_;
     std::string dbPath_;
     ParametersMap memoryParams_;
     ParametersMap memoryLocParams_;

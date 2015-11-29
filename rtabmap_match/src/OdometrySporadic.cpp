@@ -9,7 +9,6 @@
 #include <rtabmap/core/Rtabmap.h>
 
 #include "OdometrySporadic.h"
-#include "MemoryLoc.h"
 
 
 namespace rtabmap {
@@ -32,11 +31,12 @@ dbPath_(dbPath)
     memoryParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
     memoryParams_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20")); 
 
-    memory_ = new Memory();
+    memory_ = new MemoryLoc();
     if(!memory_ || !memory_->init(dbPath_, false, memoryParams_))
     {
         UERROR("Error initializing the memory for OdometrySporadic.");
     }
+    memory_->generateImages(); // generate synthetic images
 
     memoryLocParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
     memoryLocParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal

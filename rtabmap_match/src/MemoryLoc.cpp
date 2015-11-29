@@ -2,6 +2,7 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 
@@ -25,6 +26,21 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
 
     UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
     UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
+}
+
+void MemoryLoc::generateImages()
+{
+    std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
+    std::map<int, Transform> poses;
+    this->getClouds(clouds, poses);
+    
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses);
+    
+    // pick grid locations
+    
+
+    // generate images and save to memory
+
 }
 
 Transform MemoryLoc::computeGlobalVisualTransform(
@@ -187,6 +203,65 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     }
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
     return transform;
+}
+
+void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, std::map<int, Transform> &poses)
+{
+    std::set<int> ids = this->getAllSignatureIds();
+    for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        SensorData d = this->getNodeData(*it);
+        cv::Mat image, depth;
+        d.uncompressData(&image, &depth, 0);
+        if (!image.empty() && !depth.empty())
+        {
+            UASSERT(*it == d.id());
+            cloud = util3d::cloudRGBFromSensorData(d);
+        }
+        else
+        {
+            UWARN("SensorData missing information");
+        }
+
+        if (cloud->size())
+        {
+            UDEBUG("cloud size: %d", cloud->size());
+            clouds.insert(std::make_pair(*it, cloud));
+        }
+        else
+        {
+            UWARN("cloud is empty");
+        }
+        
+        const Signature *s = this->getSignature(*it);
+        if (!s) {
+            UWARN("Signature with id %d is empty", *it);
+            continue;
+        }
+        const Transform &pose = s->getPose();
+        poses.insert(std::make_pair(*it, pose));
+    }
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
+                                                                 const std::map<int, Transform> &poses)
+{
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::const_iterator it1 = clouds.begin();
+        it1 != clouds.end();
+        it1++)
+    {
+        std::map<int, Transform>::const_iterator it2 = poses.find(it1->first);
+        if (it2 != poses.end()) {
+            continue;
+        }
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(it1->second, it2->second);
+        *assembledCloud += *transformed;
+        //rawCameraIndices.resize(assembledCloud->size(), it->first);
+    }
+    
+    return assembledCloud;
 }
 
 } // namespace rtabmap
