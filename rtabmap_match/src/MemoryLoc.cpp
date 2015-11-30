@@ -6,6 +6,8 @@
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 
+#include <pcl/io/ply_io.h>
+
 #include "MemoryLoc.h"
 
 namespace rtabmap {
@@ -33,9 +35,10 @@ void MemoryLoc::generateImages()
     std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
     std::map<int, Transform> poses;
     this->getClouds(clouds, poses);
-    
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses);
-    
+
+    pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
+
     // pick grid locations
     
 
@@ -253,12 +256,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
         it1++)
     {
         std::map<int, Transform>::const_iterator it2 = poses.find(it1->first);
-        if (it2 != poses.end()) {
+        if (it2 == poses.end()) {
             continue;
         }
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(it1->second, it2->second);
         *assembledCloud += *transformed;
-        //rawCameraIndices.resize(assembledCloud->size(), it->first);
     }
     
     return assembledCloud;
