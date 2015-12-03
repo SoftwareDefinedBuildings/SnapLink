@@ -5,7 +5,8 @@
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
-
+#include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_surface.h>
 #include <pcl/io/ply_io.h>
 
 #include "MemoryLoc.h"
@@ -28,6 +29,11 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
 
     UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
     UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
+    
+    _voxelSize = 0.005;
+    _normalK = 20;
+    _gp3Radius = 0.04;
+    _gp3Mu = 2.5;
 }
 
 void MemoryLoc::generateImages()
@@ -36,9 +42,23 @@ void MemoryLoc::generateImages()
     std::map<int, Transform> poses;
     this->getClouds(clouds, poses);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses);
+    clouds.clear();
+    poses.clear();
 
-    pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
+    assembledCloud = util3d::voxelize(assembledCloud, _voxelSize);
+    // pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
 
+    // skip radius filtering as in MainWindow.cpp
+
+    // not using MLS
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    cloudWithNormals = util3d::computeNormals(assembledCloud, _normalK);
+
+    // not doing adjustNormalsToViewPoints
+
+    pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals, _gp3Radius, _gp3Mu);
+    
+    
     // pick grid locations
     
 

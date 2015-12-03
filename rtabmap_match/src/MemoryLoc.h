@@ -28,6 +28,11 @@ private:
     int _bowRefineIterations;
     double _bowPnPReprojError;
     int _bowPnPFlags;
+
+    double _voxelSize;
+    int _normalK;
+    double _gp3Radius;
+    double _gp3Mu;
 };
 
 } // namespace rtabmap
