@@ -18,9 +18,11 @@ public:
     Transform computeGlobalVisualTransform(const std::vector<Signature> & oldSs, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 
 private:
-    void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, std::map<int, Transform> &poses);
+    void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
+                   std::map<int, Transform> &poses);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
-                                                          const std::map<int, Transform> &poses);
+                                                          const std::map<int, Transform> &poses,
+                                                          std::vector<int> &rawCameraIndices);
     
 private:
     int _bowMinInliers;
@@ -29,10 +31,20 @@ private:
     double _bowPnPReprojError;
     int _bowPnPFlags;
 
-    double _voxelSize;
+    float _voxelSize;
+    float _filteringRadius;
+    int _filteringMinNeighbors;
+    float _MLSRadius;
+    int _MLSpolygonialOrder;
+    int _MLSUpsamplingMethod; // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
+    float _MLSUpsamplingRadius;
+    float _MLSUpsamplingStep;
+    int _MLSPointDensity;
+    float _MLSDilationVoxelSize;
+    int _MLSDilationIterations;
     int _normalK;
-    double _gp3Radius;
-    double _gp3Mu;
+    float _gp3Radius;
+    float _gp3Mu;
 };
 
 } // namespace rtabmap

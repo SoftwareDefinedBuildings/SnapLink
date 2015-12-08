@@ -8,6 +8,8 @@
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_surface.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/io/vtk_lib_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
 
 #include "MemoryLoc.h"
 
@@ -30,35 +32,80 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
     UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
     UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
     
-    _voxelSize = 0.005;
+    _voxelSize = 0.04;
+    _filteringRadius = 0.02;
+    _filteringMinNeighbors = 2;
+    _MLSRadius = 0.04;
+    _MLSpolygonialOrder = 2;
+    _MLSUpsamplingMethod = 0; // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
+    _MLSUpsamplingRadius = 0.0f;   // SAMPLE_LOCAL_PLANE
+    _MLSUpsamplingStep = 0.0f;     // SAMPLE_LOCAL_PLANE
+    _MLSPointDensity = 0;            // RANDOM_UNIFORM_DENSITY
+    _MLSDilationVoxelSize = 1.0f;  // VOXEL_GRID_DILATION
+    _MLSDilationIterations = 0;     // VOXEL_GRID_DILATION 
     _normalK = 20;
-    _gp3Radius = 0.04;
-    _gp3Mu = 2.5;
+    _gp3Radius = 1.0;
+    _gp3Mu = 5;
 }
 
 void MemoryLoc::generateImages()
 {
     std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
     std::map<int, Transform> poses;
+    std::vector<int> rawCameraIndices;
+
     this->getClouds(clouds, poses);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses);
-    clouds.clear();
-    poses.clear();
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses, rawCameraIndices);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
+    pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
 
     assembledCloud = util3d::voxelize(assembledCloud, _voxelSize);
-    // pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
+    //pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
 
-    // skip radius filtering as in MainWindow.cpp
+    // radius filtering as in MainWindow.cpp
+    //pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
+    //pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, _filteringRadius, _filteringMinNeighbors);
+    //pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
+    //assembledCloud = cloudFiltered;
 
-    // not using MLS
+    // MLS to get normals
+    /*pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    cloudWithNormals = util3d::mls(
+        assembledCloud,
+        _MLSRadius,
+        _MLSpolygonialOrder,
+        _MLSUpsamplingMethod,
+        _MLSUpsamplingRadius,
+        _MLSUpsamplingStep,
+        _MLSPointDensity,
+        _MLSDilationVoxelSize,
+        _MLSDilationIterations);
+    //voxelize again
+    cloudWithNormals = util3d::voxelize(cloudWithNormals, _voxelSize);
+    */
+    // not using MLS to get normals
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     cloudWithNormals = util3d::computeNormals(assembledCloud, _normalK);
 
-    // not doing adjustNormalsToViewPoints
+    // adjust normals to view points
+    util3d::adjustNormalsToViewPoints(poses, rawAssembledCloud, rawCameraIndices, cloudWithNormals);
 
     pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals, _gp3Radius, _gp3Mu);
-    
-    
+   
+    pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
+    /*
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    viewer->setBackgroundColor(0, 0, 0);
+    viewer->addPolygonMesh(*mesh, "meshes", 0);
+    viewer->addCoordinateSystem(1.0);
+    viewer->initCameraParameters();
+    while (!viewer->wasStopped()){
+        viewer->spinOnce(100);
+        boost::this_thread::sleep(boost::posix_time::microseconds (100000));
+    } 
+    */
+
     // pick grid locations
     
 
@@ -228,7 +275,8 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     return transform;
 }
 
-void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, std::map<int, Transform> &poses)
+void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
+                          std::map<int, Transform> &poses)
 {
     std::set<int> ids = this->getAllSignatureIds();
     for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
@@ -268,7 +316,8 @@ void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
-                                                                 const std::map<int, Transform> &poses)
+                                                                 const std::map<int, Transform> &poses,
+                                                                 std::vector<int> &rawCameraIndices)
 {
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::const_iterator it1 = clouds.begin();
@@ -281,6 +330,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
         }
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(it1->second, it2->second);
         *assembledCloud += *transformed;
+
+        rawCameraIndices.resize(assembledCloud->size(), it1->first);
     }
     
     return assembledCloud;
