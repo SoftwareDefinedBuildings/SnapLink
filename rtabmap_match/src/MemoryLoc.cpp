@@ -32,19 +32,19 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
     UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
     UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
     
-    _voxelSize = 0.04;
-    _filteringRadius = 0.02;
-    _filteringMinNeighbors = 2;
-    _MLSRadius = 0.04;
+    _voxelSize = 0.03f;
+    _filteringRadius = 0.1f;
+    _filteringMinNeighbors = 5;
+    _MLSRadius = 0.1f;
     _MLSpolygonialOrder = 2;
     _MLSUpsamplingMethod = 0; // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
     _MLSUpsamplingRadius = 0.0f;   // SAMPLE_LOCAL_PLANE
     _MLSUpsamplingStep = 0.0f;     // SAMPLE_LOCAL_PLANE
     _MLSPointDensity = 0;            // RANDOM_UNIFORM_DENSITY
-    _MLSDilationVoxelSize = 1.0f;  // VOXEL_GRID_DILATION
+    _MLSDilationVoxelSize = 0.04f;  // VOXEL_GRID_DILATION
     _MLSDilationIterations = 0;     // VOXEL_GRID_DILATION 
     _normalK = 20;
-    _gp3Radius = 1.0;
+    _gp3Radius = 0.1f;
     _gp3Mu = 5;
 }
 
@@ -64,13 +64,13 @@ void MemoryLoc::generateImages()
     //pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
 
     // radius filtering as in MainWindow.cpp
-    //pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
-    //pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, _filteringRadius, _filteringMinNeighbors);
-    //pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
-    //assembledCloud = cloudFiltered;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, _filteringRadius, _filteringMinNeighbors);
+    pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
+    assembledCloud = cloudFiltered;
 
-    // MLS to get normals
-    /*pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+    // use MLS to get normals
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     cloudWithNormals = util3d::mls(
         assembledCloud,
         _MLSRadius,
@@ -83,10 +83,12 @@ void MemoryLoc::generateImages()
         _MLSDilationIterations);
     //voxelize again
     cloudWithNormals = util3d::voxelize(cloudWithNormals, _voxelSize);
-    */
+    
+    /*
     // not using MLS to get normals
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     cloudWithNormals = util3d::computeNormals(assembledCloud, _normalK);
+    */
 
     // adjust normals to view points
     util3d::adjustNormalsToViewPoints(poses, rawAssembledCloud, rawCameraIndices, cloudWithNormals);
