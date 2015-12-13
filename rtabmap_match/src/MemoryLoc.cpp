@@ -8,8 +8,6 @@
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_surface.h>
 #include <pcl/io/ply_io.h>
-#include <pcl/io/vtk_lib_io.h>
-#include <pcl/visualization/pcl_visualizer.h>
 
 #include "MemoryLoc.h"
 
@@ -50,6 +48,21 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
 
 void MemoryLoc::generateImages()
 {
+    
+    pcl::PolygonMesh::Ptr mesh = getMesh();
+    pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
+
+    // pick grid locations
+    
+    
+    // generate images and save to memory
+
+
+}
+
+pcl::PolygonMesh::Ptr MemoryLoc::getMesh()
+{
+    pcl::PolygonMesh::Ptr getMesh();
     std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
     std::map<int, Transform> poses;
     std::vector<int> rawCameraIndices;
@@ -81,38 +94,15 @@ void MemoryLoc::generateImages()
         _MLSPointDensity,
         _MLSDilationVoxelSize,
         _MLSDilationIterations);
-    //voxelize again
+    // Re-voxelize to make sure to have uniform density
     cloudWithNormals = util3d::voxelize(cloudWithNormals, _voxelSize);
     
-    /*
-    // not using MLS to get normals
-    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-    cloudWithNormals = util3d::computeNormals(assembledCloud, _normalK);
-    */
-
     // adjust normals to view points
     util3d::adjustNormalsToViewPoints(poses, rawAssembledCloud, rawCameraIndices, cloudWithNormals);
 
     pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals, _gp3Radius, _gp3Mu);
    
-    pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
-    /*
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    viewer->setBackgroundColor(0, 0, 0);
-    viewer->addPolygonMesh(*mesh, "meshes", 0);
-    viewer->addCoordinateSystem(1.0);
-    viewer->initCameraParameters();
-    while (!viewer->wasStopped()){
-        viewer->spinOnce(100);
-        boost::this_thread::sleep(boost::posix_time::microseconds (100000));
-    } 
-    */
-
-    // pick grid locations
-    
-
-    // generate images and save to memory
-
+    return mesh;
 }
 
 Transform MemoryLoc::computeGlobalVisualTransform(

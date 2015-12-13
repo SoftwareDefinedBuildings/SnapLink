@@ -3,6 +3,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Memory.h>
 #include <pcl/common/common.h>
+#include <pcl/io/vtk_lib_io.h>
 
 namespace rtabmap {
 
@@ -18,6 +19,7 @@ public:
     Transform computeGlobalVisualTransform(const std::vector<Signature> & oldSs, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 
 private:
+    pcl::PolygonMesh::Ptr getMesh();
     void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
                    std::map<int, Transform> &poses);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
