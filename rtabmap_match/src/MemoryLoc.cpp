@@ -49,14 +49,55 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
 void MemoryLoc::generateImages()
 {
     
-    pcl::PolygonMesh::Ptr mesh = getMesh();
-    pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
+    //pcl::PolygonMesh::Ptr mesh = getMesh();
+    //pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
 
     // pick grid locations
-    
-    
-    // generate images and save to memory
+    cv::Mat K = (cv::Mat_<double>(3,3) << 
+                525.0f, 0.0f, 320.0f, 
+                0.0f, 525.0f, 240.0f, 
+                0.0f, 0.0f, 1.0f);
+    cv::Mat R = (cv::Mat_<double>(3,3) << 
+                1.0f, 0.0f, 0.0f, 
+                0.0f, 1.0f, 0.0f, 
+                0.0f, 0.0f, 1.0f);
+    cv::Mat rvec(1, 3, CV_64FC1);
+    cv::Rodrigues(R, rvec);
+    cv::Mat tvec = (cv::Mat_<double>(1,3) <<
+                   1.0f, 1.0f, 1.0f); 
+   
 
+    // generate image
+    std::vector<cv::Point2f> planePoints;
+    cv::projectPoints(_wordCoords, rvec, tvec, K, cv::Mat(), planePoints);
+
+    //save to memory
+
+}
+
+void MemoryLoc::getWordCoords()
+{
+    const VWDictionary * vwd = getVWDictionary();
+    const std::map<int, VisualWord *> & visualWords = vwd->getVisualWords();
+
+    for (std::map<int, VisualWord *>::const_iterator it1 = visualWords.begin(); 
+         it1 != visualWords.end(); 
+         ++it1)
+    {
+        const std::map<int, int> & references = it1->second->getReferences();
+        
+        for (std::map<int, int>::const_iterator it2 = references.begin(); 
+             it2 != references.end(); 
+             ++it2)
+        {
+            const Signature *s = this->getSignature(it2->first);
+           
+            if (s) {
+                
+            } 
+        }
+
+    }
 
 }
 
@@ -133,15 +174,11 @@ Transform MemoryLoc::computeGlobalVisualTransform(
         success = false;
     }
 
-    if(success)
-    {
+    if(success) {
         return computeGlobalVisualTransform(oldSs, *newS, rejectedMsg, inliers, variance);
-    }
-    else
-    {
+    } else {
         std::string msg = uFormat("Did not find nodes in oldIds and/or %d", newId);
-        if(rejectedMsg)
-        {
+        if(rejectedMsg) {
             *rejectedMsg = msg;
         }
         UWARN(msg.c_str());
@@ -213,27 +250,21 @@ Transform MemoryLoc::computeGlobalVisualTransform(
                     0,
                     &inliersV);
             inliersCount = (int)inliersV.size();
-            if(transform.isNull())
-            {
+            if(transform.isNull()) {
                 msg = uFormat("Not enough inliers %d/%d between the old signatures and %d",
                         inliersCount, _bowMinInliers, newS.id());
                 UINFO(msg.c_str());
-            }
-            else
-            {
+            } else {
                 transform = transform.inverse();
             }
-        }
-        else
-        {
+        } else {
             msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
                     (int)words3.size(), (int)newS.getWords().size(), _bowMinInliers);
             UINFO(msg.c_str());
         }
     }
 
-    if(!transform.isNull())
-    {
+    if(!transform.isNull()) {
         // verify if it is a 180 degree transform, well verify > 90
         float x,y,z, roll,pitch,yaw;
         transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
@@ -251,16 +282,13 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     // transfer to global frame
     transform = basePose * transform.inverse();
 
-    if(rejectedMsg)
-    {
+    if(rejectedMsg) {
         *rejectedMsg = msg;
     }
-    if(inliersOut)
-    {
+    if(inliersOut) {
         *inliersOut = inliersCount;
     }
-    if(varianceOut)
-    {
+    if(varianceOut) {
         *varianceOut = variance;
     }
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
@@ -271,29 +299,22 @@ void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >
                           std::map<int, Transform> &poses)
 {
     std::set<int> ids = this->getAllSignatureIds();
-    for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
-    {
+    for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++) {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         SensorData d = this->getNodeData(*it);
         cv::Mat image, depth;
         d.uncompressData(&image, &depth, 0);
-        if (!image.empty() && !depth.empty())
-        {
+        if (!image.empty() && !depth.empty()) {
             UASSERT(*it == d.id());
             cloud = util3d::cloudRGBFromSensorData(d);
-        }
-        else
-        {
+        } else {
             UWARN("SensorData missing information");
         }
 
-        if (cloud->size())
-        {
+        if (cloud->size()) {
             UDEBUG("cloud size: %d", cloud->size());
             clouds.insert(std::make_pair(*it, cloud));
-        }
-        else
-        {
+        } else {
             UWARN("cloud is empty");
         }
         

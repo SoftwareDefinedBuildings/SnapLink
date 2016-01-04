@@ -19,6 +19,7 @@ public:
     Transform computeGlobalVisualTransform(const std::vector<Signature> & oldSs, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
 
 private:
+    void getWordCoords();  // fill in _wordCoords
     pcl::PolygonMesh::Ptr getMesh();
     void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
                    std::map<int, Transform> &poses);
@@ -47,6 +48,9 @@ private:
     int _normalK;
     float _gp3Radius;
     float _gp3Mu;
+    
+    std::vector<cv::Point3f> _wordCoords;
+    std::map<int, int> _corrdToId; // _wordCoords index to virtual map id mapping
 };
 
 } // namespace rtabmap
