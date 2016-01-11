@@ -26,6 +26,7 @@ private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
                                                           const std::map<int, Transform> &poses,
                                                           std::vector<int> &rawCameraIndices);
+    static bool compareCVPoint2f(cv::Point2f p1, cv::Point2f p2);
     
 private:
     int _bowMinInliers;
@@ -49,8 +50,8 @@ private:
     float _gp3Radius;
     float _gp3Mu;
     
-    std::vector<cv::Point3f> _wordCoords;
-    std::map<int, int> _corrdToId; // _wordCoords index to virtual map id mapping
+    std::vector<cv::Point3f> _wordPoints3D;
+    std::map<int, int> _pointToWordId; // _wordPoints3D index to virtual word id
 };
 
 } // namespace rtabmap

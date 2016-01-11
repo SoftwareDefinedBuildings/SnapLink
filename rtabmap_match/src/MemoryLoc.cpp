@@ -8,6 +8,7 @@
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_surface.h>
 #include <pcl/io/ply_io.h>
+#include <algorithm>
 
 #include "MemoryLoc.h"
 
@@ -48,28 +49,60 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
 
 void MemoryLoc::generateImages()
 {
-    
+    if (_wordPoints3D.size() == 0) {
+        getWordCoords();
+    }
+    if (_wordPoints3D.size() == 0) {
+        UWARN("No word in MemoryLoc");
+    }
+
     //pcl::PolygonMesh::Ptr mesh = getMesh();
     //pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
 
     // pick grid locations
+    const Signature *s = getSignature(1);
+    const Transform &pose = s->getPose();
+    const Transform P = pose.inverse();
     cv::Mat K = (cv::Mat_<double>(3,3) << 
                 525.0f, 0.0f, 320.0f, 
                 0.0f, 525.0f, 240.0f, 
                 0.0f, 0.0f, 1.0f);
-    cv::Mat R = (cv::Mat_<double>(3,3) << 
+    /*cv::Mat R = (cv::Mat_<double>(3,3) << 
                 1.0f, 0.0f, 0.0f, 
                 0.0f, 1.0f, 0.0f, 
-                0.0f, 0.0f, 1.0f);
+                0.0f, 0.0f, 1.0f);*/
+    cv::Mat R = (cv::Mat_<double>(3,3) <<
+                 (double)P.r11(), (double)P.r12(), (double)P.r13(),
+                 (double)P.r21(), (double)P.r22(), (double)P.r23(),
+                 (double)P.r31(), (double)P.r32(), (double)P.r33());
     cv::Mat rvec(1, 3, CV_64FC1);
     cv::Rodrigues(R, rvec);
-    cv::Mat tvec = (cv::Mat_<double>(1,3) <<
-                   1.0f, 1.0f, 1.0f); 
-   
+    /*cv::Mat tvec = (cv::Mat_<double>(1,3) <<
+                   1.0f, 1.0f, 1.0f); */
+    cv::Mat tvec = (cv::Mat_<double>(1,3) << 
+                    (double)P.x(), (double)P.y(), (double)P.z());
 
     // generate image
     std::vector<cv::Point2f> planePoints;
-    cv::projectPoints(_wordCoords, rvec, tvec, K, cv::Mat(), planePoints);
+    cv::projectPoints(_wordPoints3D, rvec, tvec, K, cv::Mat(), planePoints);
+
+    UWARN("planePoints.size(): %d", planePoints.size());
+    // clean up planePoints
+    //std::sort(planePoints.begin(), planePoints.end(), compareCVPoint2f);
+  
+    cv::Mat image = cv::Mat::zeros(480, 640, CV_64FC1);
+    cv::Vec3b mycolor(100,100,100);
+    UWARN("TEST1");
+    for (long i = 0; i < planePoints.size(); i++) {
+        //std::cout << i << " " << planePoints[i] << " " << _wordPoints3D[i] << std::endl << " " << P << std::endl;
+        if (planePoints[i].y < 0 || planePoints[i].y > 640 || planePoints[i].x < 0 || planePoints[i].x > 480) {
+            continue;
+        }
+        image.at<cv::Vec3b>(planePoints[i].y, planePoints[i].x) = mycolor;
+    }
+    UWARN("TEST1");
+    cv::imshow("Image",image);
+    cv::waitKey( 0 );
 
     //save to memory
 
@@ -77,28 +110,57 @@ void MemoryLoc::generateImages()
 
 void MemoryLoc::getWordCoords()
 {
-    const VWDictionary * vwd = getVWDictionary();
-    const std::map<int, VisualWord *> & visualWords = vwd->getVisualWords();
-
-    for (std::map<int, VisualWord *>::const_iterator it1 = visualWords.begin(); 
-         it1 != visualWords.end(); 
-         ++it1)
-    {
-        const std::map<int, int> & references = it1->second->getReferences();
+    std::set<int> ids = getAllSignatureIds();
+    for (std::set<int>::const_iterator idIter = ids.begin(); idIter != ids.end(); idIter++) {
+        const Signature *s = getSignature(*idIter);
+        if (!s) {
+            UWARN("Signature with id %d is empty", *idIter);
+            continue;
+        }
         
-        for (std::map<int, int>::const_iterator it2 = references.begin(); 
-             it2 != references.end(); 
-             ++it2)
-        {
-            const Signature *s = this->getSignature(it2->first);
-           
-            if (s) {
-                
-            } 
+        const Transform &pose = s->getPose();
+        //std::cout << "Signature ID: " << *idIter << std::endl;
+        //std::cout << "pose: " << pose << std::endl;
+        //std::cout << "pose inverse: " << pose.inverse() << std::endl;
+        const SensorData &sensorData = s->sensorData();
+        const std::vector<CameraModel> &cameraModels = sensorData.cameraModels();
+        Transform localTransform;
+        if (cameraModels.size() == 0) {
+            // TODO figure out how to know the local transform
+            //Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
+            Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
+            localTransform = tempTransform;
+        } else {
+            const CameraModel &cameraModel = cameraModels[0];
+            localTransform = cameraModel.localTransform();
         }
 
-    }
+        const std::multimap<int, cv::KeyPoint> &words2D = s->getWords();
+        const std::multimap<int, pcl::PointXYZ> &words3D = s->getWords3();
+        for (std::multimap<int, pcl::PointXYZ>::const_iterator pointIter = words3D.begin(); 
+             pointIter != words3D.end(); 
+             ++pointIter)
+        {
+            /*std::cout << "Word ID: " << pointIter->first << std::endl << "2D Coord: ";
+            for (std::multimap<int, cv::KeyPoint>::const_iterator point2Iter = words2D.begin(); 
+                 point2Iter != words2D.end(); 
+                 ++point2Iter)
+            {
+                if (point2Iter->first == pointIter->first) { 
+                    std::cout << point2Iter->second.pt << " ";
+                }
+            }
+            std::cout << std::endl;*/
 
+            pcl::PointXYZ localPointPCL = util3d::transformPoint(pointIter->second, localTransform.inverse()); // because words3 is in base_link frame (localTransform applied)) 
+            //std::cout << "Local 3D Coord: " << localPointPCL << std::endl;
+            pcl::PointXYZ globalPointPCL = util3d::transformPoint(localPointPCL, pose);
+            //std::cout << "Global 3D Coord: " << globalPointPCL << std::endl;
+            cv::Point3f pointCV(globalPointPCL.x, globalPointPCL.y, globalPointPCL.z);
+            _wordPoints3D.push_back(pointCV);
+            _pointToWordId.insert(std::pair<int, int>(_wordPoints3D.size()-1, pointIter->first));
+        }
+    }
 }
 
 pcl::PolygonMesh::Ptr MemoryLoc::getMesh()
@@ -108,7 +170,7 @@ pcl::PolygonMesh::Ptr MemoryLoc::getMesh()
     std::map<int, Transform> poses;
     std::vector<int> rawCameraIndices;
 
-    this->getClouds(clouds, poses);
+    getClouds(clouds, poses);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses, rawCameraIndices);
 
     pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -158,7 +220,7 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     std::vector<Signature> oldSs;
     for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); ++it) {
         if (*it) {
-            const Signature * oldS = this->getSignature(*it);
+            const Signature * oldS = getSignature(*it);
             const Transform & pose = oldS->getPose(); 
             oldSs.push_back(*oldS);
         } else {
@@ -169,7 +231,7 @@ Transform MemoryLoc::computeGlobalVisualTransform(
 
     const Signature * newS = NULL;
     if (newId) {
-        newS = this->getSignature(newId);
+        newS = getSignature(newId);
     } else {
         success = false;
     }
@@ -298,10 +360,10 @@ Transform MemoryLoc::computeGlobalVisualTransform(
 void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
                           std::map<int, Transform> &poses)
 {
-    std::set<int> ids = this->getAllSignatureIds();
+    std::set<int> ids = getAllSignatureIds();
     for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++) {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        SensorData d = this->getNodeData(*it);
+        SensorData d = getNodeData(*it);
         cv::Mat image, depth;
         d.uncompressData(&image, &depth, 0);
         if (!image.empty() && !depth.empty()) {
@@ -318,7 +380,7 @@ void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >
             UWARN("cloud is empty");
         }
         
-        const Signature *s = this->getSignature(*it);
+        const Signature *s = getSignature(*it);
         if (!s) {
             UWARN("Signature with id %d is empty", *it);
             continue;
@@ -348,6 +410,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
     }
     
     return assembledCloud;
+}
+
+bool MemoryLoc::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2)
+{
+    return ((p1.x < p2.x) || (p1.x == p2.x) && (p1.y < p2.y));
 }
 
 } // namespace rtabmap
