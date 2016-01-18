@@ -10,6 +10,9 @@
 #include <pcl/io/ply_io.h>
 #include <algorithm>
 
+#include <iostream>
+#include <fstream>
+
 #include "MemoryLoc.h"
 
 namespace rtabmap {
@@ -62,7 +65,8 @@ void MemoryLoc::generateImages()
     // pick grid locations
     const Signature *s = getSignature(1);
     const Transform &pose = s->getPose();
-    const Transform P = pose.inverse();
+    const Transform P = pose;
+    //std::cout << P << std::endl;
     cv::Mat K = (cv::Mat_<double>(3,3) << 
                 525.0f, 0.0f, 320.0f, 
                 0.0f, 525.0f, 240.0f, 
@@ -90,19 +94,22 @@ void MemoryLoc::generateImages()
     // clean up planePoints
     //std::sort(planePoints.begin(), planePoints.end(), compareCVPoint2f);
   
-    cv::Mat image = cv::Mat::zeros(480, 640, CV_64FC1);
-    cv::Vec3b mycolor(100,100,100);
     UWARN("TEST1");
+    ofstream myfile;
+    myfile.open("data.txt");
     for (long i = 0; i < planePoints.size(); i++) {
-        //std::cout << i << " " << planePoints[i] << " " << _wordPoints3D[i] << std::endl << " " << P << std::endl;
-        if (planePoints[i].y < 0 || planePoints[i].y > 640 || planePoints[i].x < 0 || planePoints[i].x > 480) {
+        if (planePoints[i].x < 0 || planePoints[i].x > 640 || planePoints[i].y < 0 || planePoints[i].y > 480) {
             continue;
         }
-        image.at<cv::Vec3b>(planePoints[i].y, planePoints[i].x) = mycolor;
+
+        if (_pointToWord[i] != 3) {
+            continue;
+        }
+
+        myfile << planePoints[i].x << " " << planePoints[i].y << std::endl;
     }
-    UWARN("TEST1");
-    cv::imshow("Image",image);
-    cv::waitKey( 0 );
+    myfile.close();
+    UWARN("TEST2");
 
     //save to memory
 
@@ -135,7 +142,7 @@ void MemoryLoc::getWordCoords()
             localTransform = cameraModel.localTransform();
         }
 
-        const std::multimap<int, cv::KeyPoint> &words2D = s->getWords();
+        //const std::multimap<int, cv::KeyPoint> &words2D = s->getWords();
         const std::multimap<int, pcl::PointXYZ> &words3D = s->getWords3();
         for (std::multimap<int, pcl::PointXYZ>::const_iterator pointIter = words3D.begin(); 
              pointIter != words3D.end(); 
@@ -146,7 +153,7 @@ void MemoryLoc::getWordCoords()
                  point2Iter != words2D.end(); 
                  ++point2Iter)
             {
-                if (point2Iter->first == pointIter->first) { 
+                if (point2Iter->first == pointIter->first) {
                     std::cout << point2Iter->second.pt << " ";
                 }
             }
@@ -158,7 +165,10 @@ void MemoryLoc::getWordCoords()
             //std::cout << "Global 3D Coord: " << globalPointPCL << std::endl;
             cv::Point3f pointCV(globalPointPCL.x, globalPointPCL.y, globalPointPCL.z);
             _wordPoints3D.push_back(pointCV);
-            _pointToWordId.insert(std::pair<int, int>(_wordPoints3D.size()-1, pointIter->first));
+            long pointIdx = _wordPoints3D.size() - 1;
+            int wordId = pointIter->first;
+            _pointToWord.insert(std::pair<long, int>(pointIdx, wordId));
+            _wordToPoint[pointIter->first].push_back(pointIdx);
         }
     }
 }

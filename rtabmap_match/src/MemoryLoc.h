@@ -51,7 +51,8 @@ private:
     float _gp3Mu;
     
     std::vector<cv::Point3f> _wordPoints3D;
-    std::map<int, int> _pointToWordId; // _wordPoints3D index to virtual word id
+    std::map<long, int> _pointToWord; // _wordPoints3D index to virtual word id
+    std::map<int, std::vector<long> > _wordToPoint; // virtual word id to _wordPoints3D indices
 };
 
 } // namespace rtabmap
