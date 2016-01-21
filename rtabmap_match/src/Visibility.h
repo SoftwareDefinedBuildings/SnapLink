@@ -26,7 +26,6 @@ public:
 
 private:
     bool readLabels(const std::string & labelFolder);
-    bool isInFrontOfCamera(const cv::Point3f & point, const Transform & P);
 
 private:
     // labels

@@ -3,9 +3,9 @@
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UStl.h>
-#include <rtabmap/core/util3d_transforms.h>
 #include <pcl/point_types.h>
-
+#include <opencv/cv.h>
+#include "Utility.h"
 #include "Visibility.h"
 
 namespace rtabmap {
@@ -121,7 +121,7 @@ void Visibility::process(const SensorData & data, const Transform & pose)
         if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
            uIsInBounds(int(planePoints[i].y), 0, rows))
         {
-            if (isInFrontOfCamera(_points[i], P)) {
+            if (Utility::isInFrontOfCamera(_points[i], P)) {
                 std::string & label = _labels[i];
                 visibleLabels.push_back(label);
                 float x,y,z,roll,pitch,yaw;
@@ -154,13 +154,6 @@ void Visibility::process(const SensorData & data, const Transform & pose)
     std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
     std::string minlabel = minDist.first;
     UINFO("Nearest label %s with mean disntace %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-}
-    
-bool Visibility::isInFrontOfCamera(const cv::Point3f & point, const Transform & P)
-{
-    pcl::PointXYZ pointPCL(point.x, point.y, point.z);
-    pcl::PointXYZ newPointPCL = util3d::transformPoint(pointPCL, P);
-    return newPointPCL.z > 0;
 }
 
 } // namespace rtabmap

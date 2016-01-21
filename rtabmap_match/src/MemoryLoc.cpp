@@ -9,10 +9,10 @@
 #include <rtabmap/core/util3d_surface.h>
 #include <pcl/io/ply_io.h>
 #include <algorithm>
-
 #include <iostream>
 #include <fstream>
 
+#include "Utility.h"
 #include "MemoryLoc.h"
 
 namespace rtabmap {
@@ -52,10 +52,12 @@ MemoryLoc::MemoryLoc(const ParametersMap & parameters) :
 
 void MemoryLoc::generateImages()
 {
-    if (_wordPoints3D.size() == 0) {
+    if (_wordPoints3D.size() == 0)
+    {
         getWordCoords();
     }
-    if (_wordPoints3D.size() == 0) {
+    if (_wordPoints3D.size() == 0)
+    {
         UWARN("No word in MemoryLoc");
     }
 
@@ -86,23 +88,44 @@ void MemoryLoc::generateImages()
     cv::Mat tvec = (cv::Mat_<double>(1,3) << 
                     (double)P.x(), (double)P.y(), (double)P.z());
 
-    // generate image
+    // generate image using projection
     std::vector<cv::Point2f> planePoints;
     cv::projectPoints(_wordPoints3D, rvec, tvec, K, cv::Mat(), planePoints);
 
     UWARN("planePoints.size(): %d", planePoints.size());
-    // clean up planePoints
-    //std::sort(planePoints.begin(), planePoints.end(), compareCVPoint2f);
+    // clean up duplicated planePoints
+    for (std::map<int, std::vector<long> >::const_iterator iter = _wordToPoint.begin(); 
+         iter != _wordToPoint.end(); 
+         iter++)
+    {
+        int wordId = iter->first;
+        const std::vector<long> &pointIds = iter->second;
+        UWARN("wordId: %d, pointIds.size(): %d", wordId, pointIds.size());
+        cv::Mat points = cv::Mat(pointIds.size(), 2, CV_32FC1);
+        for (std::vector<long>::const_iterator idIter = pointIds.begin(); idIter != pointIds.end(); idIter++)
+        {
+            points.data.fl[0] = planePoints[*idIter].x;
+            points.data.fl[1] = planePoints[*idIter].y;
+        }
+        //cv::KNearest knn(points, trainClasses, 0, false, K );
+
+        //cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+        //matcher.knnMatch(descriptors, _dataTree, matches, k);
+
+    }
   
     UWARN("TEST1");
     ofstream myfile;
     myfile.open("data.txt");
-    for (long i = 0; i < planePoints.size(); i++) {
-        if (planePoints[i].x < 0 || planePoints[i].x > 640 || planePoints[i].y < 0 || planePoints[i].y > 480) {
+    for (long i = 0; i < planePoints.size(); i++)
+    {
+        if (planePoints[i].x < 0 || planePoints[i].x > 640 || planePoints[i].y < 0 || planePoints[i].y > 480)
+        {
             continue;
         }
 
-        if (_pointToWord[i] != 3) {
+        if (_pointToWord[i] != 7)
+        {
             continue;
         }
 
@@ -118,9 +141,11 @@ void MemoryLoc::generateImages()
 void MemoryLoc::getWordCoords()
 {
     std::set<int> ids = getAllSignatureIds();
-    for (std::set<int>::const_iterator idIter = ids.begin(); idIter != ids.end(); idIter++) {
+    for (std::set<int>::const_iterator idIter = ids.begin(); idIter != ids.end(); idIter++)
+    {
         const Signature *s = getSignature(*idIter);
-        if (!s) {
+        if (!s)
+        {
             UWARN("Signature with id %d is empty", *idIter);
             continue;
         }
@@ -132,12 +157,15 @@ void MemoryLoc::getWordCoords()
         const SensorData &sensorData = s->sensorData();
         const std::vector<CameraModel> &cameraModels = sensorData.cameraModels();
         Transform localTransform;
-        if (cameraModels.size() == 0) {
+        if (cameraModels.size() == 0)
+        {
             // TODO figure out how to know the local transform
             //Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
             Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
             localTransform = tempTransform;
-        } else {
+        }
+        else
+        {
             const CameraModel &cameraModel = cameraModels[0];
             localTransform = cameraModel.localTransform();
         }
@@ -146,12 +174,12 @@ void MemoryLoc::getWordCoords()
         const std::multimap<int, pcl::PointXYZ> &words3D = s->getWords3();
         for (std::multimap<int, pcl::PointXYZ>::const_iterator pointIter = words3D.begin(); 
              pointIter != words3D.end(); 
-             ++pointIter)
+             pointIter++)
         {
             /*std::cout << "Word ID: " << pointIter->first << std::endl << "2D Coord: ";
             for (std::multimap<int, cv::KeyPoint>::const_iterator point2Iter = words2D.begin(); 
                  point2Iter != words2D.end(); 
-                 ++point2Iter)
+                 point2Iter++)
             {
                 if (point2Iter->first == pointIter->first) {
                     std::cout << point2Iter->second.pt << " ";
@@ -228,29 +256,40 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     bool success = true;
 
     std::vector<Signature> oldSs;
-    for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); ++it) {
-        if (*it) {
-            const Signature * oldS = getSignature(*it);
-            const Transform & pose = oldS->getPose(); 
+    for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); it++)
+    {
+        if (*it)
+        {
+            const Signature *oldS = getSignature(*it);
+            const Transform &pose = oldS->getPose(); 
             oldSs.push_back(*oldS);
-        } else {
+        }
+        else
+        {
             success = false;
             break;
         }
     }
 
     const Signature * newS = NULL;
-    if (newId) {
+    if (newId)
+    {
         newS = getSignature(newId);
-    } else {
+    }
+    else
+    {
         success = false;
     }
 
-    if(success) {
+    if (success)
+    {
         return computeGlobalVisualTransform(oldSs, *newS, rejectedMsg, inliers, variance);
-    } else {
+    }
+    else
+    {
         std::string msg = uFormat("Did not find nodes in oldIds and/or %d", newId);
-        if(rejectedMsg) {
+        if (rejectedMsg)
+        {
             *rejectedMsg = msg;
         }
         UWARN(msg.c_str());
@@ -274,13 +313,16 @@ Transform MemoryLoc::computeGlobalVisualTransform(
 
     std::multimap<int, pcl::PointXYZ> words3;
     const Transform & basePose = oldSs.begin()->getPose(); 
-    for (std::vector<Signature>::const_iterator it1 = oldSs.begin(); it1 != oldSs.end(); ++it1) {
+    for (std::vector<Signature>::const_iterator it1 = oldSs.begin(); it1 != oldSs.end(); it1++)
+    {
         Transform relativeT = basePose.inverse() * it1->getPose();
         std::multimap<int, pcl::PointXYZ>::const_iterator it2;
-        for (it2 = it1->getWords3().begin(); it2 != it1->getWords3().end(); ++it2) {
+        for (it2 = it1->getWords3().begin(); it2 != it1->getWords3().end(); it2++)
+        {
             pcl::PointXYZ globalPoint = util3d::transformPoint(it2->second, relativeT);
             std::multimap<int, pcl::PointXYZ>::iterator it3 = words3.find(it2->first);
-            //if (it3 != words3.end()) {
+            //if (it3 != words3.end())
+            //{
             //    std::cout<< "existing point in base frame: " << it3->second << std::endl;
             //    std::cout<< "new point in own frame: " << it2->second << std::endl;
             //    std::cout<< "new point in base frame: " << globalPoint << std::endl << std::endl;
@@ -292,8 +334,8 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     }
 
     // PnP
-    if(!newS.sensorData().stereoCameraModel().isValid() &&
-       (newS.sensorData().cameraModels().size() != 1 ||
+    if (!newS.sensorData().stereoCameraModel().isValid() &&
+        (newS.sensorData().cameraModels().size() != 1 ||
         !newS.sensorData().cameraModels()[0].isValid()))
     {
         UERROR("Calibrated camera required (multi-cameras not supported).");
@@ -301,8 +343,8 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     else
     {
         // 3D to 2D
-        if((int)words3.size() >= _bowMinInliers &&
-           (int)newS.getWords().size() >= _bowMinInliers)
+        if ((int)words3.size() >= _bowMinInliers &&
+            (int)newS.getWords().size() >= _bowMinInliers)
         {
             UASSERT(newS.sensorData().stereoCameraModel().isValid() || (newS.sensorData().cameraModels().size() == 1 && newS.sensorData().cameraModels()[0].isValid()));
             const CameraModel & cameraModel = newS.sensorData().stereoCameraModel().isValid()?newS.sensorData().stereoCameraModel().left():newS.sensorData().cameraModels()[0];
@@ -322,27 +364,33 @@ Transform MemoryLoc::computeGlobalVisualTransform(
                     0,
                     &inliersV);
             inliersCount = (int)inliersV.size();
-            if(transform.isNull()) {
+            if (transform.isNull())
+            {
                 msg = uFormat("Not enough inliers %d/%d between the old signatures and %d",
                         inliersCount, _bowMinInliers, newS.id());
                 UINFO(msg.c_str());
-            } else {
+            }
+            else
+            {
                 transform = transform.inverse();
             }
-        } else {
+        }
+        else
+        {
             msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
                     (int)words3.size(), (int)newS.getWords().size(), _bowMinInliers);
             UINFO(msg.c_str());
         }
     }
 
-    if(!transform.isNull()) {
+    if (!transform.isNull())
+    {
         // verify if it is a 180 degree transform, well verify > 90
         float x,y,z, roll,pitch,yaw;
         transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-        if(fabs(roll) > CV_PI/2 ||
-           fabs(pitch) > CV_PI/2 ||
-           fabs(yaw) > CV_PI/2)
+        if (fabs(roll) > CV_PI/2 ||
+            fabs(pitch) > CV_PI/2 ||
+            fabs(yaw) > CV_PI/2)
         {
             transform.setNull();
             msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
@@ -354,13 +402,16 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     // transfer to global frame
     transform = basePose * transform.inverse();
 
-    if(rejectedMsg) {
+    if (rejectedMsg)
+    {
         *rejectedMsg = msg;
     }
-    if(inliersOut) {
+    if (inliersOut)
+    {
         *inliersOut = inliersCount;
     }
-    if(varianceOut) {
+    if (varianceOut)
+    {
         *varianceOut = variance;
     }
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
@@ -371,27 +422,35 @@ void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr >
                           std::map<int, Transform> &poses)
 {
     std::set<int> ids = getAllSignatureIds();
-    for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++) {
+    for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
+    {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
         SensorData d = getNodeData(*it);
         cv::Mat image, depth;
         d.uncompressData(&image, &depth, 0);
-        if (!image.empty() && !depth.empty()) {
+        if (!image.empty() && !depth.empty())
+        {
             UASSERT(*it == d.id());
             cloud = util3d::cloudRGBFromSensorData(d);
-        } else {
+        }
+        else
+        {
             UWARN("SensorData missing information");
         }
 
-        if (cloud->size()) {
+        if (cloud->size())
+        {
             UDEBUG("cloud size: %d", cloud->size());
             clouds.insert(std::make_pair(*it, cloud));
-        } else {
+        }
+        else
+        {
             UWARN("cloud is empty");
         }
         
         const Signature *s = getSignature(*it);
-        if (!s) {
+        if (!s)
+        {
             UWARN("Signature with id %d is empty", *it);
             continue;
         }
@@ -410,7 +469,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
         it1++)
     {
         std::map<int, Transform>::const_iterator it2 = poses.find(it1->first);
-        if (it2 == poses.end()) {
+        if (it2 == poses.end())
+        {
             continue;
         }
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(it1->second, it2->second);
@@ -422,9 +482,5 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
     return assembledCloud;
 }
 
-bool MemoryLoc::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2)
-{
-    return ((p1.x < p2.x) || (p1.x == p2.x) && (p1.y < p2.y));
-}
 
 } // namespace rtabmap

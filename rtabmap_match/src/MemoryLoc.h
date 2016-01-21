@@ -26,7 +26,6 @@ private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
                                                           const std::map<int, Transform> &poses,
                                                           std::vector<int> &rawCameraIndices);
-    static bool compareCVPoint2f(cv::Point2f p1, cv::Point2f p2);
     
 private:
     int _bowMinInliers;
