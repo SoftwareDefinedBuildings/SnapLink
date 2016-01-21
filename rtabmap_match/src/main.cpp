@@ -3,8 +3,7 @@
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
-#include <QApplication>
-#include <stdio.h>
+#include <cstdio>
 
 #include "OdometrySporadic.h"
 #include "CameraThreadStream.h"

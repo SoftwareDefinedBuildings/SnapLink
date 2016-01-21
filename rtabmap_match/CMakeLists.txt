@@ -4,24 +4,26 @@ PROJECT( MyProject )
 FIND_PACKAGE(RTABMap REQUIRED)
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(PCL 1.7 REQUIRED)
-FIND_PACKAGE(Qt4 REQUIRED COMPONENTS QtCore QtGui QtSvg) 
+FIND_PACKAGE(Boost) 
 
 SET(INCLUDE_DIRS
     ${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
     "~/workspace/rtabmap/corelib/include/rtabmap/core"
     "~/workspace/rtabmap/corelib/src"
+    "./src/dbscan"
 )
-
-INCLUDE(${QT_USE_FILE})
 
 SET(LIBRARIES
     ${RTABMap_LIBRARIES}
     ${OpenCV_LIBRARIES}
-    ${QT_LIBRARIES} 
     ${PCL_LIBRARIES}
+    ${Boost_LIBRARIES}
 )
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall")
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 
+#include "dbscan.h"
 #include "Utility.h"
 #include "MemoryLoc.h"
 
@@ -93,7 +94,7 @@ void MemoryLoc::generateImages()
     cv::projectPoints(_wordPoints3D, rvec, tvec, K, cv::Mat(), planePoints);
 
     UWARN("planePoints.size(): %d", planePoints.size());
-    // clean up duplicated planePoints
+    // clean up duplicated planePoints for every word
     for (std::map<int, std::vector<long> >::const_iterator iter = _wordToPoint.begin(); 
          iter != _wordToPoint.end(); 
          iter++)
@@ -101,23 +102,38 @@ void MemoryLoc::generateImages()
         int wordId = iter->first;
         const std::vector<long> &pointIds = iter->second;
         UWARN("wordId: %d, pointIds.size(): %d", wordId, pointIds.size());
-        cv::Mat points = cv::Mat(pointIds.size(), 2, CV_32FC1);
-        for (std::vector<long>::const_iterator idIter = pointIds.begin(); idIter != pointIds.end(); idIter++)
+        if (wordId != 7)
         {
-            points.data.fl[0] = planePoints[*idIter].x;
-            points.data.fl[1] = planePoints[*idIter].y;
+            continue;
+        }
+
+        size_t elements_num = pointIds.size();
+        size_t features_num = 2;
+        clustering::DBSCAN::ClusterData dbscanData(elements_num, features_num);
+        std::vector<long>::const_iterator idIter = pointIds.begin(); 
+        size_t i;
+        for (idIter = pointIds.begin(), i = 0; idIter != pointIds.end(); idIter++)
+        {
+            std::cout << planePoints[*idIter] << std::endl;
+            dbscanData(i, 0) = planePoints[*idIter].x;
+            dbscanData(i, 1) = planePoints[*idIter].y;
         }
         //cv::KNearest knn(points, trainClasses, 0, false, K );
 
         //cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
         //matcher.knnMatch(descriptors, _dataTree, matches, k);
-
+       
+        double eps = 0.00001;
+        size_t min_elems = 1;
+        clustering::DBSCAN dbs(eps, min_elems);
+        dbs.fit(dbscanData);
+        std::cout << dbs << std::endl;
     }
   
     UWARN("TEST1");
     ofstream myfile;
     myfile.open("data.txt");
-    for (long i = 0; i < planePoints.size(); i++)
+    for (size_t i = 0; i < planePoints.size(); i++)
     {
         if (planePoints[i].x < 0 || planePoints[i].x > 640 || planePoints[i].y < 0 || planePoints[i].y > 480)
         {
