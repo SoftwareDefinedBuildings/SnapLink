@@ -12,7 +12,6 @@
 #include <iostream>
 #include <fstream>
 
-#include "dbscan.h"
 #include "Utility.h"
 #include "MemoryLoc.h"
 
@@ -88,70 +87,39 @@ void MemoryLoc::generateImages()
                    1.0f, 1.0f, 1.0f); */
     cv::Mat tvec = (cv::Mat_<double>(1,3) << 
                     (double)P.x(), (double)P.y(), (double)P.z());
+    Transform localTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
 
     // generate image using projection
     std::vector<cv::Point2f> planePoints;
     cv::projectPoints(_wordPoints3D, rvec, tvec, K, cv::Mat(), planePoints);
 
     UWARN("planePoints.size(): %d", planePoints.size());
-    // clean up duplicated planePoints for every word
-    for (std::map<int, std::vector<long> >::const_iterator iter = _wordToPoint.begin(); 
-         iter != _wordToPoint.end(); 
-         iter++)
-    {
-        int wordId = iter->first;
-        const std::vector<long> &pointIds = iter->second;
-        UWARN("wordId: %d, pointIds.size(): %d", wordId, pointIds.size());
-        if (wordId != 7)
-        {
-            continue;
-        }
-
-        size_t elements_num = pointIds.size();
-        size_t features_num = 2;
-        clustering::DBSCAN::ClusterData dbscanData(elements_num, features_num);
-        std::vector<long>::const_iterator idIter = pointIds.begin(); 
-        size_t i;
-        for (idIter = pointIds.begin(), i = 0; idIter != pointIds.end(); idIter++)
-        {
-            std::cout << planePoints[*idIter] << std::endl;
-            dbscanData(i, 0) = planePoints[*idIter].x;
-            dbscanData(i, 1) = planePoints[*idIter].y;
-        }
-        //cv::KNearest knn(points, trainClasses, 0, false, K );
-
-        //cv::BFMatcher matcher(type==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-        //matcher.knnMatch(descriptors, _dataTree, matches, k);
-       
-        double eps = 0.00001;
-        size_t min_elems = 1;
-        clustering::DBSCAN dbs(eps, min_elems);
-        dbs.fit(dbscanData);
-        std::cout << dbs << std::endl;
-    }
   
-    UWARN("TEST1");
-    ofstream myfile;
-    myfile.open("data.txt");
+    std::multimap<int, cv::KeyPoint> words;
+    std::multimap<int, pcl::PointXYZ> words3D;
     for (size_t i = 0; i < planePoints.size(); i++)
     {
+        // TODO: check angle < 30
         if (planePoints[i].x < 0 || planePoints[i].x > 640 || planePoints[i].y < 0 || planePoints[i].y > 480)
         {
             continue;
         }
 
-        if (_pointToWord[i] != 7)
-        {
-            continue;
-        }
-
-        myfile << planePoints[i].x << " " << planePoints[i].y << std::endl;
+        int wordId = _pointToWord[i];
+        float kptSize = 1; // TODO figure out the size
+        cv::KeyPoint kpt(planePoints[i], kptSize);
+        words.insert(std::pair<int, cv::KeyPoint>(wordId, kpt));
+        pcl::PointXYZ kpt3D(_wordPoints3D[i].x, _wordPoints3D[i].y, _wordPoints3D[i].z);
+        kpt3D = util3d::transformPoint(kpt3D, pose.inverse()); // transform from global frame to local robot frame
+        kpt3D = util3d::transformPoint(kpt3D, localTransform); // transform from local robot frame to local camera frame
+        words3D.insert(std::pair<int, pcl::PointXYZ>(wordId, kpt3D));
     }
-    myfile.close();
-    UWARN("TEST2");
+    UWARN("words.size() = %d, words3D.size() = %d", words.size(), words3D.size());
 
-    //save to memory
-
+    //save a new signature to memory
+    Signature * createSignature(words, words3D, pose);
+    
+    
 }
 
 void MemoryLoc::getWordCoords()
@@ -498,5 +466,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
     return assembledCloud;
 }
 
+Signature * createSignature(std::multimap<int, cv::KeyPoint> words, 
+                            std::multimap<int, pcl::PointXYZ> words3D,
+                            const Transform & pose);
+{
+    return NULL;
+}
 
 } // namespace rtabmap

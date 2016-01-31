@@ -26,6 +26,10 @@ private:
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
                                                           const std::map<int, Transform> &poses,
                                                           std::vector<int> &rawCameraIndices);
+    Signature * createSignature(std::multimap<int, cv::KeyPoint> words, 
+                                std::multimap<int, pcl::PointXYZ> words3D,
+                                const Transform & pose);
+
     
 private:
     int _bowMinInliers;
