@@ -46,12 +46,12 @@ public class MainActivity extends Activity {
     private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50012/";
     private static final String IMAGE_DIRECTORY = "/storage/emulated/0/DCIM/CAMERA";
 
-
     private TextureView mTextureView;
     private Size mPreviewSize;
     private CameraDevice mCameraDevice;
     private CaptureRequest.Builder mPreviewBuilder;
     private CameraCaptureSession mPreviewSession;
+    private HandlerThread mPreviewThread;
     private HttpClient mHttpClient;
     private CameraCaptureSession.StateCallback mCameraCaptureSessionStateCallback = new CameraCaptureSession.StateCallback() {
         @Override
@@ -68,31 +68,31 @@ public class MainActivity extends Activity {
     private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(CameraDevice camera) {
-            Log.e(LOG_TAG, "onOpened");
+            Log.i(LOG_TAG, "onOpened");
             mCameraDevice = camera;
             startPreview();
         }
 
         @Override
         public void onDisconnected(CameraDevice camera) {
-            Log.e(LOG_TAG, "onDisconnected");
+            Log.i(LOG_TAG, "onDisconnected");
         }
 
         @Override
         public void onError(CameraDevice camera, int error) {
-            Log.e(LOG_TAG, "onError (" + String.valueOf(error) + ")");
+            Log.i(LOG_TAG, "onError (" + String.valueOf(error) + ")");
         }
     };
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            Log.e(LOG_TAG, "onSurfaceTextureAvailable, width=" + width + ",height=" + height);
+            Log.i(LOG_TAG, "onSurfaceTextureAvailable, width=" + width + ",height=" + height);
             openCamera();
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            Log.e(LOG_TAG, "onSurfaceTextureSizeChanged");
+            Log.i(LOG_TAG, "onSurfaceTextureSizeChanged");
         }
 
         @Override
@@ -102,7 +102,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            Log.e(LOG_TAG, "onSurfaceTextureUpdated");
+            //Log.i(LOG_TAG, "onSurfaceTextureUpdated");
         }
     };
 
@@ -120,22 +120,22 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.e(LOG_TAG, "onResume");
+        Log.i(LOG_TAG, "onResume");
+        if (mTextureView != null && mTextureView.isAvailable()) {
+            openCamera();
+        }
     }
 
     @Override
     protected void onPause() {
-        Log.e(LOG_TAG, "onPause");
         super.onPause();
-        if (mCameraDevice != null) {
-            mCameraDevice.close();
-            mCameraDevice = null;
-        }
+        Log.i(LOG_TAG, "onPause");
+        closeCamera();
     }
 
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        Log.e(LOG_TAG, "openCamera E");
+        Log.i(LOG_TAG, "openCamera");
         try {
             String cameraId = manager.getCameraIdList()[0];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
@@ -146,18 +146,47 @@ public class MainActivity extends Activity {
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
-        Log.e(LOG_TAG, "openCamera X");
+        Log.i(LOG_TAG, "openCamera");
+    }
+
+    private void closeCamera() {
+        Log.i(LOG_TAG, "closeCamera");
+        if (mPreviewSession != null) {
+            try {
+                mPreviewSession.stopRepeating();
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
+            mPreviewSession.close();
+            mPreviewSession = null;
+        }
+        if (mPreviewThread != null) {
+            mPreviewThread.quit();
+            try {
+                mPreviewThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            mPreviewThread = null;
+        }
+        mPreviewBuilder = null;
+        mPreviewSize = null;
+        if (mCameraDevice != null) {
+            mCameraDevice.close();
+            mCameraDevice = null;
+        }
+        Log.i(LOG_TAG, "closeCamera");
     }
 
     protected void startPreview() {
         if (mCameraDevice == null || !mTextureView.isAvailable() || mPreviewSize == null) {
-            Log.e(LOG_TAG, "startPreview fail");
-            throw new RuntimeException("startPreview fail");
+            Log.i(LOG_TAG, "startPreview fail");
+            return;
         }
 
         SurfaceTexture texture = mTextureView.getSurfaceTexture();
         if (texture == null) {
-            Log.e(LOG_TAG, "texture is null");
+            Log.i(LOG_TAG, "texture is null");
             throw new RuntimeException("texture is null");
         }
 
@@ -184,9 +213,9 @@ public class MainActivity extends Activity {
         }
 
         mPreviewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-        HandlerThread thread = new HandlerThread("CameraPreview");
-        thread.start();
-        Handler backgroundHandler = new Handler(thread.getLooper());
+        mPreviewThread = new HandlerThread("CameraPreview");
+        mPreviewThread.start();
+        Handler backgroundHandler = new Handler(mPreviewThread.getLooper());
 
         try {
             mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, backgroundHandler);
@@ -220,9 +249,9 @@ public class MainActivity extends Activity {
             httpPost.setEntity(multipartEntityBuilder.build());
 
             try {
-                Log.d(LOG_TAG, "Starting HTTP Post");
+                Log.i(LOG_TAG, "Starting HTTP Post");
                 HttpResponse response = httpClient.execute(httpPost, localContext);
-                Log.d(LOG_TAG, "Finished HTTP Post");
+                Log.i(LOG_TAG, "Finished HTTP Post");
                 StatusLine statusLine = response.getStatusLine();
                 if (statusLine.getStatusCode() != HttpStatus.SC_OK) {
                     String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(),
