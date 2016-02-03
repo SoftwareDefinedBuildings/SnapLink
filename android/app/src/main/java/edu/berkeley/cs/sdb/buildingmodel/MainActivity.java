@@ -41,36 +41,81 @@ import java.util.Arrays;
 
 public class MainActivity extends Activity {
 
+    public enum State {INIT, IDLE, STARTING, STOPPING, RUNNING}
+
     private static final String LOG_TAG = "SDB3D";
     private static final int CAPTURE_IMAGE_REQUEST_CODE = 410;
     private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50012/";
     private static final String IMAGE_DIRECTORY = "/storage/emulated/0/DCIM/CAMERA";
 
+    private State mState = State.IDLE;
     private TextureView mTextureView;
+    private Handler mHandler;
     private Size mPreviewSize;
     private CameraDevice mCameraDevice;
     private CaptureRequest.Builder mPreviewBuilder;
     private CameraCaptureSession mPreviewSession;
     private HandlerThread mPreviewThread;
     private HttpClient mHttpClient;
-    private CameraCaptureSession.StateCallback mCameraCaptureSessionStateCallback = new CameraCaptureSession.StateCallback() {
+
+    private CameraCaptureSession.StateCallback mPreviewSessionStateCallback = new CameraCaptureSession.StateCallback() {
         @Override
         public void onConfigured(CameraCaptureSession session) {
-            mPreviewSession = session;
-            updatePreview();
+            if (mState == State.STARTING) {
+                mPreviewSession = session;
+                updatePreview();
+                mState = State.RUNNING;
+                Log.i(LOG_TAG, "openCamera finish");
+            }
         }
 
         @Override
         public void onConfigureFailed(CameraCaptureSession session) {
             Toast.makeText(MainActivity.this, "onConfigureFailed", Toast.LENGTH_LONG).show();
         }
+
+        @Override
+        public void onReady(CameraCaptureSession session) {
+            if (mState == State.STOPPING) {
+                mPreviewSession.close();
+            }
+        }
+
+        @Override
+        public void onClosed(CameraCaptureSession session) {
+            if (mState == State.STOPPING) {
+                mPreviewSession = null;
+
+                if (mPreviewThread != null) {
+                    mPreviewThread.quitSafely();
+                    mPreviewThread = null;
+                }
+                mPreviewBuilder = null;
+                mPreviewSize = null;
+                if (mCameraDevice != null) {
+                    mCameraDevice.close();
+                }
+            }
+        }
     };
+
     private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(CameraDevice camera) {
             Log.i(LOG_TAG, "onOpened");
-            mCameraDevice = camera;
-            startPreview();
+            if (mState == State.STARTING) {
+                mCameraDevice = camera;
+                startPreview();
+            }
+        }
+
+        public void onClosed(CameraDevice camera) {
+            Log.i(LOG_TAG, "onOpened");
+            if (mState == State.STOPPING) {
+                Log.i(LOG_TAG, "closeCamera finish");
+                mCameraDevice = null;
+                mState = State.IDLE;
+            }
         }
 
         @Override
@@ -83,27 +128,88 @@ public class MainActivity extends Activity {
             Log.i(LOG_TAG, "onError (" + String.valueOf(error) + ")");
         }
     };
+
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             Log.i(LOG_TAG, "onSurfaceTextureAvailable, width=" + width + ",height=" + height);
-            openCamera();
+            if (mState == State.INIT || mState == State.IDLE || mState == State.STOPPING) {
+                mHandler.post(mStartCamera);
+            }
         }
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            Log.i(LOG_TAG, "onSurfaceTextureSizeChanged");
         }
 
         @Override
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            return false;
+            return true;
         }
 
         @Override
         public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-            //Log.i(LOG_TAG, "onSurfaceTextureUpdated");
         }
+    };
+
+    /*
+     * Open camera asynchronously
+     * Should be called only when mState == State.INIT || mState ==  State.IDLE || mState == State.STOPPING
+     */
+    private Runnable mStartCamera = new Runnable() {
+        @Override
+        public void run() {
+            if (mState == State.INIT || mState == State.IDLE) {
+                mState = State.STARTING;
+            } else if (mState == State.STOPPING) {
+                mHandler.post(mStartCamera);
+                return;
+            } else {
+                throw new RuntimeException("state error");
+            }
+
+            Log.i(LOG_TAG, "openCamera start");
+            CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            try {
+                String cameraId = manager.getCameraIdList()[0];
+                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+                StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+                mPreviewSize = map.getOutputSizes(SurfaceTexture.class)[0];
+
+                manager.openCamera(cameraId, mCameraDeviceStateCallback, null);
+            } catch (CameraAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    };
+
+    /*
+     * Close camera asynchronously
+     * Should be called only when mState ==  State.STOPPING || mState == State.STARTING
+     */
+    private Runnable mStopCamera = new Runnable() {
+        @Override
+        public void run() {
+            if (mState == State.RUNNING) {
+                mState = State.STOPPING;
+            } else if (mState == State.STARTING) {
+                mHandler.post(mStopCamera);
+                return;
+            } else {
+                throw new RuntimeException("state error");
+            }
+
+            Log.i(LOG_TAG, "closeCamera start");
+            if (mPreviewSession != null) {
+                try {
+                    mPreviewSession.stopRepeating();
+                } catch (CameraAccessException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+        }
+
     };
 
     @Override
@@ -111,8 +217,12 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
+        mState = State.INIT;
+
         mTextureView = (TextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
+
+        mHandler = new Handler();
 
         mHttpClient = new DefaultHttpClient();
     }
@@ -121,8 +231,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         Log.i(LOG_TAG, "onResume");
-        if (mTextureView != null && mTextureView.isAvailable()) {
-            openCamera();
+        if (mState == State.IDLE || mState == State.STOPPING) {
+            mHandler.post(mStartCamera);
         }
     }
 
@@ -130,55 +240,19 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         Log.i(LOG_TAG, "onPause");
-        closeCamera();
+        if (mState == State.RUNNING || mState == State.STARTING) {
+            mHandler.post(mStopCamera);
+        }
     }
 
-    private void openCamera() {
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        Log.i(LOG_TAG, "openCamera");
-        try {
-            String cameraId = manager.getCameraIdList()[0];
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            mPreviewSize = map.getOutputSizes(SurfaceTexture.class)[0];
-
-            manager.openCamera(cameraId, mCameraDeviceStateCallback, null);
-        } catch (CameraAccessException e) {
-            throw new RuntimeException(e);
-        }
-        Log.i(LOG_TAG, "openCamera");
-    }
-
-    private void closeCamera() {
-        Log.i(LOG_TAG, "closeCamera");
-        if (mPreviewSession != null) {
-            try {
-                mPreviewSession.stopRepeating();
-            } catch (CameraAccessException e) {
-                throw new RuntimeException(e);
-            }
-            mPreviewSession.close();
-            mPreviewSession = null;
-        }
-        if (mPreviewThread != null) {
-            mPreviewThread.quit();
-            try {
-                mPreviewThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            mPreviewThread = null;
-        }
-        mPreviewBuilder = null;
-        mPreviewSize = null;
-        if (mCameraDevice != null) {
-            mCameraDevice.close();
-            mCameraDevice = null;
-        }
-        Log.i(LOG_TAG, "closeCamera");
-    }
-
+    /*
+     * Should be called only when mState ==  State.STARTING
+     */
     protected void startPreview() {
+        if (mState != State.STARTING) {
+            throw new RuntimeException("state error");
+        }
+
         if (mCameraDevice == null || !mTextureView.isAvailable() || mPreviewSize == null) {
             Log.i(LOG_TAG, "startPreview fail");
             return;
@@ -201,13 +275,21 @@ public class MainActivity extends Activity {
         mPreviewBuilder.addTarget(surface);
 
         try {
-            mCameraDevice.createCaptureSession(Arrays.asList(surface), mCameraCaptureSessionStateCallback, null);
+            mCameraDevice.createCaptureSession(Arrays.asList(surface), mPreviewSessionStateCallback, null);
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /*
+     * Should be called only when mState ==  State.STARTING
+     * mState should be set to State.RUNNING after calling this method
+     */
     protected void updatePreview() {
+        if (mState != State.STARTING) {
+            throw new RuntimeException("state error");
+        }
+
         if (mCameraDevice == null) {
             throw new RuntimeException("updatePreview error");
         }
@@ -254,8 +336,7 @@ public class MainActivity extends Activity {
                 Log.i(LOG_TAG, "Finished HTTP Post");
                 StatusLine statusLine = response.getStatusLine();
                 if (statusLine.getStatusCode() != HttpStatus.SC_OK) {
-                    String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(),
-                            statusLine.getReasonPhrase());
+                    String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(), statusLine.getReasonPhrase());
                     throw new RuntimeException(msg);
                 }
             } catch (IOException e) {
