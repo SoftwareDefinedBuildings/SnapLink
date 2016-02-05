@@ -5,6 +5,7 @@ package edu.berkeley.cs.sdb.buildingmodel;
 
 import android.app.Activity;
 import android.content.Context;
+import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -14,6 +15,8 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,6 +25,8 @@ import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 import org.apache.http.HttpResponse;
@@ -37,6 +42,7 @@ import org.apache.http.protocol.HttpContext;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 
 public class MainActivity extends Activity {
@@ -50,11 +56,14 @@ public class MainActivity extends Activity {
 
     private State mState = State.IDLE;
     private TextureView mTextureView;
+    private Button mCaptureButton;
     private Handler mHandler;
     private Size mPreviewSize;
+    private Size mJPEGSize;
     private CameraDevice mCameraDevice;
+    private ImageReader mImageReader;
     private CaptureRequest.Builder mPreviewBuilder;
-    private CameraCaptureSession mPreviewSession;
+    private CameraCaptureSession mCameraCaptureSession;
     private HandlerThread mPreviewThread;
     private HttpClient mHttpClient;
 
@@ -62,7 +71,7 @@ public class MainActivity extends Activity {
         @Override
         public void onConfigured(CameraCaptureSession session) {
             if (mState == State.STARTING) {
-                mPreviewSession = session;
+                mCameraCaptureSession = session;
                 updatePreview();
                 mState = State.RUNNING;
                 Log.i(LOG_TAG, "openCamera finish");
@@ -77,14 +86,14 @@ public class MainActivity extends Activity {
         @Override
         public void onReady(CameraCaptureSession session) {
             if (mState == State.STOPPING) {
-                mPreviewSession.close();
+                mCameraCaptureSession.close();
             }
         }
 
         @Override
         public void onClosed(CameraCaptureSession session) {
             if (mState == State.STOPPING) {
-                mPreviewSession = null;
+                mCameraCaptureSession = null;
 
                 if (mPreviewThread != null) {
                     mPreviewThread.quitSafely();
@@ -152,6 +161,39 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
+        @Override
+        public void onImageAvailable(ImageReader reader) {
+            mCaptureButton.setVisibility(View.VISIBLE);
+
+            Image image = reader.acquireLatestImage();
+            // TODO
+        }
+    };
+
+    private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
+        public void onClick(View v) {
+            if (mState == State.RUNNING) {
+                mCaptureButton.setVisibility(View.INVISIBLE);
+
+                CaptureRequest.Builder captureBuilder;
+                try {
+                    captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                } catch (CameraAccessException e) {
+                    throw new RuntimeException(e);
+                }
+                captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+                captureBuilder.addTarget(mImageReader.getSurface());
+
+                try {
+                    mCameraCaptureSession.capture(captureBuilder.build(), null, mHandler);
+                } catch (CameraAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    };
+
     /*
      * Open camera asynchronously
      * Should be called only when mState == State.INIT || mState ==  State.IDLE || mState == State.STOPPING
@@ -175,6 +217,7 @@ public class MainActivity extends Activity {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
                 StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
                 mPreviewSize = map.getOutputSizes(SurfaceTexture.class)[0];
+                mJPEGSize = map.getOutputSizes(ImageFormat.JPEG)[0];
 
                 manager.openCamera(cameraId, mCameraDeviceStateCallback, null);
             } catch (CameraAccessException e) {
@@ -200,13 +243,12 @@ public class MainActivity extends Activity {
             }
 
             Log.i(LOG_TAG, "closeCamera start");
-            if (mPreviewSession != null) {
+            if (mCameraCaptureSession != null) {
                 try {
-                    mPreviewSession.stopRepeating();
+                    mCameraCaptureSession.stopRepeating();
                 } catch (CameraAccessException e) {
                     throw new RuntimeException(e);
                 }
-
             }
         }
 
@@ -221,6 +263,9 @@ public class MainActivity extends Activity {
 
         mTextureView = (TextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
+
+        mCaptureButton = (Button) findViewById(R.id.capture);
+        mCaptureButton.setOnClickListener(mCaptureButtonOnClickListerner);
 
         mHandler = new Handler();
 
@@ -246,7 +291,7 @@ public class MainActivity extends Activity {
     }
 
     /*
-     * Should be called only when mState ==  State.STARTING
+     * Should be called only when mState == State.STARTING
      */
     protected void startPreview() {
         if (mState != State.STARTING) {
@@ -267,6 +312,9 @@ public class MainActivity extends Activity {
         texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
         Surface surface = new Surface(texture);
 
+        mImageReader = ImageReader.newInstance(mJPEGSize.getWidth(), mJPEGSize.getHeight(), ImageFormat.JPEG, 10);
+        mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mHandler);
+
         try {
             mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
         } catch (CameraAccessException e) {
@@ -275,7 +323,8 @@ public class MainActivity extends Activity {
         mPreviewBuilder.addTarget(surface);
 
         try {
-            mCameraDevice.createCaptureSession(Arrays.asList(surface), mPreviewSessionStateCallback, null);
+            List<Surface> surfaces = Arrays.asList(surface, mImageReader.getSurface());
+            mCameraDevice.createCaptureSession(surfaces, mPreviewSessionStateCallback, null);
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
@@ -295,12 +344,12 @@ public class MainActivity extends Activity {
         }
 
         mPreviewBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+
         mPreviewThread = new HandlerThread("CameraPreview");
         mPreviewThread.start();
         Handler backgroundHandler = new Handler(mPreviewThread.getLooper());
-
         try {
-            mPreviewSession.setRepeatingRequest(mPreviewBuilder.build(), null, backgroundHandler);
+            mCameraCaptureSession.setRepeatingRequest(mPreviewBuilder.build(), null, backgroundHandler);
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
