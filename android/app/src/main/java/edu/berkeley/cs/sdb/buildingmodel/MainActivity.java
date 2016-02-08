@@ -275,67 +275,7 @@ public class MainActivity extends Activity {
             takePicture();
         }
     };
-
-//    /*
-//     * Open camera asynchronously
-//     * Should be called only when mState == State.INIT || mState ==  State.IDLE || mState == State.STOPPING
-//     */
-//    private Runnable mStartCamera = new Runnable() {
-//        @Override
-//        public void run() {
-//            if (mState == State.INIT || mState == State.IDLE) {
-//                mState = State.STARTING;
-//            } else if (mState == State.STOPPING) {
-//                mHandler.post(mStartCamera);
-//                return;
-//            } else {
-//                throw new RuntimeException("state error");
-//            }
-//
-//            Log.i(LOG_TAG, "openCamera start");
-//            CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-//            try {
-//                String cameraId = manager.getCameraIdList()[0];
-//                CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-//                StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-//                mPreviewSize = map.getOutputSizes(SurfaceTexture.class)[0];
-//                mJPEGSize = map.getOutputSizes(ImageFormat.JPEG)[0];
-//
-//                manager.openCamera(cameraId, mCameraDeviceStateCallback, null);
-//            } catch (CameraAccessException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
-//    };
-//
-//    /*
-//     * Close camera asynchronously
-//     * Should be called only when mState ==  State.STOPPING || mState == State.STARTING
-//     */
-//    private Runnable mStopCamera = new Runnable() {
-//        @Override
-//        public void run() {
-//            if (mState == State.RUNNING) {
-//                mState = State.STOPPING;
-//            } else if (mState == State.STARTING) {
-//                mHandler.post(mStopCamera);
-//                return;
-//            } else {
-//                throw new RuntimeException("state error");
-//            }
-//
-//            Log.i(LOG_TAG, "closeCamera start");
-//            if (mCameraCaptureSession != null) {
-//                try {
-//                    mCameraCaptureSession.stopRepeating();
-//                } catch (CameraAccessException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
-//        }
-//
-//    };
-
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -621,31 +561,6 @@ public class MainActivity extends Activity {
         }
     }
 
-//    /*
-//     * Should be called only when mState ==  State.STARTING
-//     * mState should be set to State.RUNNING after calling this method
-//     */
-//    protected void updatePreview() {
-//        if (mState != State.STARTING) {
-//            throw new RuntimeException("state error");
-//        }
-//
-//        if (mCameraDevice == null) {
-//            throw new RuntimeException("updatePreview error");
-//        }
-//
-//        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-//
-//        mPreviewThread = new HandlerThread("CameraPreview");
-//        mPreviewThread.start();
-//        Handler backgroundHandler = new Handler(mPreviewThread.getLooper());
-//        try {
-//            mCameraCaptureSession.setRepeatingRequest(mPreviewRequestBuilder.build(), null, backgroundHandler);
-//        } catch (CameraAccessException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
-
     /*
      * Capture a still picture. This method should be called when we get a response in
      * mCaptureCallback from both lockFocus(}.
@@ -707,8 +622,7 @@ public class MainActivity extends Activity {
      * @param aspectRatio       The aspect ratio
      * @return The optimal {@code Size}, or an arbitrary one if none were big enough
      */
-    private static Size chooseOptimalSize(Size[] choices, int textureViewWidth,
-                                          int textureViewHeight, int maxWidth, int maxHeight, Size aspectRatio) {
+    private static Size chooseOptimalSize(Size[] choices, int textureViewWidth, int textureViewHeight, int maxWidth, int maxHeight, Size aspectRatio) {
 
         // Collect the supported resolutions that are at least as big as the preview Surface
         List<Size> bigEnough = new ArrayList<>();
@@ -743,7 +657,7 @@ public class MainActivity extends Activity {
     /**
      * Shows a Toast on the UI thread.
      *
-     * @param text The message to show
+     * @param text     The message to show
      * @param duration How long to display the message. Either LENGTH_SHORT or LENGTH_LONG
      */
     private void showToast(final String text, final int duration) {
