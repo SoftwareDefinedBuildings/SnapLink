@@ -16,6 +16,7 @@ import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -166,9 +167,16 @@ public class MainActivity extends Activity {
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(ImageReader reader) {
-            Image image = reader.acquireLatestImage();
+            Image image;
+            try {
+                image = reader.acquireLatestImage();
+            } catch (IllegalStateException e) {
+                e.printStackTrace();
+                return;
+            }
             // TODO
-            showToast("Image captured", Toast.LENGTH_SHORT);
+            showToast("Image captured " + image.toString(), Toast.LENGTH_SHORT);
+
         }
     };
 
@@ -186,7 +194,7 @@ public class MainActivity extends Activity {
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (afState == null) {
                         captureStillPicture();
-                    } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState || CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
+                    } else if (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED) {
                         // CONTROL_AE_STATE can be null on some devices
                         Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
                         if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
@@ -229,18 +237,7 @@ public class MainActivity extends Activity {
         }
     };
 
-
-    /*
-     * A CameraCaptureSession.CaptureCallback that handles onCaptureCompleted events.
-     */
-    private CameraCaptureSession.CaptureCallback mImageCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            unlockFocus();
-        }
-    };
-
-    private CameraCaptureSession.StateCallback mPreviewSessionStateCallback = new CameraCaptureSession.StateCallback() {
+    private CameraCaptureSession.StateCallback mSessionStateCallback = new CameraCaptureSession.StateCallback() {
         @Override
         public void onConfigured(CameraCaptureSession session) {
             // The camera is already closed
@@ -272,10 +269,11 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
+            setEnabled(false);
             takePicture();
         }
     };
-    
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -487,7 +485,7 @@ public class MainActivity extends Activity {
             mPreviewRequestBuilder.addTarget(surface);
 
             // Here, we create a CameraCaptureSession for camera preview.
-            mCameraDevice.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()), mPreviewSessionStateCallback, null);
+            mCameraDevice.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()), mSessionStateCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -553,7 +551,7 @@ public class MainActivity extends Activity {
         try {
             // This is how to tell the camera to trigger.
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-            // Tell #mCaptureCallback to wait for the precapture sequence to be set.
+            // Tell mCaptureCallback to wait for the precapture sequence to be set.
             mState = State.WAITING_PRECAPTURE;
             mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
         } catch (CameraAccessException e) {
@@ -570,7 +568,7 @@ public class MainActivity extends Activity {
             if (mCameraDevice == null) {
                 return;
             }
-            // This is the CaptureRequest.Builder that we use to take a picture.
+// This is the CaptureRequest.Builder that we use to take a picture.
             final CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(mImageReader.getSurface());
 
@@ -582,8 +580,25 @@ public class MainActivity extends Activity {
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
 
+            CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
+                private void process() {
+                    unlockFocus();
+                    setEnabled(true);
+                }
+
+                @Override
+                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
+                    process();
+                }
+
+                @Override
+                public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request, CaptureFailure failure) {
+                    process();
+                }
+            };
+
             mCaptureSession.stopRepeating();
-            mCaptureSession.capture(captureBuilder.build(), mImageCaptureCallback, null);
+            mCaptureSession.capture(captureBuilder.build(), captureCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -654,7 +669,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /**
+    /*
      * Shows a Toast on the UI thread.
      *
      * @param text     The message to show
@@ -665,6 +680,20 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 Toast.makeText(MainActivity.this, text, duration).show();
+            }
+        });
+    }
+
+    /**
+     * Enables or disables click events for all buttons.
+     *
+     * @param enabled true to make the view clickable, false otherwise
+     */
+    private void setEnabled(final boolean enabled) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                mCaptureButton.setEnabled(enabled);
             }
         });
     }
