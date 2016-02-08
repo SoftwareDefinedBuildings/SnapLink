@@ -46,8 +46,8 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -174,9 +174,9 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 return;
             }
-            // TODO
+            // upload the image
             showToast("Image captured " + image.toString(), Toast.LENGTH_SHORT);
-
+            new UploadImageTask(mHttpClient, image).execute();
         }
     };
 
@@ -568,7 +568,8 @@ public class MainActivity extends Activity {
             if (mCameraDevice == null) {
                 return;
             }
-// This is the CaptureRequest.Builder that we use to take a picture.
+
+            // This is the CaptureRequest.Builder that we use to take a picture.
             final CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(mImageReader.getSurface());
 
@@ -699,17 +700,29 @@ public class MainActivity extends Activity {
     }
 
     /*
+     * Compares two {@code Size}s based on their areas.
+     */
+    static class CompareSizesByArea implements Comparator<Size> {
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            // We cast here to ensure the multiplications won't overflow
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight());
+        }
+
+    }
+
+    /*
      * Uploads captured image to a server and measures the associated delay
      */
     private class UploadImageTask extends AsyncTask<Void, Void, Void> {
         private final HttpClient httpClient;
         private long startTime;
         private long endTime;
-        private File imageFile;
+        private Image image;
 
-        public UploadImageTask(HttpClient httpClient, File imageFile) {
+        public UploadImageTask(HttpClient httpClient, Image image) {
             this.httpClient = httpClient;
-            this.imageFile = imageFile;
+            this.image = image;
         }
 
         @Override
@@ -719,7 +732,9 @@ public class MainActivity extends Activity {
             HttpContext localContext = new BasicHttpContext();
             HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
             MultipartEntityBuilder multipartEntityBuilder = MultipartEntityBuilder.create();
-            multipartEntityBuilder.addBinaryBody("file", imageFile);
+            ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+            byte[] bytes = new byte[buffer.remaining()];
+            multipartEntityBuilder.addBinaryBody("file", bytes);
             httpPost.setEntity(multipartEntityBuilder.build());
 
             try {
@@ -742,21 +757,9 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPostExecute(Void v) {
-            String msg = String.format("Image %s posted in %d msec\n", imageFile.getName(), endTime - startTime);
+            String msg = String.format("Image posted in %d msec\n", endTime - startTime);
             Log.i(LOG_TAG, msg);
         }
     }
 
-    /*
-     * Compares two {@code Size}s based on their areas.
-     */
-    static class CompareSizesByArea implements Comparator<Size> {
-        @Override
-        public int compare(Size lhs, Size rhs) {
-            // We cast here to ensure the multiplications won't overflow
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
-                    (long) rhs.getWidth() * rhs.getHeight());
-        }
-
-    }
 }
