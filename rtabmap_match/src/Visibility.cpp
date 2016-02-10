@@ -5,6 +5,8 @@
 #include <rtabmap/utilite/UStl.h>
 #include <pcl/point_types.h>
 #include <opencv/cv.h>
+#include <fstream>
+#include <iostream>
 #include "Utility.h"
 #include "Visibility.h"
 
@@ -145,8 +147,12 @@ void Visibility::process(const SensorData & data, const Transform & pose)
                     planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }
+    
+    std::ofstream outfile;
+    outfile.open(("/root/data/ipc/result/" + data.filename + ".txt").c_str());
 
     if (distances.size() == 0) {
+        outfile << "None" << std::endl;
         return;
     }
 
@@ -154,6 +160,9 @@ void Visibility::process(const SensorData & data, const Transform & pose)
     std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
     std::string minlabel = minDist.first;
     UINFO("Nearest label %s with mean disntace %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
+
+    outfile << minlabel.c_str();
+    outfile.close();
 }
 
 } // namespace rtabmap
