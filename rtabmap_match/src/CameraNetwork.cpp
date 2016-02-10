@@ -7,6 +7,26 @@
 
 namespace rtabmap
 {
+const char *askpage = "<html><body>\n\
+                       Upload a file, please!<br>\n\
+                       There are %u clients uploading at the moment.<br>\n\
+                       <form action=\"/filepost\" method=\"post\" enctype=\"multipart/form-data\">\n\
+                       <input name=\"file\" type=\"file\">\n\
+                       <input type=\"submit\" value=\" Send \"></form>\n\
+                       </body></html>";
+
+const char *busypage =
+  "<html><body>This server is busy, please try again later.</body></html>";
+
+const char *completepage =
+  "<html><body>The upload has been completed.</body></html>";
+
+const char *errorpage =
+  "<html><body>This doesn't seem to be right.</body></html>";
+const char *servererrorpage =
+  "<html><body>An internal server error has occured.</body></html>";
+const char *fileexistspage =
+  "<html><body>This file already exists.</body></html>";
 
 enum ConnectionType
 {
@@ -14,14 +34,14 @@ enum ConnectionType
     POST = 1
 };
 
-class ConnectionInfo
+typedef struct
 {
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
     FILE *fp;
     const char *answerstring;
     int answercode;
-};
+} ConnectionInfo;
 
 CameraNetwork::CameraNetwork(uint16_t port,
                        int maxClients,
@@ -53,8 +73,8 @@ bool CameraNetwork::init(const std::string & calibrationFolder, const std::strin
 
     // start MHD daemon, listening on port number _port
     _daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, _port, NULL, NULL,
-                               &answer_to_connection, NULL, 
-                               MHD_OPTION_NOTIFY_COMPLETED, &request_completed, NULL,
+                               &answer_to_connection, this, 
+                               MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this,
                                MHD_OPTION_END);
     if (_daemon == NULL)
     {
@@ -116,16 +136,17 @@ int CameraNetwork::answer_to_connection(void *cls,
                                         size_t *upload_data_size,
                                         void **con_cls)
 {
+    CameraNetwork *camera = (CameraNetwork *) cls;
     if (*con_cls == NULL)
     {
         ConnectionInfo *con_info;
 
-        if (_numClients >= _maxClients)
+        if (camera->_numClients >= camera->_maxClients)
         { 
             return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
 
-        con_info = (connection_info_struct *) malloc(sizeof(struct connection_info_struct));
+        con_info = (ConnectionInfo *) malloc(sizeof(ConnectionInfo));
         if (con_info == NULL)
         {
             return MHD_NO;
@@ -135,7 +156,7 @@ int CameraNetwork::answer_to_connection(void *cls,
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0) 
         {            
-            nfo->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void *)con_info);   
+            con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void *)con_info);   
 
             if (con_info->postprocessor == NULL) 
             {
@@ -164,7 +185,7 @@ int CameraNetwork::answer_to_connection(void *cls,
 
     if (strcasecmp (method, MHD_HTTP_METHOD_POST) == 0) 
     {
-        struct connection_info_struct *con_info = *con_cls;
+        ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
        
         if (*upload_data_size != 0)
         { 
@@ -200,7 +221,7 @@ int CameraNetwork::iterate_post(void *coninfo_cls,
                                 uint64_t off,
                                 size_t size)
 {
-    ConnectionInfo *con_info = coninfo_cls;
+    ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
     FILE *fp;
   
     con_info->answerstring = servererrorpage;
@@ -211,9 +232,9 @@ int CameraNetwork::iterate_post(void *coninfo_cls,
         return MHD_NO;
     }
   
-    if (! con_info->fp)
+    if (!con_info->fp)
     {
-        if ((fp = fopen (filename, "rb")) != NULL)
+        if ((fp = fopen(filename, "rb")) != NULL)
         {
             fclose(fp);
             con_info->answerstring = fileexistspage;
@@ -246,6 +267,30 @@ void CameraNetwork::request_completed(void *cls, struct MHD_Connection *connecti
                                       void **con_cls,
                                       enum MHD_RequestTerminationCode toe)
 {
+    CameraNetwork *camera = (CameraNetwork *) cls;
+    ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
+  
+    if (con_info == NULL)
+    {
+        return;
+    }
+  
+    if (con_info->connectiontype == POST)
+    {
+        if (con_info->postprocessor != NULL)
+        {
+            MHD_destroy_post_processor(con_info->postprocessor);
+            camera->_numClients--;
+        }
+  
+        if (con_info->fp)
+        {
+            fclose (con_info->fp);
+        }
+    }
+  
+    free (con_info);
+    *con_cls = NULL;
 }
 
 int CameraNetwork::send_page(struct MHD_Connection *connection, const char* page, int status_code)
