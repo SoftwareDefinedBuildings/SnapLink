@@ -262,6 +262,7 @@ int CameraNetwork::iterate_post(void *coninfo_cls,
     con_info->answerstring = completepage;
     con_info->answercode = MHD_HTTP_OK;
   
+    UINFO("MHD_YES %s %s", key, filename, content_type);
     return MHD_YES;
 }
 
