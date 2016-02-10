@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os.path
 import time
-import uuid
 from flask import Flask
 from flask import request
 
@@ -20,11 +19,11 @@ def receive_image():
         return "Content must be jpg image", 406
 
     data = request.data
-    # Assumes no more than 1 request per second
-    image_uuid = uuid.uuid4()
-    print "UUID", image_uuid
-    image_file_name = "{}/{}.jpg".format(IMAGE_FOLDER, image_uuid)
-    result_file_name = "{}/{}.jpg.txt".format(RESULT_FOLDER, image_uuid)
+    # image file name has to increase for RTABMap to read
+    timestamp = time.time()
+    print "timestamp", timestamp
+    image_file_name = "{}/{}.jpg".format(IMAGE_FOLDER, timestamp)
+    result_file_name = "{}/{}.jpg.txt".format(RESULT_FOLDER, timestamp)
 
     with open(image_file_name, 'w') as f:
         f.write(data)

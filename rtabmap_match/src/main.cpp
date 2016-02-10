@@ -23,8 +23,8 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    //ULogger::setLevel(ULogger::kInfo);
-    ULogger::setLevel(ULogger::kDebug);
+    ULogger::setLevel(ULogger::kInfo);
+    //ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
