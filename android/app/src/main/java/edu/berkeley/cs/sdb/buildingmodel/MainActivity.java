@@ -46,6 +46,7 @@ import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -180,7 +181,6 @@ public class MainActivity extends Activity {
                 return;
             }
             // upload the image
-            showToast("Image captured " + image.toString(), Toast.LENGTH_SHORT);
             new UploadImageTask(mHttpClient, image).execute();
         }
     };
@@ -719,7 +719,7 @@ public class MainActivity extends Activity {
     /*
      * Uploads captured image to a server and measures the associated delay
      */
-    private class UploadImageTask extends AsyncTask<Void, Void, Void> {
+    private class UploadImageTask extends AsyncTask<Void, Void, String> {
         private final HttpClient httpClient;
         private long startTime;
         private long endTime;
@@ -763,7 +763,7 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected String doInBackground(Void... voids) {
             startTime = System.currentTimeMillis();
 
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -774,6 +774,7 @@ public class MainActivity extends Activity {
             HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
             httpPost.setEntity(new FileEntity(imageFile, "image/jpeg"));
 
+            String result;
             try {
                 Log.i(LOG_TAG, "Starting HTTP Post");
                 HttpResponse response = httpClient.execute(httpPost, localContext);
@@ -783,19 +784,29 @@ public class MainActivity extends Activity {
                     String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(), statusLine.getReasonPhrase());
                     throw new RuntimeException(msg);
                 }
+                result = EntityUtils.toString(response.getEntity());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
 
             endTime = System.currentTimeMillis();
 
+            if (!result.trim().equals("None")) {
+                return result;
+            }
+
             return null;
         }
 
         @Override
-        protected void onPostExecute(Void v) {
-            String msg = String.format("Image posted in %d msec\n", endTime - startTime);
-            Log.i(LOG_TAG, msg);
+        protected void onPostExecute(String result) {
+            if (result != null) {
+                String msg = String.format("Image posted in %d msec\n", endTime - startTime);
+                Log.i(LOG_TAG, msg);
+                showToast(result, Toast.LENGTH_SHORT);
+            } else {
+                showToast("Not recognized", Toast.LENGTH_SHORT);
+            }
         }
     }
 
