@@ -117,7 +117,7 @@ void MemoryLoc::generateImages()
     UWARN("words.size() = %d, words3D.size() = %d", words.size(), words3D.size());
 
     //save a new signature to memory
-    Signature * createSignature(words, words3D, pose);
+    //Signature * createSignature(words, words3D, pose);
     
     
 }
@@ -466,9 +466,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<
     return assembledCloud;
 }
 
-Signature * createSignature(std::multimap<int, cv::KeyPoint> words, 
+Signature *createSignature(std::multimap<int, cv::KeyPoint> words, 
                             std::multimap<int, pcl::PointXYZ> words3D,
-                            const Transform & pose);
+                            const Transform & pose)
 {
     return NULL;
 }

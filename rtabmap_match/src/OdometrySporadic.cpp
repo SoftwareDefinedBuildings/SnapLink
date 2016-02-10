@@ -36,7 +36,7 @@ dbPath_(dbPath)
     {
         UERROR("Error initializing the memory for OdometrySporadic.");
     }
-    memory_->generateImages(); // generate synthetic images
+    //memory_->generateImages(); // generate synthetic images
 
     memoryLocParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
     memoryLocParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
