@@ -25,6 +25,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -41,17 +42,21 @@ import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.mime.MultipartEntityBuilder;
+import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -719,23 +724,55 @@ public class MainActivity extends Activity {
         private long startTime;
         private long endTime;
         private Image image;
+        String path;
 
         public UploadImageTask(HttpClient httpClient, Image image) {
             this.httpClient = httpClient;
             this.image = image;
+
+            File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "SDB3D");
+            if (!mediaStorageDir.exists()) {
+                if (!mediaStorageDir.mkdirs()) {
+                    throw new RuntimeException("Failed to create directory " + mediaStorageDir.getPath());
+                }
+            }
+
+            path = mediaStorageDir.getPath();
+        }
+
+        private void SaveImage(File file) {
+            ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+            byte[] bytes = new byte[buffer.remaining()];
+            buffer.get(bytes);
+            FileOutputStream output = null;
+            try {
+                output = new FileOutputStream(file);
+                output.write(bytes);
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                image.close();
+                if (output != null) {
+                    try {
+                        output.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
         }
 
         @Override
         protected Void doInBackground(Void... voids) {
             startTime = System.currentTimeMillis();
 
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+            File imageFile = new File(path + File.separator + timeStamp + ".jpg");
+            SaveImage(imageFile);
+
             HttpContext localContext = new BasicHttpContext();
             HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
-            MultipartEntityBuilder multipartEntityBuilder = MultipartEntityBuilder.create();
-            ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buffer.remaining()];
-            multipartEntityBuilder.addBinaryBody("file", bytes);
-            httpPost.setEntity(multipartEntityBuilder.build());
+            httpPost.setEntity(new FileEntity(imageFile, "image/jpeg"));
 
             try {
                 Log.i(LOG_TAG, "Starting HTTP Post");
