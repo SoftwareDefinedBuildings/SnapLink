@@ -1,11 +1,11 @@
 #include <rtabmap/core/RtabmapThread.h>
-#include <rtabmap/core/CameraRGB.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <cstdio>
 
 #include "OdometrySporadic.h"
+#include "CameraNetwork.h"
 #include "CameraThreadStream.h"
 #include "OdometrySporadicThread.h"
 #include "Visibility.h"
@@ -23,8 +23,8 @@ using namespace rtabmap;
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kInfo);
-    //ULogger::setLevel(ULogger::kDebug);
+    //ULogger::setLevel(ULogger::kInfo);
+    ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
@@ -42,7 +42,7 @@ int main(int argc, char * argv[])
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
     // TODO read fx and fy from EXIF
-    int cameraType = 2; // lg g2 mini = 1, kinect v1 = 2
+    int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
 
     float fx;
     float fyOrBaseline;
@@ -75,12 +75,12 @@ int main(int argc, char * argv[])
     
         localTransform = tempTransform;
     }
-    int startAt = 1;
-    bool refreshDir = true;
+    uint16_t port = 8080;
+    unsigned int maxClients = 2;
     bool rectifyImages = false;
     bool isDepth = false;
     float imageRate = 10.0f;
-    Camera *camera = new CameraImages(imgpath, startAt, refreshDir, rectifyImages, isDepth, imageRate, localTransform);
+    Camera *camera = new CameraNetwork(port, maxClients, rectifyImages, isDepth, imageRate, localTransform);
     CameraThreadStream cameraThread(camera);
     if(!camera->init("../cameras/", "kinect"))
     {

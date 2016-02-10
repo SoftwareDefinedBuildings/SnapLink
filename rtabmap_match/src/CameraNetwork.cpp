@@ -1,7 +1,6 @@
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <cstdio>
-#include <microhttpd.h>
 
 #include "CameraNetwork.h"
 
@@ -44,11 +43,11 @@ typedef struct
 } ConnectionInfo;
 
 CameraNetwork::CameraNetwork(uint16_t port,
-                       int maxClients,
-                       bool rectifyImages,
-                       bool isDepth,
-                       float imageRate,
-                       const Transform & localTransform) :
+                             unsigned int maxClients,
+                             bool rectifyImages,
+                             bool isDepth,
+                             float imageRate,
+                             const Transform & localTransform) :
     Camera(imageRate, localTransform),
     _port(port),
     _maxClients(maxClients),
@@ -136,7 +135,9 @@ int CameraNetwork::answer_to_connection(void *cls,
                                         size_t *upload_data_size,
                                         void **con_cls)
 {
+    UDEBUG("");
     CameraNetwork *camera = (CameraNetwork *) cls;
+
     if (*con_cls == NULL)
     {
         ConnectionInfo *con_info;
@@ -221,6 +222,7 @@ int CameraNetwork::iterate_post(void *coninfo_cls,
                                 uint64_t off,
                                 size_t size)
 {
+    UDEBUG("");
     ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
     FILE *fp;
   
@@ -251,7 +253,7 @@ int CameraNetwork::iterate_post(void *coninfo_cls,
   
     if (size > 0)
     {
-        if (!fwrite(data, sizeof (char), size, con_info->fp))
+        if (!fwrite(data, sizeof(char), size, con_info->fp))
         {
             return MHD_NO;
         }
@@ -267,6 +269,7 @@ void CameraNetwork::request_completed(void *cls, struct MHD_Connection *connecti
                                       void **con_cls,
                                       enum MHD_RequestTerminationCode toe)
 {
+    UDEBUG("");
     CameraNetwork *camera = (CameraNetwork *) cls;
     ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
   

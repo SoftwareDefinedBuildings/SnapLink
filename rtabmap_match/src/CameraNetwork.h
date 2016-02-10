@@ -1,9 +1,10 @@
 #pragma once
 
 #include "rtabmap/core/Camera.h"
+#include <microhttpd.h>
 
 #define PORT 8080
-#define POSTBUFFERSIZE 512
+#define POSTBUFFERSIZE 51200
 #define MAXCLIENTS 2
 
 class UTimer;
@@ -16,7 +17,7 @@ class CameraNetwork :
 {
 public:
     CameraNetwork(uint16_t port = PORT,
-            int maxClients = MAXCLIENTS,
+            unsigned int maxClients = MAXCLIENTS,
             bool rectifyImages = false,
             bool isDepth = false,
             float imageRate = 0,
