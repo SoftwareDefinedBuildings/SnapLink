@@ -70,7 +70,7 @@ int main(int argc, char * argv[])
     float imageRate = 10.0f;
     Camera *camera = new CameraImages(imgpath, startAt, refreshDir, rectifyImages, isDepth, imageRate, localTransform);
     CameraThreadStream cameraThread(camera);
-    if(!camera->init("../cameras/", "lg_g2_mini"))
+    if(!camera->init("../cameras/", "lg_g2_mini_640_480"))
     {
         UERROR("Camera init failed!");
         exit(1);
