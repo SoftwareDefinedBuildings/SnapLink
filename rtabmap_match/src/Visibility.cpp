@@ -24,6 +24,11 @@ bool CompareMeanDist::operator()(const PairType & left, const PairType & right) 
     return meanDist(left.second) < meanDist(right.second);
 }
 
+bool CompareCount::operator()(const PairType & left, const PairType & right) const
+{
+    return left.second.size() < right.second.size();
+}
+
 Visibility::Visibility()
 {
     UDEBUG("");
@@ -117,11 +122,13 @@ void Visibility::process(const SensorData & data, const Transform & pose)
     int rows = data.imageRaw().rows;
     std::map< std::string, std::vector<double> > distances;
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
+    cv::Point2f center(cols/2, rows/2);
     
     for(unsigned int i = 0; i < _points.size(); ++i)
     {
-        if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
-           uIsInBounds(int(planePoints[i].y), 0, rows))
+        //if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
+        //   uIsInBounds(int(planePoints[i].y), 0, rows))
+        if (true)
         {
             if (Utility::isInFrontOfCamera(_points[i], P)) {
                 std::string & label = _labels[i];
@@ -129,7 +136,8 @@ void Visibility::process(const SensorData & data, const Transform & pose)
                 float x,y,z,roll,pitch,yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 cv::Point3f cameraLoc(x, y, z);
-                double dist = cv::norm(_points[i] - cameraLoc);
+                //double dist = cv::norm(_points[i] - cameraLoc);
+                double dist = cv::norm(planePoints[i] - center);
                 distances[label].push_back(dist);
                 labelPoints[label].push_back(planePoints[i]);
                 UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
@@ -159,9 +167,17 @@ void Visibility::process(const SensorData & data, const Transform & pose)
     // find the label with minimum mean distance
     std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
     std::string minlabel = minDist.first;
-    UINFO("Nearest label %s with mean disntace %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-
+    UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
+    
     outfile << minlabel.c_str();
+    
+    // find the label with most distance
+    //std::pair< std::string, std::vector<double> > maxCount = *max_element(distances.begin(), distances.end(), CompareCount());
+    //std::string maxlabel = maxCount.first;
+    //UINFO("Nearest label %s with most points %lf", maxlabel.c_str(), maxCount.second.size());
+    //
+    //outfile << maxlabel.c_str();
+
     outfile.close();
 }
 

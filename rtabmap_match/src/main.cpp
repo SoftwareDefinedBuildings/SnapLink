@@ -44,19 +44,11 @@ int main(int argc, char * argv[])
     // TODO read fx and fy from EXIF
     int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
 
-    float fx;
-    float fyOrBaseline;
-    float cx;
-    float cy;
     Transform localTransform;
     
     if (cameraType == 1)
     {
         // now it is hardcoded for lg g2 mini
-        fx = 2248.90280131777f;
-        fyOrBaseline = 2249.05827505121f;
-        cx = 1303.16905149739f;
-        cy = 936.309085911272f;
         Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
     
         localTransform = tempTransform;
@@ -67,10 +59,6 @@ int main(int argc, char * argv[])
     else if (cameraType == 2)
     {
         // hardcoded for map1_10Hz
-        fx = 525.0f;
-        fyOrBaseline = 525.0f;
-        cx = 320.0f;
-        cy = 240.0f;
         Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
     
         localTransform = tempTransform;
@@ -82,7 +70,7 @@ int main(int argc, char * argv[])
     float imageRate = 10.0f;
     Camera *camera = new CameraImages(imgpath, startAt, refreshDir, rectifyImages, isDepth, imageRate, localTransform);
     CameraThreadStream cameraThread(camera);
-    if(!camera->init("../cameras/", "kinect"))
+    if(!camera->init("../cameras/", "lg_g2_mini"))
     {
         UERROR("Camera init failed!");
         exit(1);

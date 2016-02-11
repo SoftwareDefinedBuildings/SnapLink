@@ -8,7 +8,7 @@ IMAGE_FOLDER = "/root/data/ipc/image"
 RESULT_FOLDER = "/root/data/ipc/result"
 PORT = 8080
 DELAY = 0.01
-TIMEOUT = 1
+TIMEOUT = 8
 
 app = Flask(__name__)
 

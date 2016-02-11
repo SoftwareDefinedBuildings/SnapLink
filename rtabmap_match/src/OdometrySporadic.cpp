@@ -24,8 +24,7 @@ dbPath_(dbPath)
     memoryParams_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
     memoryParams_.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
     memoryParams_.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
-    int featureType = Feature2D::kFeatureSurf;
-    memoryParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
+    memoryParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf)));
     // parameters that makes memory do PnP localization for RGB images
     memoryParams_.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
     memoryParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false")); 
@@ -121,6 +120,7 @@ Transform OdometrySporadic::computeTransform(const SensorData & data_, OdometryI
                 std::vector<int> topIds;
                 likelihood.erase(-1);
                 int topk_ = 1;
+                int topId;
                 if(likelihood.size())
                 {
                     std::vector< std::pair<int, float> > top(topk_);
@@ -129,9 +129,12 @@ Transform OdometrySporadic::computeTransform(const SensorData & data_, OdometryI
                                            top.begin(),
                                            top.end(),
                                            compareLikelihood);
+                    // TODO there is some bugs here
                     for(std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it) {
                         topIds.push_back(it->first);
                     }
+                    topId = topIds[0];
+                    UINFO("topId: %d", topId);
                 }
                 
                 MemoryLoc memoryLoc(memoryLocParams_);
@@ -180,7 +183,8 @@ Transform OdometrySporadic::computeTransform(const SensorData & data_, OdometryI
                     }
                     else
                     {
-                        UWARN("transform is null, rejectMsg = %s", rejectedMsg.c_str());
+                        UWARN("transform is null, rejectMsg = %s, using pose of the closest image", rejectedMsg.c_str());
+                        output = memory_->getSignature(topId)->getPose();
                     }
                 }
             }
