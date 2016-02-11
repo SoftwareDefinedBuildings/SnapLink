@@ -344,7 +344,7 @@ public class MainActivity extends Activity {
                 // For still image matching, we use the largest available size.
                 List<Size> sizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
                 Collections.sort(sizes, new CompareSizesByArea());
-                Size size = sizes.get(21); // hardcoded because we calibrated this size before
+                Size size = sizes.get(3); // hardcoded to use 640x480 because the intrincics of this size is on server
                 mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
