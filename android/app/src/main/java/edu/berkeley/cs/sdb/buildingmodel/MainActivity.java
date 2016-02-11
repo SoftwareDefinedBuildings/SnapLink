@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
     // Max preview width that is guaranteed by Camera2 API
     private static final int MAX_PREVIEW_WIDTH = 1920;
     // Max preview height that is guaranteed by Camera2 API
-    private static final int MAX_PREVIEW_HEIGHT = 1080;
+    private static final int MAX_PREVIEW_HEIGHT = 1440;
 
 
     private TextureView mTextureView;
@@ -274,7 +274,7 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setEnabled(false);
+            setUIEnabled(false);
             takePicture();
         }
     };
@@ -342,8 +342,10 @@ public class MainActivity extends Activity {
                 }
 
                 // For still image matching, we use the largest available size.
-                Size largest = Collections.min(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
-                mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+                List<Size> sizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                Collections.sort(sizes, new CompareSizesByArea());
+                Size size = sizes.get(21); // hardcoded because we calibrated this size before
+                mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor coordinate.
@@ -394,7 +396,7 @@ public class MainActivity extends Activity {
                 // garbage capture data.
                 mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
                         rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
-                        maxPreviewHeight, largest);
+                        maxPreviewHeight, size);
 
                 mCameraId = cameraId;
                 return;
@@ -589,7 +591,7 @@ public class MainActivity extends Activity {
             CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
                 private void process() {
                     unlockFocus();
-                    setEnabled(true);
+                    setUIEnabled(true);
                 }
 
                 @Override
@@ -652,10 +654,8 @@ public class MainActivity extends Activity {
         int w = aspectRatio.getWidth();
         int h = aspectRatio.getHeight();
         for (Size option : choices) {
-            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight &&
-                    option.getHeight() == option.getWidth() * h / w) {
-                if (option.getWidth() >= textureViewWidth &&
-                        option.getHeight() >= textureViewHeight) {
+            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight && option.getHeight() == option.getWidth() * h / w) {
+                if (option.getWidth() >= textureViewWidth && option.getHeight() >= textureViewHeight) {
                     bigEnough.add(option);
                 } else {
                     notBigEnough.add(option);
@@ -695,7 +695,7 @@ public class MainActivity extends Activity {
      *
      * @param enabled true to make the view clickable, false otherwise
      */
-    private void setEnabled(final boolean enabled) {
+    private void setUIEnabled(final boolean enabled) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
