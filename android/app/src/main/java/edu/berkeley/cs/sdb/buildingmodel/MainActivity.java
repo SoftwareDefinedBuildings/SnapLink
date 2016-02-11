@@ -321,6 +321,8 @@ public class MainActivity extends Activity {
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListerner);
 
+        setUIEnabled(false, false, true);
+
         mHttpClient = new DefaultHttpClient();
     }
 
