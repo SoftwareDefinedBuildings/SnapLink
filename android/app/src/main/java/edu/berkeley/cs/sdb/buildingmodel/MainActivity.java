@@ -283,7 +283,7 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mOnButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false);
+            setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/1";
             new HttpGetTask(mHttpClient, url).execute();
         }
@@ -291,7 +291,7 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mOffButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false);
+            setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/0";
             new HttpGetTask(mHttpClient, url).execute();
         }
@@ -299,7 +299,7 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false);
+            setUIEnabled(false, false, false);
             takePicture();
         }
     };
@@ -721,15 +721,17 @@ public class MainActivity extends Activity {
     /**
      * Enables or disables click events for all buttons.
      *
-     * @param enabled true to make the view clickable, false otherwise
+     * @param on true to make the On button clickable, false otherwise
+     * @param off true to make the Off button clickable, false otherwise
+     * @param capture true to make the Capture button clickable, false otherwise
      */
-    private void setUIEnabled(final boolean enabled) {
+    private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mOnButton.setEnabled(enabled);
-                mOffButton.setEnabled(enabled);
-                mCaptureButton.setEnabled(enabled);
+                mOnButton.setEnabled(on);
+                mOffButton.setEnabled(off);
+                mCaptureButton.setEnabled(capture);
             }
         });
     }
@@ -836,12 +838,14 @@ public class MainActivity extends Activity {
                 showToast(result + " recognized", Toast.LENGTH_SHORT);
                 mTarget = result;
                 mTextView.setText(result);
+                setUIEnabled(true, true, true);
             } else {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
+                setUIEnabled(false, false, true);
             }
-            setUIEnabled(true);
+
         }
     }
 
@@ -882,7 +886,7 @@ public class MainActivity extends Activity {
             } else {
                 showToast("Command sent fail", Toast.LENGTH_SHORT);
             }
-            setUIEnabled(true);
+            setUIEnabled(true, true, true);
         }
     }
 
