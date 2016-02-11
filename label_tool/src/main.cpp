@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include "OdometryMonoLoc.h"
 #include "rtabmap/utilite/UEventsManager.h"
-#include <QApplication>
 #include <stdio.h>
 
 #include "OdometryMonoLoc.h"

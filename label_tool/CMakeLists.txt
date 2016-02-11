@@ -1,25 +1,23 @@
 cmake_minimum_required(VERSION 2.8)
 PROJECT( MyProject )
 
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11") 
+
 FIND_PACKAGE(RTABMap REQUIRED)
 FIND_PACKAGE(OpenCV REQUIRED)
 FIND_PACKAGE(PCL 1.7 REQUIRED)
-FIND_PACKAGE(Qt4 REQUIRED COMPONENTS QtCore QtGui QtSvg) 
 
 SET(INCLUDE_DIRS
     ${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
-    "/root/workspace/rtabmap/corelib/include/rtabmap/core"
-    "/root/workspace/rtabmap/corelib/src"
+    "~/Workspace/rtabmap/corelib/include/rtabmap/core"
+    "~/Workspace/rtabmap/corelib/src"
 )
-
-INCLUDE(${QT_USE_FILE})
 
 SET(LIBRARIES
     ${RTABMap_LIBRARIES}
     ${OpenCV_LIBRARIES}
-    ${QT_LIBRARIES} 
     ${PCL_LIBRARIES}
 )
 
