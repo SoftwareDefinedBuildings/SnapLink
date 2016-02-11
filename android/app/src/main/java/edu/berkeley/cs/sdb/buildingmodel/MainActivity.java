@@ -35,12 +35,14 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -87,7 +89,8 @@ public class MainActivity extends Activity {
     }
 
     private static final String LOG_TAG = "SDB3D";
-    private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50012/";
+    private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50014/";
+    private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50015/";
     // Max preview width that is guaranteed by Camera2 API
     private static final int MAX_PREVIEW_WIDTH = 1920;
     // Max preview height that is guaranteed by Camera2 API
@@ -95,7 +98,11 @@ public class MainActivity extends Activity {
 
 
     private TextureView mTextureView;
+    private TextView mTextView;
+    private Button mOnButton;
+    private Button mOffButton;
     private Button mCaptureButton;
+
     // The current state of camera state for taking pictures.
     private State mState;
     // ID of the current CameraDevice
@@ -120,6 +127,8 @@ public class MainActivity extends Activity {
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
     // The HTTP Client used for transmitting image
     private HttpClient mHttpClient;
+    // The current recognized object name
+    private String mTarget;
 
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
@@ -272,6 +281,22 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final View.OnClickListener mOnButtonOnClickListerner = new View.OnClickListener() {
+        public void onClick(View v) {
+            setUIEnabled(false);
+            String url = CONTROL_URL + mTarget + "/1";
+            new HttpGetTask(mHttpClient, url).execute();
+        }
+    };
+
+    private final View.OnClickListener mOffButtonOnClickListerner = new View.OnClickListener() {
+        public void onClick(View v) {
+            setUIEnabled(false);
+            String url = CONTROL_URL + mTarget + "/0";
+            new HttpGetTask(mHttpClient, url).execute();
+        }
+    };
+
     private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
             setUIEnabled(false);
@@ -288,7 +313,11 @@ public class MainActivity extends Activity {
 
         mTextureView = (TextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
-
+        mTextView = (TextView) findViewById(R.id.text);
+        mOnButton = (Button) findViewById(R.id.on);
+        mOnButton.setOnClickListener(mOnButtonOnClickListerner);
+        mOffButton = (Button) findViewById(R.id.off);
+        mOffButton.setOnClickListener(mOffButtonOnClickListerner);
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListerner);
 
@@ -591,7 +620,6 @@ public class MainActivity extends Activity {
             CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
                 private void process() {
                     unlockFocus();
-                    setUIEnabled(true);
                 }
 
                 @Override
@@ -699,6 +727,8 @@ public class MainActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                mOnButton.setEnabled(enabled);
+                mOffButton.setEnabled(enabled);
                 mCaptureButton.setEnabled(enabled);
             }
         });
@@ -720,7 +750,7 @@ public class MainActivity extends Activity {
      * Uploads captured image to a server and measures the associated delay
      */
     private class UploadImageTask extends AsyncTask<Void, Void, String> {
-        private final HttpClient httpClient;
+        private HttpClient httpClient;
         private long startTime;
         private long endTime;
         private Image image;
@@ -774,7 +804,7 @@ public class MainActivity extends Activity {
             HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
             httpPost.setEntity(new FileEntity(imageFile, "image/jpeg"));
 
-            String result;
+            String result = null;
             try {
                 Log.i(LOG_TAG, "Starting HTTP Post");
                 HttpResponse response = httpClient.execute(httpPost, localContext);
@@ -786,13 +816,13 @@ public class MainActivity extends Activity {
                 }
                 result = EntityUtils.toString(response.getEntity());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
 
             endTime = System.currentTimeMillis();
 
-            if (!result.trim().equals("None")) {
-                return result;
+            if (result != null && !result.trim().equals("None")) {
+                return result.trim();
             }
 
             return null;
@@ -803,10 +833,56 @@ public class MainActivity extends Activity {
             if (result != null) {
                 String msg = String.format("Image posted in %d msec\n", endTime - startTime);
                 Log.i(LOG_TAG, msg);
-                showToast(result, Toast.LENGTH_SHORT);
+                showToast(result + " recognized", Toast.LENGTH_SHORT);
+                mTarget = result;
+                mTextView.setText(result);
             } else {
-                showToast("Not recognized", Toast.LENGTH_SHORT);
+                showToast("Nothing recognized", Toast.LENGTH_SHORT);
+                mTarget = null;
+                mTextView.setText(getString(R.string.none));
             }
+            setUIEnabled(true);
+        }
+    }
+
+    /*
+     * Uploads captured image to a server and measures the associated delay
+     */
+    private class HttpGetTask extends AsyncTask<Void, Void, Boolean> {
+        private HttpClient httpClient;
+        private String url;
+
+        public HttpGetTask(HttpClient httpClient, String url) {
+            this.httpClient = httpClient;
+            this.url = url;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            HttpContext localContext = new BasicHttpContext();
+            HttpGet httpGet = new HttpGet(this.url);
+
+            try {
+                HttpResponse response = httpClient.execute(httpGet, localContext);
+                StatusLine statusLine = response.getStatusLine();
+                if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
+                    return true;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return false;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                showToast("Command sent success", Toast.LENGTH_SHORT);
+            } else {
+                showToast("Command sent fail", Toast.LENGTH_SHORT);
+            }
+            setUIEnabled(true);
         }
     }
 
