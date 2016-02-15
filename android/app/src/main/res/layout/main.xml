@@ -16,22 +16,36 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"/>
 
-    <Button
-        android:id="@+id/on"
+    <TextView
+        android:id="@+id/text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentStart="true"
+        android:layout_alignTop="@+id/on"
+        android:layout_toStartOf="@+id/on"
+        android:background="#07000000"
+        android:gravity="center"
+        android:text="@string/none"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"/>
+
+    <Button
+        android:id="@+id/on"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/off"
         android:layout_gravity="center"
+        android:layout_toStartOf="@+id/off"
         android:text="@string/on"/>
 
     <Button
         android:id="@+id/off"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
+        android:layout_alignTop="@+id/capture"
         android:layout_gravity="center"
+        android:layout_toStartOf="@+id/capture"
         android:text="@string/off"/>
 
     <Button
@@ -42,5 +56,6 @@
         android:layout_alignParentEnd="true"
         android:layout_gravity="center"
         android:text="@string/capture"/>
+
 
 </RelativeLayout>

@@ -4,4 +4,5 @@
     <string name="capture">Capture</string>
     <string name="on">On</string>
     <string name="off">Off</string>
+    <string name="none">None</string>
 </resources>

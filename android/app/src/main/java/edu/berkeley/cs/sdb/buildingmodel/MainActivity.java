@@ -35,17 +35,20 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
+import org.apache.http.util.EntityUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -86,15 +89,20 @@ public class MainActivity extends Activity {
     }
 
     private static final String LOG_TAG = "SDB3D";
-    private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50012/";
+    private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50014/";
+    private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50015/";
     // Max preview width that is guaranteed by Camera2 API
     private static final int MAX_PREVIEW_WIDTH = 1920;
     // Max preview height that is guaranteed by Camera2 API
-    private static final int MAX_PREVIEW_HEIGHT = 1080;
+    private static final int MAX_PREVIEW_HEIGHT = 1440;
 
 
     private TextureView mTextureView;
+    private TextView mTextView;
+    private Button mOnButton;
+    private Button mOffButton;
     private Button mCaptureButton;
+
     // The current state of camera state for taking pictures.
     private State mState;
     // ID of the current CameraDevice
@@ -119,6 +127,8 @@ public class MainActivity extends Activity {
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
     // The HTTP Client used for transmitting image
     private HttpClient mHttpClient;
+    // The current recognized object name
+    private String mTarget;
 
     private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
         @Override
@@ -180,7 +190,6 @@ public class MainActivity extends Activity {
                 return;
             }
             // upload the image
-            showToast("Image captured " + image.toString(), Toast.LENGTH_SHORT);
             new UploadImageTask(mHttpClient, image).execute();
         }
     };
@@ -272,9 +281,25 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final View.OnClickListener mOnButtonOnClickListerner = new View.OnClickListener() {
+        public void onClick(View v) {
+            setUIEnabled(false, false, false);
+            String url = CONTROL_URL + mTarget + "/1";
+            new HttpGetTask(mHttpClient, url).execute();
+        }
+    };
+
+    private final View.OnClickListener mOffButtonOnClickListerner = new View.OnClickListener() {
+        public void onClick(View v) {
+            setUIEnabled(false, false, false);
+            String url = CONTROL_URL + mTarget + "/0";
+            new HttpGetTask(mHttpClient, url).execute();
+        }
+    };
+
     private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setEnabled(false);
+            setUIEnabled(false, false, false);
             takePicture();
         }
     };
@@ -288,9 +313,15 @@ public class MainActivity extends Activity {
 
         mTextureView = (TextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
-
+        mTextView = (TextView) findViewById(R.id.text);
+        mOnButton = (Button) findViewById(R.id.on);
+        mOnButton.setOnClickListener(mOnButtonOnClickListerner);
+        mOffButton = (Button) findViewById(R.id.off);
+        mOffButton.setOnClickListener(mOffButtonOnClickListerner);
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListerner);
+
+        setUIEnabled(false, false, true);
 
         mHttpClient = new DefaultHttpClient();
     }
@@ -342,8 +373,10 @@ public class MainActivity extends Activity {
                 }
 
                 // For still image matching, we use the largest available size.
-                Size largest = Collections.min(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
-                mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+                List<Size> sizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                Collections.sort(sizes, new CompareSizesByArea());
+                Size size = sizes.get(3); // hardcoded to use 640x480 because the intrincics of this size is on server
+                mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor coordinate.
@@ -394,7 +427,7 @@ public class MainActivity extends Activity {
                 // garbage capture data.
                 mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
                         rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
-                        maxPreviewHeight, largest);
+                        maxPreviewHeight, size);
 
                 mCameraId = cameraId;
                 return;
@@ -589,7 +622,6 @@ public class MainActivity extends Activity {
             CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
                 private void process() {
                     unlockFocus();
-                    setEnabled(true);
                 }
 
                 @Override
@@ -652,10 +684,8 @@ public class MainActivity extends Activity {
         int w = aspectRatio.getWidth();
         int h = aspectRatio.getHeight();
         for (Size option : choices) {
-            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight &&
-                    option.getHeight() == option.getWidth() * h / w) {
-                if (option.getWidth() >= textureViewWidth &&
-                        option.getHeight() >= textureViewHeight) {
+            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight && option.getHeight() == option.getWidth() * h / w) {
+                if (option.getWidth() >= textureViewWidth && option.getHeight() >= textureViewHeight) {
                     bigEnough.add(option);
                 } else {
                     notBigEnough.add(option);
@@ -693,13 +723,17 @@ public class MainActivity extends Activity {
     /**
      * Enables or disables click events for all buttons.
      *
-     * @param enabled true to make the view clickable, false otherwise
+     * @param on true to make the On button clickable, false otherwise
+     * @param off true to make the Off button clickable, false otherwise
+     * @param capture true to make the Capture button clickable, false otherwise
      */
-    private void setEnabled(final boolean enabled) {
+    private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mCaptureButton.setEnabled(enabled);
+                mOnButton.setEnabled(on);
+                mOffButton.setEnabled(off);
+                mCaptureButton.setEnabled(capture);
             }
         });
     }
@@ -719,8 +753,8 @@ public class MainActivity extends Activity {
     /*
      * Uploads captured image to a server and measures the associated delay
      */
-    private class UploadImageTask extends AsyncTask<Void, Void, Void> {
-        private final HttpClient httpClient;
+    private class UploadImageTask extends AsyncTask<Void, Void, String> {
+        private HttpClient httpClient;
         private long startTime;
         private long endTime;
         private Image image;
@@ -763,7 +797,7 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        protected Void doInBackground(Void... voids) {
+        protected String doInBackground(Void... voids) {
             startTime = System.currentTimeMillis();
 
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -774,6 +808,7 @@ public class MainActivity extends Activity {
             HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
             httpPost.setEntity(new FileEntity(imageFile, "image/jpeg"));
 
+            String result = null;
             try {
                 Log.i(LOG_TAG, "Starting HTTP Post");
                 HttpResponse response = httpClient.execute(httpPost, localContext);
@@ -783,19 +818,77 @@ public class MainActivity extends Activity {
                     String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(), statusLine.getReasonPhrase());
                     throw new RuntimeException(msg);
                 }
+                result = EntityUtils.toString(response.getEntity());
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
 
             endTime = System.currentTimeMillis();
+
+            if (result != null && !result.trim().equals("None")) {
+                return result.trim();
+            }
 
             return null;
         }
 
         @Override
-        protected void onPostExecute(Void v) {
-            String msg = String.format("Image posted in %d msec\n", endTime - startTime);
-            Log.i(LOG_TAG, msg);
+        protected void onPostExecute(String result) {
+            if (result != null) {
+                String msg = String.format("Image posted in %d msec\n", endTime - startTime);
+                Log.i(LOG_TAG, msg);
+                showToast(result + " recognized", Toast.LENGTH_SHORT);
+                mTarget = result;
+                mTextView.setText(result);
+                setUIEnabled(true, true, true);
+            } else {
+                showToast("Nothing recognized", Toast.LENGTH_SHORT);
+                mTarget = null;
+                mTextView.setText(getString(R.string.none));
+                setUIEnabled(false, false, true);
+            }
+
+        }
+    }
+
+    /*
+     * Uploads captured image to a server and measures the associated delay
+     */
+    private class HttpGetTask extends AsyncTask<Void, Void, Boolean> {
+        private HttpClient httpClient;
+        private String url;
+
+        public HttpGetTask(HttpClient httpClient, String url) {
+            this.httpClient = httpClient;
+            this.url = url;
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            HttpContext localContext = new BasicHttpContext();
+            HttpGet httpGet = new HttpGet(this.url);
+
+            try {
+                HttpResponse response = httpClient.execute(httpGet, localContext);
+                StatusLine statusLine = response.getStatusLine();
+                if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
+                    return true;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return false;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            if (result) {
+                showToast("Command sent success", Toast.LENGTH_SHORT);
+            } else {
+                showToast("Command sent fail", Toast.LENGTH_SHORT);
+            }
+            setUIEnabled(true, true, true);
         }
     }
 
