@@ -25,7 +25,6 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -38,28 +37,25 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.Volley;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.StatusLine;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpContext;
-import org.apache.http.util.EntityUtils;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -127,6 +123,8 @@ public class MainActivity extends Activity {
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
     // The HTTP Client used for transmitting image
     private HttpClient mHttpClient;
+    // The Volley HTTP Request Queue used for uploading image
+    RequestQueue mRequestQueue;
     // The current recognized object name
     private String mTarget;
 
@@ -190,7 +188,31 @@ public class MainActivity extends Activity {
                 return;
             }
             // upload the image
-            new UploadImageTask(mHttpClient, image).execute();
+            RecognitionRequest request = new RecognitionRequest(IMAGE_UPLOAD_URL, image, new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    if (response != null) {
+                        showToast(response + " recognized", Toast.LENGTH_SHORT);
+                        mTarget = response;
+                        mTextView.setText(response);
+                        setUIEnabled(true, true, true);
+                    } else {
+                        showToast("Nothing recognized", Toast.LENGTH_SHORT);
+                        mTarget = null;
+                        mTextView.setText(getString(R.string.none));
+                        setUIEnabled(false, false, true);
+                    }
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    showToast("That didn't work!", Toast.LENGTH_SHORT);
+                    mTarget = null;
+                    mTextView.setText(getString(R.string.none));
+                    setUIEnabled(false, false, true);
+                }
+            });
+            mRequestQueue.add(request);
         }
     };
 
@@ -324,6 +346,7 @@ public class MainActivity extends Activity {
         setUIEnabled(false, false, true);
 
         mHttpClient = new DefaultHttpClient();
+        mRequestQueue = Volley.newRequestQueue(this);
     }
 
     @Override
@@ -723,8 +746,8 @@ public class MainActivity extends Activity {
     /**
      * Enables or disables click events for all buttons.
      *
-     * @param on true to make the On button clickable, false otherwise
-     * @param off true to make the Off button clickable, false otherwise
+     * @param on      true to make the On button clickable, false otherwise
+     * @param off     true to make the Off button clickable, false otherwise
      * @param capture true to make the Capture button clickable, false otherwise
      */
     private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
@@ -748,107 +771,6 @@ public class MainActivity extends Activity {
             return Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight());
         }
 
-    }
-
-    /*
-     * Uploads captured image to a server and measures the associated delay
-     */
-    private class UploadImageTask extends AsyncTask<Void, Void, String> {
-        private HttpClient httpClient;
-        private long startTime;
-        private long endTime;
-        private Image image;
-        String path;
-
-        public UploadImageTask(HttpClient httpClient, Image image) {
-            this.httpClient = httpClient;
-            this.image = image;
-
-            File mediaStorageDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "SDB3D");
-            if (!mediaStorageDir.exists()) {
-                if (!mediaStorageDir.mkdirs()) {
-                    throw new RuntimeException("Failed to create directory " + mediaStorageDir.getPath());
-                }
-            }
-
-            path = mediaStorageDir.getPath();
-        }
-
-        private void SaveImage(File file) {
-            ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-            byte[] bytes = new byte[buffer.remaining()];
-            buffer.get(bytes);
-            FileOutputStream output = null;
-            try {
-                output = new FileOutputStream(file);
-                output.write(bytes);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                image.close();
-                if (output != null) {
-                    try {
-                        output.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-
-        @Override
-        protected String doInBackground(Void... voids) {
-            startTime = System.currentTimeMillis();
-
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-            File imageFile = new File(path + File.separator + timeStamp + ".jpg");
-            SaveImage(imageFile);
-
-            HttpContext localContext = new BasicHttpContext();
-            HttpPost httpPost = new HttpPost(IMAGE_UPLOAD_URL);
-            httpPost.setEntity(new FileEntity(imageFile, "image/jpeg"));
-
-            String result = null;
-            try {
-                Log.i(LOG_TAG, "Starting HTTP Post");
-                HttpResponse response = httpClient.execute(httpPost, localContext);
-                Log.i(LOG_TAG, "Finished HTTP Post");
-                StatusLine statusLine = response.getStatusLine();
-                if (statusLine.getStatusCode() != HttpStatus.SC_OK) {
-                    String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(), statusLine.getReasonPhrase());
-                    throw new RuntimeException(msg);
-                }
-                result = EntityUtils.toString(response.getEntity());
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            endTime = System.currentTimeMillis();
-
-            if (result != null && !result.trim().equals("None")) {
-                return result.trim();
-            }
-
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String result) {
-            if (result != null) {
-                String msg = String.format("Image posted in %d msec\n", endTime - startTime);
-                Log.i(LOG_TAG, msg);
-                showToast(result + " recognized", Toast.LENGTH_SHORT);
-                mTarget = result;
-                mTextView.setText(result);
-                setUIEnabled(true, true, true);
-            } else {
-                showToast("Nothing recognized", Toast.LENGTH_SHORT);
-                mTarget = null;
-                mTextView.setText(getString(R.string.none));
-                setUIEnabled(false, false, true);
-            }
-
-        }
     }
 
     /*
