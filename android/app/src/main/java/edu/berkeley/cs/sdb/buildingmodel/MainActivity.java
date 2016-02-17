@@ -23,7 +23,6 @@ import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -37,21 +36,13 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.HttpContext;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -121,8 +112,6 @@ public class MainActivity extends Activity {
     private CaptureRequest mPreviewRequest;
     // A semaphore to prevent the app from exiting before closing the camera.
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
-    // The HTTP Client used for transmitting image
-    private HttpClient mHttpClient;
     // The Volley HTTP Request Queue used for uploading image
     RequestQueue mRequestQueue;
     // The current recognized object name
@@ -187,31 +176,9 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 return;
             }
+
             // upload the image
-            RecognitionRequest request = new RecognitionRequest(IMAGE_UPLOAD_URL, image, new Response.Listener<String>() {
-                @Override
-                public void onResponse(String response) {
-                    if (response != null) {
-                        showToast(response + " recognized", Toast.LENGTH_SHORT);
-                        mTarget = response;
-                        mTextView.setText(response);
-                        setUIEnabled(true, true, true);
-                    } else {
-                        showToast("Nothing recognized", Toast.LENGTH_SHORT);
-                        mTarget = null;
-                        mTextView.setText(getString(R.string.none));
-                        setUIEnabled(false, false, true);
-                    }
-                }
-            }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    showToast("That didn't work!", Toast.LENGTH_SHORT);
-                    mTarget = null;
-                    mTextView.setText(getString(R.string.none));
-                    setUIEnabled(false, false, true);
-                }
-            });
+            RecognitionRequest request = new RecognitionRequest(IMAGE_UPLOAD_URL, image, mRecognitionListener, mRecognitionErrorListener);
             mRequestQueue.add(request);
         }
     };
@@ -307,7 +274,8 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/1";
-            new HttpGetTask(mHttpClient, url).execute();
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, url, mControlListener, mControlErrorListener);
+            mRequestQueue.add(stringRequest);
         }
     };
 
@@ -315,7 +283,8 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/0";
-            new HttpGetTask(mHttpClient, url).execute();
+            StringRequest stringRequest = new StringRequest(Request.Method.GET, url, mControlListener, mControlErrorListener);
+            mRequestQueue.add(stringRequest);
         }
     };
 
@@ -323,6 +292,49 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
             takePicture();
+        }
+    };
+
+    private Response.Listener<String> mRecognitionListener = new Response.Listener<String>() {
+        @Override
+        public void onResponse(String response) {
+            if (response != null && !response.trim().equals("None")) {
+                showToast(response + " recognized", Toast.LENGTH_SHORT);
+                mTarget = response.trim();
+                mTextView.setText(response);
+                setUIEnabled(true, true, true);
+            } else {
+                showToast("Nothing recognized", Toast.LENGTH_SHORT);
+                mTarget = null;
+                mTextView.setText(getString(R.string.none));
+                setUIEnabled(false, false, true);
+            }
+        }
+    };
+
+    private Response.ErrorListener mRecognitionErrorListener = new Response.ErrorListener() {
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            showToast("Recognition failed!", Toast.LENGTH_SHORT);
+            mTarget = null;
+            mTextView.setText(getString(R.string.none));
+            setUIEnabled(false, false, true);
+        }
+    };
+
+    private Response.Listener<String> mControlListener = new Response.Listener<String>() {
+        @Override
+        public void onResponse(String response) {
+            showToast("Control command sent", Toast.LENGTH_SHORT);
+            setUIEnabled(true, true, true);
+        }
+    };
+
+    private Response.ErrorListener mControlErrorListener = new Response.ErrorListener() {
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            showToast("Control command failed to send", Toast.LENGTH_SHORT);
+            setUIEnabled(true, true, true);
         }
     };
 
@@ -345,7 +357,6 @@ public class MainActivity extends Activity {
 
         setUIEnabled(false, false, true);
 
-        mHttpClient = new DefaultHttpClient();
         mRequestQueue = Volley.newRequestQueue(this);
     }
 
@@ -772,46 +783,4 @@ public class MainActivity extends Activity {
         }
 
     }
-
-    /*
-     * Uploads captured image to a server and measures the associated delay
-     */
-    private class HttpGetTask extends AsyncTask<Void, Void, Boolean> {
-        private HttpClient httpClient;
-        private String url;
-
-        public HttpGetTask(HttpClient httpClient, String url) {
-            this.httpClient = httpClient;
-            this.url = url;
-        }
-
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            HttpContext localContext = new BasicHttpContext();
-            HttpGet httpGet = new HttpGet(this.url);
-
-            try {
-                HttpResponse response = httpClient.execute(httpGet, localContext);
-                StatusLine statusLine = response.getStatusLine();
-                if (statusLine.getStatusCode() == HttpStatus.SC_OK) {
-                    return true;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-            return false;
-        }
-
-        @Override
-        protected void onPostExecute(Boolean result) {
-            if (result) {
-                showToast("Command sent success", Toast.LENGTH_SHORT);
-            } else {
-                showToast("Command sent fail", Toast.LENGTH_SHORT);
-            }
-            setUIEnabled(true, true, true);
-        }
-    }
-
 }
