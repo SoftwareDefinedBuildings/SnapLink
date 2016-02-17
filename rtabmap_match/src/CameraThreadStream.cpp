@@ -35,6 +35,7 @@ void CameraThreadStream::mainLoop()
     SensorData data = _camera->takeImage();
     if(!data.imageRaw().empty())
     {
+        UINFO("New image %s", data.filename.c_str());
         this->post(new CameraEvent(data));
     }
 }

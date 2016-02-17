@@ -15,6 +15,13 @@ struct CompareMeanDist
     bool operator()(const PairType & left, const PairType & right) const;
 };
 
+struct CompareCount
+{
+    typedef std::pair< std::string, std::vector<double> > PairType;
+
+    bool operator()(const PairType & left, const PairType & right) const;
+};
+
 class Visibility {
 
 public:
