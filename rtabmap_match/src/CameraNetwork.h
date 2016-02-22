@@ -68,4 +68,19 @@ private:
     struct MHD_Daemon *_daemon;
 };
 
+enum ConnectionType
+{
+    GET = 0,
+    POST = 1
+};
+
+typedef struct
+{
+    enum ConnectionType connectiontype;
+    struct MHD_PostProcessor *postprocessor;
+    FILE *fp;
+    const char *answerstring;
+    int answercode;
+} ConnectionInfo;
+
 } // namespace rtabmap

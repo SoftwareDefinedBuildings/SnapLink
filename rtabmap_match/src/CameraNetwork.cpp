@@ -6,6 +6,7 @@
 
 namespace rtabmap
 {
+
 const char *askpage = "<html><body>\n\
                        Upload a file, please!<br>\n\
                        There are %u clients uploading at the moment.<br>\n\
@@ -26,21 +27,6 @@ const char *servererrorpage =
   "<html><body>An internal server error has occured.</body></html>";
 const char *fileexistspage =
   "<html><body>This file already exists.</body></html>";
-
-enum ConnectionType
-{
-    GET = 0,
-    POST = 1
-};
-
-typedef struct
-{
-    enum ConnectionType connectiontype;
-    struct MHD_PostProcessor *postprocessor;
-    FILE *fp;
-    const char *answerstring;
-    int answercode;
-} ConnectionInfo;
 
 CameraNetwork::CameraNetwork(uint16_t port,
                              unsigned int maxClients,
@@ -181,10 +167,10 @@ int CameraNetwork::answer_to_connection(void *cls,
     if (strcasecmp(method, MHD_HTTP_METHOD_GET) == 0) 
     {  
         // we do not accept GET request
-        return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);     
+        return send_page(connection, errorpage, MHD_HTTP_SERVICE_UNAVAILABLE);     
     }
 
-    if (strcasecmp (method, MHD_HTTP_METHOD_POST) == 0) 
+    if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0) 
     {
         ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
        
@@ -197,16 +183,15 @@ int CameraNetwork::answer_to_connection(void *cls,
         } 
         else
         {
-            if (NULL != con_info->fp)
+            if (con_info->fp != NULL)
             {
                 fclose(con_info->fp);
                 con_info->fp = NULL;
             }
-            /* Now it is safe to open and inspect the file before
-                   calling send_page with a response */
+            // Now it is safe to open and inspect the file before calling send_page with a response
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
-    } 
+    }
 
     return send_page(connection, errorpage, MHD_HTTP_BAD_REQUEST);
 }
@@ -233,7 +218,7 @@ int CameraNetwork::iterate_post(void *coninfo_cls,
     {
         return MHD_NO;
     }
-  
+
     if (!con_info->fp)
     {
         if ((fp = fopen(filename, "rb")) != NULL)

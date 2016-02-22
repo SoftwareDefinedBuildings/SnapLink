@@ -1,11 +1,11 @@
 #include <rtabmap/core/RtabmapThread.h>
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/CameraRGB.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <cstdio>
 
 #include "OdometrySporadic.h"
+#include "CameraNetwork.h"
 #include "CameraThreadStream.h"
 #include "OdometrySporadicThread.h"
 #include "Visibility.h"
@@ -63,12 +63,12 @@ int main(int argc, char * argv[])
     
         localTransform = tempTransform;
     }
-    int startAt = 1;
-    bool refreshDir = true;
+    uint16_t port = 8080;
+    unsigned int maxClients = 2;
     bool rectifyImages = false;
     bool isDepth = false;
     float imageRate = 10.0f;
-    Camera *camera = new CameraImages(imgpath, startAt, refreshDir, rectifyImages, isDepth, imageRate, localTransform);
+    Camera *camera = new CameraNetwork(port, maxClients, rectifyImages, isDepth, imageRate, localTransform);
     CameraThreadStream cameraThread(camera);
     if(!camera->init("../cameras/", "lg_g2_mini_640_480"))
     {
