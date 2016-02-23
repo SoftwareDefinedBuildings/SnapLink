@@ -32,8 +32,9 @@ void CameraNetworkThread::handleEvent(UEvent *event)
     {
         if (event->getClassName().compare("NetworkEvent") == 0)
         {
-            NetworkEvent * networkEvent = (NetworkEvent *) event;
-            this->addData(networkEvent->getData(), networkEvent->getLen());
+            NetworkEvent *networkEvent = (NetworkEvent *) event;
+            this->addData(networkEvent->getData());
+            // TODO figure out where is event freed
         }
     }
 }
@@ -45,11 +46,11 @@ void CameraNetworkThread::mainLoopKill()
 
 void CameraNetworkThread::mainLoop()
 {
-    void *data = NULL;
+    std::vector<char> *data = NULL;
     size_t len;
-    if (getData(&data, len))
+    if (getData(data))
     {
-        if (!_camera->addImage(data, len))
+        if (!_camera->addImage(data))
         {
             return;
         }
@@ -64,19 +65,17 @@ void CameraNetworkThread::mainLoop()
     }
 }
 
-void CameraNetworkThread::addData(void *data, size_t len)
+void CameraNetworkThread::addData(std::vector<char> *data)
 {
     bool notify = true;
     _dataMutex.lock();
     {
         _dataBuffer.push_back(data);
-        _lenBuffer.push_back(len);
 
         while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
-            _lenBuffer.pop_front();
             notify = false;
         }
     }
@@ -88,7 +87,7 @@ void CameraNetworkThread::addData(void *data, size_t len)
     }
 }
 
-bool CameraNetworkThread::getData(void **data, size_t &len)
+bool CameraNetworkThread::getData(std::vector<char> *&data)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
@@ -96,10 +95,8 @@ bool CameraNetworkThread::getData(void **data, size_t &len)
     {
         if(!_dataBuffer.empty())
         {
-            *data = _dataBuffer.front();
-            len = _lenBuffer.front();
+            data = _dataBuffer.front();
             _dataBuffer.pop_front();
-            _lenBuffer.pop_front();
             dataFilled = true;
         }
     }

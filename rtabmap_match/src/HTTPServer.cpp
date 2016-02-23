@@ -1,32 +1,17 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
+
 #include "HTTPServer.h"
+#include "NetworkEvent.h"
 #include "DetectionEvent.h"
 
 namespace rtabmap
 {
-
-const char *askpage = "<html><body>\n\
-                       Upload a file, please!<br>\n\
-                       There are %u clients uploading at the moment.<br>\n\
-                       <form action=\"/filepost\" method=\"post\" enctype=\"multipart/form-data\">\n\
-                       <input name=\"file\" type=\"file\">\n\
-                       <input type=\"submit\" value=\" Send \"></form>\n\
-                       </body></html>";
-
-const char *busypage =
-  "<html><body>This server is busy, please try again later.</body></html>";
-
-const char *completepage =
-  "<html><body>The upload has been completed.</body></html>";
-
-const char *errorpage =
-  "<html><body>This doesn't seem to be right.</body></html>";
-const char *servererrorpage =
-  "<html><body>An internal server error has occured.</body></html>";
-const char *fileexistspage =
-  "<html><body>This file already exists.</body></html>";
+const std::string busypage = "This server is busy, please try again later.";
+const std::string completepage = "The upload has been completed.";
+const std::string errorpage = "This doesn't seem to be right.";
+const std::string servererrorpage = "An internal server error has occured.";
 
 
 // ownership transferred
@@ -70,7 +55,8 @@ void HTTPServer::handleEvent(UEvent *event)
     if(event->getClassName().compare("DetectionEvent") == 0)
     {
         DetectionEvent *detectionEvent = (DetectionEvent *) event;
-        // TODO respond to http post
+        _names = detectionEvent->getNames();
+        _Detected.release();
     }
 }
 
@@ -84,13 +70,13 @@ int HTTPServer::answer_to_connection(void *cls,
                                      void **con_cls)
 {
     UDEBUG("");
-    HTTPServer *camera = (HTTPServer *) cls;
+    HTTPServer *httpServer = (HTTPServer *) cls;
 
     if (*con_cls == NULL)
     {
         ConnectionInfo *con_info;
 
-        if (camera->_numClients >= camera->_maxClients)
+        if (httpServer->_numClients >= httpServer->_maxClients)
         { 
             return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
@@ -101,21 +87,29 @@ int HTTPServer::answer_to_connection(void *cls,
             return MHD_NO;
         }
 
-        con_info->fp = NULL;
+        // reserve enough space for an image
+        con_info->data = new std::vector<char>();
+        if (con_info->data == NULL)
+        {
+            delete con_info; 
+            return MHD_NO;
+        }
+        con_info->data->reserve(IMAGE_INIT_SIZE);
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0) 
         {            
-            con_info->postprocessor = MHD_create_post_processor(connection, POSTBUFFERSIZE, iterate_post, (void *)con_info);   
+            con_info->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iterate_post, (void *)con_info);   
 
             if (con_info->postprocessor == NULL) 
             {
+                delete con_info->data;
                 delete con_info; 
                 return MHD_NO;
             }
             con_info->connectiontype = POST;
             con_info->answercode = MHD_HTTP_OK;
             con_info->answerstring = completepage;
-        } 
+        }
         else
         {
             con_info->connectiontype = GET;
@@ -137,7 +131,7 @@ int HTTPServer::answer_to_connection(void *cls,
         ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
        
         if (*upload_data_size != 0)
-        { 
+        {
             MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
             *upload_data_size = 0;
           
@@ -145,13 +139,24 @@ int HTTPServer::answer_to_connection(void *cls,
         }
         else
         {
-            if (con_info->fp != NULL)
+            if (!con_info->data->empty())
             {
-                fclose(con_info->fp);
-                con_info->fp = NULL;
+                httpServer->post(new NetworkEvent(con_info->data));
+                con_info->data = NULL;
             }
-            // Now it is safe to open and inspect the file before calling send_page with a response
-            // TODO send event and wait on CV
+
+            // wait for the result to come
+            httpServer->_Detected.acquire();
+
+            if (!httpServer->_names.empty())
+            {
+                con_info->answerstring = httpServer->_names.at(0);
+            }
+            else
+            {
+                con_info->answerstring = "";
+            }
+            httpServer->_names.clear();
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }
@@ -172,7 +177,6 @@ int HTTPServer::iterate_post(void *coninfo_cls,
 {
     UDEBUG("");
     ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
-    FILE *fp;
   
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
@@ -181,36 +185,15 @@ int HTTPServer::iterate_post(void *coninfo_cls,
     {
         return MHD_NO;
     }
-
-    if (!con_info->fp)
-    {
-        if ((fp = fopen(filename, "rb")) != NULL)
-        {
-            fclose(fp);
-            con_info->answerstring = fileexistspage;
-            con_info->answercode = MHD_HTTP_FORBIDDEN;
-            return MHD_NO;
-        }
-  
-        con_info->fp = fopen(filename, "ab");
-        if (!con_info->fp)
-        {
-            return MHD_NO;
-        }
-    }
   
     if (size > 0)
     {
-        if (!fwrite(data, sizeof(char), size, con_info->fp))
-        {
-            return MHD_NO;
-        }
+        con_info->data->insert(con_info->data->end(), data, data + size);
     }
   
     con_info->answerstring = completepage;
     con_info->answercode = MHD_HTTP_OK;
   
-    UINFO("MHD_YES %s %s", key, filename, content_type);
     return MHD_YES;
 }
 
@@ -220,7 +203,7 @@ void HTTPServer::request_completed(void *cls,
                                    enum MHD_RequestTerminationCode toe)
 {
     UDEBUG("");
-    HTTPServer *camera = (HTTPServer *) cls;
+    HTTPServer *httpServer = (HTTPServer *) cls;
     ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
   
     if (con_info == NULL)
@@ -233,12 +216,7 @@ void HTTPServer::request_completed(void *cls,
         if (con_info->postprocessor != NULL)
         {
             MHD_destroy_post_processor(con_info->postprocessor);
-            camera->_numClients--;
-        }
-  
-        if (con_info->fp)
-        {
-            fclose (con_info->fp);
+            httpServer->_numClients--;
         }
     }
   
@@ -246,19 +224,21 @@ void HTTPServer::request_completed(void *cls,
     *con_cls = NULL;
 }
 
-int HTTPServer::send_page(struct MHD_Connection *connection, const char* page, int status_code)
+int HTTPServer::send_page(struct MHD_Connection *connection, const std::string &page, int status_code)
 {
     int ret;
     struct MHD_Response *response;
   
-    response = MHD_create_response_from_buffer (strlen (page), (void*) page, MHD_RESPMEM_MUST_COPY);
-    if (!response) return MHD_NO;
+    response = MHD_create_response_from_buffer(page.length(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+    if (!response) 
+    {
+        return MHD_NO;
+    }
  
-    ret = MHD_queue_response (connection, status_code, response);
-    MHD_destroy_response (response);
+    ret = MHD_queue_response(connection, status_code, response);
+    MHD_destroy_response(response);
 
     return ret;
 }
-
 
 } // namespace rtabmap

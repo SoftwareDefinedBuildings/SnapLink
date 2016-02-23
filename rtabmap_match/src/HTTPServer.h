@@ -2,9 +2,11 @@
 
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/utilite/UEventsHandler.h>
+#include <rtabmap/utilite/USemaphore.h>
 #include <microhttpd.h>
 
-#define POSTBUFFERSIZE 51200
+#define POST_BUFFER_SIZE 300000
+#define IMAGE_INIT_SIZE 300000
 
 namespace rtabmap
 {
@@ -22,6 +24,8 @@ public:
     // TODO use getter and setter
     unsigned int _maxClients;
     unsigned int _numClients;
+    USemaphore _Detected;
+    std::vector<std::string> _names;
 
 protected:
     virtual void handleEvent(UEvent * event);
@@ -48,7 +52,7 @@ private:
                                   struct MHD_Connection *connection, 
                                   void **con_cls,
                                   enum MHD_RequestTerminationCode toe);
-    static int send_page(struct MHD_Connection *connection, const char* page, int status_code);
+    static int send_page(struct MHD_Connection *connection, const std::string &page, int status_code);
 
 private:
     uint16_t _port;
@@ -65,8 +69,8 @@ typedef struct
 {
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
-    FILE *fp;
-    const char *answerstring;
+    std::vector<char> *data;
+    std::string answerstring;
     int answercode;
 } ConnectionInfo;
 

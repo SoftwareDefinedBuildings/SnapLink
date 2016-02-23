@@ -21,7 +21,7 @@ public:
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
     // ownership transferred
-    bool addImage(void *data, size_t len);
+    bool addImage(std::vector<char> *);
     
 protected:
     virtual SensorData captureImage();

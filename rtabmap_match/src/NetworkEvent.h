@@ -9,20 +9,18 @@ class NetworkEvent :
     public UEvent
 {
 public:
-    NetworkEvent(void *data, size_t len) :
-        _data(data),
-        _len(len)
+    // ownership transfer
+    NetworkEvent(std::vector<char> *data) :
+        _data(data)
     {
     }
 
-    void *getData() const {return _data;}
-    size_t getLen() const {return _len;}
+    std::vector<char> *getData() const {return _data;}
 
     virtual std::string getClassName() const {return std::string("NetworkEvent");}
 
 private:
-    void *_data;
-    size_t _len;
+    std::vector<char> *_data;
 };
 
 } // namespace rtabmap

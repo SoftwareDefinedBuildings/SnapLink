@@ -66,9 +66,10 @@ std::string CameraNetwork::getSerial() const
     return _cameraName;
 }
 
-bool CameraNetwork::addImage(void *data, size_t len)
+bool CameraNetwork::addImage(std::vector<char> *data)
 {
     // TODO create image from data and len
+    // free data
     return false;
 }
 
