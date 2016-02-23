@@ -4,9 +4,10 @@
 #include <rtabmap/utilite/UEventsManager.h>
 #include <cstdio>
 
+#include "HTTPServer.h"
 #include "OdometrySporadic.h"
 #include "CameraNetwork.h"
-#include "CameraThreadStream.h"
+#include "CameraNetworkThread.h"
 #include "OdometrySporadicThread.h"
 #include "Visibility.h"
 #include "VisibilityThread.h"
@@ -40,6 +41,10 @@ int main(int argc, char * argv[])
         labelpath = std::string(argv[argc-1]);
     }
 
+    uint16_t port = 8080;
+    unsigned int maxClients = 2;
+    HTTPServer httpServer(port, maxClients);
+
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
     // TODO read fx and fy from EXIF
     int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
@@ -63,38 +68,41 @@ int main(int argc, char * argv[])
     
         localTransform = tempTransform;
     }
-    uint16_t port = 8080;
-    unsigned int maxClients = 2;
     bool rectifyImages = false;
     bool isDepth = false;
     float imageRate = 10.0f;
-    Camera *camera = new CameraNetwork(port, maxClients, rectifyImages, isDepth, imageRate, localTransform);
-    CameraThreadStream cameraThread(camera);
-    if(!camera->init("../cameras/", "lg_g2_mini_640_480"))
+    CameraNetwork *camera = new CameraNetwork(rectifyImages, isDepth, imageRate, localTransform);
+    CameraNetworkThread cameraThread(camera, 10);
+    if (!camera->init("../cameras/", "lg_g2_mini_640_480"))
     {
         UERROR("Camera init failed!");
         exit(1);
     }
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometrySporadicThread odomThread(new OdometrySporadic(dbfile), 1000);
+    OdometrySporadicThread odomThread(new OdometrySporadic(dbfile), 10);
 
     Visibility * visibility = new Visibility();
     if(!visibility->init(labelpath)) {
         UERROR("Visibility init failed!");
         exit(1);
     }
-    VisibilityThread visThread(visibility);
+    VisibilityThread visThread(visibility, 10);
 
     // Setup handlers
+    httpServer.registerToEventsManager();
+    cameraThread.registerToEventsManager();
     odomThread.registerToEventsManager();
     visThread.registerToEventsManager();
 
     // build "pipes" between threads
+    UEventsManager::createPipe(&httpServer, &cameraThread, "NetworkEvent");
     UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
     UEventsManager::createPipe(&odomThread, &visThread, "OdometryEvent");
+    UEventsManager::createPipe(&visThread, &httpServer, "DetectionEvent");
 
     // Let's start the threads
+    httpServer.start();
     cameraThread.start();
     odomThread.start();
     visThread.start();
@@ -102,10 +110,13 @@ int main(int argc, char * argv[])
     pause();
 
     // remove handlers
+    httpServer.unregisterFromEventsManager();
+    cameraThread.unregisterFromEventsManager();
     odomThread.unregisterFromEventsManager();
     visThread.unregisterFromEventsManager();
 
     // Kill all threads
+    httpServer.stop();
     cameraThread.join(true);
     odomThread.join(true);
     visThread.join(true);

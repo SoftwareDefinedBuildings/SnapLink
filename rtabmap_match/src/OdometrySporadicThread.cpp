@@ -4,7 +4,6 @@
 #include <rtabmap/utilite/ULogger.h>
 
 #include "OdometrySporadicThread.h"
-#include "OdometrySporadic.h"
 
 namespace rtabmap {
 
@@ -45,16 +44,13 @@ void OdometrySporadicThread::mainLoopKill()
     _dataAdded.release();
 }
 
-//============================================================
-// MAIN LOOP
-//============================================================
 void OdometrySporadicThread::mainLoop()
 {
     // because the image is from sporadic time and location
     _odometry->reset(Transform::getIdentity());
 
     SensorData data;
-    if(getData(data))
+    if (getData(data))
     {
         OdometryInfo info; 
         Transform pose = _odometry->process(data, &info);
@@ -78,7 +74,7 @@ void OdometrySporadicThread::addData(const SensorData & data)
         _dataBuffer.push_back(data);
         while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
-            UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
+            UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
             notify = false;
         }

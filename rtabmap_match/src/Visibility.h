@@ -29,7 +29,7 @@ public:
     virtual ~Visibility();
 
     bool init(const std::string & labelFolder);
-    void process(const SensorData & data, const Transform & pose);
+    std::vector<std::string> process(const SensorData & data, const Transform & pose);
 
 private:
     bool readLabels(const std::string & labelFolder);

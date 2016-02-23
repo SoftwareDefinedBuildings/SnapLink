@@ -4,12 +4,13 @@
 #include <rtabmap/utilite/ULogger.h>
 
 #include "VisibilityThread.h"
+#include "DetectionEvent.h"
 
 namespace rtabmap {
 
 VisibilityThread::VisibilityThread(Visibility *visibility, unsigned int dataBufferMaxSize) :
-    _visibility(visibility),
-    _dataBufferMaxSize(dataBufferMaxSize)
+_visibility(visibility),
+_dataBufferMaxSize(dataBufferMaxSize)
 {
     UASSERT(_visibility != 0);
 }
@@ -44,16 +45,14 @@ void VisibilityThread::mainLoopKill()
     _dataAdded.release();
 }
 
-//============================================================
-// MAIN LOOP
-//============================================================
 void VisibilityThread::mainLoop()
 {
     SensorData data;
     Transform pose;
-    if(getData(data, pose))
+    if (getData(data, pose))
     {
-        _visibility->process(data, pose); 
+        std::vector<std::string> names = _visibility->process(data, pose);
+        this->post(new DetectionEvent(names));
     }
 }
 
@@ -67,7 +66,7 @@ void VisibilityThread::addData(const SensorData & data, const Transform & pose)
 
         while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
-            UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
+            UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
             _poseBuffer.pop_front();
             notify = false;

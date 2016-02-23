@@ -12,7 +12,10 @@ namespace rtabmap {
 
 class Visibility;
 
-class VisibilityThread : public UThread, public UEventsHandler {
+class VisibilityThread :
+    public UThread, 
+    public UEventsHandler 
+{
 public:
     // ownership of Visibility
     VisibilityThread(Visibility *visibility, unsigned int dataBufferMaxSize = 1);
@@ -23,10 +26,6 @@ protected:
 
 private:
     void mainLoopKill();
-
-    //============================================================
-    // MAIN LOOP
-    //============================================================
     void mainLoop();
     void addData(const SensorData & data, const Transform & pose);
     bool getData(SensorData & data, Transform & pose);

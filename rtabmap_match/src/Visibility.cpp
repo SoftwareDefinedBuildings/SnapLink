@@ -95,7 +95,7 @@ bool Visibility::readLabels(const std::string & labelFolder)
     return true;
 }
 
-void Visibility::process(const SensorData & data, const Transform & pose)
+std::vector<std::string> Visibility::process(const SensorData & data, const Transform & pose)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
@@ -126,14 +126,13 @@ void Visibility::process(const SensorData & data, const Transform & pose)
     
     for(unsigned int i = 0; i < _points.size(); ++i)
     {
-        //if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
-        //   uIsInBounds(int(planePoints[i].y), 0, rows))
-        if (true)
+        if(uIsInBounds(int(planePoints[i].x), 0, cols) &&
+           uIsInBounds(int(planePoints[i].y), 0, rows))
         {
             if (Utility::isInFrontOfCamera(_points[i], P)) {
                 std::string & label = _labels[i];
                 visibleLabels.push_back(label);
-                float x,y,z,roll,pitch,yaw;
+                float x, y, z, roll, pitch, yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 cv::Point3f cameraLoc(x, y, z);
                 //double dist = cv::norm(_points[i] - cameraLoc);
@@ -156,29 +155,19 @@ void Visibility::process(const SensorData & data, const Transform & pose)
         }
     }
     
-    std::ofstream outfile;
-    outfile.open(("/root/data/ipc/result/" + data.filename + ".txt").c_str());
-
-    if (distances.size() == 0) {
-        outfile << "None" << std::endl;
-        return;
-    }
-
     // find the label with minimum mean distance
     std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
     std::string minlabel = minDist.first;
     UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
     
-    outfile << minlabel.c_str();
-    
     // find the label with most distance
     //std::pair< std::string, std::vector<double> > maxCount = *max_element(distances.begin(), distances.end(), CompareCount());
     //std::string maxlabel = maxCount.first;
     //UINFO("Nearest label %s with most points %lf", maxlabel.c_str(), maxCount.second.size());
-    //
-    //outfile << maxlabel.c_str();
-
-    outfile.close();
+    
+    std::vector<std::string> rv;
+    rv.push_back(minlabel);
+    return rv;
 }
 
 } // namespace rtabmap
