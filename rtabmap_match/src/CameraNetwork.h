@@ -21,12 +21,13 @@ public:
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
     // ownership transferred
-    bool addImage(std::vector<char> *);
+    bool addImage(std::vector<unsigned char> *);
     
 protected:
     virtual SensorData captureImage();
 
 private:
+    cv::Mat _img;
     bool _rectifyImages;
     bool _isDepth;
 

@@ -1,6 +1,7 @@
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <cstdio>
+#include <opencv2/imgproc/imgproc.hpp>
 
 #include "CameraNetwork.h"
 
@@ -66,19 +67,34 @@ std::string CameraNetwork::getSerial() const
     return _cameraName;
 }
 
-bool CameraNetwork::addImage(std::vector<char> *data)
+bool CameraNetwork::addImage(std::vector<unsigned char> *data)
 {
-    // TODO create image from data and len
-    // free data
-    return false;
+    UDEBUG("");
+    if (data == NULL)
+    {
+        return false;
+    }
+    // TODO there is a copy here
+    _img = cv::imdecode(cv::Mat(*data), CV_LOAD_IMAGE_COLOR);
+
+    delete data;
+
+    return true;
 }
 
 SensorData CameraNetwork::captureImage()
 {
-    cv::Mat img;
     UDEBUG("");
-    // TODO
-    return SensorData(img, _model, this->getNextSeqID(), UTimer::now());
+    if (!_img.empty())
+    {
+        SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
+        _img.release();
+        return sensorData;
+    }
+    else
+    {
+        return SensorData(); // return empty data
+    }
 }
 
 } // namespace rtabmap

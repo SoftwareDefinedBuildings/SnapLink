@@ -46,7 +46,7 @@ void CameraNetworkThread::mainLoopKill()
 
 void CameraNetworkThread::mainLoop()
 {
-    std::vector<char> *data = NULL;
+    std::vector<unsigned char> *data = NULL;
     size_t len;
     if (getData(data))
     {
@@ -56,7 +56,6 @@ void CameraNetworkThread::mainLoop()
         }
     }
     // take the image that was just added
-    // the camera here basically wraps (void *) into SensorData 
     SensorData sensorData = _camera->takeImage();
     if(!sensorData.imageRaw().empty())
     {
@@ -65,7 +64,7 @@ void CameraNetworkThread::mainLoop()
     }
 }
 
-void CameraNetworkThread::addData(std::vector<char> *data)
+void CameraNetworkThread::addData(std::vector<unsigned char> *data)
 {
     bool notify = true;
     _dataMutex.lock();
@@ -87,7 +86,7 @@ void CameraNetworkThread::addData(std::vector<char> *data)
     }
 }
 
-bool CameraNetworkThread::getData(std::vector<char> *&data)
+bool CameraNetworkThread::getData(std::vector<unsigned char> *&data)
 {
     bool dataFilled = false;
     _dataAdded.acquire();

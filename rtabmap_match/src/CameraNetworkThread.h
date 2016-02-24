@@ -25,13 +25,13 @@ protected:
 private:
     void mainLoopKill();
     void mainLoop();
-    void addData(std::vector<char> *data);
-    bool getData(std::vector<char> *&data);
+    void addData(std::vector<unsigned char> *data);
+    bool getData(std::vector<unsigned char> *&data);
 
 private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
-    std::list<std::vector<char> *> _dataBuffer;
+    std::list<std::vector<unsigned char> *> _dataBuffer;
     unsigned int _dataBufferMaxSize;
     CameraNetwork *_camera;
 };

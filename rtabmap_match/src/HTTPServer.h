@@ -69,7 +69,7 @@ typedef struct
 {
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
-    std::vector<char> *data;
+    std::vector<unsigned char> *data;
     std::string answerstring;
     int answercode;
 } ConnectionInfo;

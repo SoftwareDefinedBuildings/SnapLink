@@ -88,7 +88,7 @@ int HTTPServer::answer_to_connection(void *cls,
         }
 
         // reserve enough space for an image
-        con_info->data = new std::vector<char>();
+        con_info->data = new std::vector<unsigned char>();
         if (con_info->data == NULL)
         {
             delete con_info; 
@@ -188,7 +188,7 @@ int HTTPServer::iterate_post(void *coninfo_cls,
   
     if (size > 0)
     {
-        con_info->data->insert(con_info->data->end(), data, data + size);
+        con_info->data->insert(con_info->data->end(), (unsigned char *) data, (unsigned char *) data + size);
     }
   
     con_info->answerstring = completepage;
