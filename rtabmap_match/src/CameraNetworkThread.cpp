@@ -10,8 +10,8 @@ namespace rtabmap
 
 // ownership transferred
 CameraNetworkThread::CameraNetworkThread(CameraNetwork *camera, unsigned int dataBufferMaxSize) :
-_camera(camera),
-_dataBufferMaxSize(dataBufferMaxSize)
+    _camera(camera),
+    _dataBufferMaxSize(dataBufferMaxSize)
 {
     UASSERT(_camera != NULL);
 }
@@ -20,7 +20,7 @@ CameraNetworkThread::~CameraNetworkThread()
 {
     this->unregisterFromEventsManager();
     this->join(true);
-    if(_camera)
+    if (_camera)
     {
         delete _camera;
     }
@@ -57,7 +57,7 @@ void CameraNetworkThread::mainLoop()
     }
     // take the image that was just added
     SensorData sensorData = _camera->takeImage();
-    if(!sensorData.imageRaw().empty())
+    if (!sensorData.imageRaw().empty())
     {
         UINFO("New image %s", sensorData.filename.c_str());
         this->post(new CameraEvent(sensorData));
@@ -71,7 +71,7 @@ void CameraNetworkThread::addData(std::vector<unsigned char> *data)
     {
         _dataBuffer.push_back(data);
 
-        while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
+        while (_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
@@ -80,7 +80,7 @@ void CameraNetworkThread::addData(std::vector<unsigned char> *data)
     }
     _dataMutex.unlock();
 
-    if(notify)
+    if (notify)
     {
         _dataAdded.release();
     }
@@ -92,7 +92,7 @@ bool CameraNetworkThread::getData(std::vector<unsigned char> *&data)
     _dataAdded.acquire();
     _dataMutex.lock();
     {
-        if(!_dataBuffer.empty())
+        if (!_dataBuffer.empty())
         {
             data = _dataBuffer.front();
             _dataBuffer.pop_front();

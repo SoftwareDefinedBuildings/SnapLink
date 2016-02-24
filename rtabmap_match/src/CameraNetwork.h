@@ -12,17 +12,17 @@ class CameraNetwork :
 {
 public:
     CameraNetwork(bool rectifyImages = false,
-            bool isDepth = false,
-            float imageRate = 0,
-            const Transform & localTransform = Transform::getIdentity());
+                  bool isDepth = false,
+                  float imageRate = 0,
+                  const Transform &localTransform = Transform::getIdentity());
     virtual ~CameraNetwork();
 
-    virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+    virtual bool init(const std::string &calibrationFolder = ".", const std::string &cameraName = "");
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
     // ownership transferred
     bool addImage(std::vector<unsigned char> *);
-    
+
 protected:
     virtual SensorData captureImage();
 

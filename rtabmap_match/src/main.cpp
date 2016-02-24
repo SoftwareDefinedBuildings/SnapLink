@@ -16,29 +16,29 @@
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping database_file image_folder label_folder\n");
+           "rtabmap-rgbd_mapping database_file image_folder label_folder\n");
     exit(1);
 }
 
 using namespace rtabmap;
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
-    ULogger::setLevel(ULogger::kInfo);
-    //ULogger::setLevel(ULogger::kDebug);
+    //ULogger::setLevel(ULogger::kInfo);
+    ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
     std::string imgpath;
     std::string labelpath;
-    if(argc != 4)
+    if (argc != 4)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc-3]);
-        imgpath = std::string(argv[argc-2]);
-        labelpath = std::string(argv[argc-1]);
+        dbfile = std::string(argv[argc - 3]);
+        imgpath = std::string(argv[argc - 2]);
+        labelpath = std::string(argv[argc - 1]);
     }
 
     uint16_t port = 8080;
@@ -50,12 +50,12 @@ int main(int argc, char * argv[])
     int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
 
     Transform localTransform;
-    
+
     if (cameraType == 1)
     {
         // now it is hardcoded for lg g2 mini
-        Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
-    
+        Transform tempTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+
         localTransform = tempTransform;
 
         // TODO undistort img (or call it rectify here, not same rectification as eipometry)
@@ -64,8 +64,8 @@ int main(int argc, char * argv[])
     else if (cameraType == 2)
     {
         // hardcoded for map1_10Hz
-        Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
-    
+        Transform tempTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
+
         localTransform = tempTransform;
     }
     bool rectifyImages = false;
@@ -82,8 +82,9 @@ int main(int argc, char * argv[])
     // Create an odometry thread to process camera events, it will send OdometryEvent.
     OdometrySporadicThread odomThread(new OdometrySporadic(dbfile), 10);
 
-    Visibility * visibility = new Visibility();
-    if(!visibility->init(labelpath)) {
+    Visibility *visibility = new Visibility();
+    if (!visibility->init(labelpath))
+    {
         UERROR("Visibility init failed!");
         exit(1);
     }

@@ -5,32 +5,33 @@
 #include <pcl/common/common.h>
 #include <pcl/io/vtk_lib_io.h>
 
-namespace rtabmap {
+namespace rtabmap
+{
 
 class Signature;
 
 class MemoryLoc : public Memory
 {
 public:
-    MemoryLoc(const ParametersMap & parameters = ParametersMap());
+    MemoryLoc(const ParametersMap &parameters = ParametersMap());
 
     void generateImages();
-    Transform computeGlobalVisualTransform(const std::vector<int> & oldIds, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-    Transform computeGlobalVisualTransform(const std::vector<Signature> & oldSs, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
+    Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
+    Transform computeGlobalVisualTransform(const std::vector<Signature> &oldSs, const Signature &newS, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
 
 private:
     void getWordCoords();  // fill in _wordCoords
     pcl::PolygonMesh::Ptr getMesh();
-    void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
+    void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
                    std::map<int, Transform> &poses);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds, 
-                                                          const std::map<int, Transform> &poses,
-                                                          std::vector<int> &rawCameraIndices);
-    Signature * createSignature(std::multimap<int, cv::KeyPoint> words, 
-                                std::multimap<int, pcl::PointXYZ> words3D,
-                                const Transform & pose);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
+            const std::map<int, Transform> &poses,
+            std::vector<int> &rawCameraIndices);
+    Signature *createSignature(std::multimap<int, cv::KeyPoint> words,
+                               std::multimap<int, pcl::PointXYZ> words3D,
+                               const Transform &pose);
 
-    
+
 private:
     int _bowMinInliers;
     int _bowIterations;
@@ -52,7 +53,7 @@ private:
     int _normalK;
     float _gp3Radius;
     float _gp3Mu;
-    
+
     std::vector<cv::Point3f> _wordPoints3D;
     std::map<long, int> _pointToWord; // _wordPoints3D index to virtual word id
     std::map<int, std::vector<long> > _wordToPoint; // virtual word id to _wordPoints3D indices

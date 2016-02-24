@@ -8,13 +8,14 @@
 
 #include "Visibility.h"
 
-namespace rtabmap {
+namespace rtabmap
+{
 
 class Visibility;
 
 class VisibilityThread :
-    public UThread, 
-    public UEventsHandler 
+    public UThread,
+    public UEventsHandler
 {
 public:
     // ownership of Visibility
@@ -22,13 +23,13 @@ public:
     virtual ~VisibilityThread();
 
 protected:
-    virtual void handleEvent(UEvent * event);
+    virtual void handleEvent(UEvent *event);
 
 private:
     void mainLoopKill();
     void mainLoop();
-    void addData(const SensorData & data, const Transform & pose);
-    bool getData(SensorData & data, Transform & pose);
+    void addData(const SensorData &data, const Transform &pose);
+    bool getData(SensorData &data, Transform &pose);
 
 private:
     USemaphore _dataAdded;
@@ -36,7 +37,7 @@ private:
     std::list<SensorData> _dataBuffer;
     std::list<Transform> _poseBuffer;
     unsigned int _dataBufferMaxSize;
-    Visibility * _visibility;
+    Visibility *_visibility;
 };
 
 } // namespace rtabmap

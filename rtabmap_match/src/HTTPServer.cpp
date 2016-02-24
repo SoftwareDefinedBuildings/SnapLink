@@ -31,7 +31,7 @@ bool HTTPServer::start()
 {
     // start MHD daemon, listening on port number _port
     _daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, _port, NULL, NULL,
-                               &answer_to_connection, this, 
+                               &answer_to_connection, this,
                                MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this,
                                MHD_OPTION_END);
     if (_daemon == NULL)
@@ -52,7 +52,7 @@ void HTTPServer::stop()
 
 void HTTPServer::handleEvent(UEvent *event)
 {
-    if(event->getClassName().compare("DetectionEvent") == 0)
+    if (event->getClassName().compare("DetectionEvent") == 0)
     {
         DetectionEvent *detectionEvent = (DetectionEvent *) event;
         _names = detectionEvent->getNames();
@@ -61,11 +61,11 @@ void HTTPServer::handleEvent(UEvent *event)
 }
 
 int HTTPServer::answer_to_connection(void *cls,
-                                     struct MHD_Connection *connection, 
-                                     const char *url, 
+                                     struct MHD_Connection *connection,
+                                     const char *url,
                                      const char *method,
-                                     const char *version, 
-                                     const char *upload_data, 
+                                     const char *version,
+                                     const char *upload_data,
                                      size_t *upload_data_size,
                                      void **con_cls)
 {
@@ -77,7 +77,7 @@ int HTTPServer::answer_to_connection(void *cls,
         ConnectionInfo *con_info;
 
         if (httpServer->_numClients >= httpServer->_maxClients)
-        { 
+        {
             return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
 
@@ -91,19 +91,19 @@ int HTTPServer::answer_to_connection(void *cls,
         con_info->data = new std::vector<unsigned char>();
         if (con_info->data == NULL)
         {
-            delete con_info; 
+            delete con_info;
             return MHD_NO;
         }
         con_info->data->reserve(IMAGE_INIT_SIZE);
 
-        if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0) 
-        {            
-            con_info->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iterate_post, (void *)con_info);   
+        if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
+        {
+            con_info->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iterate_post, (void *)con_info);
 
-            if (con_info->postprocessor == NULL) 
+            if (con_info->postprocessor == NULL)
             {
                 delete con_info->data;
-                delete con_info; 
+                delete con_info;
                 return MHD_NO;
             }
             con_info->connectiontype = POST;
@@ -116,25 +116,25 @@ int HTTPServer::answer_to_connection(void *cls,
         }
 
         *con_cls = (void *) con_info;
- 
+
         return MHD_YES;
     }
-    
-    if (strcasecmp(method, MHD_HTTP_METHOD_GET) == 0) 
+
+    if (strcasecmp(method, MHD_HTTP_METHOD_GET) == 0)
     {
         // we do not accept GET request
-        return send_page(connection, errorpage, MHD_HTTP_SERVICE_UNAVAILABLE);     
+        return send_page(connection, errorpage, MHD_HTTP_SERVICE_UNAVAILABLE);
     }
 
-    if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0) 
+    if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
     {
         ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
-       
+
         if (*upload_data_size != 0)
         {
             MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
             *upload_data_size = 0;
-          
+
             return MHD_YES;
         }
         else
@@ -171,46 +171,46 @@ int HTTPServer::iterate_post(void *coninfo_cls,
                              const char *filename,
                              const char *content_type,
                              const char *transfer_encoding,
-                             const char *data, 
+                             const char *data,
                              uint64_t off,
                              size_t size)
 {
     UDEBUG("");
     ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
-  
+
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
-  
+
     if (strcmp(key, "file") != 0)
     {
         return MHD_NO;
     }
-  
+
     if (size > 0)
     {
         con_info->data->insert(con_info->data->end(), (unsigned char *) data, (unsigned char *) data + size);
     }
-  
+
     con_info->answerstring = completepage;
     con_info->answercode = MHD_HTTP_OK;
-  
+
     return MHD_YES;
 }
 
 void HTTPServer::request_completed(void *cls,
-                                   struct MHD_Connection *connection, 
+                                   struct MHD_Connection *connection,
                                    void **con_cls,
                                    enum MHD_RequestTerminationCode toe)
 {
     UDEBUG("");
     HTTPServer *httpServer = (HTTPServer *) cls;
     ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
-  
+
     if (con_info == NULL)
     {
         return;
     }
-  
+
     if (con_info->connectiontype == POST)
     {
         if (con_info->postprocessor != NULL)
@@ -219,7 +219,7 @@ void HTTPServer::request_completed(void *cls,
             httpServer->_numClients--;
         }
     }
-  
+
     delete con_info;
     *con_cls = NULL;
 }
@@ -228,13 +228,13 @@ int HTTPServer::send_page(struct MHD_Connection *connection, const std::string &
 {
     int ret;
     struct MHD_Response *response;
-  
+
     response = MHD_create_response_from_buffer(page.length(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
-    if (!response) 
+    if (!response)
     {
         return MHD_NO;
     }
- 
+
     ret = MHD_queue_response(connection, status_code, response);
     MHD_destroy_response(response);
 

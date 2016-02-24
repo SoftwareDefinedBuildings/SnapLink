@@ -11,10 +11,10 @@ namespace rtabmap
 CameraNetwork::CameraNetwork(bool rectifyImages,
                              bool isDepth,
                              float imageRate,
-                             const Transform & localTransform) :
-Camera(imageRate, localTransform),
-_rectifyImages(rectifyImages),
-_isDepth(isDepth)
+                             const Transform &localTransform) :
+    Camera(imageRate, localTransform),
+    _rectifyImages(rectifyImages),
+    _isDepth(isDepth)
 {
 
 }
@@ -23,32 +23,32 @@ CameraNetwork::~CameraNetwork(void)
 {
 }
 
-bool CameraNetwork::init(const std::string & calibrationFolder, const std::string & cameraName)
+bool CameraNetwork::init(const std::string &calibrationFolder, const std::string &cameraName)
 {
     _cameraName = cameraName;
 
     UDEBUG("");
 
     // look for calibration files
-    if(!calibrationFolder.empty() && !cameraName.empty())
+    if (!calibrationFolder.empty() && !cameraName.empty())
     {
-        if(!_model.load(calibrationFolder, cameraName))
+        if (!_model.load(calibrationFolder, cameraName))
         {
             UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-                    cameraName.c_str(), calibrationFolder.c_str());
+                  cameraName.c_str(), calibrationFolder.c_str());
         }
         else
         {
             UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-                    _model.fx(),
-                    _model.fy(),
-                    _model.cx(),
-                    _model.cy());
+                  _model.fx(),
+                  _model.fy(),
+                  _model.cx(),
+                  _model.cy());
         }
     }
 
     _model.setLocalTransform(this->getLocalTransform());
-    if(_rectifyImages && !_model.isValid())
+    if (_rectifyImages && !_model.isValid())
     {
         UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
         return false;

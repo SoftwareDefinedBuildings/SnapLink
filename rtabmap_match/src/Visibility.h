@@ -5,34 +5,36 @@
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
 
-namespace rtabmap {
+namespace rtabmap
+{
 
 struct CompareMeanDist
 {
     typedef std::pair< std::string, std::vector<double> > PairType;
 
-    static double meanDist(const std::vector<double> & vec);
-    bool operator()(const PairType & left, const PairType & right) const;
+    static double meanDist(const std::vector<double> &vec);
+    bool operator()(const PairType &left, const PairType &right) const;
 };
 
 struct CompareCount
 {
     typedef std::pair< std::string, std::vector<double> > PairType;
 
-    bool operator()(const PairType & left, const PairType & right) const;
+    bool operator()(const PairType &left, const PairType &right) const;
 };
 
-class Visibility {
+class Visibility
+{
 
 public:
     Visibility();
     virtual ~Visibility();
 
-    bool init(const std::string & labelFolder);
-    std::vector<std::string> process(const SensorData & data, const Transform & pose);
+    bool init(const std::string &labelFolder);
+    std::vector<std::string> process(const SensorData &data, const Transform &pose);
 
 private:
-    bool readLabels(const std::string & labelFolder);
+    bool readLabels(const std::string &labelFolder);
 
 private:
     // labels

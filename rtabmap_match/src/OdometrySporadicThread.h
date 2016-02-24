@@ -7,10 +7,11 @@
 
 #include "OdometrySporadic.h"
 
-namespace rtabmap {
+namespace rtabmap
+{
 
 class OdometrySporadicThread :
-    public UThread, 
+    public UThread,
     public UEventsHandler
 {
 public:
@@ -19,19 +20,19 @@ public:
     virtual ~OdometrySporadicThread();
 
 protected:
-    virtual void handleEvent(UEvent * event);
+    virtual void handleEvent(UEvent *event);
 
 private:
     void mainLoopKill();
     void mainLoop();
-    void addData(const SensorData & data);
-    bool getData(SensorData & data);
+    void addData(const SensorData &data);
+    bool getData(SensorData &data);
 
 private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
     std::list<SensorData> _dataBuffer;
-    OdometrySporadic * _odometry;
+    OdometrySporadic *_odometry;
     unsigned int _dataBufferMaxSize;
 };
 

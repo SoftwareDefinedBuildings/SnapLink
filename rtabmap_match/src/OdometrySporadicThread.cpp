@@ -5,11 +5,12 @@
 
 #include "OdometrySporadicThread.h"
 
-namespace rtabmap {
+namespace rtabmap
+{
 
-OdometrySporadicThread::OdometrySporadicThread(OdometrySporadic * odometry, unsigned int dataBufferMaxSize) :
-_odometry(odometry),
-_dataBufferMaxSize(dataBufferMaxSize)
+OdometrySporadicThread::OdometrySporadicThread(OdometrySporadic *odometry, unsigned int dataBufferMaxSize) :
+    _odometry(odometry),
+    _dataBufferMaxSize(dataBufferMaxSize)
 {
     UASSERT(_odometry != NULL);
 }
@@ -18,20 +19,20 @@ OdometrySporadicThread::~OdometrySporadicThread()
 {
     this->unregisterFromEventsManager();
     this->join(true);
-    if(_odometry)
+    if (_odometry)
     {
         delete _odometry;
     }
 }
 
-void OdometrySporadicThread::handleEvent(UEvent * event)
+void OdometrySporadicThread::handleEvent(UEvent *event)
 {
-    if(this->isRunning())
+    if (this->isRunning())
     {
-        if(event->getClassName().compare("CameraEvent") == 0)
+        if (event->getClassName().compare("CameraEvent") == 0)
         {
-            CameraEvent * cameraEvent = (CameraEvent*)event;
-            if(cameraEvent->getCode() == CameraEvent::kCodeData)
+            CameraEvent *cameraEvent = (CameraEvent *)event;
+            if (cameraEvent->getCode() == CameraEvent::kCodeData)
             {
                 this->addData(cameraEvent->data());
             }
@@ -52,17 +53,17 @@ void OdometrySporadicThread::mainLoop()
     SensorData data;
     if (getData(data))
     {
-        OdometryInfo info; 
+        OdometryInfo info;
         Transform pose = _odometry->process(data, &info);
         // a null pose notify that odometry could not be computed
-        double variance = info.variance>0?info.variance:1;
+        double variance = info.variance > 0 ? info.variance : 1;
         this->post(new OdometryEvent(data, pose, variance, variance, info));
     }
 }
 
-void OdometrySporadicThread::addData(const SensorData & data)
+void OdometrySporadicThread::addData(const SensorData &data)
 {
-    if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
+    if (data.imageRaw().empty() || (data.cameraModels().size() == 0 && !data.stereoCameraModel().isValid()))
     {
         ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
         return;
@@ -72,7 +73,7 @@ void OdometrySporadicThread::addData(const SensorData & data)
     _dataMutex.lock();
     {
         _dataBuffer.push_back(data);
-        while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
+        while (_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
@@ -81,19 +82,19 @@ void OdometrySporadicThread::addData(const SensorData & data)
     }
     _dataMutex.unlock();
 
-    if(notify)
+    if (notify)
     {
         _dataAdded.release();
     }
 }
 
-bool OdometrySporadicThread::getData(SensorData & data)
+bool OdometrySporadicThread::getData(SensorData &data)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
     _dataMutex.lock();
     {
-        if(!_dataBuffer.empty())
+        if (!_dataBuffer.empty())
         {
             data = _dataBuffer.front();
             _dataBuffer.pop_front();

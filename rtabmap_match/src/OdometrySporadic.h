@@ -10,7 +10,8 @@
 
 class UTimer;
 
-namespace rtabmap {
+namespace rtabmap
+{
 
 class OdometryInfo;
 class MemoryLoc;
@@ -18,13 +19,13 @@ class MemoryLoc;
 class OdometrySporadic : public Odometry
 {
 public:
-    OdometrySporadic(const std::string dbPath, const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+    OdometrySporadic(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~OdometrySporadic();
-    virtual void reset(const Transform & initialPose);
+    virtual void reset(const Transform &initialPose);
 
 private:
-    virtual Transform computeTransform(const SensorData & data, OdometryInfo *info = NULL);
-    static bool compareLikelihood(std::pair<const int, float> const& l, std::pair<const int, float> const& r);
+    virtual Transform computeTransform(const SensorData &data, OdometryInfo *info = NULL);
+    static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
 
 private:
     MemoryLoc *memory_;

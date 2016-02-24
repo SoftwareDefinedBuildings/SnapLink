@@ -17,10 +17,13 @@ public:
     CameraNetworkThread(CameraNetwork *camera, unsigned int dataBufferMaxSize = 1);
     virtual ~CameraNetworkThread();
 
-    CameraNetwork *camera() {return _camera;} // return null if not set, valid until CameraNetworkThread is deleted
+    CameraNetwork *camera()
+    {
+        return _camera;   // return null if not set, valid until CameraNetworkThread is deleted
+    }
 
 protected:
-    virtual void handleEvent(UEvent * event);
+    virtual void handleEvent(UEvent *event);
 
 private:
     void mainLoopKill();

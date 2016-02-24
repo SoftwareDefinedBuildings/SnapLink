@@ -15,9 +15,15 @@ public:
     {
     }
 
-    std::vector<unsigned char> *getData() const {return _data;}
+    std::vector<unsigned char> *getData() const
+    {
+        return _data;
+    }
 
-    virtual std::string getClassName() const {return std::string("NetworkEvent");}
+    virtual std::string getClassName() const
+    {
+        return std::string("NetworkEvent");
+    }
 
 private:
     std::vector<unsigned char> *_data;

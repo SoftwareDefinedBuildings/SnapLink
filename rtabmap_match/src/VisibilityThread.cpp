@@ -6,11 +6,12 @@
 #include "VisibilityThread.h"
 #include "DetectionEvent.h"
 
-namespace rtabmap {
+namespace rtabmap
+{
 
 VisibilityThread::VisibilityThread(Visibility *visibility, unsigned int dataBufferMaxSize) :
-_visibility(visibility),
-_dataBufferMaxSize(dataBufferMaxSize)
+    _visibility(visibility),
+    _dataBufferMaxSize(dataBufferMaxSize)
 {
     UASSERT(_visibility != 0);
 }
@@ -19,20 +20,20 @@ VisibilityThread::~VisibilityThread()
 {
     this->unregisterFromEventsManager();
     this->join(true);
-    if(_visibility)
+    if (_visibility)
     {
         delete _visibility;
     }
     UDEBUG("");
 }
 
-void VisibilityThread::handleEvent(UEvent * event)
+void VisibilityThread::handleEvent(UEvent *event)
 {
-    if(this->isRunning())
+    if (this->isRunning())
     {
-        if(event->getClassName().compare("OdometryEvent") == 0)
+        if (event->getClassName().compare("OdometryEvent") == 0)
         {
-            OdometryEvent * odomEvent = (OdometryEvent*)event;
+            OdometryEvent *odomEvent = (OdometryEvent *)event;
             SensorData data = odomEvent->data();
             Transform pose = odomEvent->pose();
             this->addData(data, pose);
@@ -56,7 +57,7 @@ void VisibilityThread::mainLoop()
     }
 }
 
-void VisibilityThread::addData(const SensorData & data, const Transform & pose)
+void VisibilityThread::addData(const SensorData &data, const Transform &pose)
 {
     bool notify = true;
     _dataMutex.lock();
@@ -64,7 +65,7 @@ void VisibilityThread::addData(const SensorData & data, const Transform & pose)
         _dataBuffer.push_back(data);
         _poseBuffer.push_back(pose);
 
-        while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
+        while (_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
@@ -74,19 +75,19 @@ void VisibilityThread::addData(const SensorData & data, const Transform & pose)
     }
     _dataMutex.unlock();
 
-    if(notify)
+    if (notify)
     {
         _dataAdded.release();
     }
 }
 
-bool VisibilityThread::getData(SensorData & data, Transform & pose)
+bool VisibilityThread::getData(SensorData &data, Transform &pose)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
     _dataMutex.lock();
     {
-        if(!_dataBuffer.empty())
+        if (!_dataBuffer.empty())
         {
             data = _dataBuffer.front();
             pose = _poseBuffer.front();
