@@ -25,11 +25,6 @@ bool CompareMeanDist::operator()(const PairType &left, const PairType &right) co
     return meanDist(left.second) < meanDist(right.second);
 }
 
-bool CompareCount::operator()(const PairType &left, const PairType &right) const
-{
-    return left.second.size() < right.second.size();
-}
-
 Visibility::Visibility()
 {
     UDEBUG("");
@@ -159,18 +154,19 @@ std::vector<std::string> Visibility::process(const SensorData &data, const Trans
         }
     }
 
-    // find the label with minimum mean distance
-    std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
-    std::string minlabel = minDist.first;
-    UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-
-    // find the label with most distance
-    //std::pair< std::string, std::vector<double> > maxCount = *max_element(distances.begin(), distances.end(), CompareCount());
-    //std::string maxlabel = maxCount.first;
-    //UINFO("Nearest label %s with most points %lf", maxlabel.c_str(), maxCount.second.size());
-
     std::vector<std::string> rv;
-    rv.push_back(minlabel);
+    if (!distances.empty())
+    {
+        // find the label with minimum mean distance
+        std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
+        std::string minlabel = minDist.first;
+        UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
+        rv.push_back(minlabel);
+    }
+    else
+    {
+        UINFO("No label is qualified");
+    }
     return rv;
 }
 

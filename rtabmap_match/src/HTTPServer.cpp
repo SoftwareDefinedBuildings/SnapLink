@@ -106,6 +106,9 @@ int HTTPServer::answer_to_connection(void *cls,
                 delete con_info;
                 return MHD_NO;
             }
+
+            httpServer->_numClients++;
+
             con_info->connectiontype = POST;
             con_info->answercode = MHD_HTTP_OK;
             con_info->answerstring = completepage;

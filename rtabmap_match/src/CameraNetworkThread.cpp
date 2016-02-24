@@ -34,7 +34,6 @@ void CameraNetworkThread::handleEvent(UEvent *event)
         {
             NetworkEvent *networkEvent = (NetworkEvent *) event;
             this->addData(networkEvent->getData());
-            // TODO figure out where is event freed
         }
     }
 }
@@ -59,7 +58,6 @@ void CameraNetworkThread::mainLoop()
     SensorData sensorData = _camera->takeImage();
     if (!sensorData.imageRaw().empty())
     {
-        UINFO("New image %s", sensorData.filename.c_str());
         this->post(new CameraEvent(sensorData));
     }
 }

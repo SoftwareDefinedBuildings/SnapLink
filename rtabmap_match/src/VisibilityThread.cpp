@@ -24,7 +24,6 @@ VisibilityThread::~VisibilityThread()
     {
         delete _visibility;
     }
-    UDEBUG("");
 }
 
 void VisibilityThread::handleEvent(UEvent *event)
