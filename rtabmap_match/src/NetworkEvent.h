@@ -10,9 +10,10 @@ class NetworkEvent :
 {
 public:
     // ownership transfer
-    NetworkEvent(std::vector<unsigned char> *payload) :
+    NetworkEvent(std::vector<unsigned char> *payload, void *context = NULL) :
         UEvent(0),
-        _payload(payload)
+        _payload(payload),
+        _context(context)
     {
     }
 
@@ -22,7 +23,7 @@ public:
     }
     void *context() const
     {
-        return context;
+        return _context;
     }
 
     virtual std::string getClassName() const
@@ -32,7 +33,7 @@ public:
 
 private:
     std::vector<unsigned char> *_payload;
-    void *context;
+    void *_context;
 };
 
 } // namespace rtabmap

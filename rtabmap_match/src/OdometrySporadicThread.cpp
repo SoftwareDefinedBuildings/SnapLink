@@ -1,9 +1,9 @@
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/core/OdometryEvent.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "OdometrySporadicThread.h"
+#include "ImageEvent.h"
 
 namespace rtabmap
 {
@@ -29,13 +29,10 @@ void OdometrySporadicThread::handleEvent(UEvent *event)
 {
     if (this->isRunning())
     {
-        if (event->getClassName().compare("CameraEvent") == 0)
+        if (event->getClassName().compare("ImageEvent") == 0)
         {
-            CameraEvent *cameraEvent = (CameraEvent *)event;
-            if (cameraEvent->getCode() == CameraEvent::kCodeData)
-            {
-                this->addData(cameraEvent->data());
-            }
+            ImageEvent *imageEvent = (ImageEvent *)event;
+            this->addData(imageEvent->data(), imageEvent->context());
         }
     }
 }
@@ -51,17 +48,18 @@ void OdometrySporadicThread::mainLoop()
     _odometry->reset(Transform::getIdentity());
 
     SensorData data;
-    if (getData(data))
+    void *context = NULL;
+    if (getData(data, context))
     {
         OdometryInfo info;
         Transform pose = _odometry->process(data, &info);
         // a null pose notify that odometry could not be computed
         double variance = info.variance > 0 ? info.variance : 1;
-        this->post(new OdometryEvent(data, pose, variance, variance, info));
+        this->post(new LocationEvent(data, pose, context));
     }
 }
 
-void OdometrySporadicThread::addData(const SensorData &data)
+void OdometrySporadicThread::addData(const SensorData &data, void *context)
 {
     if (data.imageRaw().empty() || (data.cameraModels().size() == 0 && !data.stereoCameraModel().isValid()))
     {
@@ -73,10 +71,13 @@ void OdometrySporadicThread::addData(const SensorData &data)
     _dataMutex.lock();
     {
         _dataBuffer.push_back(data);
+        _contextBuffer.push_back(context);
+
         while (_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
+            _contextBuffer.pop_front();
             notify = false;
         }
     }
@@ -88,16 +89,18 @@ void OdometrySporadicThread::addData(const SensorData &data)
     }
 }
 
-bool OdometrySporadicThread::getData(SensorData &data)
+bool OdometrySporadicThread::getData(SensorData &data, void *&context)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
     _dataMutex.lock();
     {
-        if (!_dataBuffer.empty())
+        if (!_dataBuffer.empty() && _dataBuffer.size() == _contextBuffer.size())
         {
             data = _dataBuffer.front();
+            context = _contextBuffer.front();
             _dataBuffer.pop_front();
+            _contextBuffer.pop_front();
             dataFilled = true;
         }
     }

@@ -13,10 +13,11 @@ class OdometryEvent :
     public UEvent
 {
 public:
-    OdometryEvent(const SensorData &data, const Transform &pose) :
+    OdometryEvent(const SensorData &data, const Transform &pose, void *context = NULL) :
         UEvent(0),
         _data(data),
-        _pose(pose)
+        _pose(pose),
+        _context(context)
     {
     }
 
@@ -34,7 +35,7 @@ public:
     }
     void *context() const
     {
-        return context;
+        return _context;
     }
 
     virtual std::string getClassName() const
@@ -45,7 +46,7 @@ public:
 private:
     SensorData _data;
     Transform _pose;
-    void *context;
+    void *_context;
 };
 
 }

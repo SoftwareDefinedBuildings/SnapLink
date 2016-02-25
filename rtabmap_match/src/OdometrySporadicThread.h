@@ -25,13 +25,14 @@ protected:
 private:
     void mainLoopKill();
     void mainLoop();
-    void addData(const SensorData &data);
-    bool getData(SensorData &data);
+    void addData(const SensorData &data, void *context = NULL);
+    bool getData(SensorData &data, void *&context);
 
 private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
     std::list<SensorData> _dataBuffer;
+    std::list<void *> _contextBuffer;
     OdometrySporadic *_odometry;
     unsigned int _dataBufferMaxSize;
 };

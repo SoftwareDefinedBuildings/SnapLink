@@ -33,7 +33,7 @@ void CameraNetworkThread::handleEvent(UEvent *event)
         if (event->getClassName().compare("NetworkEvent") == 0)
         {
             NetworkEvent *networkEvent = (NetworkEvent *) event;
-            this->addData(networkEvent->getPayload());
+            this->addData(networkEvent->payload(), networkEvent->context());
         }
     }
 }
@@ -46,8 +46,9 @@ void CameraNetworkThread::mainLoopKill()
 void CameraNetworkThread::mainLoop()
 {
     std::vector<unsigned char> *data = NULL;
+    void *context = NULL;
     size_t len;
-    if (getData(data))
+    if (getData(data, context))
     {
         if (!_camera->addImage(data))
         {
@@ -58,21 +59,23 @@ void CameraNetworkThread::mainLoop()
     SensorData sensorData = _camera->takeImage();
     if (!sensorData.imageRaw().empty())
     {
-        this->post(new CameraEvent(sensorData));
+        this->post(new ImageEvent(sensorData, "", context));
     }
 }
 
-void CameraNetworkThread::addData(std::vector<unsigned char> *data)
+void CameraNetworkThread::addData(std::vector<unsigned char> *data, void *context)
 {
     bool notify = true;
     _dataMutex.lock();
     {
         _dataBuffer.push_back(data);
+        _contextBuffer.push_back(context);
 
         while (_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
         {
             UWARN("Data buffer is full, the oldest data is removed to add the new one.");
             _dataBuffer.pop_front();
+            _contextBuffer.pop_front();
             notify = false;
         }
     }
@@ -84,16 +87,18 @@ void CameraNetworkThread::addData(std::vector<unsigned char> *data)
     }
 }
 
-bool CameraNetworkThread::getData(std::vector<unsigned char> *&data)
+bool CameraNetworkThread::getData(std::vector<unsigned char> *&data, void *&context)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
     _dataMutex.lock();
     {
-        if (!_dataBuffer.empty())
+        if (!_dataBuffer.empty() && _dataBuffer.size() == _contextBuffer.size())
         {
             data = _dataBuffer.front();
+            context = _contextBuffer.front();
             _dataBuffer.pop_front();
+            _contextBuffer.pop_front();
             dataFilled = true;
         }
     }

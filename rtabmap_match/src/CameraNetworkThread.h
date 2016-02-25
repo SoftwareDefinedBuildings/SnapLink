@@ -28,8 +28,8 @@ protected:
 private:
     void mainLoopKill();
     void mainLoop();
-    void addData(std::vector<unsigned char> *data);
-    bool getData(std::vector<unsigned char> *&data);
+    void addData(std::vector<unsigned char> *data, void *context = NULL);
+    bool getData(std::vector<unsigned char> *&data, void *&context);
 
 private:
     USemaphore _dataAdded;

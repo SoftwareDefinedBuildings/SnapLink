@@ -10,32 +10,34 @@ class ImageEvent :
     public UEvent
 {
 public:
-    ImageEvent(const cv::Mat &image, int seq = 0, double stamp = 0.0, const std::string &cameraName = "") :
+    ImageEvent(const cv::Mat &image, int seq = 0, double stamp = 0.0, const std::string &cameraName = "", void *context = NULL) :
         UEvent(0),
-        data_(image, seq, stamp),
-        cameraName_(cameraName)
+        _data(image, seq, stamp),
+        _cameraName(cameraName),
+        _context(context)
     {
     }
 
-    ImageEvent(const SensorData &data, const std::string &cameraName = "") :
+    ImageEvent(const SensorData &data, const std::string &cameraName = "", void *context = NULL) :
         UEvent(0),
-        data_(data),
-        cameraName_(cameraName)
+        _data(data),
+        _cameraName(cameraName),
+        _context(context)
     {
     }
 
     // Image or descriptors
     const SensorData &data() const
     {
-        return data_;
+        return _data;
     }
     const std::string &cameraName() const
     {
-        return cameraName_;
+        return _cameraName;
     }
     void *context() const
     {
-        return context;
+        return _context;
     }
 
     virtual std::string getClassName() const
@@ -44,9 +46,9 @@ public:
     }
 
 private:
-    SensorData data_;
-    std::string cameraName_;
-    void *context;
+    SensorData _data;
+    std::string _cameraName;
+    void *_context;
 };
 
 } // namespace rtabmap
