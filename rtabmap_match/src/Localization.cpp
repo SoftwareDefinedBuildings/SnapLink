@@ -8,13 +8,13 @@
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
 
-#include "OdometrySporadic.h"
+#include "Localization.h"
 
 
 namespace rtabmap
 {
 
-OdometrySporadic::OdometrySporadic(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
+Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
     Odometry(parameters),
     dbPath_(dbPath)
 {
@@ -34,7 +34,7 @@ OdometrySporadic::OdometrySporadic(const std::string dbPath, const rtabmap::Para
     memory_ = new MemoryLoc();
     if (!memory_ || !memory_->init(dbPath_, false, memoryParams_))
     {
-        UERROR("Error initializing the memory for OdometrySporadic.");
+        UERROR("Error initializing the memory for Localization.");
     }
     //memory_->generateImages(); // generate synthetic images
 
@@ -57,17 +57,17 @@ OdometrySporadic::OdometrySporadic(const std::string dbPath, const rtabmap::Para
     memoryLocParams_.insert(ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 }
 
-OdometrySporadic::~OdometrySporadic()
+Localization::~Localization()
 {
     delete memory_;
 }
 
-void OdometrySporadic::reset(const Transform &initialPose)
+void Localization::reset(const Transform &initialPose)
 {
     Odometry::reset(initialPose);
 }
 
-Transform OdometrySporadic::computeTransform(const SensorData &data_, OdometryInfo *info)
+Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *info)
 {
     Transform output;
     SensorData data = data_; // copy because it will be changed later
@@ -220,7 +220,7 @@ Transform OdometrySporadic::computeTransform(const SensorData &data_, OdometryIn
     return output;
 }
 
-bool OdometrySporadic::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
+bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
 {
     return l.second > r.second;
 }

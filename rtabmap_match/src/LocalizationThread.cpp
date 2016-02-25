@@ -1,21 +1,21 @@
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/utilite/ULogger.h>
 
-#include "OdometrySporadicThread.h"
+#include "LocalizationThread.h"
 #include "ImageEvent.h"
 #include "LocationEvent.h"
 
 namespace rtabmap
 {
 
-OdometrySporadicThread::OdometrySporadicThread(OdometrySporadic *odometry, unsigned int dataBufferMaxSize) :
+LocalizationThread::LocalizationThread(Localization *odometry, unsigned int dataBufferMaxSize) :
     _odometry(odometry),
     _dataBufferMaxSize(dataBufferMaxSize)
 {
     UASSERT(_odometry != NULL);
 }
 
-OdometrySporadicThread::~OdometrySporadicThread()
+LocalizationThread::~LocalizationThread()
 {
     this->unregisterFromEventsManager();
     this->join(true);
@@ -25,7 +25,7 @@ OdometrySporadicThread::~OdometrySporadicThread()
     }
 }
 
-void OdometrySporadicThread::handleEvent(UEvent *event)
+void LocalizationThread::handleEvent(UEvent *event)
 {
     if (this->isRunning())
     {
@@ -37,12 +37,12 @@ void OdometrySporadicThread::handleEvent(UEvent *event)
     }
 }
 
-void OdometrySporadicThread::mainLoopKill()
+void LocalizationThread::mainLoopKill()
 {
     _dataAdded.release();
 }
 
-void OdometrySporadicThread::mainLoop()
+void LocalizationThread::mainLoop()
 {
     // because the image is from sporadic time and location
     _odometry->reset(Transform::getIdentity());
@@ -59,7 +59,7 @@ void OdometrySporadicThread::mainLoop()
     }
 }
 
-void OdometrySporadicThread::addData(const SensorData &data, void *context)
+void LocalizationThread::addData(const SensorData &data, void *context)
 {
     if (data.imageRaw().empty() || (data.cameraModels().size() == 0 && !data.stereoCameraModel().isValid()))
     {
@@ -89,7 +89,7 @@ void OdometrySporadicThread::addData(const SensorData &data, void *context)
     }
 }
 
-bool OdometrySporadicThread::getData(SensorData &data, void *&context)
+bool LocalizationThread::getData(SensorData &data, void *&context)
 {
     bool dataFilled = false;
     _dataAdded.acquire();

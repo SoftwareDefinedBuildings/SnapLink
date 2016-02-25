@@ -5,10 +5,10 @@
 #include <cstdio>
 
 #include "HTTPServer.h"
-#include "OdometrySporadic.h"
+#include "Localization.h"
 #include "CameraNetwork.h"
 #include "CameraNetworkThread.h"
-#include "OdometrySporadicThread.h"
+#include "LocalizationThread.h"
 #include "Visibility.h"
 #include "VisibilityThread.h"
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
     }
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    OdometrySporadicThread odomThread(new OdometrySporadic(dbfile), 10);
+    LocalizationThread odomThread(new Localization(dbfile), 10);
 
     Visibility *visibility = new Visibility();
     if (!visibility->init(labelpath))

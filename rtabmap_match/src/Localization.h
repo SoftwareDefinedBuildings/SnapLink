@@ -16,11 +16,11 @@ namespace rtabmap
 class OdometryInfo;
 class MemoryLoc;
 
-class OdometrySporadic : public Odometry
+class Localization : public Odometry
 {
 public:
-    OdometrySporadic(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-    virtual ~OdometrySporadic();
+    Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    virtual ~Localization();
     virtual void reset(const Transform &initialPose);
 
 private:
