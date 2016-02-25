@@ -29,6 +29,7 @@ protected:
     virtual void handleEvent(UEvent *event);
 
 private:
+    // TODO use camelCase
     static int answer_to_connection(void *cls,
                                     struct MHD_Connection *connection,
                                     const char *url,

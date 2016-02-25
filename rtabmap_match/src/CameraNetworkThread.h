@@ -35,6 +35,7 @@ private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
     std::list<std::vector<unsigned char> *> _dataBuffer;
+    std::list<void *> _contextBuffer;
     unsigned int _dataBufferMaxSize;
     CameraNetwork *_camera;
 };
