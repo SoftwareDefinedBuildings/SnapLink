@@ -15,62 +15,65 @@ namespace rtabmap
 {
 
 Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
-    Odometry(parameters),
-    dbPath_(dbPath)
+    _dbPath(dbPath)
 {
     // Setup memory
-    memoryParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-    memoryParams_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-    memoryParams_.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
-    memoryParams_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-    memoryParams_.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
-    memoryParams_.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
-    memoryParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf)));
+    _memoryParams.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+    _memoryParams.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
+    _memoryParams.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
+    _memoryParams.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+    _memoryParams.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
+    _memoryParams.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
+    _memoryParams.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf)));
     // parameters that makes memory do PnP localization for RGB images
-    memoryParams_.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
-    memoryParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
-    memoryParams_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20"));
+    _memoryParams.insert(ParametersPair(Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
+    _memoryParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
+    _memoryParams.insert(ParametersPair(Parameters::kLccBowMinInliers(), "20"));
 
-    memory_ = new MemoryLoc();
-    if (!memory_ || !memory_->init(dbPath_, false, memoryParams_))
+    _memory = new MemoryLoc();
+    if (!_memory || !_memory->init(_dbPath, false, _memoryParams))
     {
         UERROR("Error initializing the memory for Localization.");
     }
-    //memory_->generateImages(); // generate synthetic images
+    //_memory->generateImages(); // generate synthetic images
 
-    memoryLocParams_.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-    memoryLocParams_.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-    memoryLocParams_.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpNndrRatio(), "0.3"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf)));
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowMinInliers(), "4"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowIterations(), "2000"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
-    memoryLocParams_.insert(ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
+    _memoryLocParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
+    _memoryLocParams.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
+    _memoryLocParams.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(VWDictionary::kNNBruteForce))); // bruteforce
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpNndrRatio(), "0.3"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(Feature2D::kFeatureSurf)));
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpWordsPerImage(), "1500"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpBadSignRatio(), "0"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kMemGenerateIds(), "false"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kLccBowMinInliers(), "4"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kLccBowIterations(), "2000"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kLccBowPnPReprojError(), "1.0"));
+    _memoryLocParams.insert(ParametersPair(Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 }
 
 Localization::~Localization()
 {
-    delete memory_;
+    delete _memory;
 }
 
-void Localization::reset(const Transform &initialPose)
-{
-    Odometry::reset(initialPose);
-}
-
-Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *info)
+Transform Localization::localize(const SensorData &data_)
 {
     Transform output;
     SensorData data = data_; // copy because it will be changed later
+
+    UASSERT(!data.imageRaw().empty());
+
+    if (!data.stereoCameraModel().isValid() &&
+            (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
+    {
+        UERROR("Rectified images required! Calibrate your camera.");
+        return Transform();
+    }
 
     if (data.imageRaw().empty())
     {
@@ -94,26 +97,22 @@ Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *
 
     UTimer timer;
 
-    if (memory_->getWorkingMem().size() >= 1)
+    if (_memory->getWorkingMem().size() >= 1)
     {
-        //PnP
-        if (this->isInfoDataFilled() && info)
-        {
-            info->type = -1; // 0=BOW, 1=Optical Flow, 2=ICP
-        }
-
         // generate kpts
-        if (memory_->update(data))
+        if (_memory->update(data))
         {
             UDEBUG("");
-            const Signature *newS = memory_->getLastWorkingSignature();
+            const Signature *newS = _memory->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
-            if ((int)newS->getWords().size() > this->getMinInliers())
+            int bowMinInliers;
+            Parameters::parse(_memoryLocParams, Parameters::kLccBowMinInliers(), bowMinInliers);
+            if ((int)newS->getWords().size() > bowMinInliers)
             {
                 std::map<int, float> likelihood;
-                std::list<int> signaturesToCompare = uKeysList(memory_->getWorkingMem());
+                std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
                 UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-                likelihood = memory_->computeLikelihood(newS, signaturesToCompare);
+                likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
 
                 Rtabmap rtabmap;
                 rtabmap.adjustLikelihood(likelihood);
@@ -139,7 +138,7 @@ Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *
                     UINFO("topId: %d", topId);
                 }
 
-                MemoryLoc memoryLoc(memoryLocParams_);
+                MemoryLoc memoryLoc(_memoryLocParams);
 
                 std::string rejectedMsg;
                 int visualInliers = 0;
@@ -157,8 +156,8 @@ Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *
                     std::sort(sortedIds.begin(), sortedIds.end());
                     for (std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it)
                     {
-                        SensorData data = memory_->getNodeData(*it, true);
-                        const Signature *sig = memory_->getSignature(*it);
+                        SensorData data = _memory->getNodeData(*it, true);
+                        const Signature *sig = _memory->getSignature(*it);
 
                         if (!data.depthOrRightRaw().empty() &&
                                 data.id() != Memory::kIdInvalid &&
@@ -191,7 +190,7 @@ Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *
                     else
                     {
                         UWARN("transform is null, rejectMsg = %s, using pose of the closest image", rejectedMsg.c_str());
-                        output = memory_->getSignature(topId)->getPose();
+                        output = _memory->getSignature(topId)->getPose();
                     }
                 }
             }
@@ -201,18 +200,13 @@ Transform Localization::computeTransform(const SensorData &data_, OdometryInfo *
             }
 
             // remove new words from dictionary
-            memory_->deleteLocation(newS->id());
-            memory_->emptyTrash();
+            _memory->deleteLocation(newS->id());
+            _memory->emptyTrash();
         }
     }
     else
     {
-        UERROR("Memory not initialized. memory_->getWorkingMem().size() = %d", memory_->getWorkingMem().size());
-    }
-
-    if (this->isInfoDataFilled() && info)
-    {
-        // TODO
+        UERROR("Memory not initialized. _memory->getWorkingMem().size() = %d", _memory->getWorkingMem().size());
     }
 
     UINFO("output transform = %s", output.prettyPrint().c_str());

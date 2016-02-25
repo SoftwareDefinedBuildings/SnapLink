@@ -43,17 +43,12 @@ void LocalizationThread::mainLoopKill()
 
 void LocalizationThread::mainLoop()
 {
-    // because the image is from sporadic time and location
-    _loc->reset(Transform::getIdentity());
-
     SensorData data;
     void *context = NULL;
     if (getData(data, context))
     {
-        OdometryInfo info;
-        Transform pose = _loc->process(data, &info);
+        Transform pose = _loc->localize(data);
         // a null pose notify that loc could not be computed
-        double variance = info.variance > 0 ? info.variance : 1;
         this->post(new LocationEvent(data, pose, context));
     }
 }
