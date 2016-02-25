@@ -15,8 +15,8 @@ class LocalizationThread :
     public UEventsHandler
 {
 public:
-    // take ownership of Odometry
-    LocalizationThread(Localization *odometry, unsigned int dataBufferMaxSize = 1);
+    // take ownership of Localization
+    LocalizationThread(Localization *loc, unsigned int dataBufferMaxSize = 1);
     virtual ~LocalizationThread();
 
 protected:
@@ -33,7 +33,7 @@ private:
     UMutex _dataMutex;
     std::list<SensorData> _dataBuffer;
     std::list<void *> _contextBuffer;
-    Localization *_odometry;
+    Localization *_loc;
     unsigned int _dataBufferMaxSize;
 };
 

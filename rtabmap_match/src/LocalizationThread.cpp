@@ -1,4 +1,3 @@
-#include <rtabmap/core/Odometry.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "LocalizationThread.h"
@@ -8,20 +7,20 @@
 namespace rtabmap
 {
 
-LocalizationThread::LocalizationThread(Localization *odometry, unsigned int dataBufferMaxSize) :
-    _odometry(odometry),
+LocalizationThread::LocalizationThread(Localization *loc, unsigned int dataBufferMaxSize) :
+    _loc(loc),
     _dataBufferMaxSize(dataBufferMaxSize)
 {
-    UASSERT(_odometry != NULL);
+    UASSERT(_loc != NULL);
 }
 
 LocalizationThread::~LocalizationThread()
 {
     this->unregisterFromEventsManager();
     this->join(true);
-    if (_odometry)
+    if (_loc)
     {
-        delete _odometry;
+        delete _loc;
     }
 }
 
@@ -45,15 +44,15 @@ void LocalizationThread::mainLoopKill()
 void LocalizationThread::mainLoop()
 {
     // because the image is from sporadic time and location
-    _odometry->reset(Transform::getIdentity());
+    _loc->reset(Transform::getIdentity());
 
     SensorData data;
     void *context = NULL;
     if (getData(data, context))
     {
         OdometryInfo info;
-        Transform pose = _odometry->process(data, &info);
-        // a null pose notify that odometry could not be computed
+        Transform pose = _loc->process(data, &info);
+        // a null pose notify that loc could not be computed
         double variance = info.variance > 0 ? info.variance : 1;
         this->post(new LocationEvent(data, pose, context));
     }

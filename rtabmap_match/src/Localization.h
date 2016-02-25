@@ -16,7 +16,8 @@ namespace rtabmap
 class OdometryInfo;
 class MemoryLoc;
 
-class Localization : public Odometry
+class Localization : 
+    public Odometry
 {
 public:
     Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
