@@ -5,7 +5,7 @@ android {
     buildToolsVersion "23.0.2"
 
     defaultConfig {
-        applicationId "edu.berkeley.cs.sdb.buildingmodel"
+        applicationId "edu.berkeley.cs.sdb.SDBVision"
         minSdkVersion 21
         targetSdkVersion 21
         versionCode 1

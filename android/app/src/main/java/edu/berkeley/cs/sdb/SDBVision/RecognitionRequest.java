@@ -1,4 +1,4 @@
-package edu.berkeley.cs.sdb.buildingmodel;
+package edu.berkeley.cs.sdb.SDBVision;
 
 import android.media.Image;
 

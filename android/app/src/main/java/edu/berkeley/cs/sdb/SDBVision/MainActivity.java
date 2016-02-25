@@ -1,7 +1,7 @@
 /*
  * Based on code from http://blog.csdn.net/torvalbill/article/details/40378539
  */
-package edu.berkeley.cs.sdb.buildingmodel;
+package edu.berkeley.cs.sdb.SDBVision;
 
 import android.app.Activity;
 import android.content.Context;
