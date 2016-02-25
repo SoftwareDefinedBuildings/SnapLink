@@ -1,19 +1,17 @@
 #pragma once
 
-#include "rtabmap/utilite/UEvent.h"
-#include "rtabmap/utilite/ULogger.h"
-#include "rtabmap/utilite/UMath.h"
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/OdometryInfo.h"
+#include <rtabmap/utilite/UEvent.h>
+#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Transform.h>
 
 namespace rtabmap
 {
 
-class OdometryEvent :
+class LocationEvent :
     public UEvent
 {
 public:
-    OdometryEvent(const SensorData &data, const Transform &pose, void *context = NULL) :
+    LocationEvent(const SensorData &data, const Transform &pose, void *context = NULL) :
         UEvent(0),
         _data(data),
         _pose(pose),
@@ -40,7 +38,7 @@ public:
 
     virtual std::string getClassName() const
     {
-        return "OdometryEvent";
+        return "LocationEvent";
     }
 
 private:

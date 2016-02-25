@@ -10,9 +10,10 @@ class DetectionEvent :
     public UEvent
 {
 public:
-    DetectionEvent(const std::vector<std::string> &names) :
+    DetectionEvent(const std::vector<std::string> &names, void *context = NULL) :
         UEvent(0),
-        _names(names)
+        _names(names),
+        _context(context)
     {
     }
 
@@ -23,7 +24,7 @@ public:
     }
     void *context() const
     {
-        return context;
+        return _context;
     }
 
     virtual std::string getClassName() const
@@ -33,7 +34,7 @@ public:
 
 private:
     std::vector<std::string> _names;
-    void *context;
+    void *_context;
 };
 
 } // namespace rtabmap

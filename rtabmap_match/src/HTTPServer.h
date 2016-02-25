@@ -72,7 +72,7 @@ typedef struct
     std::string answerstring;
     int answercode;
     std::vector<std::string> names;
-    USemaphore dtected;
+    USemaphore detected;
 } ConnectionInfo;
 
 } // namespace rtabmap

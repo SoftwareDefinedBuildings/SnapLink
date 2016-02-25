@@ -1,9 +1,9 @@
 #include <rtabmap/core/Camera.h>
-#include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "CameraNetworkThread.h"
 #include "NetworkEvent.h"
+#include "ImageEvent.h"
 
 namespace rtabmap
 {

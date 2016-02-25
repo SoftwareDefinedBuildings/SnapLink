@@ -56,7 +56,7 @@ void HTTPServer::handleEvent(UEvent *event)
     if (event->getClassName().compare("DetectionEvent") == 0)
     {
         DetectionEvent *detectionEvent = (DetectionEvent *) event;
-        ConnectionInfo *con_info = (ConnectionInfo *) detectionEvent->context();
+        ConnectionInfo *conInfo = (ConnectionInfo *) detectionEvent->context();
         conInfo->names = detectionEvent->getNames();
         conInfo->detected.release();
     }
@@ -151,17 +151,17 @@ int HTTPServer::answer_to_connection(void *cls,
             }
 
             // wait for the result to come
-            con_info->_Detected.acquire();
+            con_info->detected.acquire();
 
-            if (!con_info->_names.empty())
+            if (!con_info->names.empty())
             {
-                con_info->answerstring = con_info->_names.at(0);
+                con_info->answerstring = con_info->names.at(0);
             }
             else
             {
                 con_info->answerstring = "";
             }
-            con_info->_names.clear();
+            con_info->names.clear();
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }

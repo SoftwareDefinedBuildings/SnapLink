@@ -1,9 +1,9 @@
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/OdometryEvent.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "OdometrySporadicThread.h"
 #include "ImageEvent.h"
+#include "LocationEvent.h"
 
 namespace rtabmap
 {
