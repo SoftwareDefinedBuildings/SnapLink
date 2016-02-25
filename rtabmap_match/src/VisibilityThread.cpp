@@ -52,7 +52,7 @@ void VisibilityThread::mainLoop()
     if (getData(data, pose))
     {
         std::vector<std::string> names = _visibility->process(data, pose);
-        this->post(new DetectionEvent(names));
+        // this->post(new DetectionEvent(names));
     }
 }
 

@@ -24,8 +24,6 @@ public:
     // TODO use getter and setter
     unsigned int _maxClients;
     unsigned int _numClients;
-    USemaphore _Detected;
-    std::vector<std::string> _names;
 
 protected:
     virtual void handleEvent(UEvent *event);
@@ -72,6 +70,8 @@ typedef struct
     std::vector<unsigned char> *data;
     std::string answerstring;
     int answercode;
+    std::vector<std::string> names;
+    USemaphore dtected;
 } ConnectionInfo;
 
 } // namespace rtabmap

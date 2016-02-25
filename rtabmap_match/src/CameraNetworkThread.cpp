@@ -33,7 +33,7 @@ void CameraNetworkThread::handleEvent(UEvent *event)
         if (event->getClassName().compare("NetworkEvent") == 0)
         {
             NetworkEvent *networkEvent = (NetworkEvent *) event;
-            this->addData(networkEvent->getData());
+            this->addData(networkEvent->getPayload());
         }
     }
 }

@@ -98,8 +98,8 @@ int main(int argc, char *argv[])
 
     // build "pipes" between threads
     UEventsManager::createPipe(&httpServer, &cameraThread, "NetworkEvent");
-    UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
-    UEventsManager::createPipe(&odomThread, &visThread, "OdometryEvent");
+    UEventsManager::createPipe(&cameraThread, &odomThread, "ImageEvent");
+    UEventsManager::createPipe(&odomThread, &visThread, "LocationEvent");
     UEventsManager::createPipe(&visThread, &httpServer, "DetectionEvent");
 
     // Let's start the threads

@@ -30,7 +30,8 @@ HTTPServer::~HTTPServer()
 bool HTTPServer::start()
 {
     // start MHD daemon, listening on port number _port
-    _daemon = MHD_start_daemon(MHD_USE_SELECT_INTERNALLY, _port, NULL, NULL,
+    unsigned int flags = MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL;
+    _daemon = MHD_start_daemon(flags, _port, NULL, NULL,
                                &answer_to_connection, this,
                                MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this,
                                MHD_OPTION_END);
@@ -55,8 +56,9 @@ void HTTPServer::handleEvent(UEvent *event)
     if (event->getClassName().compare("DetectionEvent") == 0)
     {
         DetectionEvent *detectionEvent = (DetectionEvent *) event;
-        _names = detectionEvent->getNames();
-        _Detected.release();
+        ConnectionInfo *con_info = (ConnectionInfo *) detectionEvent->context();
+        conInfo->names = detectionEvent->getNames();
+        conInfo->detected.release();
     }
 }
 
@@ -144,22 +146,22 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             if (!con_info->data->empty())
             {
-                httpServer->post(new NetworkEvent(con_info->data));
+                httpServer->post(new NetworkEvent(con_info->data, con_info));
                 con_info->data = NULL;
             }
 
             // wait for the result to come
-            httpServer->_Detected.acquire();
+            con_info->_Detected.acquire();
 
-            if (!httpServer->_names.empty())
+            if (!con_info->_names.empty())
             {
-                con_info->answerstring = httpServer->_names.at(0);
+                con_info->answerstring = con_info->_names.at(0);
             }
             else
             {
                 con_info->answerstring = "";
             }
-            httpServer->_names.clear();
+            con_info->_names.clear();
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }
