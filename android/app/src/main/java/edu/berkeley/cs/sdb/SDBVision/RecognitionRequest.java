@@ -6,36 +6,48 @@ import com.android.volley.NetworkResponse;
 import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.Response;
+import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.HttpHeaderParser;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class RecognitionRequest extends Request<String> {
-    public static final String CONTENT_TYPE = "image/jpeg";
-
     private final Image mImage;
     private final Response.Listener<String> mListener;
+    private HttpEntity mHttpEntity;
 
     public RecognitionRequest(String url, Image image, Response.Listener<String> listener, Response.ErrorListener errorListener) {
         super(Method.POST, url, errorListener);
         this.mImage = image;
         this.mListener = listener;
+
+        BuildHttpEntity();
     }
 
     @Override
     public String getBodyContentType() {
-        return CONTENT_TYPE;
+        return mHttpEntity.getContentType().getValue();
     }
 
+    // TODO: too many memory copies
     @Override
     public byte[] getBody() {
-        ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
-        byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes); // write buffer to bytes
-        mImage.close();
-
-        return bytes;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        try {
+            mHttpEntity.writeTo(bos);
+        } catch (IOException e) {
+            VolleyLog.e("IOException writing to ByteArrayOutputStream");
+        }
+        return bos.toByteArray();
     }
 
     @Override
@@ -51,5 +63,18 @@ public class RecognitionRequest extends Request<String> {
         } catch (UnsupportedEncodingException e) {
             return Response.error(new ParseError(e));
         }
+    }
+
+    private void BuildHttpEntity() {
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+
+        ByteBuffer buffer = mImage.getPlanes()[0].getBuffer();
+        byte[] bytes = new byte[buffer.remaining()];
+        buffer.get(bytes); // write buffer to bytes
+        mImage.close();
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        builder.addBinaryBody("file", bytes, ContentType.create("image/jpeg"), timeStamp+".jpg");
+
+        mHttpEntity = builder.build();
     }
 }
