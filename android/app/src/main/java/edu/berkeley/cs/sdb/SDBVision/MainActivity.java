@@ -36,9 +36,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,6 +43,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+
+import okhttp3.OkHttpClient;
 
 public class MainActivity extends Activity {
 
@@ -109,7 +108,7 @@ public class MainActivity extends Activity {
     // A semaphore to prevent the app from exiting before closing the camera.
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
     // The HTTP Client used for transmitting image
-    private HttpClient mHttpClient;
+    private OkHttpClient mHttpClient;
     // The current recognized object name
     private String mTarget;
 
@@ -332,8 +331,7 @@ public class MainActivity extends Activity {
 
         setUIEnabled(false, false, true);
 
-        // TODO: not thread safe
-        mHttpClient = new DefaultHttpClient();
+        mHttpClient = new OkHttpClient();
     }
 
     @Override

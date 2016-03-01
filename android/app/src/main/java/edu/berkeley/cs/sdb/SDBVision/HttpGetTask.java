@@ -2,46 +2,41 @@ package edu.berkeley.cs.sdb.SDBVision;
 
 import android.os.AsyncTask;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.util.EntityUtils;
-
 import java.io.IOException;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
 public class HttpGetTask extends AsyncTask<Void, Void, String> {
-    private HttpClient httpClient;
-    private String url;
+    private OkHttpClient mHttpClient;
+    private String mUrl;
     private Listener mListener;
 
     public interface Listener {
         void onResponse(String response);
     }
 
-    public HttpGetTask(HttpClient httpClient, String url, Listener listener) {
-        this.httpClient = httpClient;
-        this.url = url;
-        this.mListener = listener;
+    public HttpGetTask(OkHttpClient httpClient, String url, Listener listener) {
+        mHttpClient = httpClient;
+        mUrl = url;
+        mListener = listener;
     }
 
     @Override
     protected String doInBackground(Void... voids) {
-        HttpContext localContext = new BasicHttpContext();
-        HttpGet httpGet = new HttpGet(this.url);
+        Request request = new Request.Builder()
+                .url(mUrl)
+                .build();
 
         String result = null;
         try {
-            HttpResponse response = httpClient.execute(httpGet, localContext);
-            StatusLine statusLine = response.getStatusLine();
-            if (statusLine.getStatusCode() != HttpStatus.SC_OK) {
-                String msg = String.format("HTTP Error %d: %s", statusLine.getStatusCode(), statusLine.getReasonPhrase());
+            Response response = mHttpClient.newCall(request).execute();
+            if (!response.isSuccessful()) {
+                String msg = String.format("HTTP Error %d: %s", response.body(), response.message());
                 throw new RuntimeException(msg);
             }
-            result = EntityUtils.toString(response.getEntity());
+            result = response.body().string();
         } catch (IOException e) {
             e.printStackTrace();
         }
