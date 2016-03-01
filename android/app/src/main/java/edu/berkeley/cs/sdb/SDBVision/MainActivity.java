@@ -298,7 +298,7 @@ public class MainActivity extends Activity {
     private Response.Listener<String> mRecognitionListener = new Response.Listener<String>() {
         @Override
         public void onResponse(String response) {
-            if (response != null && !response.trim().equals("None")) {
+            if (response != null && !response.trim().equals("")) {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
                 mTextView.setText(response);
@@ -315,7 +315,7 @@ public class MainActivity extends Activity {
     private Response.ErrorListener mRecognitionErrorListener = new Response.ErrorListener() {
         @Override
         public void onErrorResponse(VolleyError error) {
-            showToast("Recognition failed!", Toast.LENGTH_SHORT);
+            showToast("Recognition failed: " + error, Toast.LENGTH_SHORT);
             mTarget = null;
             mTextView.setText(getString(R.string.none));
             setUIEnabled(false, false, true);
@@ -605,6 +605,7 @@ public class MainActivity extends Activity {
      */
     private void lockFocus() {
         try {
+            mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
             // This is how to tell the camera to lock focus.
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
             // Tell mCaptureCallback to wait for the lock.
@@ -621,6 +622,7 @@ public class MainActivity extends Activity {
      */
     private void runPrecaptureSequence() {
         try {
+            mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
             // This is how to tell the camera to trigger.
             mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
             // Tell mCaptureCallback to wait for the precapture sequence to be set.
@@ -647,7 +649,8 @@ public class MainActivity extends Activity {
 
             // Use the same AE and AF modes as the preview.
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+//            captureBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
 
             // Orientation
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
