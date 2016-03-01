@@ -36,12 +36,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,8 +72,8 @@ public class MainActivity extends Activity {
     }
 
     private static final String LOG_TAG = "SDB3D";
-    private static final String IMAGE_UPLOAD_URL = "http://castle.cs.berkeley.edu:50014/";
-    private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50015/";
+    private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50012/";
+    private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50017/";
     // Max preview width that is guaranteed by Camera2 API
     private static final int MAX_PREVIEW_WIDTH = 1920;
     // Max preview height that is guaranteed by Camera2 API
@@ -112,8 +108,8 @@ public class MainActivity extends Activity {
     private CaptureRequest mPreviewRequest;
     // A semaphore to prevent the app from exiting before closing the camera.
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
-    // The Volley HTTP Request Queue used for uploading image
-    RequestQueue mRequestQueue;
+    // The HTTP Client used for transmitting image
+    private HttpClient mHttpClient;
     // The current recognized object name
     private String mTarget;
 
@@ -178,8 +174,7 @@ public class MainActivity extends Activity {
             }
 
             // upload the image
-            RecognitionRequest request = new RecognitionRequest(IMAGE_UPLOAD_URL, image, mRecognitionListener, mRecognitionErrorListener);
-            mRequestQueue.add(request);
+            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
         }
     };
 
@@ -274,8 +269,7 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/1";
-            StringRequest stringRequest = new StringRequest(Request.Method.GET, url, mControlListener, mControlErrorListener);
-            mRequestQueue.add(stringRequest);
+            new HttpGetTask(mHttpClient, url, mControlListener).execute();
         }
     };
 
@@ -283,8 +277,7 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/0";
-            StringRequest stringRequest = new StringRequest(Request.Method.GET, url, mControlListener, mControlErrorListener);
-            mRequestQueue.add(stringRequest);
+            new HttpGetTask(mHttpClient, url, mControlListener).execute();
         }
     };
 
@@ -295,7 +288,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    private Response.Listener<String> mRecognitionListener = new Response.Listener<String>() {
+    private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
         public void onResponse(String response) {
             if (response != null && !response.trim().equals("")) {
@@ -312,28 +305,10 @@ public class MainActivity extends Activity {
         }
     };
 
-    private Response.ErrorListener mRecognitionErrorListener = new Response.ErrorListener() {
-        @Override
-        public void onErrorResponse(VolleyError error) {
-            showToast("Recognition failed: " + error, Toast.LENGTH_SHORT);
-            mTarget = null;
-            mTextView.setText(getString(R.string.none));
-            setUIEnabled(false, false, true);
-        }
-    };
-
-    private Response.Listener<String> mControlListener = new Response.Listener<String>() {
+    private HttpGetTask.Listener mControlListener = new HttpGetTask.Listener() {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent", Toast.LENGTH_SHORT);
-            setUIEnabled(true, true, true);
-        }
-    };
-
-    private Response.ErrorListener mControlErrorListener = new Response.ErrorListener() {
-        @Override
-        public void onErrorResponse(VolleyError error) {
-            showToast("Control command failed to send", Toast.LENGTH_SHORT);
             setUIEnabled(true, true, true);
         }
     };
@@ -357,7 +332,8 @@ public class MainActivity extends Activity {
 
         setUIEnabled(false, false, true);
 
-        mRequestQueue = Volley.newRequestQueue(this);
+        // TODO: not thread safe
+        mHttpClient = new DefaultHttpClient();
     }
 
     @Override
@@ -650,7 +626,7 @@ public class MainActivity extends Activity {
             // Use the same AE and AF modes as the preview.
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
             captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-//            captureBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
+            captureBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
 
             // Orientation
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
