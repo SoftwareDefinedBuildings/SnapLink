@@ -9,7 +9,7 @@
                 android:paddingTop="@dimen/activity_vertical_margin"
                 tools:context=".MainActivity">
 
-    <TextureView
+    <edu.berkeley.cs.sdb.SDBVision.AutoFitTextureView
         android:id="@+id/texture"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

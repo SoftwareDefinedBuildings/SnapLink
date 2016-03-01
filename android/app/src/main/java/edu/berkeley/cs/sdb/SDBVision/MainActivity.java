@@ -5,9 +5,9 @@ package edu.berkeley.cs.sdb.SDBVision;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
-import android.graphics.Point;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -36,9 +36,7 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -73,13 +71,8 @@ public class MainActivity extends Activity {
     private static final String LOG_TAG = "SDB3D";
     private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50012/";
     private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50017/";
-    // Max preview width that is guaranteed by Camera2 API
-    private static final int MAX_PREVIEW_WIDTH = 1920;
-    // Max preview height that is guaranteed by Camera2 API
-    private static final int MAX_PREVIEW_HEIGHT = 1440;
 
-
-    private TextureView mTextureView;
+    private AutoFitTextureView mTextureView;
     private TextView mTextView;
     private Button mOnButton;
     private Button mOffButton;
@@ -94,7 +87,7 @@ public class MainActivity extends Activity {
     // A reference to the opened CameraDevice.
     private CameraDevice mCameraDevice;
     // The android.util.Size of camera preview.
-    private Size mPreviewSize;
+    private Size mVideoSize;
     // An additional thread for running tasks that shouldn't block the UI.
     private HandlerThread mBackgroundThread;
     // A Handler for running tasks in the background.
@@ -319,7 +312,7 @@ public class MainActivity extends Activity {
 
         mState = State.PREVIEW;
 
-        mTextureView = (TextureView) findViewById(R.id.texture);
+        mTextureView = (AutoFitTextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         mTextView = (TextView) findViewById(R.id.text);
         mOnButton = (Button) findViewById(R.id.on);
@@ -380,62 +373,31 @@ public class MainActivity extends Activity {
                     continue;
                 }
 
-                // For still image matching, we use the largest available size.
-                List<Size> sizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
-                Collections.sort(sizes, new CompareSizesByArea());
-                Size size = sizes.get(3); // hardcoded to use 640x480 because the intrincics of this size is on server
-                mImageReader = ImageReader.newInstance(size.getWidth(), size.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+                // For still image matching, we use 640x480 if available
+                Size targetSize = new Size(640, 480);
+
+                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                List<Size> videoSizes = Arrays.asList(map.getOutputSizes(SurfaceTexture.class));
+                if (!imageSizes.contains(targetSize) || !videoSizes.contains(targetSize)) {
+                    throw new RuntimeException("640x480 size is not supported");
+                }
+                mImageReader = ImageReader.newInstance(targetSize.getWidth(), targetSize.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
-                // Find out if we need to swap dimension to get the preview size relative to sensor coordinate.
-                int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
-                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
-                boolean swappedDimensions = false;
-                switch (displayRotation) {
-                    case Surface.ROTATION_0:
-                    case Surface.ROTATION_180:
-                        if (sensorOrientation == 90 || sensorOrientation == 270) {
-                            swappedDimensions = true;
-                        }
-                        break;
-                    case Surface.ROTATION_90:
-                    case Surface.ROTATION_270:
-                        if (sensorOrientation == 0 || sensorOrientation == 180) {
-                            swappedDimensions = true;
-                        }
-                        break;
-                    default:
-                        Log.e(LOG_TAG, "Display rotation is invalid: " + displayRotation);
-                }
-
-                Point displaySize = new Point();
-                getWindowManager().getDefaultDisplay().getSize(displaySize);
-                int rotatedPreviewWidth = width;
-                int rotatedPreviewHeight = height;
-                int maxPreviewWidth = displaySize.x;
-                int maxPreviewHeight = displaySize.y;
-
-                if (swappedDimensions) {
-                    rotatedPreviewWidth = height;
-                    rotatedPreviewHeight = width;
-                    maxPreviewWidth = displaySize.y;
-                    maxPreviewHeight = displaySize.x;
-                }
-
-                if (maxPreviewWidth > MAX_PREVIEW_WIDTH) {
-                    maxPreviewWidth = MAX_PREVIEW_WIDTH;
-                }
-
-                if (maxPreviewHeight > MAX_PREVIEW_HEIGHT) {
-                    maxPreviewHeight = MAX_PREVIEW_HEIGHT;
-                }
 
                 // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera
                 // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
                 // garbage capture data.
-                mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
-                        rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
-                        maxPreviewHeight, size);
+                // Kaifei: I think 640x480 is ok for most phones
+                mVideoSize = targetSize;
+
+                // We fit the aspect ratio of TextureView to the size of preview we picked.
+                int orientation = getResources().getConfiguration().orientation;
+                if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+                    mTextureView.setAspectRatio(mVideoSize.getWidth(), mVideoSize.getHeight());
+                } else {
+                    mTextureView.setAspectRatio(mVideoSize.getHeight(), mVideoSize.getWidth());
+                }
 
                 mCameraId = cameraId;
                 return;
@@ -448,9 +410,9 @@ public class MainActivity extends Activity {
     /*
      * Opens the camera specified by mCameraId.
      */
-    private void openCamera(int width, int height) {
-        setUpCameraOutputs(width, height);
-        configureTransform(width, height);
+    private void openCamera(int surfaceWidth, int surfaceHeight) {
+        setUpCameraOutputs(surfaceWidth, surfaceHeight);
+        configureTransform(surfaceWidth, surfaceHeight);
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
@@ -521,7 +483,7 @@ public class MainActivity extends Activity {
             assert texture != null;
 
             // We configure the size of default buffer to be the size of camera preview we want.
-            texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
+            texture.setDefaultBufferSize(mVideoSize.getWidth(), mVideoSize.getHeight());
 
             // This is the output Surface we need to start preview.
             Surface surface = new Surface(texture);
@@ -542,23 +504,24 @@ public class MainActivity extends Activity {
      * This method should be called after the camera preview size is determined in
      * setUpCameraOutputs and also the size of `mTextureView` is fixed.
      *
-     * @param viewWidth  The width of `mTextureView`
-     * @param viewHeight The height of `mTextureView`
+     * @param surfaceWidth  The width of `mTextureView`
+     * @param surfaceHeight The height of `mTextureView`
      */
-    private void configureTransform(int viewWidth, int viewHeight) {
-        if (mTextureView == null || mPreviewSize == null) {
+    private void configureTransform(int surfaceWidth, int surfaceHeight) {
+        if (mTextureView == null || mVideoSize == null) {
             return;
         }
+
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
         Matrix matrix = new Matrix();
-        RectF viewRect = new RectF(0, 0, viewWidth, viewHeight);
-        RectF bufferRect = new RectF(0, 0, mPreviewSize.getHeight(), mPreviewSize.getWidth());
+        RectF viewRect = new RectF(0, 0, surfaceWidth, surfaceHeight);
+        RectF bufferRect = new RectF(0, 0, mVideoSize.getHeight(), mVideoSize.getWidth());
         float centerX = viewRect.centerX();
         float centerY = viewRect.centerY();
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
             matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
-            float scale = Math.max((float) viewHeight / mPreviewSize.getHeight(), (float) viewWidth / mPreviewSize.getWidth());
+            float scale = Math.max((float) surfaceHeight / mVideoSize.getHeight(), (float) surfaceWidth / mVideoSize.getWidth());
             matrix.postScale(scale, scale, centerX, centerY);
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
         } else if (Surface.ROTATION_180 == rotation) {
@@ -667,52 +630,6 @@ public class MainActivity extends Activity {
             mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, mBackgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
-        }
-    }
-
-    /*
-     * Given {@code choices} of {@code Size}s supported by a camera, choose the smallest one that
-     * is at least as large as the respective texture view size, and that is at most as large as the
-     * respective max size, and whose aspect ratio matches with the specified value. If such size
-     * doesn't exist, choose the largest one that is at most as large as the respective max size,
-     * and whose aspect ratio matches with the specified value.
-     *
-     * @param choices           The list of sizes that the camera supports for the intended output
-     *                          class
-     * @param textureViewWidth  The width of the texture view relative to sensor coordinate
-     * @param textureViewHeight The height of the texture view relative to sensor coordinate
-     * @param maxWidth          The maximum width that can be chosen
-     * @param maxHeight         The maximum height that can be chosen
-     * @param aspectRatio       The aspect ratio
-     * @return The optimal {@code Size}, or an arbitrary one if none were big enough
-     */
-    private static Size chooseOptimalSize(Size[] choices, int textureViewWidth, int textureViewHeight, int maxWidth, int maxHeight, Size aspectRatio) {
-
-        // Collect the supported resolutions that are at least as big as the preview Surface
-        List<Size> bigEnough = new ArrayList<>();
-        // Collect the supported resolutions that are smaller than the preview Surface
-        List<Size> notBigEnough = new ArrayList<>();
-        int w = aspectRatio.getWidth();
-        int h = aspectRatio.getHeight();
-        for (Size option : choices) {
-            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight && option.getHeight() == option.getWidth() * h / w) {
-                if (option.getWidth() >= textureViewWidth && option.getHeight() >= textureViewHeight) {
-                    bigEnough.add(option);
-                } else {
-                    notBigEnough.add(option);
-                }
-            }
-        }
-
-        // Pick the smallest of those big enough. If there is no one big enough, pick the
-        // largest of those not big enough.
-        if (bigEnough.size() > 0) {
-            return Collections.min(bigEnough, new CompareSizesByArea());
-        } else if (notBigEnough.size() > 0) {
-            return Collections.max(notBigEnough, new CompareSizesByArea());
-        } else {
-            Log.e(LOG_TAG, "Couldn't find any suitable preview size");
-            return choices[0];
         }
     }
 
