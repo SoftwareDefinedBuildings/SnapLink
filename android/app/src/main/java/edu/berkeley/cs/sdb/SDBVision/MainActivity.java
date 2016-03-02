@@ -15,11 +15,7 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
-import android.hardware.camera2.CameraMetadata;
-import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureResult;
-import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
@@ -28,7 +24,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
 import android.util.Size;
-import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -37,7 +32,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -45,29 +39,6 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 
 public class MainActivity extends Activity {
-
-    /*
-     * Conversion from screen rotation to JPEG orientation.
-     */
-    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-
-    static {
-        ORIENTATIONS.append(Surface.ROTATION_0, 90);
-        ORIENTATIONS.append(Surface.ROTATION_90, 0);
-        ORIENTATIONS.append(Surface.ROTATION_180, 270);
-        ORIENTATIONS.append(Surface.ROTATION_270, 180);
-    }
-
-    // Code based on http://developer.android.com/samples/Camera2Basic/index.html
-    // PREVIEW: Showing camera preview
-    // WAITING_LOCK: Waiting for the focus to be locked
-    // WAITING_PRECAPTURE: Waiting for the exposure to be precapture state
-    // WAITING_NON_PRECAPTURE: Waiting for the exposure state to be something other than precapture
-    // PICTURE_TAKEN: Picture was taken
-    public enum State {
-        PREVIEW, WAITING_LOCK, WAITING_PRECAPTURE, WAITING_NON_PRECAPTURE, PICTURE_TAKEN
-    }
-
     private static final String LOG_TAG = "SDB3D";
     private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50012/";
     private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50017/";
@@ -76,10 +47,7 @@ public class MainActivity extends Activity {
     private TextView mTextView;
     private Button mOnButton;
     private Button mOffButton;
-    private Button mCaptureButton;
 
-    // The current state of camera state for taking pictures.
-    private State mState;
     // ID of the current CameraDevice
     private String mCameraId;
     // A CameraCaptureSession for camera preview.
@@ -87,7 +55,9 @@ public class MainActivity extends Activity {
     // A reference to the opened CameraDevice.
     private CameraDevice mCameraDevice;
     // The android.util.Size of camera preview.
-    private Size mVideoSize;
+    private Size mPreviewSize;
+    // The CameraCharacteristics for the currently configured camera device.
+    private CameraCharacteristics mCharacteristics;
     // An additional thread for running tasks that shouldn't block the UI.
     private HandlerThread mBackgroundThread;
     // A Handler for running tasks in the background.
@@ -164,66 +134,10 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 return;
             }
+            image.close();
 
             // upload the image
-            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
-        }
-    };
-
-    /*
-     * A CameraCaptureSession.CaptureCallback that handles events related to JPEG capture.
-     */
-    private CameraCaptureSession.CaptureCallback mCaptureCallback = new CameraCaptureSession.CaptureCallback() {
-        private void process(CaptureResult result) {
-            switch (mState) {
-                case PREVIEW: {
-                    // We have nothing to do when the camera preview is working normally.
-                    break;
-                }
-                case WAITING_LOCK: {
-                    Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
-                    if (afState == null) {
-                        captureStillPicture();
-                    } else if (afState == CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED || afState == CaptureResult.CONTROL_AF_STATE_PASSIVE_FOCUSED) {
-                        // CONTROL_AE_STATE can be null on some devices
-                        Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                        if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
-                            mState = State.PICTURE_TAKEN;
-                            captureStillPicture();
-                        } else {
-                            runPrecaptureSequence();
-                        }
-                    }
-                    break;
-                }
-                case WAITING_PRECAPTURE: {
-                    // CONTROL_AE_STATE can be null on some devices
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null || aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE || aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
-                        mState = State.WAITING_NON_PRECAPTURE;
-                    }
-                    break;
-                }
-                case WAITING_NON_PRECAPTURE: {
-                    // CONTROL_AE_STATE can be null on some devices
-                    Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
-                    if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
-                        mState = State.PICTURE_TAKEN;
-                        captureStillPicture();
-                    }
-                    break;
-                }
-            }
-        }
-
-        @Override
-        public void onCaptureProgressed(CameraCaptureSession session, CaptureRequest request, CaptureResult partialResult) {
-            process(partialResult);
-        }
-
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            process(result);
+//            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
         }
     };
 
@@ -238,15 +152,13 @@ public class MainActivity extends Activity {
             // When the session is ready, we start displaying the preview.
             mCaptureSession = session;
             try {
-                // Auto focus should be continuous for camera preview.
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-                // Flash is automatically enabled when necessary.
-                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+                setup3AControlsLocked();
 
                 // Finally, we start displaying the camera preview.
                 mPreviewRequest = mPreviewRequestBuilder.build();
-                mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, mBackgroundHandler);
+                mCaptureSession.setRepeatingRequest(mPreviewRequest, null, null);
             } catch (CameraAccessException e) {
+
                 e.printStackTrace();
             }
         }
@@ -259,7 +171,7 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mOnButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false, false, false);
+            setUIEnabled(false, false);
             String url = CONTROL_URL + mTarget + "/1";
             new HttpGetTask(mHttpClient, url, mControlListener).execute();
         }
@@ -267,16 +179,9 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mOffButtonOnClickListerner = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false, false, false);
+            setUIEnabled(false, false);
             String url = CONTROL_URL + mTarget + "/0";
             new HttpGetTask(mHttpClient, url, mControlListener).execute();
-        }
-    };
-
-    private final View.OnClickListener mCaptureButtonOnClickListerner = new View.OnClickListener() {
-        public void onClick(View v) {
-            setUIEnabled(false, false, false);
-            takePicture();
         }
     };
 
@@ -287,12 +192,12 @@ public class MainActivity extends Activity {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
                 mTextView.setText(response);
-                setUIEnabled(true, true, true);
+                setUIEnabled(true, true);
             } else {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
-                setUIEnabled(false, false, true);
+                setUIEnabled(false, false);
             }
         }
     };
@@ -301,7 +206,7 @@ public class MainActivity extends Activity {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent", Toast.LENGTH_SHORT);
-            setUIEnabled(true, true, true);
+            setUIEnabled(true, true);
         }
     };
 
@@ -310,8 +215,6 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        mState = State.PREVIEW;
-
         mTextureView = (AutoFitTextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         mTextView = (TextView) findViewById(R.id.text);
@@ -319,10 +222,8 @@ public class MainActivity extends Activity {
         mOnButton.setOnClickListener(mOnButtonOnClickListerner);
         mOffButton = (Button) findViewById(R.id.off);
         mOffButton.setOnClickListener(mOffButtonOnClickListerner);
-        mCaptureButton = (Button) findViewById(R.id.capture);
-        mCaptureButton.setOnClickListener(mCaptureButtonOnClickListerner);
 
-        setUIEnabled(false, false, true);
+        setUIEnabled(false, false);
 
         mHttpClient = new OkHttpClient();
     }
@@ -350,13 +251,10 @@ public class MainActivity extends Activity {
         super.onPause();
     }
 
-    /*
+    /**
      * Sets up member variables related to camera.
-     *
-     * @param width  The width of available size for camera preview
-     * @param height The height of available size for camera preview
      */
-    private void setUpCameraOutputs(int width, int height) {
+    private void setUpCameraOutputs() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             for (String cameraId : manager.getCameraIdList()) {
@@ -376,12 +274,12 @@ public class MainActivity extends Activity {
                 // For still image matching, we use 640x480 if available
                 Size targetSize = new Size(640, 480);
 
-                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
-                List<Size> videoSizes = Arrays.asList(map.getOutputSizes(SurfaceTexture.class));
-                if (!imageSizes.contains(targetSize) || !videoSizes.contains(targetSize)) {
+                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888));
+                List<Size> previewSizes = Arrays.asList(map.getOutputSizes(SurfaceTexture.class));
+                if (!imageSizes.contains(targetSize) || !previewSizes.contains(targetSize)) {
                     throw new RuntimeException("640x480 size is not supported");
                 }
-                mImageReader = ImageReader.newInstance(targetSize.getWidth(), targetSize.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+                mImageReader = ImageReader.newInstance(targetSize.getWidth(), targetSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
 
@@ -389,16 +287,17 @@ public class MainActivity extends Activity {
                 // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
                 // garbage capture data.
                 // Kaifei: I think 640x480 is ok for most phones
-                mVideoSize = targetSize;
+                mPreviewSize = targetSize;
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 int orientation = getResources().getConfiguration().orientation;
                 if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
-                    mTextureView.setAspectRatio(mVideoSize.getWidth(), mVideoSize.getHeight());
+                    mTextureView.setAspectRatio(mPreviewSize.getWidth(), mPreviewSize.getHeight());
                 } else {
-                    mTextureView.setAspectRatio(mVideoSize.getHeight(), mVideoSize.getWidth());
+                    mTextureView.setAspectRatio(mPreviewSize.getHeight(), mPreviewSize.getWidth());
                 }
 
+                mCharacteristics = characteristics;
                 mCameraId = cameraId;
                 return;
             }
@@ -407,11 +306,11 @@ public class MainActivity extends Activity {
         }
     }
 
-    /*
+    /**
      * Opens the camera specified by mCameraId.
      */
     private void openCamera(int surfaceWidth, int surfaceHeight) {
-        setUpCameraOutputs(surfaceWidth, surfaceHeight);
+        setUpCameraOutputs();
         configureTransform(surfaceWidth, surfaceHeight);
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -426,7 +325,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /*
+    /**
      * Closes the current CameraDevice.
      */
     private void closeCamera() {
@@ -451,8 +350,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    /*
-     * Starts a background thread and its {@link Handler}.
+    /**
+     * Starts a background thread and its Handler.
      */
     private void startBackgroundThread() {
         mBackgroundThread = new HandlerThread("CameraBackground");
@@ -460,8 +359,8 @@ public class MainActivity extends Activity {
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
 
-    /*
-     * Stops the background thread and its {@link Handler}.
+    /**
+     * Stops the background thread and its Handler.
      */
     private void stopBackgroundThread() {
         mBackgroundThread.quitSafely();
@@ -474,32 +373,69 @@ public class MainActivity extends Activity {
         }
     }
 
-    /*
-     * Should be called only when mState == State.STARTING
-     */
     protected void createCameraPreviewSession() {
         try {
             SurfaceTexture texture = mTextureView.getSurfaceTexture();
             assert texture != null;
 
             // We configure the size of default buffer to be the size of camera preview we want.
-            texture.setDefaultBufferSize(mVideoSize.getWidth(), mVideoSize.getHeight());
+            texture.setDefaultBufferSize(mPreviewSize.getWidth(), mPreviewSize.getHeight());
 
             // This is the output Surface we need to start preview.
             Surface surface = new Surface(texture);
 
             // We set up a CaptureRequest.Builder with the output Surface.
             mPreviewRequestBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            List<Surface> surfaces = Arrays.asList(surface, mImageReader.getSurface());
+            mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
             mPreviewRequestBuilder.addTarget(surface);
 
             // Here, we create a CameraCaptureSession for camera preview.
-            mCameraDevice.createCaptureSession(Arrays.asList(surface, mImageReader.getSurface()), mSessionStateCallback, null);
+            mCameraDevice.createCaptureSession(surfaces, mSessionStateCallback, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
     }
 
-    /*
+    /**
+     * Configure the given CaptureRequest.Builder to use auto-focus, auto-exposure, and
+     * auto-white-balance controls if available.
+     * Call this only with mCameraStateLock held.
+     */
+    private void setup3AControlsLocked() {
+        // Enable auto-magical 3A run by camera device
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+
+        Float minFocusDist = mCharacteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE);
+
+        // If MINIMUM_FOCUS_DISTANCE is 0, lens is fixed-focus and we need to skip the AF run.
+        boolean noAFRun = (minFocusDist == null || minFocusDist == 0);
+
+        if (!noAFRun) {
+            // If there is a "continuous picture" mode available, use it, otherwise default to AUTO.
+            if (contains(mCharacteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES), CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)) {
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            } else {
+                mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO);
+            }
+        }
+
+        // If there is an auto-magical flash control mode available, use it, otherwise default to
+        // the "on" mode, which is guaranteed to always be available.
+        if (contains(mCharacteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_MODES), CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH)) {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
+        } else {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+        }
+
+        // If there is an auto-magical white balance control mode available, use it.
+        if (contains(mCharacteristics.get(CameraCharacteristics.CONTROL_AWB_AVAILABLE_MODES), CaptureRequest.CONTROL_AWB_MODE_AUTO)) {
+            // Allow AWB to run auto-magically if this device supports this
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
+        }
+    }
+
+    /**
      * Configures the necessary android.graphics.Matrix transformation to `mTextureView`.
      * This method should be called after the camera preview size is determined in
      * setUpCameraOutputs and also the size of `mTextureView` is fixed.
@@ -508,20 +444,20 @@ public class MainActivity extends Activity {
      * @param surfaceHeight The height of `mTextureView`
      */
     private void configureTransform(int surfaceWidth, int surfaceHeight) {
-        if (mTextureView == null || mVideoSize == null) {
+        if (mTextureView == null || mPreviewSize == null) {
             return;
         }
 
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
         Matrix matrix = new Matrix();
         RectF viewRect = new RectF(0, 0, surfaceWidth, surfaceHeight);
-        RectF bufferRect = new RectF(0, 0, mVideoSize.getHeight(), mVideoSize.getWidth());
+        RectF bufferRect = new RectF(0, 0, mPreviewSize.getHeight(), mPreviewSize.getWidth());
         float centerX = viewRect.centerX();
         float centerY = viewRect.centerY();
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
             matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
-            float scale = Math.max((float) surfaceHeight / mVideoSize.getHeight(), (float) surfaceWidth / mVideoSize.getWidth());
+            float scale = Math.max((float) surfaceHeight / mPreviewSize.getHeight(), (float) surfaceWidth / mPreviewSize.getWidth());
             matrix.postScale(scale, scale, centerX, centerY);
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
         } else if (Surface.ROTATION_180 == rotation) {
@@ -531,109 +467,6 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * Initiate a still image capture.
-     */
-    private void takePicture() {
-        lockFocus();
-    }
-
-    /**
-     * Lock the focus as the first step for a still image capture.
-     */
-    private void lockFocus() {
-        try {
-            mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
-            // This is how to tell the camera to lock focus.
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
-            // Tell mCaptureCallback to wait for the lock.
-            mState = State.WAITING_LOCK;
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Run the precapture sequence for capturing a still image. This method should be called when
-     * we get a response in mCaptureCallback from lockFocus().
-     */
-    private void runPrecaptureSequence() {
-        try {
-            mPreviewRequestBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
-            // This is how to tell the camera to trigger.
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-            // Tell mCaptureCallback to wait for the precapture sequence to be set.
-            mState = State.WAITING_PRECAPTURE;
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /*
-     * Capture a still picture. This method should be called when we get a response in
-     * mCaptureCallback from both lockFocus(}.
-     */
-    private void captureStillPicture() {
-        try {
-            if (mCameraDevice == null) {
-                return;
-            }
-
-            // This is the CaptureRequest.Builder that we use to take a picture.
-            final CaptureRequest.Builder captureBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            captureBuilder.addTarget(mImageReader.getSurface());
-
-            // Use the same AE and AF modes as the preview.
-            captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
-            captureBuilder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF);
-
-            // Orientation
-            int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-
-            CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
-                private void process() {
-                    unlockFocus();
-                }
-
-                @Override
-                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-                    process();
-                }
-
-                @Override
-                public void onCaptureFailed(CameraCaptureSession session, CaptureRequest request, CaptureFailure failure) {
-                    process();
-                }
-            };
-
-            mCaptureSession.stopRepeating();
-            mCaptureSession.capture(captureBuilder.build(), captureCallback, null);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /*
-     * Unlock the focus. This method should be called when still image capture sequence is finished.
-     */
-    private void unlockFocus() {
-        try {
-            // Reset the auto-focus trigger
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL);
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback, mBackgroundHandler);
-            // After this, the camera will go back to the normal state of preview.
-            mState = State.PREVIEW;
-            mCaptureSession.setRepeatingRequest(mPreviewRequest, mCaptureCallback, mBackgroundHandler);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /*
      * Shows a Toast on the UI thread.
      *
      * @param text     The message to show
@@ -651,30 +484,35 @@ public class MainActivity extends Activity {
     /**
      * Enables or disables click events for all buttons.
      *
-     * @param on      true to make the On button clickable, false otherwise
-     * @param off     true to make the Off button clickable, false otherwise
-     * @param capture true to make the Capture button clickable, false otherwise
+     * @param on  true to make the On button clickable, false otherwise
+     * @param off true to make the Off button clickable, false otherwise
      */
-    private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
+    private void setUIEnabled(final boolean on, final boolean off) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mOnButton.setEnabled(on);
                 mOffButton.setEnabled(off);
-                mCaptureButton.setEnabled(capture);
             }
         });
     }
 
-    /*
-     * Compares two {@code Size}s based on their areas.
+    /**
+     * Return true if the given array contains the given integer.
+     *
+     * @param modes array to check.
+     * @param mode  integer to get for.
+     * @return true if the array contains the given integer, otherwise false.
      */
-    static class CompareSizesByArea implements Comparator<Size> {
-        @Override
-        public int compare(Size lhs, Size rhs) {
-            // We cast here to ensure the multiplications won't overflow
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight());
+    private static boolean contains(int[] modes, int mode) {
+        if (modes == null) {
+            return false;
         }
-
+        for (int i : modes) {
+            if (i == mode) {
+                return true;
+            }
+        }
+        return false;
     }
 }
