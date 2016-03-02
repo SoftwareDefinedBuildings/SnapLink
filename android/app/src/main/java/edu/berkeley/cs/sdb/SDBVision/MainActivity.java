@@ -84,7 +84,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            configureTransform(width, height);
+//            configureTransform(width, height);
         }
 
         @Override
@@ -447,16 +447,15 @@ public class MainActivity extends Activity {
         if (mTextureView == null || mPreviewSize == null) {
             return;
         }
-
         int rotation = getWindowManager().getDefaultDisplay().getRotation();
         Matrix matrix = new Matrix();
-        RectF viewRect = new RectF(0, 0, surfaceWidth, surfaceHeight);
+        RectF surfaceRect = new RectF(0, 0, surfaceWidth, surfaceHeight);
         RectF bufferRect = new RectF(0, 0, mPreviewSize.getHeight(), mPreviewSize.getWidth());
-        float centerX = viewRect.centerX();
-        float centerY = viewRect.centerY();
+        float centerX = surfaceRect.centerX();
+        float centerY = surfaceRect.centerY();
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY());
-            matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL);
+            matrix.setRectToRect(surfaceRect, bufferRect, Matrix.ScaleToFit.FILL);
             float scale = Math.max((float) surfaceHeight / mPreviewSize.getHeight(), (float) surfaceWidth / mPreviewSize.getWidth());
             matrix.postScale(scale, scale, centerX, centerY);
             matrix.postRotate(90 * (rotation - 2), centerX, centerY);
