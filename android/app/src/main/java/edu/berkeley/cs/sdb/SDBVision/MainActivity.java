@@ -40,6 +40,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.OkHttpClient;
 
@@ -52,7 +53,10 @@ public class MainActivity extends Activity {
     private TextView mTextView;
     private Button mOnButton;
     private Button mOffButton;
+    private Button mEnableButton;
 
+    // Recognize images only when this is true
+    private AtomicBoolean mEnabled;
     // ID of the current CameraDevice
     private String mCameraId;
     // A CameraCaptureSession for camera preview.
@@ -126,6 +130,7 @@ public class MainActivity extends Activity {
             mCameraOpenCloseLock.release();
             camera.close();
             mCameraDevice = null;
+            finish();
         }
     };
 
@@ -139,10 +144,13 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 return;
             }
-            //image.close();
 
-            // upload the image
-            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
+            if (mEnabled.get()) {
+                // upload the image
+                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
+            } else {
+                image.close();
+            }
         }
     };
 
@@ -190,6 +198,18 @@ public class MainActivity extends Activity {
         }
     };
 
+    private final View.OnClickListener mEnableButtonOnClickListerner = new View.OnClickListener() {
+        public void onClick(View v) {
+            if (mEnabled.get()) {
+                mEnabled.set(false);
+                mEnableButton.setText(getString(R.string.enable));
+            } else {
+                mEnabled.set(true);
+                mEnableButton.setText(getString(R.string.disable));
+            }
+        }
+    };
+
     private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
         public void onResponse(String response) {
@@ -227,9 +247,12 @@ public class MainActivity extends Activity {
         mOnButton.setOnClickListener(mOnButtonOnClickListerner);
         mOffButton = (Button) findViewById(R.id.off);
         mOffButton.setOnClickListener(mOffButtonOnClickListerner);
+        mEnableButton = (Button) findViewById(R.id.enable);
+        mEnableButton.setOnClickListener(mEnableButtonOnClickListerner);
 
         setUIEnabled(false, false);
 
+        mEnabled = new AtomicBoolean(false);
         mHttpClient = new OkHttpClient();
     }
 
@@ -279,11 +302,11 @@ public class MainActivity extends Activity {
                 // For still image matching, we use 640x480 if available
                 // the preview image will be cropped around center by Android to fit tarImageSize
                 Size targetImageSize = new Size(640, 480);
-                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888));
                 if (!imageSizes.contains(targetImageSize)) {
                     throw new RuntimeException("640x480 size is not supported");
                 }
-                mImageReader = ImageReader.newInstance(targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
+                mImageReader = ImageReader.newInstance(targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor
@@ -360,6 +383,7 @@ public class MainActivity extends Activity {
             if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
+            // TODO: the callback is called on antoher thread, I need to check for race condition
             manager.openCamera(mCameraId, mCameraDeviceStateCallback, mBackgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
