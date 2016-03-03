@@ -54,7 +54,7 @@ public class AutoFitTextureView extends TextureView {
 
         if (mSurfaceHeight < mSurfaceWidth * mPreviewHeight / mPreviewWidth) {
             int newSurfaceHeight = mSurfaceWidth * mPreviewHeight / mPreviewWidth;
-            mTranslationX = (mSurfaceHeight - newSurfaceHeight) / 2;
+            mTranslationY = (mSurfaceHeight - newSurfaceHeight) / 2;
             mSurfaceHeight = newSurfaceHeight;
         } else {
             int newSurfaceWidth = mSurfaceHeight * mPreviewWidth / mPreviewHeight;

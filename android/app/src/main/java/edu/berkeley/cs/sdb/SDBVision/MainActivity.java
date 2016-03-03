@@ -8,6 +8,8 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Point;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -31,7 +33,10 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -84,7 +89,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-//            configureTransform(width, height);
+            configureTransform(width, height);
         }
 
         @Override
@@ -134,10 +139,10 @@ public class MainActivity extends Activity {
                 e.printStackTrace();
                 return;
             }
-            image.close();
+            //image.close();
 
             // upload the image
-//            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
+            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
         }
     };
 
@@ -254,7 +259,7 @@ public class MainActivity extends Activity {
     /**
      * Sets up member variables related to camera.
      */
-    private void setUpCameraOutputs() {
+    private void setUpCameraOutputs(int surfaceWidth, int surfaceHeight) {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             for (String cameraId : manager.getCameraIdList()) {
@@ -272,22 +277,60 @@ public class MainActivity extends Activity {
                 }
 
                 // For still image matching, we use 640x480 if available
-                Size targetSize = new Size(640, 480);
-
-                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888));
-                List<Size> previewSizes = Arrays.asList(map.getOutputSizes(SurfaceTexture.class));
-                if (!imageSizes.contains(targetSize) || !previewSizes.contains(targetSize)) {
+                // the preview image will be cropped around center by Android to fit tarImageSize
+                Size targetImageSize = new Size(640, 480);
+                List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.JPEG));
+                if (!imageSizes.contains(targetImageSize)) {
                     throw new RuntimeException("640x480 size is not supported");
                 }
-                mImageReader = ImageReader.newInstance(targetSize.getWidth(), targetSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
+                mImageReader = ImageReader.newInstance(targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
+                // Find out if we need to swap dimension to get the preview size relative to sensor
+                // coordinate.
+                int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
+                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+                boolean swappedDimensions = false;
+                switch (displayRotation) {
+                    case Surface.ROTATION_0:
+                    case Surface.ROTATION_180:
+                        if (sensorOrientation == 90 || sensorOrientation == 270) {
+                            swappedDimensions = true;
+                        }
+                        break;
+                    case Surface.ROTATION_90:
+                    case Surface.ROTATION_270:
+                        if (sensorOrientation == 0 || sensorOrientation == 180) {
+                            swappedDimensions = true;
+                        }
+                        break;
+                    default:
+                        Log.e(LOG_TAG, "Display rotation is invalid: " + displayRotation);
+                }
+
+                Point displaySize = new Point();
+                getWindowManager().getDefaultDisplay().getSize(displaySize);
+                int rotatedSurfaceWidth = surfaceWidth;
+                int rotatedSurfaceHeight = surfaceHeight;
+                int maxSurfaceWidth = displaySize.x;
+                int maxSurfaceHeight = displaySize.y;
+
+                if (swappedDimensions) {
+                    rotatedSurfaceWidth = surfaceHeight;
+                    rotatedSurfaceHeight = surfaceWidth;
+                    maxSurfaceWidth = displaySize.y;
+                    maxSurfaceHeight = displaySize.x;
+                }
+
+                // the preview size has to have the same aspect ratio as the camera sensor, otherwise the image will be skewed
+                Rect sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+                Size sensorAspectRatioSize = new Size(sensorRect.width(), sensorRect.height());
 
                 // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera
                 // bus' bandwidth limitation, resulting in gorgeous previews but the storage of
                 // garbage capture data.
-                // Kaifei: I think 640x480 is ok for most phones
-                mPreviewSize = targetSize;
+                // Another purpose is to makesure the preview aspect ratio is the same as the sensor aspect ratio
+                mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), rotatedSurfaceWidth, rotatedSurfaceHeight, maxSurfaceWidth, maxSurfaceHeight, sensorAspectRatioSize);
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 int orientation = getResources().getConfiguration().orientation;
@@ -310,7 +353,7 @@ public class MainActivity extends Activity {
      * Opens the camera specified by mCameraId.
      */
     private void openCamera(int surfaceWidth, int surfaceHeight) {
-        setUpCameraOutputs();
+        setUpCameraOutputs(surfaceWidth, surfaceHeight);
         configureTransform(surfaceWidth, surfaceHeight);
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
@@ -466,6 +509,52 @@ public class MainActivity extends Activity {
     }
 
     /**
+     * Given {@code choices} of {@code Size}s supported by a camera, choose the smallest one that
+     * is at least as large as the respective texture view size, and that is at most as large as the
+     * respective max size, and whose aspect ratio matches with the specified value. If such size
+     * doesn't exist, choose the largest one that is at most as large as the respective max size,
+     * and whose aspect ratio matches with the specified value.
+     *
+     * @param choices       The list of sizes that the camera supports for the intended output
+     *                      class
+     * @param surfaceWidth  The width of the texture view relative to sensor coordinate
+     * @param surfaceHeight The height of the texture view relative to sensor coordinate
+     * @param maxWidth      The maximum width that can be chosen
+     * @param maxHeight     The maximum height that can be chosen
+     * @param aspectRatio   The aspect ratio
+     * @return The optimal {@code Size}, or an arbitrary one if none were big enough
+     */
+    private static Size chooseOptimalSize(Size[] choices, int surfaceWidth, int surfaceHeight, int maxWidth, int maxHeight, Size aspectRatio) {
+
+        // Collect the supported resolutions that are at least as big as the preview Surface
+        List<Size> bigEnough = new ArrayList<>();
+        // Collect the supported resolutions that are smaller than the preview Surface
+        List<Size> notBigEnough = new ArrayList<>();
+        int w = aspectRatio.getWidth();
+        int h = aspectRatio.getHeight();
+        for (Size option : choices) {
+            if (option.getWidth() <= maxWidth && option.getHeight() <= maxHeight && option.getHeight() == option.getWidth() * h / w) {
+                if (option.getWidth() >= surfaceWidth && option.getHeight() >= surfaceHeight) {
+                    bigEnough.add(option);
+                } else {
+                    notBigEnough.add(option);
+                }
+            }
+        }
+
+        // Pick the smallest of those big enough. If there is no one big enough, pick the
+        // largest of those not big enough.
+        if (bigEnough.size() > 0) {
+            return Collections.min(bigEnough, new CompareSizesByArea());
+        } else if (notBigEnough.size() > 0) {
+            return Collections.max(notBigEnough, new CompareSizesByArea());
+        } else {
+            Log.e(LOG_TAG, "Couldn't find any suitable preview size");
+            return choices[0];
+        }
+    }
+
+    /**
      * Shows a Toast on the UI thread.
      *
      * @param text     The message to show
@@ -513,5 +602,19 @@ public class MainActivity extends Activity {
             }
         }
         return false;
+    }
+
+    /**
+     * Compares two {@code Size}s based on their areas.
+     */
+    static class CompareSizesByArea implements Comparator<Size> {
+
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            // We cast here to ensure the multiplications won't overflow
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
+                    (long) rhs.getWidth() * rhs.getHeight());
+        }
+
     }
 }
