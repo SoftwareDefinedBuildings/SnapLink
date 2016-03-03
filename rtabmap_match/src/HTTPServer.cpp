@@ -6,6 +6,8 @@
 #include "NetworkEvent.h"
 #include "DetectionEvent.h"
 
+#include "Time.h"
+
 namespace rtabmap
 {
 const std::string busypage = "This server is busy, please try again later.";
@@ -88,6 +90,7 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             return MHD_NO;
         }
+        con_info->time_start = getTime(); // log start of processing
 
         // reserve enough space for an image
         con_info->data = new std::vector<unsigned char>();
@@ -220,6 +223,18 @@ void HTTPServer::request_completed(void *cls,
 
     if (con_info->connectiontype == POST)
     {
+        con_info->time_end = getTime(); // log processing end time
+
+        // output timing data to log
+        long time_overall = con_info->time_end - con_info->time_start;
+        long time_surf = con_info->time_surf_end - con_info->time_surf_start;
+        long time_closest = con_info->time_closest_end - con_info->time_closest_start;
+        long time_pnp = con_info->time_pnp_end - con_info->time_pnp_start;
+        UINFO("TAG_TIME overall %ld", time_overall);
+        UINFO("TAG_TIME surf %ld", time_surf);
+        UINFO("TAG_TIME closest_match %ld", time_closest);
+        UINFO("TAG_TIME pnp %ld", time_pnp);
+
         if (con_info->postprocessor != NULL)
         {
             MHD_destroy_post_processor(con_info->postprocessor);

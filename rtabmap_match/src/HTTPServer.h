@@ -73,6 +73,15 @@ typedef struct
     int answercode;
     std::vector<std::string> names;
     USemaphore detected;
+
+    long time_start;
+    long time_end;
+    long time_surf_start;
+    long time_surf_end;
+    long time_closest_start;
+    long time_closest_end;
+    long time_pnp_start;
+    long time_pnp_end;
 } ConnectionInfo;
 
 } // namespace rtabmap

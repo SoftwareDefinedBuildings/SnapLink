@@ -61,10 +61,11 @@ Localization::~Localization()
     delete _memory;
 }
 
-Transform Localization::localize(const SensorData &data_)
+Transform Localization::localize(const SensorData &data_, void *context)
 {
     Transform output;
     SensorData data = data_; // copy because it will be changed later
+    ConnectionInfo *con_info = (ConnectionInfo *) context;
 
     UASSERT(!data.imageRaw().empty());
 
@@ -99,9 +100,11 @@ Transform Localization::localize(const SensorData &data_)
 
     if (_memory->getWorkingMem().size() >= 1)
     {
+        con_info->time_surf_start = getTime(); // start of SURF extraction
         // generate kpts
         if (_memory->update(data))
         {
+            con_info->time_surf_end = getTime(); // end of SURF extraction
             UDEBUG("");
             const Signature *newS = _memory->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
@@ -109,6 +112,8 @@ Transform Localization::localize(const SensorData &data_)
             Parameters::parse(_memoryLocParams, Parameters::kLccBowMinInliers(), bowMinInliers);
             if ((int)newS->getWords().size() > bowMinInliers)
             {
+                con_info->time_closest_start = getTime(); // start of find closest match
+
                 std::map<int, float> likelihood;
                 std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
                 UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
@@ -137,6 +142,9 @@ Transform Localization::localize(const SensorData &data_)
                     topId = topIds[0];
                     UINFO("topId: %d", topId);
                 }
+
+                con_info->time_closest_end = getTime(); // end of find closest match
+                con_info->time_pnp_start = getTime(); // start of Perspective N Points
 
                 MemoryLoc memoryLoc(_memoryLocParams);
 
@@ -193,6 +201,7 @@ Transform Localization::localize(const SensorData &data_)
                         output = _memory->getSignature(topId)->getPose();
                     }
                 }
+                con_info->time_pnp_end = getTime(); // end of Perspective N Points
             }
             else
             {

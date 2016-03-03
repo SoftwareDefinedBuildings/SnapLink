@@ -47,7 +47,7 @@ void LocalizationThread::mainLoop()
     void *context = NULL;
     if (getData(data, context))
     {
-        Transform pose = _loc->localize(data);
+        Transform pose = _loc->localize(data, context);
         // a null pose notify that loc could not be computed
         this->post(new LocationEvent(data, pose, context));
     }
