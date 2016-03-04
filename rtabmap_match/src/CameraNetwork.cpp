@@ -75,7 +75,9 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
         return false;
     }
     // TODO there is a copy here
-    _img = cv::imdecode(cv::Mat(*data), CV_LOAD_IMAGE_COLOR);
+    _img = dataToImage(data);
+
+    //imwrite("image.jpg", _img);
 
     delete data;
 
@@ -97,4 +99,13 @@ SensorData CameraNetwork::captureImage()
     }
 }
 
+cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data) {
+    // TODO: hardcoded for now
+    int width = 640;
+    int height = 480;
+
+    cv::Mat mat(height, width, CV_8UC1, &(*data)[0]);
+
+    return mat;
+}
 } // namespace rtabmap
