@@ -45,7 +45,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import okhttp3.OkHttpClient;
 
 public class MainActivity extends Activity {
-    private static final String LOG_TAG = "SDB3D";
+    private static final String LOG_TAG = "SDBVision";
     private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50012/";
     private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50017/";
 
