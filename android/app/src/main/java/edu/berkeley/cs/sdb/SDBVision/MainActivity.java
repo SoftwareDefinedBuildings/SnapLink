@@ -307,7 +307,8 @@ public class MainActivity extends Activity {
                 }
 
                 // For still image matching, we use 640x480 if available
-                // the preview image will be cropped around center by Android to fit tarImageSize
+                // the preview image will be cropped around center by Android to fit targetImageSize
+                // TODO: Android doesn't seem to crop the image for me, I have to build an ImageReader that resizes or crops images
                 Size targetImageSize = new Size(640, 480);
                 List<Size> imageSizes = Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888));
                 if (!imageSizes.contains(targetImageSize)) {

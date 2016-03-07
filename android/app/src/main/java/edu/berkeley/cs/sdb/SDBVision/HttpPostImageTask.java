@@ -20,7 +20,7 @@ import okhttp3.Response;
 public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private static final String LOG_TAG = "SDBVision";
 
-    private static final MediaType MEDIA_TYPE_JPEG = MediaType.parse("image/jpeg");
+    private static final MediaType MEDIA_TYPE_JPEG = MediaType.parse("application/octet-stream");
 
     private OkHttpClient mHttpClient;
     private String mUrl;
