@@ -40,11 +40,12 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
 
     /**
      * Takes an Android Image in the YUV_420_888 format and returns a byte array.
+     * ref: https://gist.github.com/camdenfullmer/dfd83dfb0973663a7974
      *
      * @param image Image in the YUV_420_888 format
      * @return bytes that contains the image data
      */
-    private static byte[] imagetoBytes(Image image) {
+    private static byte[] imageToBytes(Image image) {
         if (image.getFormat() != ImageFormat.YUV_420_888) {
             return null;
         }
@@ -101,7 +102,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
 
     @Override
     protected String doInBackground(Void... voids) {
-        byte[] bytes = imagetoBytes(mImage);
+        byte[] bytes = imageToBytes(mImage);
         mImage.close();
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
@@ -122,6 +123,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
                 Log.e(LOG_TAG, "HTTP Error " + response.code() + ":" + response.message());
             }
         } catch (IOException e) {
+            // TODO: handle java.net.ProtocolException here
             e.printStackTrace();
         }
 
