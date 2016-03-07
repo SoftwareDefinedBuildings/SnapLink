@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
     private TextView mTextView;
     private Button mOnButton;
     private Button mOffButton;
-    private Button mEnableButton;
+    private Button mStartButton;
 
     // Recognize images only when this is true
     private AtomicBoolean mEnabled;
@@ -202,10 +202,10 @@ public class MainActivity extends Activity {
         public void onClick(View v) {
             if (mEnabled.get()) {
                 mEnabled.set(false);
-                mEnableButton.setText(getString(R.string.enable));
+                mStartButton.setText(getString(R.string.start));
             } else {
                 mEnabled.set(true);
-                mEnableButton.setText(getString(R.string.disable));
+                mStartButton.setText(getString(R.string.stop));
             }
         }
     };
@@ -223,6 +223,13 @@ public class MainActivity extends Activity {
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
                 setUIEnabled(false, false);
+            }
+
+            // Stop transmitting images after one result comes back
+            // Comment this to enable continuous captures
+            if (mEnabled.get()) {
+                mEnabled.set(false);
+                mStartButton.setText(getString(R.string.start));
             }
         }
     };
@@ -247,8 +254,8 @@ public class MainActivity extends Activity {
         mOnButton.setOnClickListener(mOnButtonOnClickListerner);
         mOffButton = (Button) findViewById(R.id.off);
         mOffButton.setOnClickListener(mOffButtonOnClickListerner);
-        mEnableButton = (Button) findViewById(R.id.enable);
-        mEnableButton.setOnClickListener(mEnableButtonOnClickListerner);
+        mStartButton = (Button) findViewById(R.id.start);
+        mStartButton.setOnClickListener(mEnableButtonOnClickListerner);
 
         setUIEnabled(false, false);
 

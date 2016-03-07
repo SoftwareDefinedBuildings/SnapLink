@@ -43,19 +43,19 @@
         android:id="@+id/off"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/enable"
+        android:layout_alignTop="@+id/start"
         android:layout_gravity="center"
-        android:layout_toStartOf="@+id/enable"
+        android:layout_toStartOf="@+id/start"
         android:text="@string/off"/>
 
     <Button
-        android:id="@+id/enable"
+        android:id="@+id/start"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_gravity="center"
-        android:text="@string/enable"/>
+        android:text="@string/start"/>
 
 
 </RelativeLayout>
