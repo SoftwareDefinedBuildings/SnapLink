@@ -145,7 +145,10 @@ public class MainActivity extends Activity {
                 return;
             }
 
+
             if (mEnabled.get()) {
+                // Stop transmitting images after one result comes back
+                mEnabled.set(false);
                 // upload the image
                 new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
             } else {
@@ -225,10 +228,7 @@ public class MainActivity extends Activity {
                 setUIEnabled(false, false);
             }
 
-            // Stop transmitting images after one result comes back
-            // Comment this to enable continuous captures
-            if (mEnabled.get()) {
-                mEnabled.set(false);
+            if (!mEnabled.get()) {
                 mStartButton.setText(getString(R.string.start));
             }
         }
