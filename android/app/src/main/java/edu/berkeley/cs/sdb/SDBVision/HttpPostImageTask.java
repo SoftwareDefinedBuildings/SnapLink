@@ -107,7 +107,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("file", timeStamp + ".jpg", RequestBody.create(MEDIA_TYPE_JPEG, bytes))
+                .addFormDataPart("file", timeStamp, RequestBody.create(MEDIA_TYPE_JPEG, bytes))
                 .build();
         Request request = new Request.Builder()
                 .url(mUrl)

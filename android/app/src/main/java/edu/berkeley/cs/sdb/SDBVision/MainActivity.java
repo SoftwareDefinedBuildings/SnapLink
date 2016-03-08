@@ -216,7 +216,7 @@ public class MainActivity extends Activity {
     private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
         public void onResponse(String response) {
-            if (response != null && !response.trim().equals("")) {
+            if (response != null && !response.trim().equals("None")) {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
                 mTextView.setText(response);
