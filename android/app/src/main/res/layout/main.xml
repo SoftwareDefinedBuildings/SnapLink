@@ -43,19 +43,19 @@
         android:id="@+id/off"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@+id/start"
+        android:layout_alignTop="@+id/capture"
         android:layout_gravity="center"
-        android:layout_toStartOf="@+id/start"
+        android:layout_toStartOf="@+id/capture"
         android:text="@string/off"/>
 
     <Button
-        android:id="@+id/start"
+        android:id="@+id/capture"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
         android:layout_gravity="center"
-        android:text="@string/start"/>
+        android:text="@string/capture"/>
 
 
 </RelativeLayout>

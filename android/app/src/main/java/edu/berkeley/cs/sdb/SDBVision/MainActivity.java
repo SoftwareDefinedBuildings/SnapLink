@@ -53,7 +53,7 @@ public class MainActivity extends Activity {
     private TextView mTextView;
     private Button mOnButton;
     private Button mOffButton;
-    private Button mStartButton;
+    private Button mCaptureButton;
 
     // Recognize images only when this is true
     private AtomicBoolean mEnabled;
@@ -106,33 +106,69 @@ public class MainActivity extends Activity {
         }
     };
 
+    private class onCameraOpenedRunnable implements Runnable {
+        private final CameraDevice mCamera;
+
+        public onCameraOpenedRunnable(CameraDevice camera) {
+            mCamera = camera;
+        }
+
+        @Override
+        public void run() {
+            // This method is called when the camera is opened.  We start camera preview here.
+            mCameraOpenCloseLock.release();
+            mCameraDevice = mCamera;
+            createCameraPreviewSession();
+        }
+    }
+
+    private class onCameraOpenFailedRunnable implements Runnable {
+        private final CameraDevice mCamera;
+
+        public onCameraOpenFailedRunnable(CameraDevice camera) {
+            mCamera = camera;
+        }
+
+        @Override
+        public void run() {
+            mCameraOpenCloseLock.release();
+            mCamera.close();
+            mCameraDevice = null;
+        }
+    }
+
     private CameraDevice.StateCallback mCameraDeviceStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(CameraDevice camera) {
             Log.i(LOG_TAG, "CameraDevice onOpened");
-            // This method is called when the camera is opened.  We start camera preview here.
-            mCameraOpenCloseLock.release();
-            mCameraDevice = camera;
-            createCameraPreviewSession();
+            runOnUiThread(new onCameraOpenedRunnable(camera));
         }
 
         @Override
         public void onDisconnected(CameraDevice camera) {
             Log.i(LOG_TAG, "CameraDevice onDisconnected");
-            mCameraOpenCloseLock.release();
-            camera.close();
-            mCameraDevice = null;
+            runOnUiThread(new onCameraOpenFailedRunnable(camera));
         }
 
         @Override
         public void onError(CameraDevice camera, int error) {
             Log.i(LOG_TAG, "CameraDevice onError");
-            mCameraOpenCloseLock.release();
-            camera.close();
-            mCameraDevice = null;
-            finish();
+            runOnUiThread(new onCameraOpenFailedRunnable(camera));
         }
     };
+
+    private class HttpPostImageRunnable implements Runnable {
+        private final Image mImage;
+
+        public HttpPostImageRunnable(Image image) {
+            mImage = image;
+        }
+
+        @Override
+        public void run() {
+            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImage, mRecognitionListener).execute();
+        }
+    }
 
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
         @Override
@@ -145,14 +181,16 @@ public class MainActivity extends Activity {
                 return;
             }
 
-
             if (mEnabled.get()) {
                 // Stop transmitting images after one result comes back
                 mEnabled.set(false);
-                // upload the image
-                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, image, mRecognitionListener).execute();
+                setUIEnabled(false, false, false);
+                // AsyncTask task instance must be created and executed on the UI thread
+                runOnUiThread(new HttpPostImageRunnable(image));
             } else {
-                image.close();
+                if (image != null) {
+                    image.close();
+                }
             }
         }
     };
@@ -169,12 +207,9 @@ public class MainActivity extends Activity {
             mCaptureSession = session;
             try {
                 setup3AControlsLocked();
-
-                // Finally, we start displaying the camera preview.
                 mPreviewRequest = mPreviewRequestBuilder.build();
                 mCaptureSession.setRepeatingRequest(mPreviewRequest, null, null);
             } catch (CameraAccessException e) {
-
                 e.printStackTrace();
             }
         }
@@ -185,30 +220,28 @@ public class MainActivity extends Activity {
         }
     };
 
-    private final View.OnClickListener mOnButtonOnClickListerner = new View.OnClickListener() {
+    private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false, false);
+            setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/1";
             new HttpGetTask(mHttpClient, url, mControlListener).execute();
         }
     };
 
-    private final View.OnClickListener mOffButtonOnClickListerner = new View.OnClickListener() {
+    private final View.OnClickListener mOffButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false, false);
+            setUIEnabled(false, false, false);
             String url = CONTROL_URL + mTarget + "/0";
             new HttpGetTask(mHttpClient, url, mControlListener).execute();
         }
     };
 
-    private final View.OnClickListener mEnableButtonOnClickListerner = new View.OnClickListener() {
+    private final View.OnClickListener mCaptureButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             if (mEnabled.get()) {
                 mEnabled.set(false);
-                mStartButton.setText(getString(R.string.start));
             } else {
                 mEnabled.set(true);
-                mStartButton.setText(getString(R.string.stop));
             }
         }
     };
@@ -220,16 +253,12 @@ public class MainActivity extends Activity {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
                 mTextView.setText(response);
-                setUIEnabled(true, true);
+                setUIEnabled(true, true, true);
             } else {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
-                setUIEnabled(false, false);
-            }
-
-            if (!mEnabled.get()) {
-                mStartButton.setText(getString(R.string.start));
+                setUIEnabled(false, false, true);
             }
         }
     };
@@ -238,7 +267,7 @@ public class MainActivity extends Activity {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent", Toast.LENGTH_SHORT);
-            setUIEnabled(true, true);
+            setUIEnabled(true, true, true);
         }
     };
 
@@ -251,13 +280,13 @@ public class MainActivity extends Activity {
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
         mTextView = (TextView) findViewById(R.id.text);
         mOnButton = (Button) findViewById(R.id.on);
-        mOnButton.setOnClickListener(mOnButtonOnClickListerner);
+        mOnButton.setOnClickListener(mOnButtonOnClickListener);
         mOffButton = (Button) findViewById(R.id.off);
-        mOffButton.setOnClickListener(mOffButtonOnClickListerner);
-        mStartButton = (Button) findViewById(R.id.start);
-        mStartButton.setOnClickListener(mEnableButtonOnClickListerner);
+        mOffButton.setOnClickListener(mOffButtonOnClickListener);
+        mCaptureButton = (Button) findViewById(R.id.capture);
+        mCaptureButton.setOnClickListener(mCaptureButtonOnClickListener);
 
-        setUIEnabled(false, false);
+        setUIEnabled(false, false, true);
 
         mEnabled = new AtomicBoolean(false);
         mHttpClient = new OkHttpClient();
@@ -391,7 +420,6 @@ public class MainActivity extends Activity {
             if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
-            // TODO: the callback is called on antoher thread, I need to check for race condition
             manager.openCamera(mCameraId, mCameraDeviceStateCallback, mBackgroundHandler);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -604,15 +632,17 @@ public class MainActivity extends Activity {
     /**
      * Enables or disables click events for all buttons.
      *
-     * @param on  true to make the On button clickable, false otherwise
-     * @param off true to make the Off button clickable, false otherwise
+     * @param on      true to make the On button clickable, false otherwise
+     * @param off     true to make the Off button clickable, false otherwise
+     * @param capture true to make the Capture button clickable, false otherwise
      */
-    private void setUIEnabled(final boolean on, final boolean off) {
+    private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 mOnButton.setEnabled(on);
                 mOffButton.setEnabled(off);
+                mCaptureButton.setEnabled(capture);
             }
         });
     }

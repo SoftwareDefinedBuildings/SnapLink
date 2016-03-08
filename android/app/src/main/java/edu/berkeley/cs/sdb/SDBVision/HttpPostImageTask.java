@@ -123,7 +123,6 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
                 Log.e(LOG_TAG, "HTTP Error " + response.code() + ":" + response.message());
             }
         } catch (IOException e) {
-            // TODO: handle java.net.ProtocolException here
             e.printStackTrace();
         }
 
