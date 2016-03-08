@@ -26,9 +26,6 @@ public:
 protected:
     virtual SensorData captureImage();
 
-private: 
-    static cv::Mat dataToImage(std::vector<unsigned char> *data);
-
 private:
     cv::Mat _img;
     bool _rectifyImages;

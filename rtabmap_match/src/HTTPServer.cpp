@@ -152,7 +152,7 @@ int HTTPServer::answer_to_connection(void *cls,
 
             // wait for the result to come
             int n = 1;
-            int time = 10000; // time to wait (ms)
+            int time = 5000; // time to wait (ms)
             bool acquired = con_info->detected.acquire(n, time);
 
             if (acquired && !con_info->names.empty())
@@ -161,7 +161,7 @@ int HTTPServer::answer_to_connection(void *cls,
             }
             else
             {
-                con_info->answerstring = "";
+                con_info->answerstring = "None";
             }
             con_info->names.clear();
             return send_page(connection, con_info->answerstring, con_info->answercode);
