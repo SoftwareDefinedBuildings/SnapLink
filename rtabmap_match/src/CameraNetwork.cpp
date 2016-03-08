@@ -74,13 +74,8 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
     {
         return false;
     }
-
-    // TODO: hardcoded for now
-    int width = 640;
-    int height = 480;
-
     // TODO there is a copy here
-    _img = cv::Mat(height, width, CV_8UC1, &(*data)[0]);
+    _img = dataToImage(data);
 
     //imwrite("image.jpg", _img);
 
@@ -102,5 +97,17 @@ SensorData CameraNetwork::captureImage()
     {
         return SensorData(); // return empty data
     }
+}
+
+cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data) {
+    // TODO: hardcoded for now
+    int width = 640;
+    int height = 480;
+
+    cv::Mat mat(height, width, CV_8UC1, &(*data)[0]);
+
+    cv::flip(mat, mat, 0); // flip the image around the x-axis
+
+    return mat;
 }
 } // namespace rtabmap
