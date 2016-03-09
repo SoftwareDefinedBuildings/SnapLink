@@ -73,7 +73,6 @@ int HTTPServer::answer_to_connection(void *cls,
                                      size_t *upload_data_size,
                                      void **con_cls)
 {
-    UDEBUG("");
     HTTPServer *httpServer = (HTTPServer *) cls;
 
     if (*con_cls == NULL)
@@ -155,7 +154,7 @@ int HTTPServer::answer_to_connection(void *cls,
 
             // wait for the result to come
             int n = 1;
-            int time = 10000; // time to wait (ms)
+            int time = 5000; // time to wait (ms)
             bool acquired = con_info->detected.acquire(n, time);
 
             if (acquired && !con_info->names.empty())
@@ -164,7 +163,7 @@ int HTTPServer::answer_to_connection(void *cls,
             }
             else
             {
-                con_info->answerstring = "";
+                con_info->answerstring = "None";
             }
             con_info->names.clear();
             return send_page(connection, con_info->answerstring, con_info->answercode);
@@ -185,7 +184,6 @@ int HTTPServer::iterate_post(void *coninfo_cls,
                              uint64_t off,
                              size_t size)
 {
-    UDEBUG("");
     ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
 
     con_info->answerstring = servererrorpage;

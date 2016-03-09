@@ -26,7 +26,7 @@ public:
 protected:
     virtual SensorData captureImage();
 
-private: 
+private:
     static cv::Mat dataToImage(std::vector<unsigned char> *data);
 
 private:

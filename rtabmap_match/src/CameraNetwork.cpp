@@ -77,7 +77,9 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
     // TODO there is a copy here
     _img = dataToImage(data);
 
-    //imwrite("image.jpg", _img);
+    imwrite("image.jpg", _img);
+
+    _img = cv::imread("image.jpg");
 
     delete data;
 
@@ -105,6 +107,8 @@ cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data) {
     int height = 480;
 
     cv::Mat mat(height, width, CV_8UC1, &(*data)[0]);
+
+    cv::flip(mat, mat, 0); // flip the image around the x-axis
 
     return mat;
 }
