@@ -1,0 +1,10 @@
+Timing server side:
+    timing_server.py extracts timing information from the server log.
+    run timing_server.py -h for detailed information.
+    example usage: timing_server.py server_log_file -o csv_output
+
+Timing android side:
+    script coming soon
+    - record logcat log
+    - filter out by tag
+    - get time delta
