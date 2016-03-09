@@ -40,62 +40,28 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
 
     /**
      * Takes an Android Image in the YUV_420_888 format and returns a byte array.
-     * ref: https://gist.github.com/camdenfullmer/dfd83dfb0973663a7974
+     * ref: http://stackoverflow.com/questions/30510928/convert-android-camera2-api-yuv-420-888-to-rgb
      *
      * @param image Image in the YUV_420_888 format
-     * @return bytes that contains the image data
+     * @return bytes that contains the image data in greyscale
      */
     private static byte[] imageToBytes(Image image) {
         if (image.getFormat() != ImageFormat.YUV_420_888) {
             return null;
         }
 
-        ByteBuffer buffer;
-        int rowStride;
-        int pixelStride;
+        int bytesPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8;
+        Image.Plane yPlane = image.getPlanes()[0]; // we only need a gray picture
+        int pixelStride = yPlane.getPixelStride();
+        if (bytesPerPixel != 1 || pixelStride != 1) { // they are guaranteed to be both 1 in Y plane
+            throw new RuntimeException("Wrong image format");
+        }
+
+        ByteBuffer buffer = yPlane.getBuffer();
         int width = image.getWidth();
         int height = image.getHeight();
-        int offset = 0;
-
-        Image.Plane[] planes = image.getPlanes();
-        byte[] data = new byte[image.getWidth() * image.getHeight() * ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8];
-        byte[] rowData = new byte[planes[0].getRowStride()];
-
-        for (int i = 0; i < planes.length; i++) {
-            buffer = planes[i].getBuffer();
-            rowStride = planes[i].getRowStride();
-            pixelStride = planes[i].getPixelStride();
-            int w = (i == 0) ? width : width / 2;
-            int h = (i == 0) ? height : height / 2;
-            for (int row = 0; row < h; row++) {
-                int bytesPerPixel = ImageFormat.getBitsPerPixel(ImageFormat.YUV_420_888) / 8;
-                if (pixelStride == bytesPerPixel) {
-                    int length = w * bytesPerPixel;
-                    buffer.get(data, offset, length);
-
-                    // Advance buffer the remainder of the row stride, unless on the last row.
-                    // Otherwise, this will throw an IllegalArgumentException because the buffer
-                    // doesn't include the last padding.
-                    if (h - row != 1) {
-                        buffer.position(buffer.position() + rowStride - length);
-                    }
-                    offset += length;
-                } else {
-                    // On the last row only read the width of the image minus the pixel stride
-                    // plus one. Otherwise, this will throw a BufferUnderflowException because the
-                    // buffer doesn't include the last padding.
-                    if (h - row == 1) {
-                        buffer.get(rowData, 0, width - pixelStride + 1);
-                    } else {
-                        buffer.get(rowData, 0, rowStride);
-                    }
-
-                    for (int col = 0; col < w; col++) {
-                        data[offset++] = rowData[col * pixelStride];
-                    }
-                }
-            }
-        }
+        byte[] data = new byte[width * height];
+        buffer.get(data);
 
         return data;
     }
@@ -107,7 +73,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("file", timeStamp + ".jpg", RequestBody.create(MEDIA_TYPE_JPEG, bytes))
+                .addFormDataPart("file", timeStamp, RequestBody.create(MEDIA_TYPE_JPEG, bytes))
                 .build();
         Request request = new Request.Builder()
                 .url(mUrl)
@@ -123,7 +89,6 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
                 Log.e(LOG_TAG, "HTTP Error " + response.code() + ":" + response.message());
             }
         } catch (IOException e) {
-            // TODO: handle java.net.ProtocolException here
             e.printStackTrace();
         }
 
