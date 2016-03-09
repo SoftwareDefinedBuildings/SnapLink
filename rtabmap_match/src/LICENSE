@@ -1,4 +1,3 @@
-/*
 Copyright (c) 2010-2014, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
@@ -23,58 +22,3 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-#ifndef ODOMETRYTHREAD_H_
-#define ODOMETRYTHREAD_H_
-
-#include <rtabmap/core/RtabmapExp.h>
-#include <rtabmap/core/SensorData.h>
-#include <rtabmap/utilite/UThread.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <list>
-
-#include <iostream>
-#include <fstream>
-
-namespace rtabmap {
-
-class Odometry;
-
-class RTABMAP_EXP OdometryMonoLocThread : public UThread, public UEventsHandler {
-public:
-    // take ownership of Odometry
-    OdometryMonoLocThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);
-    virtual ~OdometryMonoLocThread();
-
-protected:
-    virtual void handleEvent(UEvent * event);
-
-private:
-    void mainLoopKill();
-
-    //============================================================
-    // MAIN LOOP
-    //============================================================
-    void mainLoop();
-    void addData(const SensorData & data, const std::string & fileName="");
-    bool getData(SensorData & data, std::string & fileName);
-
-private:
-    USemaphore _dataAdded;
-    UMutex _dataMutex;
-    std::list<SensorData> _dataBuffer;
-    std::list<std::string> _fileNameBuffer;
-    Odometry * _odometry;
-    unsigned int _dataBufferMaxSize;
-    bool _resetOdometry;
-    std::ofstream errFileNoWordNewImg;
-    std::ofstream errFileInlier;
-    std::ofstream errFileNoWordOldImg;
-    std::ofstream errFileLargeRot;
-};
-
-} // namespace rtabmap
-
-
-#endif /* ODOMETRYTHREAD_H_ */

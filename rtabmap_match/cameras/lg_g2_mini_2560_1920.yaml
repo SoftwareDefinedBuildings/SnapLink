@@ -1,0 +1,20 @@
+%YAML:1.0
+image_width: 2560
+image_height: 1920
+camera_name: lg_g2_mini
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [2249, 0, 1280, 0, 2249, 960, 0, 0, 1]
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0, 0, 0, 0, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [2249, 0, 1280, 0, 0, 2249, 960, 0, 0, 0, 1, 0]
