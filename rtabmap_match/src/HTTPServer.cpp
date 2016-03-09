@@ -71,7 +71,6 @@ int HTTPServer::answer_to_connection(void *cls,
                                      size_t *upload_data_size,
                                      void **con_cls)
 {
-    UDEBUG("");
     HTTPServer *httpServer = (HTTPServer *) cls;
 
     if (*con_cls == NULL)
@@ -182,7 +181,6 @@ int HTTPServer::iterate_post(void *coninfo_cls,
                              uint64_t off,
                              size_t size)
 {
-    UDEBUG("");
     ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
 
     con_info->answerstring = servererrorpage;

@@ -124,8 +124,9 @@ std::vector<std::string> Visibility::process(const SensorData &data, const Trans
 
     for (unsigned int i = 0; i < _points.size(); ++i)
     {
-        if (uIsInBounds(int(planePoints[i].x), 0, cols) &&
-                uIsInBounds(int(planePoints[i].y), 0, rows))
+        //if (uIsInBounds(int(planePoints[i].x), 0, cols) &&
+        //        uIsInBounds(int(planePoints[i].y), 0, rows))
+        if (true)
         {
             if (Utility::isInFrontOfCamera(_points[i], P))
             {
