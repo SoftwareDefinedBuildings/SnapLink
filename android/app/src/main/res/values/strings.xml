@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">SDBVision</string>
+    <string name="img_desc">Background Image</string>
+    <string name="capture">Capture</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="none">None</string>
+</resources>
