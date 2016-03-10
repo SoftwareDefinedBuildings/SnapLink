@@ -4,7 +4,6 @@ Timing server side:
     example usage: timing_server.py server_log_file -o csv_output
 
 Timing android side:
-    script coming soon
-    - record logcat log
-    - filter out by tag
-    - get time delta
+    timing_android.py extracts timing information from logcat.
+    run timing_android.py -h for detailed information.
+    example usage: timing_android.py logcat_file -o csv_output
