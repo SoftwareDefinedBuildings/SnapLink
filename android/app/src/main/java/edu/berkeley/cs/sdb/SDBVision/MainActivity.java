@@ -238,6 +238,7 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mCaptureButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
+            Log.d(LOG_TAG, "TAG_TIME capture " + System.currentTimeMillis()); // start timing
             if (mEnabled.get()) {
                 mEnabled.set(false);
             } else {
@@ -249,6 +250,7 @@ public class MainActivity extends Activity {
     private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
         public void onResponse(String response) {
+            Log.d(LOG_TAG, "TAG_TIME response " + System.currentTimeMillis()); // got response from server
             if (response != null && !response.trim().equals("None")) {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
