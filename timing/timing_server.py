@@ -39,8 +39,7 @@ def log_to_csv(log_clean, log_csv):
 
         results_good = True
         for j in range(len(KEYWORDS)):
-            # keyword in log has colon at end
-            if lines[i+j][-2][:-1].lower() != KEYWORDS[j].lower():
+            if lines[i+j][-2].lower() != KEYWORDS[j].lower():
                 results_good = False
                 break
 
