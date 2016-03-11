@@ -7,6 +7,8 @@
 
 #include "MemoryLoc.h"
 
+#define TOP_K 2
+
 class UTimer;
 
 namespace rtabmap
@@ -26,6 +28,7 @@ private:
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
 
 private:
+    int _topk;
     std::string _dbPath;
     MemoryLoc *_memory;
     std::map<int, Transform> _optimizedPoses;

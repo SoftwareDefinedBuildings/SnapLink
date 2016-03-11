@@ -90,7 +90,7 @@ SensorData CameraNetwork::captureImage()
     if (!_img.empty())
     {
         SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
-        _img.release(); // decrement the reference counter 
+        _img.release(); // decrement the reference counter
         return sensorData;
     }
     else
@@ -99,7 +99,8 @@ SensorData CameraNetwork::captureImage()
     }
 }
 
-cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data) {
+cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data)
+{
     // TODO: hardcoded for now
     int width = 640;
     int height = 480;

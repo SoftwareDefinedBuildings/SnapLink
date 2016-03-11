@@ -15,8 +15,12 @@ class MemoryLoc : public Memory
 public:
     MemoryLoc(const ParametersMap &parameters = ParametersMap());
 
-    Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
-    Transform computeGlobalVisualTransform(const std::vector<Signature> &oldSs, const Signature &newS, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
+    Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, const std::map<int, Transform> *optimizedPoses = NULL, std::string *rejectedMsg = NULL, int *inliers = NULL, double *variance = NULL) const;
+    Transform computeGlobalVisualTransform(const std::vector<Signature> &oldSigs, const Signature &newSig, const std::map<int, Transform> *optimizedPoses = NULL, std::string *rejectedMsg = NULL, int *inliers = NULL, double *variance = NULL) const;
+
+private:
+    // get pose from optimizedPoses if available, otherwise get from sig itself
+    const Transform getPose(const Signature &sig, const std::map<int, Transform> *optimizedPoses = NULL) const;
 
 private:
     int _bowMinInliers;

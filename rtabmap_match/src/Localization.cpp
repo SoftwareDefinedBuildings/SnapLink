@@ -16,7 +16,8 @@ namespace rtabmap
 {
 
 Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
-    _dbPath(dbPath)
+    _dbPath(dbPath),
+    _topk(TOP_K)
 {
     // Setup memory
     _memoryParams.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
@@ -123,11 +124,10 @@ Transform Localization::localize(const SensorData &data_)
 
                 std::vector<int> topIds;
                 likelihood.erase(-1);
-                int topk_ = 1;
                 int topId;
                 if (likelihood.size())
                 {
-                    std::vector< std::pair<int, float> > top(topk_);
+                    std::vector< std::pair<int, float> > top(_topk);
                     std::partial_sort_copy(likelihood.begin(),
                                            likelihood.end(),
                                            top.begin(),
@@ -185,7 +185,7 @@ Transform Localization::localize(const SensorData &data_)
 
                 if (success)
                 {
-                    output = memoryLoc.computeGlobalVisualTransform(topIds, data.id(), &rejectedMsg, &visualInliers, &variance);
+                    output = memoryLoc.computeGlobalVisualTransform(topIds, data.id(), &_optimizedPoses, &rejectedMsg, &visualInliers, &variance);
 
                     if (!output.isNull())
                     {

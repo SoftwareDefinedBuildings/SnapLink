@@ -54,152 +54,131 @@ MemoryLoc::MemoryLoc(const ParametersMap &parameters) :
 Transform MemoryLoc::computeGlobalVisualTransform(
     const std::vector<int> &oldIds,
     int newId,
+    const std::map<int, Transform> *optimizedPoses,
     std::string *rejectedMsg,
     int *inliers,
     double *variance) const
 {
-    bool success = true;
-
-    std::vector<Signature> oldSs;
+    std::vector<Signature> oldSigs;
     for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); it++)
     {
-        if (*it)
+        const Signature *oldSig = getSignature(*it);
+        if (oldSig == NULL)
         {
-            const Signature *oldS = getSignature(*it);
-            const Transform &pose = oldS->getPose();
-            oldSs.push_back(*oldS);
+            return Transform();
         }
-        else
-        {
-            success = false;
-            break;
-        }
+        // TODO: how much memcopy is here? Maybe cv::Mat covers that?
+        oldSigs.push_back(*oldSig);
     }
 
-    const Signature *newS = NULL;
-    if (newId)
+    const Signature *newSig = NULL;
+    newSig = getSignature(newId);
+    if (newSig == NULL)
     {
-        newS = getSignature(newId);
-    }
-    else
-    {
-        success = false;
+        return Transform();
     }
 
-    if (success)
-    {
-        return computeGlobalVisualTransform(oldSs, *newS, rejectedMsg, inliers, variance);
-    }
-    else
-    {
-        std::string msg = uFormat("Did not find nodes in oldIds and/or %d", newId);
-        if (rejectedMsg)
-        {
-            *rejectedMsg = msg;
-        }
-        UWARN(msg.c_str());
-    }
-    return Transform();
+    return computeGlobalVisualTransform(oldSigs, *newSig, optimizedPoses, rejectedMsg, inliers, variance);
 }
 
 Transform MemoryLoc::computeGlobalVisualTransform(
-    const std::vector<Signature> &oldSs,
-    const Signature &newS,
+    const std::vector<Signature> &oldSigs,
+    const Signature &newSig,
+    const std::map<int, Transform> *optimizedPoses,
     std::string *rejectedMsg,
     int *inliersOut,
     double *varianceOut) const
 {
+    if (oldSigs.size() == 0)
+    {
+        return Transform();
+    }
+
     Transform transform;
     std::string msg;
-    // Guess transform from visual words
 
     int inliersCount = 0;
     double variance = 1.0;
 
     std::multimap<int, pcl::PointXYZ> words3;
-    const Transform &basePose = oldSs.begin()->getPose();
-    for (std::vector<Signature>::const_iterator it1 = oldSs.begin(); it1 != oldSs.end(); it1++)
+
+    const std::vector<Signature>::const_iterator firstSig = oldSigs.begin();
+    const Transform &basePose = getPose(*firstSig, optimizedPoses);
+
+    for (std::vector<Signature>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
     {
-        Transform relativeT = basePose.inverse() * it1->getPose();
-        std::multimap<int, pcl::PointXYZ>::const_iterator it2;
-        for (it2 = it1->getWords3().begin(); it2 != it1->getWords3().end(); it2++)
+        Transform relativeT = basePose.inverse() * getPose(*sigIter, optimizedPoses);
+        const std::multimap<int, pcl::PointXYZ> &sigWords3 = sigIter->getWords3();
+        std::multimap<int, pcl::PointXYZ>::const_iterator word3Iter;
+        for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
         {
-            pcl::PointXYZ globalPoint = util3d::transformPoint(it2->second, relativeT);
-            std::multimap<int, pcl::PointXYZ>::iterator it3 = words3.find(it2->first);
+            pcl::PointXYZ point = util3d::transformPoint(word3Iter->second, relativeT);
+            //std::multimap<int, pcl::PointXYZ>::iterator it3 = words3.find(word3Iter->first);
             //if (it3 != words3.end())
             //{
             //    std::cout<< "existing point in base frame: " << it3->second << std::endl;
-            //    std::cout<< "new point in own frame: " << it2->second << std::endl;
-            //    std::cout<< "new point in base frame: " << globalPoint << std::endl << std::endl;
+            //    std::cout<< "new point in own frame: " << word3Iter->second << std::endl;
+            //    std::cout<< "new point in base frame: " << point << std::endl << std::endl;
             //    std::cout<< "base pose: " << basePose << std::endl;
-            //    std::cout<< "own pose: " << it1->getPose() << std::endl;
+            //    std::cout<< "own pose: " << sigIter->getPose() << std::endl;
             //}
-            words3.insert(std::pair<int, pcl::PointXYZ>(it2->first, globalPoint));
+            words3.insert(std::pair<int, pcl::PointXYZ>(word3Iter->first, point));
         }
     }
 
-    // PnP
-    if (!newS.sensorData().stereoCameraModel().isValid() &&
-            (newS.sensorData().cameraModels().size() != 1 ||
-             !newS.sensorData().cameraModels()[0].isValid()))
+    if (!newSig.sensorData().stereoCameraModel().isValid() && (newSig.sensorData().cameraModels().size() != 1 || !newSig.sensorData().cameraModels()[0].isValid()))
     {
         UERROR("Calibrated camera required (multi-cameras not supported).");
+        return Transform();
     }
-    else
-    {
-        // 3D to 2D
-        if ((int)words3.size() >= _bowMinInliers &&
-                (int)newS.getWords().size() >= _bowMinInliers)
-        {
-            UASSERT(newS.sensorData().stereoCameraModel().isValid() || (newS.sensorData().cameraModels().size() == 1 && newS.sensorData().cameraModels()[0].isValid()));
-            const CameraModel &cameraModel = newS.sensorData().stereoCameraModel().isValid() ? newS.sensorData().stereoCameraModel().left() : newS.sensorData().cameraModels()[0];
 
-            std::vector<int> inliersV;
-            transform = util3d::estimateMotion3DTo2D(
-                            uMultimapToMap(words3),
-                            uMultimapToMap(newS.getWords()),
-                            cameraModel,
-                            _bowMinInliers,
-                            _bowIterations,
-                            _bowPnPReprojError,
-                            _bowPnPFlags,
-                            Transform::getIdentity(),
-                            uMultimapToMap(newS.getWords3()),
-                            &variance,
-                            0,
-                            &inliersV);
-            inliersCount = (int)inliersV.size();
-            if (transform.isNull())
-            {
-                msg = uFormat("Not enough inliers %d/%d between the old signatures and %d",
-                              inliersCount, _bowMinInliers, newS.id());
-                UINFO(msg.c_str());
-            }
-            else
-            {
-                transform = transform.inverse();
-            }
+    // 3D to 2D (PnP)
+    if ((int)words3.size() >= _bowMinInliers && (int)newSig.getWords().size() >= _bowMinInliers)
+    {
+        UASSERT(newSig.sensorData().stereoCameraModel().isValid() || (newSig.sensorData().cameraModels().size() == 1 && newSig.sensorData().cameraModels()[0].isValid()));
+        const CameraModel &cameraModel = newSig.sensorData().stereoCameraModel().isValid() ? newSig.sensorData().stereoCameraModel().left() : newSig.sensorData().cameraModels()[0];
+
+        std::vector<int> inliers;
+        transform = util3d::estimateMotion3DTo2D(
+                        uMultimapToMap(words3),
+                        uMultimapToMap(newSig.getWords()),
+                        cameraModel, // cameraModel.localTransform has to be the same for all images
+                        _bowMinInliers,
+                        _bowIterations,
+                        _bowPnPReprojError,
+                        _bowPnPFlags,
+                        Transform::getIdentity(),
+                        uMultimapToMap(newSig.getWords3()),
+                        &variance,
+                        0,
+                        &inliers);
+        inliersCount = (int)inliers.size();
+        if (transform.isNull())
+        {
+            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _bowMinInliers, newSig.id());
+            UINFO(msg.c_str());
         }
         else
         {
-            msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
-                          (int)words3.size(), (int)newS.getWords().size(), _bowMinInliers);
-            UINFO(msg.c_str());
+            transform = transform.inverse();
         }
     }
+    else
+    {
+        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig.getWords().size(), _bowMinInliers);
+        UINFO(msg.c_str());
+    }
+
 
     if (!transform.isNull())
     {
         // verify if it is a 180 degree transform, well verify > 90
         float x, y, z, roll, pitch, yaw;
         transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-        if (fabs(roll) > CV_PI / 2 ||
-                fabs(pitch) > CV_PI / 2 ||
-                fabs(yaw) > CV_PI / 2)
+        if (fabs(roll) > CV_PI / 2 || fabs(pitch) > CV_PI / 2 || fabs(yaw) > CV_PI / 2)
         {
             transform.setNull();
-            msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-                          roll, pitch, yaw);
+            msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)", roll, pitch, yaw);
             UWARN(msg.c_str());
         }
     }
@@ -221,6 +200,21 @@ Transform MemoryLoc::computeGlobalVisualTransform(
     }
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
     return transform;
+}
+
+const Transform MemoryLoc::getPose(const Signature &sig, const std::map<int, Transform> *optimizedPoses) const
+{
+    Transform pose = sig.getPose();
+    if (optimizedPoses)
+    {
+        const std::map<int, Transform>::const_iterator poseIter = optimizedPoses->find(sig.id());
+        if (poseIter != optimizedPoses->end())
+        {
+            pose = poseIter->second;
+        }
+    }
+
+    return pose;
 }
 
 } // namespace rtabmap
