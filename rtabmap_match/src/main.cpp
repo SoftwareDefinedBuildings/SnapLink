@@ -28,16 +28,14 @@ int main(int argc, char *argv[])
     ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
-    std::string imgpath;
     std::string labelpath;
-    if (argc != 4)
+    if (argc != 3)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc - 3]);
-        imgpath = std::string(argv[argc - 2]);
+        dbfile = std::string(argv[argc - 2]);
         labelpath = std::string(argv[argc - 1]);
     }
 

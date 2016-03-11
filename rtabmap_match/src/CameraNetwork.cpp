@@ -74,12 +74,10 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
     {
         return false;
     }
-    // TODO there is a copy here
+
     _img = dataToImage(data);
 
     imwrite("image.jpg", _img);
-
-    _img = cv::imread("image.jpg");
 
     delete data;
 
@@ -92,7 +90,7 @@ SensorData CameraNetwork::captureImage()
     if (!_img.empty())
     {
         SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
-        _img.release();
+        _img.release(); // decrement the reference counter 
         return sensorData;
     }
     else
@@ -107,6 +105,8 @@ cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data) {
     int height = 480;
 
     cv::Mat mat(height, width, CV_8UC1, &(*data)[0]);
+    // TODO: look at cv:Ptr so we don't need to copy
+    mat = mat.clone(); // so we can free data later
 
     cv::flip(mat, mat, 0); // flip the image around the x-axis
 
