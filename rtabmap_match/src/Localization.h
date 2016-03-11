@@ -9,19 +9,12 @@
 
 #define TOP_K 2
 
-class UTimer;
-
-namespace rtabmap
-{
-
-class MemoryLoc;
-
 class Localization
 {
 public:
     Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~Localization();
-    virtual Transform localize(const SensorData &data);
+    virtual rtabmap::Transform localize(rtabmap::SensorData data); // TODO should I use const ref here?
 
 private:
     void optimize();  // optimize poses using TORO graph
@@ -31,9 +24,7 @@ private:
     int _topk;
     std::string _dbPath;
     MemoryLoc *_memory;
-    std::map<int, Transform> _optimizedPoses;
-    ParametersMap _memoryParams;
-    ParametersMap _memoryLocParams;
+    std::map<int, rtabmap::Transform> _optimizedPoses;
+    rtabmap::ParametersMap _memoryParams;
+    rtabmap::ParametersMap _memoryLocParams;
 };
-
-} /* namespace rtabmap */

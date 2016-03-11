@@ -2,9 +2,6 @@
 
 #include <rtabmap/utilite/UEvent.h>
 
-namespace rtabmap
-{
-
 class NetworkEvent :
     public UEvent
 {
@@ -35,5 +32,3 @@ private:
     std::vector<unsigned char> *_payload;
     void *_context;
 };
-
-} // namespace rtabmap

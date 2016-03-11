@@ -8,9 +8,6 @@
 #define POST_BUFFER_SIZE 300000
 #define IMAGE_INIT_SIZE 300000
 
-namespace rtabmap
-{
-
 class HTTPServer :
     public UEventsHandler
 {
@@ -74,5 +71,3 @@ typedef struct
     std::vector<std::string> names;
     USemaphore detected;
 } ConnectionInfo;
-
-} // namespace rtabmap

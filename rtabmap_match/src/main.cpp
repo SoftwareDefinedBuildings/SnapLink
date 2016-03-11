@@ -20,7 +20,6 @@ void showUsage()
     exit(1);
 }
 
-using namespace rtabmap;
 int main(int argc, char *argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
@@ -47,12 +46,12 @@ int main(int argc, char *argv[])
     // TODO read fx and fy from EXIF
     int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
 
-    Transform localTransform;
+    rtabmap::Transform localTransform;
 
     if (cameraType == 1)
     {
         // now it is hardcoded for lg g2 mini
-        Transform tempTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+        rtabmap::Transform tempTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 
         localTransform = tempTransform;
 
@@ -62,7 +61,7 @@ int main(int argc, char *argv[])
     else if (cameraType == 2)
     {
         // hardcoded for map1_10Hz
-        Transform tempTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
+        rtabmap::Transform tempTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
 
         localTransform = tempTransform;
     }
@@ -78,7 +77,7 @@ int main(int argc, char *argv[])
     }
 
     // Create an odometry thread to process camera events, it will send OdometryEvent.
-    LocalizationThread odomThread(new Localization(dbfile), 10);
+    LocalizationThread locThread(new Localization(dbfile), 10);
 
     Visibility *visibility = new Visibility();
     if (!visibility->init(labelpath))
@@ -91,19 +90,19 @@ int main(int argc, char *argv[])
     // Setup handlers
     httpServer.registerToEventsManager();
     cameraThread.registerToEventsManager();
-    odomThread.registerToEventsManager();
+    locThread.registerToEventsManager();
     visThread.registerToEventsManager();
 
     // build "pipes" between threads
     UEventsManager::createPipe(&httpServer, &cameraThread, "NetworkEvent");
-    UEventsManager::createPipe(&cameraThread, &odomThread, "ImageEvent");
-    UEventsManager::createPipe(&odomThread, &visThread, "LocationEvent");
+    UEventsManager::createPipe(&cameraThread, &locThread, "ImageEvent");
+    UEventsManager::createPipe(&locThread, &visThread, "LocationEvent");
     UEventsManager::createPipe(&visThread, &httpServer, "DetectionEvent");
 
     // Let's start the threads
     httpServer.start();
     cameraThread.start();
-    odomThread.start();
+    locThread.start();
     visThread.start();
 
     pause();
@@ -111,13 +110,13 @@ int main(int argc, char *argv[])
     // remove handlers
     httpServer.unregisterFromEventsManager();
     cameraThread.unregisterFromEventsManager();
-    odomThread.unregisterFromEventsManager();
+    locThread.unregisterFromEventsManager();
     visThread.unregisterFromEventsManager();
 
     // Kill all threads
     httpServer.stop();
     cameraThread.join(true);
-    odomThread.join(true);
+    locThread.join(true);
     visThread.join(true);
 
     return 0;

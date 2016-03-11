@@ -6,8 +6,6 @@
 #include "NetworkEvent.h"
 #include "DetectionEvent.h"
 
-namespace rtabmap
-{
 const std::string busypage = "This server is busy, please try again later.";
 const std::string completepage = "The upload has been completed.";
 const std::string errorpage = "This doesn't seem to be right.";
@@ -245,5 +243,3 @@ int HTTPServer::send_page(struct MHD_Connection *connection, const std::string &
 
     return ret;
 }
-
-} // namespace rtabmap

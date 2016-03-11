@@ -2,19 +2,14 @@
 
 #include <rtabmap/core/Camera.h>
 
-class UTimer;
-
-namespace rtabmap
-{
-
 class CameraNetwork :
-    public Camera
+    public rtabmap::Camera
 {
 public:
     CameraNetwork(bool rectifyImages = false,
                   bool isDepth = false,
                   float imageRate = 0,
-                  const Transform &localTransform = Transform::getIdentity());
+                  const rtabmap::Transform &localTransform = rtabmap::Transform::getIdentity());
     virtual ~CameraNetwork();
 
     virtual bool init(const std::string &calibrationFolder = ".", const std::string &cameraName = "");
@@ -24,7 +19,7 @@ public:
     bool addImage(std::vector<unsigned char> *);
 
 protected:
-    virtual SensorData captureImage();
+    virtual rtabmap::SensorData captureImage();
 
 private:
     static cv::Mat dataToImage(std::vector<unsigned char> *data);
@@ -35,7 +30,5 @@ private:
     bool _isDepth;
 
     std::string _cameraName;
-    CameraModel _model;
+    rtabmap::CameraModel _model;
 };
-
-} // namespace rtabmap

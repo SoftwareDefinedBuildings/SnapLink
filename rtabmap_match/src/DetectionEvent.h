@@ -3,9 +3,6 @@
 #include <rtabmap/utilite/UEvent.h>
 #include <vector>
 
-namespace rtabmap
-{
-
 class DetectionEvent :
     public UEvent
 {
@@ -36,5 +33,3 @@ private:
     std::vector<std::string> _names;
     void *_context;
 };
-
-} // namespace rtabmap

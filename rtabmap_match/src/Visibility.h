@@ -5,9 +5,6 @@
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
 
-namespace rtabmap
-{
-
 struct CompareMeanDist
 {
     typedef std::pair< std::string, std::vector<double> > PairType;
@@ -24,7 +21,7 @@ public:
     virtual ~Visibility();
 
     bool init(const std::string &labelFolder);
-    std::vector<std::string> process(const SensorData &data, const Transform &pose);
+    std::vector<std::string> process(const rtabmap::SensorData &data, const rtabmap::Transform &pose);
 
 private:
     bool readLabels(const std::string &labelFolder);
@@ -34,5 +31,3 @@ private:
     std::vector<cv::Point3f> _points;
     std::vector<std::string> _labels;
 };
-
-} // namespace rtabmap

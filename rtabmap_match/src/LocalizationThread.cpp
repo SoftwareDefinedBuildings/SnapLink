@@ -4,9 +4,6 @@
 #include "ImageEvent.h"
 #include "LocationEvent.h"
 
-namespace rtabmap
-{
-
 LocalizationThread::LocalizationThread(Localization *loc, unsigned int dataBufferMaxSize) :
     _loc(loc),
     _dataBufferMaxSize(dataBufferMaxSize)
@@ -43,17 +40,17 @@ void LocalizationThread::mainLoopKill()
 
 void LocalizationThread::mainLoop()
 {
-    SensorData data;
+    rtabmap::SensorData data;
     void *context = NULL;
     if (getData(data, context))
     {
-        Transform pose = _loc->localize(data);
+        rtabmap::Transform pose = _loc->localize(data);
         // a null pose notify that loc could not be computed
         this->post(new LocationEvent(data, pose, context));
     }
 }
 
-void LocalizationThread::addData(const SensorData &data, void *context)
+void LocalizationThread::addData(const rtabmap::SensorData &data, void *context)
 {
     if (data.imageRaw().empty() || (data.cameraModels().size() == 0 && !data.stereoCameraModel().isValid()))
     {
@@ -83,7 +80,7 @@ void LocalizationThread::addData(const SensorData &data, void *context)
     }
 }
 
-bool LocalizationThread::getData(SensorData &data, void *&context)
+bool LocalizationThread::getData(rtabmap::SensorData &data, void *&context)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
@@ -101,5 +98,3 @@ bool LocalizationThread::getData(SensorData &data, void *&context)
     _dataMutex.unlock();
     return dataFilled;
 }
-
-} // namespace rtabmap

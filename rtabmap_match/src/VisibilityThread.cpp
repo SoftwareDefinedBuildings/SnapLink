@@ -5,9 +5,6 @@
 #include "LocationEvent.h"
 #include "DetectionEvent.h"
 
-namespace rtabmap
-{
-
 VisibilityThread::VisibilityThread(Visibility *visibility, unsigned int dataBufferMaxSize) :
     _visibility(visibility),
     _dataBufferMaxSize(dataBufferMaxSize)
@@ -32,8 +29,8 @@ void VisibilityThread::handleEvent(UEvent *event)
         if (event->getClassName().compare("LocationEvent") == 0)
         {
             LocationEvent *locEvent = (LocationEvent *)event;
-            SensorData data = locEvent->data();
-            Transform pose = locEvent->pose();
+            rtabmap::SensorData data = locEvent->data();
+            rtabmap::Transform pose = locEvent->pose();
             void *context = locEvent->context();
             this->addData(data, pose, context);
         }
@@ -47,8 +44,8 @@ void VisibilityThread::mainLoopKill()
 
 void VisibilityThread::mainLoop()
 {
-    SensorData data;
-    Transform pose;
+    rtabmap::SensorData data;
+    rtabmap::Transform pose;
     void *context = NULL;
     if (getData(data, pose, context))
     {
@@ -57,7 +54,7 @@ void VisibilityThread::mainLoop()
     }
 }
 
-void VisibilityThread::addData(const SensorData &data, const Transform &pose, void *context)
+void VisibilityThread::addData(const rtabmap::SensorData &data, const rtabmap::Transform &pose, void *context)
 {
     bool notify = true;
     _dataMutex.lock();
@@ -83,7 +80,7 @@ void VisibilityThread::addData(const SensorData &data, const Transform &pose, vo
     }
 }
 
-bool VisibilityThread::getData(SensorData &data, Transform &pose, void *&context)
+bool VisibilityThread::getData(rtabmap::SensorData &data, rtabmap::Transform &pose, void *&context)
 {
     bool dataFilled = false;
     _dataAdded.acquire();
@@ -103,5 +100,3 @@ bool VisibilityThread::getData(SensorData &data, Transform &pose, void *&context
     _dataMutex.unlock();
     return dataFilled;
 }
-
-} // namespace rtabmap

@@ -7,9 +7,6 @@
 
 #include "Localization.h"
 
-namespace rtabmap
-{
-
 class LocalizationThread :
     public UThread,
     public UEventsHandler
@@ -25,16 +22,14 @@ protected:
 private:
     void mainLoopKill();
     void mainLoop();
-    void addData(const SensorData &data, void *context = NULL);
-    bool getData(SensorData &data, void *&context);
+    void addData(const rtabmap::SensorData &data, void *context = NULL);
+    bool getData(rtabmap::SensorData &data, void *&context);
 
 private:
     USemaphore _dataAdded;
     UMutex _dataMutex;
-    std::list<SensorData> _dataBuffer;
+    std::list<rtabmap::SensorData> _dataBuffer;
     std::list<void *> _contextBuffer;
     Localization *_loc;
     unsigned int _dataBufferMaxSize;
 };
-
-} // namespace rtabmap

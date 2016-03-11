@@ -10,9 +10,6 @@
 #include "Utility.h"
 #include "Visibility.h"
 
-namespace rtabmap
-{
-
 double CompareMeanDist::meanDist(const std::vector<double> &vec)
 {
     double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
@@ -93,16 +90,16 @@ bool Visibility::readLabels(const std::string &labelFolder)
     return true;
 }
 
-std::vector<std::string> Visibility::process(const SensorData &data, const Transform &pose)
+std::vector<std::string> Visibility::process(const rtabmap::SensorData &data, const rtabmap::Transform &pose)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
-    const CameraModel &model = data.cameraModels()[0];
+    const rtabmap::CameraModel &model = data.cameraModels()[0];
     cv::Mat K = model.K();
-    Transform P = (pose * model.localTransform()).inverse();
+    rtabmap::Transform P = (pose * model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
                  (double)P.r11(), (double)P.r12(), (double)P.r13(),
                  (double)P.r21(), (double)P.r22(), (double)P.r23(),
@@ -139,19 +136,16 @@ std::vector<std::string> Visibility::process(const SensorData &data, const Trans
                 double dist = cv::norm(planePoints[i] - center);
                 distances[label].push_back(dist);
                 labelPoints[label].push_back(planePoints[i]);
-                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
-                       planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
             else
             {
-                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(),
-                       planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
         }
         else
         {
-            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
-                   planePoints[i].x, planePoints[i].y, cols, rows);
+            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }
 
@@ -170,5 +164,3 @@ std::vector<std::string> Visibility::process(const SensorData &data, const Trans
     }
     return rv;
 }
-
-} // namespace rtabmap

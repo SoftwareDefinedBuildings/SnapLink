@@ -5,14 +5,11 @@
 
 #include "CameraNetwork.h"
 
-namespace rtabmap
-{
-
 CameraNetwork::CameraNetwork(bool rectifyImages,
                              bool isDepth,
                              float imageRate,
-                             const Transform &localTransform) :
-    Camera(imageRate, localTransform),
+                             const rtabmap::Transform &localTransform) :
+    rtabmap::Camera(imageRate, localTransform),
     _rectifyImages(rectifyImages),
     _isDepth(isDepth)
 {
@@ -84,18 +81,18 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
     return true;
 }
 
-SensorData CameraNetwork::captureImage()
+rtabmap::SensorData CameraNetwork::captureImage()
 {
     UDEBUG("");
     if (!_img.empty())
     {
-        SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
+        rtabmap::SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
         _img.release(); // decrement the reference counter
         return sensorData;
     }
     else
     {
-        return SensorData(); // return empty data
+        return rtabmap::SensorData(); // return empty data
     }
 }
 
@@ -113,4 +110,3 @@ cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data)
 
     return mat;
 }
-} // namespace rtabmap

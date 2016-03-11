@@ -5,9 +5,6 @@
 #include "NetworkEvent.h"
 #include "ImageEvent.h"
 
-namespace rtabmap
-{
-
 // ownership transferred
 CameraNetworkThread::CameraNetworkThread(CameraNetwork *camera, unsigned int dataBufferMaxSize) :
     _camera(camera),
@@ -56,7 +53,7 @@ void CameraNetworkThread::mainLoop()
         }
     }
     // take the image that was just added
-    SensorData sensorData = _camera->takeImage();
+    rtabmap::SensorData sensorData = _camera->takeImage();
     if (!sensorData.imageRaw().empty())
     {
         this->post(new ImageEvent(sensorData, "", context));
@@ -105,5 +102,3 @@ bool CameraNetworkThread::getData(std::vector<unsigned char> *&data, void *&cont
     _dataMutex.unlock();
     return dataFilled;
 }
-
-} // namespace rtabmap

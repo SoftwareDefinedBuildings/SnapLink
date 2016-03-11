@@ -4,14 +4,11 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Transform.h>
 
-namespace rtabmap
-{
-
 class LocationEvent :
     public UEvent
 {
 public:
-    LocationEvent(const SensorData &data, const Transform &pose, void *context = NULL) :
+    LocationEvent(const rtabmap::SensorData &data, const rtabmap::Transform &pose, void *context = NULL) :
         UEvent(0),
         _data(data),
         _pose(pose),
@@ -19,15 +16,15 @@ public:
     {
     }
 
-    SensorData &data()
+    rtabmap::SensorData &data()
     {
         return _data;
     }
-    const SensorData &data() const
+    const rtabmap::SensorData &data() const
     {
         return _data;
     }
-    const Transform &pose() const
+    const rtabmap::Transform &pose() const
     {
         return _pose;
     }
@@ -42,9 +39,7 @@ public:
     }
 
 private:
-    SensorData _data;
-    Transform _pose;
+    rtabmap::SensorData _data;
+    rtabmap::Transform _pose;
     void *_context;
 };
-
-}

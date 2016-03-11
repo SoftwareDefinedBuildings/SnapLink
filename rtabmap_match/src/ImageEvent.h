@@ -1,10 +1,7 @@
 #pragma once
 
 #include <rtabmap/utilite/UEvent.h>
-#include "rtabmap/core/SensorData.h"
-
-namespace rtabmap
-{
+#include <rtabmap/core/SensorData.h>
 
 class ImageEvent :
     public UEvent
@@ -18,7 +15,7 @@ public:
     {
     }
 
-    ImageEvent(const SensorData &data, const std::string &cameraName = "", void *context = NULL) :
+    ImageEvent(const rtabmap::SensorData &data, const std::string &cameraName = "", void *context = NULL) :
         UEvent(0),
         _data(data),
         _cameraName(cameraName),
@@ -27,7 +24,7 @@ public:
     }
 
     // Image or descriptors
-    const SensorData &data() const
+    const rtabmap::SensorData &data() const
     {
         return _data;
     }
@@ -46,9 +43,7 @@ public:
     }
 
 private:
-    SensorData _data;
+    rtabmap::SensorData _data;
     std::string _cameraName;
     void *_context;
 };
-
-} // namespace rtabmap

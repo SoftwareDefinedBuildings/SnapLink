@@ -5,9 +5,6 @@
 
 #include "CameraNetwork.h"
 
-namespace rtabmap
-{
-
 class CameraNetworkThread :
     public UThread,
     public UEventsHandler
@@ -39,5 +36,3 @@ private:
     unsigned int _dataBufferMaxSize;
     CameraNetwork *_camera;
 };
-
-} // namespace rtabmap
