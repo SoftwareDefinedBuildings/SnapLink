@@ -15,22 +15,8 @@ class MemoryLoc : public Memory
 public:
     MemoryLoc(const ParametersMap &parameters = ParametersMap());
 
-    void generateImages();
     Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
     Transform computeGlobalVisualTransform(const std::vector<Signature> &oldSs, const Signature &newS, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
-
-private:
-    void getWordCoords();  // fill in _wordCoords
-    pcl::PolygonMesh::Ptr getMesh();
-    void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
-                   std::map<int, Transform> &poses);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
-            const std::map<int, Transform> &poses,
-            std::vector<int> &rawCameraIndices);
-    Signature *createSignature(std::multimap<int, cv::KeyPoint> words,
-                               std::multimap<int, pcl::PointXYZ> words3D,
-                               const Transform &pose);
-
 
 private:
     int _bowMinInliers;
