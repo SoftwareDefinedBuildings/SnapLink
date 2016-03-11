@@ -77,7 +77,7 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
 
     _img = dataToImage(data);
 
-    imwrite("image.jpg", _img);
+    //imwrite("image.jpg", _img);
 
     delete data;
 

@@ -7,6 +7,7 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
+#include <rtabmap/core/Graph.h>
 
 #include "Localization.h"
 
@@ -35,6 +36,9 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
     {
         UERROR("Error initializing the memory for Localization.");
     }
+
+    optimize();
+
     //_memory->generateImages(); // generate synthetic images
 
     _memoryLocParams.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
@@ -212,6 +216,19 @@ Transform Localization::localize(const SensorData &data_)
     UINFO("output transform = %s", output.prettyPrint().c_str());
 
     return output;
+}
+
+void Localization::optimize()
+{
+    // get the graph
+    std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastSignatureId(), 0, 0);
+    std::map<int, Transform> poses;
+    std::multimap<int, Link> links;
+    _memory->getMetricConstraints(uKeysSet(ids), poses, links);
+
+    //optimize the graph
+    graph::TOROOptimizer optimizer;
+    _optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
 }
 
 bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
