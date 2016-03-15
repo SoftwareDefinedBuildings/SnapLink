@@ -16,20 +16,20 @@
 
 MemoryLoc::MemoryLoc(const rtabmap::ParametersMap &parameters) :
     rtabmap::Memory(parameters),
-    _bowMinInliers(rtabmap::Parameters::defaultLccBowMinInliers()),
-    _bowIterations(rtabmap::Parameters::defaultLccBowIterations()),
-    _bowRefineIterations(rtabmap::Parameters::defaultLccBowRefineIterations()),
-    _bowPnPReprojError(rtabmap::Parameters::defaultLccBowPnPReprojError()),
-    _bowPnPFlags(rtabmap::Parameters::defaultLccBowPnPFlags())
+    _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
+    _iterations(rtabmap::Parameters::defaultVisIterations()),
+    _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
+    _pnpReprojError(rtabmap::Parameters::defaultVisPnPReprojError()),
+    _pnpFlags(rtabmap::Parameters::defaultVisPnPFlags())
 {
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kLccBowMinInliers(), _bowMinInliers);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kLccBowIterations(), _bowIterations);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kLccBowRefineIterations(), _bowRefineIterations);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kLccBowPnPFlags(), _bowPnPFlags);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPReprojError(), _pnpReprojError);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
 
-    UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
-    UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
+    UASSERT_MSG(_minInliers >= 1, uFormat("value=%d", _minInliers).c_str());
+    UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
 }
 
 rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
@@ -81,7 +81,7 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     int inliersCount = 0;
     double variance = 1.0;
 
-    std::multimap<int, pcl::PointXYZ> words3;
+    std::multimap<int, cv::Point3f> words3;
 
     const std::vector<rtabmap::Signature>::const_iterator firstSig = oldSigs.begin();
     const rtabmap::Transform &basePose = getPose(*firstSig, optimizedPoses);
@@ -89,54 +89,47 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     for (std::vector<rtabmap::Signature>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
     {
         rtabmap::Transform relativeT = basePose.inverse() * getPose(*sigIter, optimizedPoses);
-        const std::multimap<int, pcl::PointXYZ> &sigWords3 = sigIter->getWords3();
-        std::multimap<int, pcl::PointXYZ>::const_iterator word3Iter;
+        const std::multimap<int, cv::Point3f> &sigWords3 = sigIter->getWords3();
+        std::multimap<int, cv::Point3f>::const_iterator word3Iter;
         for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
         {
-            pcl::PointXYZ point = rtabmap::util3d::transformPoint(word3Iter->second, relativeT);
-            //std::multimap<int, pcl::PointXYZ>::iterator it3 = words3.find(word3Iter->first);
-            //if (it3 != words3.end())
-            //{
-            //    std::cout<< "existing point in base frame: " << it3->second << std::endl;
-            //    std::cout<< "new point in own frame: " << word3Iter->second << std::endl;
-            //    std::cout<< "new point in base frame: " << point << std::endl << std::endl;
-            //    std::cout<< "base pose: " << basePose << std::endl;
-            //    std::cout<< "own pose: " << sigIter->getPose() << std::endl;
-            //}
-            words3.insert(std::pair<int, pcl::PointXYZ>(word3Iter->first, point));
+            cv::Point3f point = rtabmap::util3d::transformPoint(word3Iter->second, relativeT);
+            words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point));
         }
     }
 
-    if (!newSig.sensorData().stereoCameraModel().isValid() && (newSig.sensorData().cameraModels().size() != 1 || !newSig.sensorData().cameraModels()[0].isValid()))
+    if (!newSig.sensorData().stereoCameraModel().isValidForProjection() && (newSig.sensorData().cameraModels().size() != 1 || !newSig.sensorData().cameraModels()[0].isValidForProjection()))
     {
         UERROR("Calibrated camera required (multi-cameras not supported).");
         return rtabmap::Transform();
     }
 
     // 3D to 2D (PnP)
-    if ((int)words3.size() >= _bowMinInliers && (int)newSig.getWords().size() >= _bowMinInliers)
+    if ((int)words3.size() >= _minInliers && (int)newSig.getWords().size() >= _minInliers)
     {
-        UASSERT(newSig.sensorData().stereoCameraModel().isValid() || (newSig.sensorData().cameraModels().size() == 1 && newSig.sensorData().cameraModels()[0].isValid()));
-        const rtabmap::CameraModel &cameraModel = newSig.sensorData().stereoCameraModel().isValid() ? newSig.sensorData().stereoCameraModel().left() : newSig.sensorData().cameraModels()[0];
+        UASSERT(newSig.sensorData().stereoCameraModel().isValidForProjection() || (newSig.sensorData().cameraModels().size() == 1 && newSig.sensorData().cameraModels()[0].isValidForProjection()));
+        const rtabmap::CameraModel &cameraModel = newSig.sensorData().stereoCameraModel().isValidForProjection() ? newSig.sensorData().stereoCameraModel().left() : newSig.sensorData().cameraModels()[0];
 
+        std::vector<int> matches;
         std::vector<int> inliers;
         transform = rtabmap::util3d::estimateMotion3DTo2D(
-                        uMultimapToMap(words3),
-                        uMultimapToMap(newSig.getWords()),
+                        uMultimapToMapUnique(words3),
+                        uMultimapToMapUnique(newSig.getWords()),
                         cameraModel, // cameraModel.localTransform has to be the same for all images
-                        _bowMinInliers,
-                        _bowIterations,
-                        _bowPnPReprojError,
-                        _bowPnPFlags,
+                        _minInliers,
+                        _iterations,
+                        _pnpReprojError,
+                        _pnpFlags,
+                        _pnpRefineIterations,
                         rtabmap::Transform::getIdentity(),
-                        uMultimapToMap(newSig.getWords3()),
+                        uMultimapToMapUnique(newSig.getWords3()),
                         &variance,
-                        0,
+                        &matches,
                         &inliers);
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _bowMinInliers, newSig.id());
+            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _minInliers, newSig.id());
             UINFO(msg.c_str());
         }
         else
@@ -146,7 +139,7 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     }
     else
     {
-        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig.getWords().size(), _bowMinInliers);
+        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig.getWords().size(), _minInliers);
         UINFO(msg.c_str());
     }
 

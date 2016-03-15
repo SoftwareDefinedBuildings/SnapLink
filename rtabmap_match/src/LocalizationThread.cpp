@@ -52,7 +52,7 @@ void LocalizationThread::mainLoop()
 
 void LocalizationThread::addData(const rtabmap::SensorData &data, void *context)
 {
-    if (data.imageRaw().empty() || (data.cameraModels().size() == 0 && !data.stereoCameraModel().isValid()))
+    if (data.imageRaw().empty() || (data.cameraModels().size() == 0 && !data.stereoCameraModel().isValidForProjection()))
     {
         ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
         return;

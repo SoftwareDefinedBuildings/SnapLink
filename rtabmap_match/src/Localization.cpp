@@ -7,7 +7,7 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
-#include <rtabmap/core/Graph.h>
+#include <rtabmap/core/Optimizer.h>
 
 #include "Localization.h"
 
@@ -24,9 +24,9 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpTfIdfLikelihoodUsed(), "false"));
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     // parameters that makes memory do PnP localization for RGB images
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kLccBowEstimationType(), "1")); // 1 is PnP
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), "1")); // Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kLccBowMinInliers(), "20"));
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "20"));
 
     _memory = new MemoryLoc();
     if (!_memory || !_memory->init(_dbPath, false, _memoryParams))
@@ -34,7 +34,7 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
         UERROR("Error initializing the memory for Localization.");
     }
 
-    optimize();
+    optimizeGraph();
 
     //_memory->generateImages(); // generate synthetic images
 
@@ -47,14 +47,14 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpWordsPerImage(), "1500"));
+    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "1500"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "false"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kLccBowMinInliers(), "4"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kLccBowIterations(), "2000"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kLccBowPnPReprojError(), "1.0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kLccBowPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
+    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
+    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
+    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
+    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 }
 
 Localization::~Localization()
@@ -68,18 +68,17 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
 
     UASSERT(!data.imageRaw().empty());
 
-    if (!data.stereoCameraModel().isValid() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
+    if (!data.stereoCameraModel().isValidForProjection() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
     {
         UERROR("Rectified images required! Calibrate your camera.");
-        return rtabmap::Transform();
+        return output;
     }
-
     if (data.imageRaw().empty())
     {
         UERROR("Image empty! Cannot compute odometry...");
         return output;
     }
-    if (!((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid()))
+    if (!((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection()) || data.stereoCameraModel().isValidForProjection()))
     {
         UERROR("Odometry cannot be done without calibration or on multi-camera!");
         return output;
@@ -92,7 +91,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
         data.setImageRaw(imageRawGray);
     }
 
-    const rtabmap::CameraModel &cameraModel = data.stereoCameraModel().isValid() ? data.stereoCameraModel().left() : data.cameraModels()[0];
+    const rtabmap::CameraModel &cameraModel = data.stereoCameraModel().isValidForProjection() ? data.stereoCameraModel().left() : data.cameraModels()[0];
 
     if (_memory->getWorkingMem().size() >= 1)
     {
@@ -102,9 +101,9 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
             UDEBUG("");
             const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
-            int bowMinInliers;
-            rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kLccBowMinInliers(), bowMinInliers);
-            if ((int)newS->getWords().size() > bowMinInliers)
+            int minInliers;
+            rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
+            if ((int)newS->getWords().size() > minInliers)
             {
                 std::map<int, float> likelihood;
                 std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
@@ -208,7 +207,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
     return output;
 }
 
-void Localization::optimize()
+void Localization::optimizeGraph()
 {
     // get the graph
     std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastSignatureId(), 0, 0);
@@ -217,8 +216,9 @@ void Localization::optimize()
     _memory->getMetricConstraints(uKeysSet(ids), poses, links);
 
     //optimize the graph
-    rtabmap::graph::TOROOptimizer optimizer;
-    _optimizedPoses = optimizer.optimize(poses.begin()->first, poses, links);
+    rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
+    rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType, _memoryParams);
+    _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
 }
 
 bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)

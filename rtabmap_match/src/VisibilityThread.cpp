@@ -1,4 +1,3 @@
-#include <rtabmap/core/Odometry.h>
 #include <rtabmap/utilite/ULogger.h>
 
 #include "VisibilityThread.h"

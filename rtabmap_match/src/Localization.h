@@ -17,7 +17,7 @@ public:
     virtual rtabmap::Transform localize(rtabmap::SensorData data); // TODO should I use const ref here?
 
 private:
-    void optimize();  // optimize poses using TORO graph
+    void optimizeGraph();  // optimize poses using TORO graph
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
 
 private:

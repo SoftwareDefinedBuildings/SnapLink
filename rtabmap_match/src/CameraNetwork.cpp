@@ -45,7 +45,7 @@ bool CameraNetwork::init(const std::string &calibrationFolder, const std::string
     }
 
     _model.setLocalTransform(this->getLocalTransform());
-    if (_rectifyImages && !_model.isValid())
+    if (_rectifyImages && !_model.isValidForRectification())
     {
         UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
         return false;
@@ -56,7 +56,7 @@ bool CameraNetwork::init(const std::string &calibrationFolder, const std::string
 
 bool CameraNetwork::isCalibrated() const
 {
-    return _model.isValid();
+    return _model.isValidForProjection();
 }
 
 std::string CameraNetwork::getSerial() const

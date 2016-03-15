@@ -20,9 +20,9 @@ private:
     const rtabmap::Transform getPose(const rtabmap::Signature &sig, const std::map<int, rtabmap::Transform> *optimizedPoses = NULL) const;
 
 private:
-    int _bowMinInliers;
-    int _bowIterations;
-    int _bowRefineIterations;
-    double _bowPnPReprojError;
-    int _bowPnPFlags;
+    int _minInliers;
+    int _iterations;
+    int _pnpRefineIterations;
+    double _pnpReprojError;
+    int _pnpFlags;
 };

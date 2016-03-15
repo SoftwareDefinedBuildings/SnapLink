@@ -13,8 +13,6 @@ SET(INCLUDE_DIRS
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     ${MHD_INCLUDE_DIRS}
-    "~/workspace/rtabmap/corelib/include/rtabmap/core"
-    "~/workspace/rtabmap/corelib/src"
 )
 
 SET(LIBRARIES
