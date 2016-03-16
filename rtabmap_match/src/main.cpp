@@ -8,9 +8,7 @@
 #include "HTTPServer.h"
 #include "Localization.h"
 #include "CameraNetwork.h"
-#include "CameraNetworkThread.h"
 #include "Visibility.h"
-#include "VisibilityThread.h"
 
 
 void showUsage()
@@ -70,55 +68,40 @@ int main(int argc, char *argv[])
     bool rectifyImages = false;
     bool isDepth = false;
     float imageRate = 10.0f;
-    CameraNetwork *camera = new CameraNetwork(rectifyImages, isDepth, imageRate, localTransform);
-    CameraNetworkThread cameraThread(camera, 10);
-    if (!camera->init("../cameras/", "lg_g2_mini_640_480"))
+    CameraNetwork camera(rectifyImages, isDepth, imageRate, localTransform);
+    if (!camera.init("../cameras/", "lg_g2_mini_640_480"))
     {
         UERROR("Camera init failed!");
         exit(1);
     }
+    QThread cameraThread;
+    camera.moveToThread(&cameraThread);
+    cameraThread.start();
 
-    QThread thread;
+    QThread locThread;
     Localization loc(dbfile);
-    loc.moveToThread(&thread);
-    thread.start();
+    loc.moveToThread(&locThread);
+    locThread.start();
 
-    cameraThread._loc = &loc;
+    camera._loc = &loc;
 
-    Visibility *visibility = new Visibility();
-    if (!visibility->init(labelpath))
+    Visibility visibility;
+    if (!visibility.init(labelpath))
     {
         UERROR("Visibility init failed!");
         exit(1);
     }
-    VisibilityThread visThread(visibility, 10);
-
-    // Setup handlers
-    httpServer.registerToEventsManager();
-    cameraThread.registerToEventsManager();
-    visThread.registerToEventsManager();
-
-    // build "pipes" between threads
-    UEventsManager::createPipe(&httpServer, &cameraThread, "NetworkEvent");
-    UEventsManager::createPipe(&loc, &visThread, "LocationEvent");
-    UEventsManager::createPipe(&visThread, &httpServer, "DetectionEvent");
-
-    // Let's start the threads
-    httpServer.start();
-    cameraThread.start();
+    QThread visThread;
+    visibility.moveToThread(&visThread);
     visThread.start();
 
-    a.exec();
+    loc._vis = &visibility;
 
-    // remove handlers
-    httpServer.unregisterFromEventsManager();
-    cameraThread.unregisterFromEventsManager();
-    visThread.unregisterFromEventsManager();
+    visibility._httpserver = &httpServer;
 
-    // Kill all threads
-    httpServer.stop();
-    cameraThread.join(true);
-    visThread.join(true);
+    httpServer._camera = &camera;
+    httpServer.start();
 
-    return 0;
+    
+    return a.exec();
 }

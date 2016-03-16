@@ -8,6 +8,7 @@
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/Optimizer.h>
+#include <QCoreApplication>
 
 #include "Localization.h"
 #include "ImageEvent.h"
@@ -66,9 +67,10 @@ bool Localization::event(QEvent *event)
 {
     if (event->type() == ImageEvent::type()) {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        rtabmap::Transform pose = localize(*imageEvent->sensorData());
+        rtabmap::Transform *pose = new rtabmap::Transform();
+        *pose = localize(*imageEvent->sensorData());
         // a null pose notify that loc could not be computed
-        this->post(new LocationEvent(*imageEvent->sensorData(), pose, const_cast<ConnectionInfo *>(imageEvent->conInfo())));
+        QCoreApplication::postEvent(_vis, new LocationEvent(imageEvent->sensorData(), pose, imageEvent->conInfo()));
         return true;
     }
     return QObject::event(event);

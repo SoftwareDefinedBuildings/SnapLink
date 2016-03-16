@@ -3,13 +3,17 @@
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <rtabmap/utilite/USemaphore.h>
+#include <QObject>
 #include <microhttpd.h>
+#include "CameraNetwork.h"
 
 #define POST_BUFFER_SIZE 300000
 #define IMAGE_INIT_SIZE 300000
 
+class CameraNetwork;
+
 class HTTPServer :
-    public UEventsHandler
+    public QObject
 {
 public:
     HTTPServer(uint16_t port, unsigned int maxClients);
@@ -22,8 +26,10 @@ public:
     unsigned int _maxClients;
     unsigned int _numClients;
 
+    CameraNetwork *_camera;
+
 protected:
-    virtual void handleEvent(UEvent *event);
+    virtual bool event(QEvent *event);
 
 private:
     // TODO use camelCase

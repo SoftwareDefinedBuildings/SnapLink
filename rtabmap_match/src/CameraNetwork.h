@@ -1,9 +1,15 @@
 #pragma once
 
 #include <rtabmap/core/Camera.h>
+#include <QObject>
+
+#include "Localization.h"
+
+class Localization;
 
 class CameraNetwork :
-    public rtabmap::Camera
+    public rtabmap::Camera,
+    public QObject
 {
 public:
     CameraNetwork(bool rectifyImages = false,
@@ -15,13 +21,18 @@ public:
     virtual bool init(const std::string &calibrationFolder = ".", const std::string &cameraName = "");
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
-    // ownership transferred
-    bool addImage(std::vector<unsigned char> *);
+
+    Localization *_loc;
 
 protected:
     virtual rtabmap::SensorData captureImage();
 
+protected:
+    virtual bool event(QEvent *event);
+
 private:
+    // ownership transferred
+    bool addImage(std::vector<unsigned char> *data);
     static cv::Mat dataToImage(std::vector<unsigned char> *data);
 
 private:

@@ -7,20 +7,24 @@
 #include <QObject>
 #include <QEvent>
 #include "MemoryLoc.h"
+#include "Visibility.h"
 
 #define TOP_K 2
+
+class Visibility;
 
 class Localization :
     public UEventsSender,
     public QObject
 {
-    //Q_OBJECT
 public:
     Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~Localization();
 
+    Visibility *_vis;
+
 protected:
-    bool event(QEvent *event);
+    virtual bool event(QEvent *event);
 
 private:
     virtual rtabmap::Transform localize(rtabmap::SensorData data); // TODO should I use const ref here?

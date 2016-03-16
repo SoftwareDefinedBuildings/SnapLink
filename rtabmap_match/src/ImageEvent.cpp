@@ -1,5 +1,6 @@
 #include "ImageEvent.h"
 
+// TODO init here
 QEvent::Type ImageEvent::_type = QEvent::None;
 
 // ownership transfer

@@ -2,8 +2,11 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <cstdio>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <QCoreApplication>
 
 #include "CameraNetwork.h"
+#include "NetworkEvent.h"
+#include "ImageEvent.h"
 
 CameraNetwork::CameraNetwork(bool rectifyImages,
                              bool isDepth,
@@ -64,6 +67,34 @@ std::string CameraNetwork::getSerial() const
     return _cameraName;
 }
 
+rtabmap::SensorData CameraNetwork::captureImage()
+{
+    UDEBUG("");
+    if (!_img.empty())
+    {
+        rtabmap::SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
+        _img.release(); // decrement the reference counter
+        return sensorData;
+    }
+    else
+    {
+        return rtabmap::SensorData(); // return empty data
+    }
+}
+
+bool CameraNetwork::event(QEvent *event)
+{
+    if (event->type() == NetworkEvent::type()) {
+        NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
+        addImage(const_cast<std::vector<unsigned char> *>(networkEvent->payload()));
+        rtabmap::SensorData *sensorData = new rtabmap::SensorData();
+        *sensorData = takeImage();
+        QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
+        return true;
+    }
+    return QObject::event(event);
+}
+
 bool CameraNetwork::addImage(std::vector<unsigned char> *data)
 {
     UDEBUG("");
@@ -81,23 +112,6 @@ bool CameraNetwork::addImage(std::vector<unsigned char> *data)
     return true;
 }
 
-rtabmap::SensorData CameraNetwork::captureImage()
-{
-    UDEBUG("");
-    if (!_img.empty())
-    {
-    UDEBUG("");
-        rtabmap::SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
-    UDEBUG("");
-        _img.release(); // decrement the reference counter
-    UDEBUG("");
-        return sensorData;
-    }
-    else
-    {
-        return rtabmap::SensorData(); // return empty data
-    }
-}
 
 cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data)
 {

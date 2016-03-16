@@ -1,6 +1,7 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
+#include <QCoreApplication>
 
 #include "HTTPServer.h"
 #include "NetworkEvent.h"
@@ -49,15 +50,16 @@ void HTTPServer::stop()
     }
 }
 
-void HTTPServer::handleEvent(UEvent *event)
+bool HTTPServer::event(QEvent *event)
 {
-    if (event->getClassName().compare("DetectionEvent") == 0)
-    {
-        DetectionEvent *detectionEvent = (DetectionEvent *) event;
-        ConnectionInfo *conInfo = (ConnectionInfo *) detectionEvent->context();
-        conInfo->names = detectionEvent->getNames();
+    if (event->type() == DetectionEvent::type()) {
+        DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
+        ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(detectionEvent->conInfo());
+        conInfo->names = *detectionEvent->names();
         conInfo->detected.release();
+        return true;
     }
+    return QObject::event(event);
 }
 
 int HTTPServer::answer_to_connection(void *cls,
@@ -143,7 +145,7 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             if (!con_info->data->empty())
             {
-                httpServer->post(new NetworkEvent(con_info->data, con_info));
+                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(con_info->data, con_info));
                 con_info->data = NULL;
             }
 
