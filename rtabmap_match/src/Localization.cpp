@@ -36,8 +36,6 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
 
     optimizeGraph();
 
-    //_memory->generateImages(); // generate synthetic images
-
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), "false"));
@@ -210,14 +208,16 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
 void Localization::optimizeGraph()
 {
     // get the graph
-    std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastSignatureId(), 0, 0);
+    std::list<int> idList = uKeysList(_memory->getWorkingMem());
+    std::set<int> idSet(idList.begin(), idList.end());
     std::map<int, rtabmap::Transform> poses;
     std::multimap<int, rtabmap::Link> links;
-    _memory->getMetricConstraints(uKeysSet(ids), poses, links);
+    bool lookInDatabase = true;
+    _memory->getMetricConstraints(idSet, poses, links, lookInDatabase);
 
     //optimize the graph
     rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-    rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType, _memoryParams);
+    rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
     _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
 }
 
