@@ -3,12 +3,12 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <cstdio>
-
+#include <QCoreApplication>
+#include <QThread>
 #include "HTTPServer.h"
 #include "Localization.h"
 #include "CameraNetwork.h"
 #include "CameraNetworkThread.h"
-#include "LocalizationThread.h"
 #include "Visibility.h"
 #include "VisibilityThread.h"
 
@@ -37,6 +37,8 @@ int main(int argc, char *argv[])
         dbfile = std::string(argv[argc - 2]);
         labelpath = std::string(argv[argc - 1]);
     }
+
+    QCoreApplication a(argc, argv);
 
     uint16_t port = 8080;
     unsigned int maxClients = 2;
@@ -76,8 +78,12 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    // Create an odometry thread to process camera events, it will send OdometryEvent.
-    LocalizationThread locThread(new Localization(dbfile), 10);
+    QThread thread;
+    Localization loc(dbfile);
+    loc.moveToThread(&thread);
+    thread.start();
+
+    cameraThread._loc = &loc;
 
     Visibility *visibility = new Visibility();
     if (!visibility->init(labelpath))
@@ -90,33 +96,28 @@ int main(int argc, char *argv[])
     // Setup handlers
     httpServer.registerToEventsManager();
     cameraThread.registerToEventsManager();
-    locThread.registerToEventsManager();
     visThread.registerToEventsManager();
 
     // build "pipes" between threads
     UEventsManager::createPipe(&httpServer, &cameraThread, "NetworkEvent");
-    UEventsManager::createPipe(&cameraThread, &locThread, "ImageEvent");
-    UEventsManager::createPipe(&locThread, &visThread, "LocationEvent");
+    UEventsManager::createPipe(&loc, &visThread, "LocationEvent");
     UEventsManager::createPipe(&visThread, &httpServer, "DetectionEvent");
 
     // Let's start the threads
     httpServer.start();
     cameraThread.start();
-    locThread.start();
     visThread.start();
 
-    pause();
+    a.exec();
 
     // remove handlers
     httpServer.unregisterFromEventsManager();
     cameraThread.unregisterFromEventsManager();
-    locThread.unregisterFromEventsManager();
     visThread.unregisterFromEventsManager();
 
     // Kill all threads
     httpServer.stop();
     cameraThread.join(true);
-    locThread.join(true);
     visThread.join(true);
 
     return 0;

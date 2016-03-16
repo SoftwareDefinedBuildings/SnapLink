@@ -1,49 +1,23 @@
 #pragma once
 
-#include <rtabmap/utilite/UEvent.h>
+#include <QEvent>
 #include <rtabmap/core/SensorData.h>
+#include "HTTPServer.h"
 
 class ImageEvent :
-    public UEvent
+    public QEvent
 {
 public:
-    ImageEvent(const cv::Mat &image, int seq = 0, double stamp = 0.0, const std::string &cameraName = "", void *context = NULL) :
-        UEvent(0),
-        _data(image, seq, stamp),
-        _cameraName(cameraName),
-        _context(context)
-    {
-    }
+    // ownership transfer
+    ImageEvent(const rtabmap::SensorData *sensorData, const ConnectionInfo *conInfo);
 
-    ImageEvent(const rtabmap::SensorData &data, const std::string &cameraName = "", void *context = NULL) :
-        UEvent(0),
-        _data(data),
-        _cameraName(cameraName),
-        _context(context)
-    {
-    }
+    const rtabmap::SensorData *sensorData() const;
+    const ConnectionInfo *conInfo() const;
 
-    // Image or descriptors
-    const rtabmap::SensorData &data() const
-    {
-        return _data;
-    }
-    const std::string &cameraName() const
-    {
-        return _cameraName;
-    }
-    void *context() const
-    {
-        return _context;
-    }
-
-    virtual std::string getClassName() const
-    {
-        return std::string("ImageEvent");
-    }
+    static QEvent::Type type();
 
 private:
-    rtabmap::SensorData _data;
-    std::string _cameraName;
-    void *_context;
+    static QEvent::Type _type;
+    const rtabmap::SensorData *_sensorData;
+    const ConnectionInfo *_conInfo;
 };

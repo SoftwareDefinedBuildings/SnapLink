@@ -4,6 +4,7 @@
 #include <rtabmap/utilite/UEventsHandler.h>
 
 #include "CameraNetwork.h"
+#include "Localization.h"
 
 class CameraNetworkThread :
     public UThread,
@@ -18,6 +19,8 @@ public:
     {
         return _camera;   // return null if not set, valid until CameraNetworkThread is deleted
     }
+
+    Localization *_loc;
 
 protected:
     virtual void handleEvent(UEvent *event);

@@ -1,6 +1,6 @@
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/utilite/ULogger.h>
-
+#include <QCoreApplication>
 #include "CameraNetworkThread.h"
 #include "NetworkEvent.h"
 #include "ImageEvent.h"
@@ -53,10 +53,11 @@ void CameraNetworkThread::mainLoop()
         }
     }
     // take the image that was just added
-    rtabmap::SensorData sensorData = _camera->takeImage();
-    if (!sensorData.imageRaw().empty())
-    {
-        this->post(new ImageEvent(sensorData, "", context));
+    rtabmap::SensorData *sensorData = new rtabmap::SensorData();
+    *sensorData = _camera->takeImage();
+    if (!sensorData->imageRaw().empty())
+    { 
+        QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, (ConnectionInfo *)context));
     }
 }
 

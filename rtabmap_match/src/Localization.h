@@ -4,19 +4,26 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
-
+#include <QObject>
+#include <QEvent>
 #include "MemoryLoc.h"
 
 #define TOP_K 2
 
-class Localization
+class Localization :
+    public UEventsSender,
+    public QObject
 {
+    //Q_OBJECT
 public:
     Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~Localization();
-    virtual rtabmap::Transform localize(rtabmap::SensorData data); // TODO should I use const ref here?
+
+protected:
+    bool event(QEvent *event);
 
 private:
+    virtual rtabmap::Transform localize(rtabmap::SensorData data); // TODO should I use const ref here?
     void optimizeGraph();  // optimize poses using TORO graph
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
 

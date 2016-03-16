@@ -10,6 +10,8 @@
 #include <rtabmap/core/Optimizer.h>
 
 #include "Localization.h"
+#include "ImageEvent.h"
+#include "LocationEvent.h"
 
 Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
     _dbPath(dbPath),
@@ -58,6 +60,18 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
 Localization::~Localization()
 {
     delete _memory;
+}
+
+bool Localization::event(QEvent *event)
+{
+    if (event->type() == ImageEvent::type()) {
+        ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
+        rtabmap::Transform pose = localize(*imageEvent->sensorData());
+        // a null pose notify that loc could not be computed
+        this->post(new LocationEvent(*imageEvent->sensorData(), pose, const_cast<ConnectionInfo *>(imageEvent->conInfo())));
+        return true;
+    }
+    return QObject::event(event);
 }
 
 rtabmap::Transform Localization::localize(rtabmap::SensorData data)

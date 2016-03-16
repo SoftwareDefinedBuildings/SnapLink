@@ -86,8 +86,11 @@ rtabmap::SensorData CameraNetwork::captureImage()
     UDEBUG("");
     if (!_img.empty())
     {
+    UDEBUG("");
         rtabmap::SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
+    UDEBUG("");
         _img.release(); // decrement the reference counter
+    UDEBUG("");
         return sensorData;
     }
     else
