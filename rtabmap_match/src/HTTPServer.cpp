@@ -1,6 +1,7 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
+#include <QCoreApplication>
 
 #include "HTTPServer.h"
 #include "NetworkEvent.h"
@@ -49,15 +50,32 @@ void HTTPServer::stop()
     }
 }
 
-void HTTPServer::handleEvent(UEvent *event)
+void HTTPServer::setMaxClients(unsigned int maxClients)
 {
-    if (event->getClassName().compare("DetectionEvent") == 0)
+    _maxClients = maxClients;
+}
+
+unsigned int HTTPServer::getNumClients()
+{
+    return _numClients;
+}
+
+void HTTPServer::setCamera(CameraNetwork *camera)
+{
+    _camera = camera;
+}
+
+bool HTTPServer::event(QEvent *event)
+{
+    if (event->type() == DetectionEvent::type())
     {
-        DetectionEvent *detectionEvent = (DetectionEvent *) event;
-        ConnectionInfo *conInfo = (ConnectionInfo *) detectionEvent->context();
-        conInfo->names = detectionEvent->getNames();
+        DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
+        ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(detectionEvent->conInfo());
+        conInfo->names = *detectionEvent->names();
         conInfo->detected.release();
+        return true;
     }
+    return QObject::event(event);
 }
 
 int HTTPServer::answer_to_connection(void *cls,
@@ -86,13 +104,13 @@ int HTTPServer::answer_to_connection(void *cls,
             return MHD_NO;
         }
 
-        // reserve enough space for an image
         con_info->data = new std::vector<unsigned char>();
         if (con_info->data == NULL)
         {
             delete con_info;
             return MHD_NO;
         }
+        // reserve enough space for an image
         con_info->data->reserve(IMAGE_INIT_SIZE);
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
@@ -143,14 +161,16 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             if (!con_info->data->empty())
             {
-                httpServer->post(new NetworkEvent(con_info->data, con_info));
+                // seperate ownership of data from con_info
+                std::vector<unsigned char> *payload = con_info->data;
                 con_info->data = NULL;
+                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(payload, con_info));
             }
 
             // wait for the result to come
             int n = 1;
             int time = 5000; // time to wait (ms)
-            bool acquired = con_info->detected.acquire(n, time);
+            bool acquired = con_info->detected.tryAcquire(n, time);
 
             if (acquired && !con_info->names.empty())
             {

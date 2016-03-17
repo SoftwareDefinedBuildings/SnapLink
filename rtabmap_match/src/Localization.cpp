@@ -8,8 +8,11 @@
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/Optimizer.h>
+#include <QCoreApplication>
 
 #include "Localization.h"
+#include "ImageEvent.h"
+#include "LocationEvent.h"
 
 Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
     _dbPath(dbPath),
@@ -58,6 +61,25 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
 Localization::~Localization()
 {
     delete _memory;
+}
+
+void Localization::setVisibility(Visibility *vis)
+{
+    _vis = vis;
+}
+
+bool Localization::event(QEvent *event)
+{
+    if (event->type() == ImageEvent::type())
+    {
+        ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
+        rtabmap::Transform *pose = new rtabmap::Transform();
+        *pose = localize(*imageEvent->sensorData());
+        // a null pose notify that loc could not be computed
+        QCoreApplication::postEvent(_vis, new LocationEvent(imageEvent->sensorData(), pose, imageEvent->conInfo()));
+        return true;
+    }
+    return QObject::event(event);
 }
 
 rtabmap::Transform Localization::localize(rtabmap::SensorData data)

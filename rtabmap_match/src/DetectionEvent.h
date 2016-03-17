@@ -1,35 +1,24 @@
 #pragma once
 
-#include <rtabmap/utilite/UEvent.h>
+#include <QEvent>
 #include <vector>
+#include "HTTPServer.h"
 
 class DetectionEvent :
-    public UEvent
+    public QEvent
 {
 public:
-    DetectionEvent(const std::vector<std::string> &names, void *context = NULL) :
-        UEvent(0),
-        _names(names),
-        _context(context)
-    {
-    }
+    // ownership transfer
+    DetectionEvent(const std::vector<std::string> *names, const ConnectionInfo *conInfo);
 
     // get the names of the detected objects
-    std::vector<std::string> getNames() const
-    {
-        return _names;
-    }
-    void *context() const
-    {
-        return _context;
-    }
+    const std::vector<std::string> *names() const;
+    const ConnectionInfo *conInfo() const;
 
-    virtual std::string getClassName() const
-    {
-        return std::string("DetectionEvent");
-    }
+    static QEvent::Type type();
 
 private:
-    std::vector<std::string> _names;
-    void *_context;
+    static QEvent::Type _type;
+    const std::vector<std::string> *_names;
+    const ConnectionInfo *_conInfo;
 };

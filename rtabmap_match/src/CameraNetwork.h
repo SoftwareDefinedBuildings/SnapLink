@@ -1,34 +1,33 @@
 #pragma once
 
 #include <rtabmap/core/Camera.h>
+#include <QObject>
+#include "Localization.h"
+
+#define WIDTH 640
+#define HEIGHT 480
+
+class Localization;
 
 class CameraNetwork :
-    public rtabmap::Camera
+    public QObject
 {
 public:
-    CameraNetwork(bool rectifyImages = false,
-                  bool isDepth = false,
-                  float imageRate = 0,
-                  const rtabmap::Transform &localTransform = rtabmap::Transform::getIdentity());
+    CameraNetwork(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName);
     virtual ~CameraNetwork();
 
-    virtual bool init(const std::string &calibrationFolder = ".", const std::string &cameraName = "");
-    virtual bool isCalibrated() const;
-    virtual std::string getSerial() const;
-    // ownership transferred
-    bool addImage(std::vector<unsigned char> *);
+    void setLocalizer(Localization *localizer);
 
 protected:
-    virtual rtabmap::SensorData captureImage();
+    virtual bool event(QEvent *event);
 
 private:
+    // ownership transferred
+    rtabmap::SensorData *process(std::vector<unsigned char> *data);
     static cv::Mat dataToImage(std::vector<unsigned char> *data);
 
 private:
     cv::Mat _img;
-    bool _rectifyImages;
-    bool _isDepth;
-
-    std::string _cameraName;
     rtabmap::CameraModel _model;
+    Localization *_localizer;
 };

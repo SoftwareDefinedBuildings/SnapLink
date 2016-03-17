@@ -1,34 +1,22 @@
 #pragma once
 
-#include <rtabmap/utilite/UEvent.h>
+#include <QEvent>
+#include "HTTPServer.h"
 
 class NetworkEvent :
-    public UEvent
+    public QEvent
 {
 public:
     // ownership transfer
-    NetworkEvent(std::vector<unsigned char> *payload, void *context = NULL) :
-        UEvent(0),
-        _payload(payload),
-        _context(context)
-    {
-    }
+    NetworkEvent(std::vector<unsigned char> *payload, ConnectionInfo *conInfo);
 
-    std::vector<unsigned char> *payload() const
-    {
-        return _payload;
-    }
-    void *context() const
-    {
-        return _context;
-    }
+    std::vector<unsigned char> *payload() const;
+    ConnectionInfo *conInfo() const;
 
-    virtual std::string getClassName() const
-    {
-        return std::string("NetworkEvent");
-    }
+    static QEvent::Type type();
 
 private:
+    static QEvent::Type _type;
     std::vector<unsigned char> *_payload;
-    void *_context;
+    ConnectionInfo *_conInfo;
 };

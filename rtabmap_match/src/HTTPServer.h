@@ -1,15 +1,17 @@
 #pragma once
 
-#include <rtabmap/utilite/UEventsSender.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <rtabmap/utilite/USemaphore.h>
+#include <QSemaphore>
+#include <QObject>
 #include <microhttpd.h>
+#include "CameraNetwork.h"
 
 #define POST_BUFFER_SIZE 300000
 #define IMAGE_INIT_SIZE 300000
 
+class CameraNetwork;
+
 class HTTPServer :
-    public UEventsHandler
+    public QObject
 {
 public:
     HTTPServer(uint16_t port, unsigned int maxClients);
@@ -18,12 +20,12 @@ public:
     bool start();
     void stop();
 
-    // TODO use getter and setter
-    unsigned int _maxClients;
-    unsigned int _numClients;
+    void setMaxClients(unsigned int maxClients);
+    unsigned int getNumClients();
+    void setCamera(CameraNetwork *camera);
 
 protected:
-    virtual void handleEvent(UEvent *event);
+    virtual bool event(QEvent *event);
 
 private:
     // TODO use camelCase
@@ -53,6 +55,9 @@ private:
 private:
     uint16_t _port;
     struct MHD_Daemon *_daemon;
+    unsigned int _maxClients;
+    unsigned int _numClients;
+    CameraNetwork *_camera;
 };
 
 enum ConnectionType
@@ -69,5 +74,5 @@ typedef struct
     std::string answerstring;
     int answercode;
     std::vector<std::string> names;
-    USemaphore detected;
+    QSemaphore detected;
 } ConnectionInfo;
