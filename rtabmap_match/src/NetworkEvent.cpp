@@ -3,19 +3,19 @@
 QEvent::Type NetworkEvent::_type = QEvent::None;
 
 // ownership transfer
-NetworkEvent::NetworkEvent(const std::vector<unsigned char> *payload, const ConnectionInfo *conInfo) :
+NetworkEvent::NetworkEvent(std::vector<unsigned char> *payload, ConnectionInfo *conInfo) :
     QEvent(NetworkEvent::type()),
     _payload(payload),
     _conInfo(conInfo)
 {
 }
 
-const std::vector<unsigned char> *NetworkEvent::payload() const
+std::vector<unsigned char> *NetworkEvent::payload() const
 {
     return _payload;
 }
 
-const ConnectionInfo *NetworkEvent::conInfo() const
+ConnectionInfo *NetworkEvent::conInfo() const
 {
     return _conInfo;
 }

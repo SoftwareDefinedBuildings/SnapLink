@@ -104,13 +104,13 @@ int HTTPServer::answer_to_connection(void *cls,
             return MHD_NO;
         }
 
-        // reserve enough space for an image
         con_info->data = new std::vector<unsigned char>();
         if (con_info->data == NULL)
         {
             delete con_info;
             return MHD_NO;
         }
+        // reserve enough space for an image
         con_info->data->reserve(IMAGE_INIT_SIZE);
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
@@ -161,8 +161,10 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             if (!con_info->data->empty())
             {
-                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(con_info->data, con_info));
+                // seperate ownership of data from con_info
+                std::vector<unsigned char> *payload = con_info->data;
                 con_info->data = NULL;
+                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(payload, con_info));
             }
 
             // wait for the result to come

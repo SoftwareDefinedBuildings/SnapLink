@@ -48,12 +48,7 @@ int main(int argc, char *argv[])
     bool rectifyImages = false;
     bool isDepth = false;
     float imageRate = 10.0f;
-    CameraNetwork camera(rectifyImages, isDepth, imageRate, localTransform);
-    if (!camera.init("../cameras/", "lg_g2_mini_640_480"))
-    {
-        UERROR("Camera init failed!");
-        exit(1);
-    }
+    CameraNetwork camera(localTransform, "../cameras/", "lg_g2_mini_640_480");
     QThread cameraThread;
     camera.moveToThread(&cameraThread);
 

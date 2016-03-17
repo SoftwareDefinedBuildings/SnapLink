@@ -8,15 +8,15 @@ class NetworkEvent :
 {
 public:
     // ownership transfer
-    NetworkEvent(const std::vector<unsigned char> *payload, const ConnectionInfo *conInfo);
+    NetworkEvent(std::vector<unsigned char> *payload, ConnectionInfo *conInfo);
 
-    const std::vector<unsigned char> *payload() const;
-    const ConnectionInfo *conInfo() const;;
+    std::vector<unsigned char> *payload() const;
+    ConnectionInfo *conInfo() const;
 
     static QEvent::Type type();
 
 private:
     static QEvent::Type _type;
-    const std::vector<unsigned char> *_payload;
-    const ConnectionInfo *_conInfo;
+    std::vector<unsigned char> *_payload;
+    ConnectionInfo *_conInfo;
 };
