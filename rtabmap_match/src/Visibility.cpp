@@ -40,13 +40,19 @@ bool Visibility::init(const std::string &labelFolder)
     return readLabels(labelFolder);
 }
 
+void Visibility::setHTTPServer(HTTPServer *httpServer)
+{
+    _httpServer = httpServer;
+}
+
 bool Visibility::event(QEvent *event)
 {
-    if (event->type() == LocationEvent::type()) {
+    if (event->type() == LocationEvent::type())
+    {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
         std::vector<std::string> *names = new std::vector<std::string>();
         *names = process(*locEvent->sensorData(), *locEvent->pose());
-        QCoreApplication::postEvent(_httpserver, new DetectionEvent(names, locEvent->conInfo()));
+        QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
         return true;
     }
     return QObject::event(event);

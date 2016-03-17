@@ -14,14 +14,13 @@
 class Visibility;
 
 class Localization :
-    public UEventsSender,
     public QObject
 {
 public:
     Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~Localization();
 
-    Visibility *_vis;
+    void setVisibility(Visibility *vis);
 
 protected:
     virtual bool event(QEvent *event);
@@ -38,4 +37,5 @@ private:
     std::map<int, rtabmap::Transform> _optimizedPoses;
     rtabmap::ParametersMap _memoryParams;
     rtabmap::ParametersMap _memoryLocParams;
+    Visibility *_vis;
 };

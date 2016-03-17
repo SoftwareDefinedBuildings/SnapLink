@@ -12,11 +12,10 @@ CameraNetwork::CameraNetwork(bool rectifyImages,
                              bool isDepth,
                              float imageRate,
                              const rtabmap::Transform &localTransform) :
-    rtabmap::Camera(imageRate, localTransform),
     _rectifyImages(rectifyImages),
     _isDepth(isDepth)
 {
-
+    _model.setLocalTransform(localTransform);
 }
 
 CameraNetwork::~CameraNetwork(void)
@@ -47,7 +46,6 @@ bool CameraNetwork::init(const std::string &calibrationFolder, const std::string
         }
     }
 
-    _model.setLocalTransform(this->getLocalTransform());
     if (_rectifyImages && !_model.isValidForRectification())
     {
         UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
@@ -57,14 +55,9 @@ bool CameraNetwork::init(const std::string &calibrationFolder, const std::string
     return true;
 }
 
-bool CameraNetwork::isCalibrated() const
+void CameraNetwork::setLocalizer(Localization *localizer)
 {
-    return _model.isValidForProjection();
-}
-
-std::string CameraNetwork::getSerial() const
-{
-    return _cameraName;
+    _localizer = localizer;
 }
 
 rtabmap::SensorData CameraNetwork::captureImage()
@@ -72,7 +65,7 @@ rtabmap::SensorData CameraNetwork::captureImage()
     UDEBUG("");
     if (!_img.empty())
     {
-        rtabmap::SensorData sensorData(_img, _model, this->getNextSeqID(), UTimer::now());
+        rtabmap::SensorData sensorData(_img, _model);
         _img.release(); // decrement the reference counter
         return sensorData;
     }
@@ -84,12 +77,13 @@ rtabmap::SensorData CameraNetwork::captureImage()
 
 bool CameraNetwork::event(QEvent *event)
 {
-    if (event->type() == NetworkEvent::type()) {
+    if (event->type() == NetworkEvent::type())
+    {
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
         addImage(const_cast<std::vector<unsigned char> *>(networkEvent->payload()));
         rtabmap::SensorData *sensorData = new rtabmap::SensorData();
-        *sensorData = takeImage();
-        QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
+        *sensorData = captureImage();
+        QCoreApplication::postEvent(_localizer, new ImageEvent(sensorData, networkEvent->conInfo()));
         return true;
     }
     return QObject::event(event);

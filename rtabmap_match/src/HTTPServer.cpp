@@ -50,9 +50,25 @@ void HTTPServer::stop()
     }
 }
 
+void HTTPServer::setMaxClients(unsigned int maxClients)
+{
+    _maxClients = maxClients;
+}
+
+unsigned int HTTPServer::getNumClients()
+{
+    return _numClients;
+}
+
+void HTTPServer::setCamera(CameraNetwork *camera)
+{
+    _camera = camera;
+}
+
 bool HTTPServer::event(QEvent *event)
 {
-    if (event->type() == DetectionEvent::type()) {
+    if (event->type() == DetectionEvent::type())
+    {
         DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
         ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(detectionEvent->conInfo());
         conInfo->names = *detectionEvent->names();
@@ -152,7 +168,7 @@ int HTTPServer::answer_to_connection(void *cls,
             // wait for the result to come
             int n = 1;
             int time = 5000; // time to wait (ms)
-            bool acquired = con_info->detected.acquire(n, time);
+            bool acquired = con_info->detected.tryAcquire(n, time);
 
             if (acquired && !con_info->names.empty())
             {

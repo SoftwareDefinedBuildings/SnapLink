@@ -63,9 +63,15 @@ Localization::~Localization()
     delete _memory;
 }
 
+void Localization::setVisibility(Visibility *vis)
+{
+    _vis = vis;
+}
+
 bool Localization::event(QEvent *event)
 {
-    if (event->type() == ImageEvent::type()) {
+    if (event->type() == ImageEvent::type())
+    {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
         rtabmap::Transform *pose = new rtabmap::Transform();
         *pose = localize(*imageEvent->sensorData());

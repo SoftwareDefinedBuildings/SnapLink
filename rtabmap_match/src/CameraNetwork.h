@@ -8,7 +8,6 @@
 class Localization;
 
 class CameraNetwork :
-    public rtabmap::Camera,
     public QObject
 {
 public:
@@ -19,10 +18,8 @@ public:
     virtual ~CameraNetwork();
 
     virtual bool init(const std::string &calibrationFolder = ".", const std::string &cameraName = "");
-    virtual bool isCalibrated() const;
-    virtual std::string getSerial() const;
 
-    Localization *_loc;
+    void setLocalizer(Localization *localizer);
 
 protected:
     virtual rtabmap::SensorData captureImage();
@@ -42,4 +39,5 @@ private:
 
     std::string _cameraName;
     rtabmap::CameraModel _model;
+    Localization *_localizer;
 };

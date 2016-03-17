@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
         labelpath = std::string(argv[argc - 1]);
     }
 
-    QCoreApplication a(argc, argv);
+    QCoreApplication app(argc, argv);
 
     uint16_t port = 8080;
     unsigned int maxClients = 2;
@@ -44,27 +44,7 @@ int main(int argc, char *argv[])
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
     // TODO read fx and fy from EXIF
-    int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
-
-    rtabmap::Transform localTransform;
-
-    if (cameraType == 1)
-    {
-        // now it is hardcoded for lg g2 mini
-        rtabmap::Transform tempTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-
-        localTransform = tempTransform;
-
-        // TODO undistort img (or call it rectify here, not same rectification as eipometry)
-        // k1 = 0.134408880645970, k2 = -0.177147104797916
-    }
-    else if (cameraType == 2)
-    {
-        // hardcoded for map1_10Hz
-        rtabmap::Transform tempTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
-
-        localTransform = tempTransform;
-    }
+    rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
     bool rectifyImages = false;
     bool isDepth = false;
     float imageRate = 10.0f;
@@ -76,14 +56,10 @@ int main(int argc, char *argv[])
     }
     QThread cameraThread;
     camera.moveToThread(&cameraThread);
-    cameraThread.start();
 
-    QThread locThread;
     Localization loc(dbfile);
+    QThread locThread;
     loc.moveToThread(&locThread);
-    locThread.start();
-
-    camera._loc = &loc;
 
     Visibility visibility;
     if (!visibility.init(labelpath))
@@ -95,13 +71,14 @@ int main(int argc, char *argv[])
     visibility.moveToThread(&visThread);
     visThread.start();
 
-    loc._vis = &visibility;
+    httpServer.setCamera(&camera);
+    camera.setLocalizer(&loc);
+    loc.setVisibility(&visibility);
+    visibility.setHTTPServer(&httpServer);
 
-    visibility._httpserver = &httpServer;
-
-    httpServer._camera = &camera;
+    cameraThread.start();
+    locThread.start();
     httpServer.start();
 
-    
-    return a.exec();
+    return app.exec();
 }

@@ -1,8 +1,6 @@
 #pragma once
 
-#include <rtabmap/utilite/UEventsSender.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <rtabmap/utilite/USemaphore.h>
+#include <QSemaphore>
 #include <QObject>
 #include <microhttpd.h>
 #include "CameraNetwork.h"
@@ -22,11 +20,9 @@ public:
     bool start();
     void stop();
 
-    // TODO use getter and setter
-    unsigned int _maxClients;
-    unsigned int _numClients;
-
-    CameraNetwork *_camera;
+    void setMaxClients(unsigned int maxClients);
+    unsigned int getNumClients();
+    void setCamera(CameraNetwork *camera);
 
 protected:
     virtual bool event(QEvent *event);
@@ -59,6 +55,9 @@ private:
 private:
     uint16_t _port;
     struct MHD_Daemon *_daemon;
+    unsigned int _maxClients;
+    unsigned int _numClients;
+    CameraNetwork *_camera;
 };
 
 enum ConnectionType
@@ -75,5 +74,5 @@ typedef struct
     std::string answerstring;
     int answercode;
     std::vector<std::string> names;
-    USemaphore detected;
+    QSemaphore detected;
 } ConnectionInfo;
