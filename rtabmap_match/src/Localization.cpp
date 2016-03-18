@@ -216,18 +216,24 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
 void Localization::optimizeGraph()
 {
-    // get the graph
-    std::list<int> idList = uKeysList(_memory->getWorkingMem());
-    std::set<int> idSet(idList.begin(), idList.end());
-    std::map<int, rtabmap::Transform> poses;
-    std::multimap<int, rtabmap::Link> links;
-    bool lookInDatabase = true;
-    _memory->getMetricConstraints(idSet, poses, links, lookInDatabase);
+    if(_memory->getLastWorkingSignature())
+    {
+        // Get all IDs linked to last signature (including those in Long-Term Memory)
+        std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, -1);
 
-    //optimize the graph
-    rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-    rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
-    _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        UINFO("Optimize poses, ids.size() = %d", ids.size());
+
+        // Get all metric constraints (the graph)
+        std::map<int, rtabmap::Transform> poses;
+        std::multimap<int, rtabmap::Link> links;
+        _memory->getMetricConstraints(uKeysSet(ids), poses, links, true);
+
+        // Optimize the graph
+        rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
+        rtabmap::Optimizer * graphOptimizer = rtabmap::Optimizer::create(optimizerType);
+        _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        delete graphOptimizer;
+    }
 }
 
 rtabmap::Transform Localization::getPose(const rtabmap::Signature *sig) const
