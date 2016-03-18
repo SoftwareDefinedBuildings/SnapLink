@@ -1,6 +1,6 @@
 #include "DetectionEvent.h"
 
-QEvent::Type DetectionEvent::_type = QEvent::None;
+QEvent::Type DetectionEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
 DetectionEvent::DetectionEvent(const std::vector<std::string> *names, const ConnectionInfo *conInfo) :
@@ -23,9 +23,5 @@ const ConnectionInfo *DetectionEvent::conInfo() const
 
 QEvent::Type DetectionEvent::type()
 {
-    if (_type == QEvent::None)
-    {
-        _type = static_cast<QEvent::Type>(QEvent::registerEventType());
-    }
     return _type;
 }

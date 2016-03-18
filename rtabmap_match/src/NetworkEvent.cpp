@@ -1,6 +1,6 @@
 #include "NetworkEvent.h"
 
-QEvent::Type NetworkEvent::_type = QEvent::None;
+QEvent::Type NetworkEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
 NetworkEvent::NetworkEvent(std::vector<unsigned char> *payload, ConnectionInfo *conInfo) :
@@ -22,9 +22,5 @@ ConnectionInfo *NetworkEvent::conInfo() const
 
 QEvent::Type NetworkEvent::type()
 {
-    if (_type == QEvent::None)
-    {
-        _type = static_cast<QEvent::Type>(QEvent::registerEventType());
-    }
     return _type;
 }

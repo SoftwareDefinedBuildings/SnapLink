@@ -1,6 +1,6 @@
 #include "FailureEvent.h"
 
-QEvent::Type FailureEvent::_type = QEvent::None;
+QEvent::Type FailureEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
 FailureEvent::FailureEvent(const ConnectionInfo *conInfo) :
@@ -16,9 +16,5 @@ const ConnectionInfo *FailureEvent::conInfo() const
 
 QEvent::Type FailureEvent::type()
 {
-    if (_type == QEvent::None)
-    {
-        _type = static_cast<QEvent::Type>(QEvent::registerEventType());
-    }
     return _type;
 }

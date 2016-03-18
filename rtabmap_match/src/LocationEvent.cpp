@@ -1,6 +1,6 @@
 #include "LocationEvent.h"
 
-QEvent::Type LocationEvent::_type = QEvent::None;
+QEvent::Type LocationEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
 LocationEvent::LocationEvent(rtabmap::SensorData *sensorData, rtabmap::Transform pose, ConnectionInfo *conInfo) :
@@ -28,9 +28,5 @@ ConnectionInfo *LocationEvent::conInfo() const
 
 QEvent::Type LocationEvent::type()
 {
-    if (_type == QEvent::None)
-    {
-        _type = static_cast<QEvent::Type>(QEvent::registerEventType());
-    }
     return _type;
 }
