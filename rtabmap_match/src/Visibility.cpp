@@ -51,7 +51,7 @@ bool Visibility::event(QEvent *event)
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
         std::vector<std::string> *names = new std::vector<std::string>();
-        *names = process(*locEvent->sensorData(), *locEvent->pose());
+        *names = process(*locEvent->sensorData(), locEvent->pose());
         QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
         return true;
     }

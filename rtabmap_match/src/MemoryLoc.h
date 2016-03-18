@@ -12,12 +12,8 @@ class MemoryLoc :
 public:
     MemoryLoc(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, const std::map<int, rtabmap::Transform> *optimizedPoses = NULL, std::string *rejectedMsg = NULL, int *inliers = NULL, double *variance = NULL) const;
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<rtabmap::Signature> &oldSigs, const rtabmap::Signature &newSig, const std::map<int, rtabmap::Transform> *optimizedPoses = NULL, std::string *rejectedMsg = NULL, int *inliers = NULL, double *variance = NULL) const;
-
-private:
-    // get pose from optimizedPoses if available, otherwise get from sig itself
-    const rtabmap::Transform getPose(const rtabmap::Signature &sig, const std::map<int, rtabmap::Transform> *optimizedPoses = NULL) const;
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, std::string *rejectedMsg = NULL, int *inliers = NULL, double *variance = NULL) const;
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<rtabmap::Signature> &oldSigs, const rtabmap::Signature &newSig, std::string *rejectedMsg = NULL, int *inliers = NULL, double *variance = NULL) const;
 
 private:
     int _minInliers;

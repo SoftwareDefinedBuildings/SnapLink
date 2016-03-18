@@ -3,7 +3,7 @@
 QEvent::Type LocationEvent::_type = QEvent::None;
 
 // ownership transfer
-LocationEvent::LocationEvent(const rtabmap::SensorData *sensorData, const rtabmap::Transform *pose, const ConnectionInfo *conInfo) :
+LocationEvent::LocationEvent(rtabmap::SensorData *sensorData, rtabmap::Transform pose, ConnectionInfo *conInfo) :
     QEvent(LocationEvent::type()),
     _sensorData(sensorData),
     _pose(pose),
@@ -11,17 +11,17 @@ LocationEvent::LocationEvent(const rtabmap::SensorData *sensorData, const rtabma
 {
 }
 
-const rtabmap::SensorData *LocationEvent::sensorData() const
+rtabmap::SensorData *LocationEvent::sensorData() const
 {
     return _sensorData;
 }
 
-const rtabmap::Transform *LocationEvent::pose() const
+rtabmap::Transform LocationEvent::pose() const
 {
     return _pose;
 }
 
-const ConnectionInfo *LocationEvent::conInfo() const
+ConnectionInfo *LocationEvent::conInfo() const
 {
     return _conInfo;
 }

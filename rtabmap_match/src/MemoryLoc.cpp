@@ -35,7 +35,6 @@ MemoryLoc::MemoryLoc(const rtabmap::ParametersMap &parameters) :
 rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     const std::vector<int> &oldIds,
     int newId,
-    const std::map<int, rtabmap::Transform> *optimizedPoses,
     std::string *rejectedMsg,
     int *inliers,
     double *variance) const
@@ -59,13 +58,12 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
         return rtabmap::Transform();
     }
 
-    return computeGlobalVisualTransform(oldSigs, *newSig, optimizedPoses, rejectedMsg, inliers, variance);
+    return computeGlobalVisualTransform(oldSigs, *newSig, rejectedMsg, inliers, variance);
 }
 
 rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     const std::vector<rtabmap::Signature> &oldSigs,
     const rtabmap::Signature &newSig,
-    const std::map<int, rtabmap::Transform> *optimizedPoses,
     std::string *rejectedMsg,
     int *inliersOut,
     double *varianceOut) const
@@ -84,11 +82,11 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     std::multimap<int, cv::Point3f> words3;
 
     const std::vector<rtabmap::Signature>::const_iterator firstSig = oldSigs.begin();
-    const rtabmap::Transform &basePose = getPose(*firstSig, optimizedPoses);
+    const rtabmap::Transform &basePose = firstSig->getPose();
 
     for (std::vector<rtabmap::Signature>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
     {
-        rtabmap::Transform relativeT = basePose.inverse() * getPose(*sigIter, optimizedPoses);
+        rtabmap::Transform relativeT = basePose.inverse() * sigIter->getPose();
         const std::multimap<int, cv::Point3f> &sigWords3 = sigIter->getWords3();
         std::multimap<int, cv::Point3f>::const_iterator word3Iter;
         for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
@@ -143,7 +141,6 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
         UINFO(msg.c_str());
     }
 
-
     if (!transform.isNull())
     {
         // verify if it is a 180 degree transform, well verify > 90
@@ -176,17 +173,3 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
     return transform;
 }
 
-const rtabmap::Transform MemoryLoc::getPose(const rtabmap::Signature &sig, const std::map<int, rtabmap::Transform> *optimizedPoses) const
-{
-    rtabmap::Transform pose = sig.getPose();
-    if (optimizedPoses)
-    {
-        const std::map<int, rtabmap::Transform>::const_iterator poseIter = optimizedPoses->find(sig.id());
-        if (poseIter != optimizedPoses->end())
-        {
-            pose = poseIter->second;
-        }
-    }
-
-    return pose;
-}

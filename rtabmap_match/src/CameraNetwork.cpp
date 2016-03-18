@@ -36,9 +36,9 @@ CameraNetwork::~CameraNetwork(void)
 {
 }
 
-void CameraNetwork::setLocalizer(Localization *localizer)
+void CameraNetwork::setLocalizer(Localization *loc)
 {
-    _localizer = localizer;
+    _loc = loc;
 }
 
 bool CameraNetwork::event(QEvent *event)
@@ -46,10 +46,10 @@ bool CameraNetwork::event(QEvent *event)
     if (event->type() == NetworkEvent::type())
     {
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
-        const rtabmap::SensorData *sensorData = process(networkEvent->payload());
+        rtabmap::SensorData *sensorData = process(networkEvent->payload());
         if (sensorData != NULL)
         {
-            QCoreApplication::postEvent(_localizer, new ImageEvent(sensorData, networkEvent->conInfo()));
+            QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
         }
         // TODO send failure event to HTTPServer
         return true;
@@ -62,14 +62,14 @@ rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data)
     UDEBUG("");
     if (data != NULL)
     {
-        _img = dataToImage(data);
+        cv::Mat img = dataToImage(data);
 
-        //imwrite("image.jpg", _img);
+        //imwrite("image.jpg", img);
 
-        if (!_img.empty())
+        if (!img.empty())
         {
-            rtabmap::SensorData *sensorData = new rtabmap::SensorData(_img, _model);
-            _img.release(); // decrement the reference counter
+            rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, _model);
+            img.release(); // decrement the reference counter
             return sensorData; // no need to check if it's NULL
         }
     }
@@ -81,7 +81,7 @@ rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data)
 cv::Mat CameraNetwork::dataToImage(std::vector<unsigned char> *data)
 {
     cv::Mat mat(HEIGHT, WIDTH, CV_8UC1, &(*data)[0]);
-    // TODO: look at cv:Ptr so we don't need to copy
+    // TODO: there is a copy here
     mat = mat.clone(); // so we can free data later
     delete data;
 

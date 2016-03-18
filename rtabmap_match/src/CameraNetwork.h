@@ -16,7 +16,7 @@ public:
     CameraNetwork(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName);
     virtual ~CameraNetwork();
 
-    void setLocalizer(Localization *localizer);
+    void setLocalizer(Localization *loc);
 
 protected:
     virtual bool event(QEvent *event);
@@ -27,7 +27,6 @@ private:
     static cv::Mat dataToImage(std::vector<unsigned char> *data);
 
 private:
-    cv::Mat _img;
     rtabmap::CameraModel _model;
-    Localization *_localizer;
+    Localization *_loc;
 };

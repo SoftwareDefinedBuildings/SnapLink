@@ -73,50 +73,30 @@ bool Localization::event(QEvent *event)
     if (event->type() == ImageEvent::type())
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        rtabmap::Transform *pose = new rtabmap::Transform();
-        *pose = localize(*imageEvent->sensorData());
+        rtabmap::Transform pose = localize(imageEvent->sensorData());
         // a null pose notify that loc could not be computed
-        QCoreApplication::postEvent(_vis, new LocationEvent(imageEvent->sensorData(), pose, imageEvent->conInfo()));
+        if (!pose.isNull())
+        {
+            QCoreApplication::postEvent(_vis, new LocationEvent(imageEvent->sensorData(), pose, imageEvent->conInfo()));
+        }
+        // TODO post failure event to httpserver
         return true;
     }
     return QObject::event(event);
 }
 
-rtabmap::Transform Localization::localize(rtabmap::SensorData data)
+rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 {
+    UASSERT(!sensorData->imageRaw().empty());
+
     rtabmap::Transform output;
 
-    UASSERT(!data.imageRaw().empty());
-
-    if (!data.stereoCameraModel().isValidForProjection() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
-    {
-        UERROR("Rectified images required! Calibrate your camera.");
-        return output;
-    }
-    if (data.imageRaw().empty())
-    {
-        UERROR("Image empty! Cannot compute odometry...");
-        return output;
-    }
-    if (!((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection()) || data.stereoCameraModel().isValidForProjection()))
-    {
-        UERROR("Odometry cannot be done without calibration or on multi-camera!");
-        return output;
-    }
-
-    if (data.imageRaw().channels() > 1)
-    {
-        cv::Mat imageRawGray;
-        cv::cvtColor(data.imageRaw(), imageRawGray, cv::COLOR_BGR2GRAY);
-        data.setImageRaw(imageRawGray);
-    }
-
-    const rtabmap::CameraModel &cameraModel = data.stereoCameraModel().isValidForProjection() ? data.stereoCameraModel().left() : data.cameraModels()[0];
+    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
     if (_memory->getWorkingMem().size() >= 1)
     {
         // generate kpts
-        if (_memory->update(data))
+        if (_memory->update(*sensorData))
         {
             UDEBUG("");
             const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
@@ -159,8 +139,8 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
                 int visualInliers = 0;
                 double variance = 1;
                 bool success = true;
-                data.setId(newS->id());
-                if (data.id() == rtabmap::Memory::kIdInvalid)
+                sensorData->setId(newS->id());
+                if (sensorData->id() == rtabmap::Memory::kIdInvalid)
                 {
                     success = false;
                 }
@@ -177,24 +157,22 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
                         if (!data.depthOrRightRaw().empty() && data.id() != rtabmap::Memory::kIdInvalid && sig != NULL)
                         {
                             UDEBUG("Calculate map transform with raw data");
-                            //std::cout << "pose before being added: " << dataToS->getPose() << std::endl;
-                            memoryLoc.update(data, sig->getPose(), sig->getPoseCovariance());
+                            memoryLoc.update(data, getPose(sig), sig->getPoseCovariance());
                         }
                         else
                         {
-                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d",
-                                  data.depthOrRightRaw().empty(), data.id());
+                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d", data.depthOrRightRaw().empty(), data.id());
                             success = false;
                             break;
                         }
                     }
 
-                    memoryLoc.update(data);
+                    memoryLoc.update(*sensorData);
                 }
 
                 if (success)
                 {
-                    output = memoryLoc.computeGlobalVisualTransform(topIds, data.id(), &_optimizedPoses, &rejectedMsg, &visualInliers, &variance);
+                    output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id(), &rejectedMsg, &visualInliers, &variance);
 
                     if (!output.isNull())
                     {
@@ -203,7 +181,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData data)
                     else
                     {
                         UWARN("transform is null, rejectMsg = %s, using pose of the closest image", rejectedMsg.c_str());
-                        output = _memory->getSignature(topId)->getPose();
+                        output = getPose(_memory->getSignature(topId));
                     }
                 }
             }
@@ -241,6 +219,22 @@ void Localization::optimizeGraph()
     rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
     rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
     _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+}
+
+rtabmap::Transform Localization::getPose(const rtabmap::Signature *sig) const
+{
+    if (sig == NULL)
+    {
+        return rtabmap::Transform();
+    }
+    rtabmap::Transform pose = sig->getPose();
+    const std::map<int, rtabmap::Transform>::const_iterator poseIter = _optimizedPoses.find(sig->id());
+    if (poseIter != _optimizedPoses.end())
+    {
+        pose = poseIter->second;
+    }
+
+    return pose;
 }
 
 bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)

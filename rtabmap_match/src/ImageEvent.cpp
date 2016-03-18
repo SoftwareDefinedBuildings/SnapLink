@@ -4,19 +4,19 @@
 QEvent::Type ImageEvent::_type = QEvent::None;
 
 // ownership transfer
-ImageEvent::ImageEvent(const rtabmap::SensorData *sensorData, const ConnectionInfo *conInfo) :
+ImageEvent::ImageEvent(rtabmap::SensorData *sensorData, ConnectionInfo *conInfo) :
     QEvent(ImageEvent::type()),
     _sensorData(sensorData),
     _conInfo(conInfo)
 {
 }
 
-const rtabmap::SensorData *ImageEvent::sensorData() const
+rtabmap::SensorData *ImageEvent::sensorData() const
 {
     return _sensorData;
 }
 
-const ConnectionInfo *ImageEvent::conInfo() const
+ConnectionInfo *ImageEvent::conInfo() const
 {
     return _conInfo;
 }
