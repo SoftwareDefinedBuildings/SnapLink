@@ -6,6 +6,7 @@
 #include "HTTPServer.h"
 #include "NetworkEvent.h"
 #include "DetectionEvent.h"
+#include "FailureEvent.h"
 
 const std::string busypage = "This server is busy, please try again later.";
 const std::string completepage = "The upload has been completed.";
@@ -71,7 +72,15 @@ bool HTTPServer::event(QEvent *event)
     {
         DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
         ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(detectionEvent->conInfo());
-        conInfo->names = *detectionEvent->names();
+        conInfo->names = detectionEvent->names();
+        conInfo->detected.release();
+        return true;
+    }
+    else if (event->type() == FailureEvent::type())
+    {
+        FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
+        ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(failureEvent->conInfo());
+        conInfo->names = NULL;
         conInfo->detected.release();
         return true;
     }
@@ -126,6 +135,7 @@ int HTTPServer::answer_to_connection(void *cls,
 
             httpServer->_numClients++;
 
+            con_info->names = NULL;
             con_info->connectiontype = POST;
             con_info->answercode = MHD_HTTP_OK;
             con_info->answerstring = completepage;
@@ -172,15 +182,15 @@ int HTTPServer::answer_to_connection(void *cls,
             int time = 5000; // time to wait (ms)
             bool acquired = con_info->detected.tryAcquire(n, time);
 
-            if (acquired && !con_info->names.empty())
+            if (acquired && con_info->names != NULL && !con_info->names->empty())
             {
-                con_info->answerstring = con_info->names.at(0);
+                con_info->answerstring = con_info->names->at(0);
             }
             else
             {
                 con_info->answerstring = "None";
             }
-            con_info->names.clear();
+            delete con_info->names;
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }

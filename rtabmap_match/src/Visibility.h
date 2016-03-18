@@ -4,7 +4,6 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
-
 #include "HTTPServer.h"
 
 class HTTPServer;

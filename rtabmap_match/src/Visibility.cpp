@@ -12,6 +12,7 @@
 #include "Visibility.h"
 #include "LocationEvent.h"
 #include "DetectionEvent.h"
+#include "FailureEvent.h"
 
 double CompareMeanDist::meanDist(const std::vector<double> &vec)
 {
@@ -54,6 +55,10 @@ bool Visibility::event(QEvent *event)
         if (names != NULL)
         {
             QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
+        }
+        else
+        {
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(locEvent->conInfo()));
         }
         delete locEvent->sensorData();
         return true;

@@ -13,6 +13,7 @@
 #include "Localization.h"
 #include "ImageEvent.h"
 #include "LocationEvent.h"
+#include "FailureEvent.h"
 
 Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
     _dbPath(dbPath),
@@ -68,6 +69,11 @@ void Localization::setVisibility(Visibility *vis)
     _vis = vis;
 }
 
+void Localization::setHTTPServer(HTTPServer *httpServer)
+{
+    _httpServer = httpServer;
+}
+
 bool Localization::event(QEvent *event)
 {
     if (event->type() == ImageEvent::type())
@@ -79,7 +85,10 @@ bool Localization::event(QEvent *event)
         {
             QCoreApplication::postEvent(_vis, new LocationEvent(imageEvent->sensorData(), pose, imageEvent->conInfo()));
         }
-        // TODO post failure event to httpserver
+        else
+        {
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(imageEvent->conInfo()));
+        }
         return true;
     }
     return QObject::event(event);

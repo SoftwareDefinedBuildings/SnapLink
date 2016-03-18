@@ -7,6 +7,7 @@
 #include "CameraNetwork.h"
 #include "NetworkEvent.h"
 #include "ImageEvent.h"
+#include "FailureEvent.h"
 
 CameraNetwork::CameraNetwork(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName)
 {
@@ -41,6 +42,11 @@ void CameraNetwork::setLocalizer(Localization *loc)
     _loc = loc;
 }
 
+void CameraNetwork::setHTTPServer(HTTPServer *httpServer)
+{
+    _httpServer = httpServer;
+}
+
 bool CameraNetwork::event(QEvent *event)
 {
     if (event->type() == NetworkEvent::type())
@@ -51,7 +57,10 @@ bool CameraNetwork::event(QEvent *event)
         {
             QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
         }
-        // TODO send failure event to HTTPServer
+        else
+        {
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(networkEvent->conInfo()));
+        }
         return true;
     }
     return QObject::event(event);

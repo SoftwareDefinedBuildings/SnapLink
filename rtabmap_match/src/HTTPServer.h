@@ -73,6 +73,6 @@ typedef struct
     std::vector<unsigned char> *data;
     std::string answerstring;
     int answercode;
-    std::vector<std::string> names;
+    const std::vector<std::string> *names;
     QSemaphore detected;
 } ConnectionInfo;

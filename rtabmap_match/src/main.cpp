@@ -68,7 +68,9 @@ int main(int argc, char *argv[])
 
     httpServer.setCamera(&camera);
     camera.setLocalizer(&loc);
+    camera.setHTTPServer(&httpServer);
     loc.setVisibility(&visibility);
+    loc.setHTTPServer(&httpServer);
     visibility.setHTTPServer(&httpServer);
 
     cameraThread.start();
