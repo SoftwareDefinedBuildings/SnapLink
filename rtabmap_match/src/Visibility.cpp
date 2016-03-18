@@ -50,9 +50,12 @@ bool Visibility::event(QEvent *event)
     if (event->type() == LocationEvent::type())
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
-        std::vector<std::string> *names = new std::vector<std::string>();
-        *names = process(*locEvent->sensorData(), locEvent->pose());
-        QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
+        std::vector<std::string> *names = process(locEvent->sensorData(), locEvent->pose());
+        if (names != NULL)
+        {
+            QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
+        }
+        delete locEvent->sensorData();
         return true;
     }
     return QObject::event(event);
@@ -111,14 +114,14 @@ bool Visibility::readLabels(const std::string &labelFolder)
     return true;
 }
 
-std::vector<std::string> Visibility::process(const rtabmap::SensorData &data, const rtabmap::Transform &pose)
+std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, const rtabmap::Transform &pose)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
-    const rtabmap::CameraModel &model = data.cameraModels()[0];
+    const rtabmap::CameraModel &model = data->cameraModels()[0];
     cv::Mat K = model.K();
     rtabmap::Transform P = (pose * model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
@@ -134,8 +137,8 @@ std::vector<std::string> Visibility::process(const rtabmap::SensorData &data, co
     cv::projectPoints(_points, rvec, tvec, K, cv::Mat(), planePoints);
 
     // find points in the image
-    int cols = data.imageRaw().cols;
-    int rows = data.imageRaw().rows;
+    int cols = data->imageRaw().cols;
+    int rows = data->imageRaw().rows;
     std::map< std::string, std::vector<double> > distances;
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
     cv::Point2f center(cols / 2, rows / 2);
@@ -170,18 +173,18 @@ std::vector<std::string> Visibility::process(const rtabmap::SensorData &data, co
         }
     }
 
-    std::vector<std::string> rv;
-    if (!distances.empty())
+    std::vector<std::string> *names = new std::vector<std::string>();
+    if (names != NULL && !distances.empty())
     {
         // find the label with minimum mean distance
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
         std::string minlabel = minDist.first;
         UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-        rv.push_back(minlabel);
+        names->push_back(minlabel);
     }
     else
     {
         UINFO("No label is qualified");
     }
-    return rv;
+    return names;
 }

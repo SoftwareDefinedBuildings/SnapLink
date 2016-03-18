@@ -26,7 +26,7 @@ protected:
 
 private:
     bool readLabels(const std::string &labelFolder);
-    std::vector<std::string> process(const rtabmap::SensorData &data, const rtabmap::Transform &pose);
+    std::vector<std::string> *process(const rtabmap::SensorData *data, const rtabmap::Transform &pose);
 
 private:
     // labels
