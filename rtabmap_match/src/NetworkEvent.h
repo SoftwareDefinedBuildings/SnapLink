@@ -16,7 +16,7 @@ public:
     static QEvent::Type type();
 
 private:
-    static QEvent::Type _type;
+    static const QEvent::Type _type;
     std::vector<unsigned char> *_payload;
     ConnectionInfo *_conInfo;
 };

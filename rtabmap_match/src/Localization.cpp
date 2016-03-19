@@ -15,11 +15,25 @@
 #include "LocationEvent.h"
 #include "FailureEvent.h"
 
-Localization::Localization(const rtabmap::ParametersMap &parameters) :
+Localization::Localization() :
     _topk(TOP_K),
     _memory(NULL),
     _vis(NULL),
     _httpServer(NULL)
+{
+}
+
+Localization::~Localization()
+{
+    if (_memory != NULL)
+    {
+        delete _memory;
+    }
+    _vis = NULL;
+    _httpServer = NULL;
+}
+
+bool Localization::init(const std::string &dbPath, const rtabmap::ParametersMap &parameters)
 {
     // Setup memory
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
@@ -51,18 +65,7 @@ Localization::Localization(const rtabmap::ParametersMap &parameters) :
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
-}
 
-Localization::~Localization()
-{
-    if (_memory != NULL)
-    {
-        delete _memory;
-    }
-}
-
-bool Localization::init(const std::string &dbPath)
-{
     _memory = new MemoryLoc();
     if (_memory == NULL || !_memory->init(dbPath, false, _memoryParams))
     {

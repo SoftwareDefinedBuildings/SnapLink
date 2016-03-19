@@ -18,7 +18,7 @@ public:
     static QEvent::Type type();
 
 private:
-    static QEvent::Type _type;
+    static const QEvent::Type _type;
     const std::vector<std::string> *_names;
     const ConnectionInfo *_conInfo;
 };

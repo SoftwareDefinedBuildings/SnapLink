@@ -17,12 +17,11 @@
 Visibility::Visibility() :
     _httpServer(NULL)
 {
-    UDEBUG("");
 }
 
 Visibility::~Visibility()
 {
-    UDEBUG("");
+    _httpServer = NULL;
 }
 
 bool Visibility::init(const std::string &labelFolder)

@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
     rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
     const std::string &calibrationFolder = "../cameras/";
     const std::string &cameraName = "lg_g2_mini_640_480";
-    CameraNetwork camera(localTransform);
-    if (!camera.init(calibrationFolder, cameraName))
+    CameraNetwork camera;
+    if (!camera.init(localTransform, calibrationFolder, cameraName))
     {
         return 1;
     }

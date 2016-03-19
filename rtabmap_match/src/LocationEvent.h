@@ -21,7 +21,7 @@ public:
     Visibility _vis;
 
 private:
-    static QEvent::Type _type;
+    static const QEvent::Type _type;
     rtabmap::SensorData *_sensorData;
     rtabmap::Transform _pose;
     ConnectionInfo *_conInfo;

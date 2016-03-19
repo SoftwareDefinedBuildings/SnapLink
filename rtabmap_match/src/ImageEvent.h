@@ -17,7 +17,7 @@ public:
     static QEvent::Type type();
 
 private:
-    static QEvent::Type _type;
+    static const QEvent::Type _type;
     rtabmap::SensorData *_sensorData;
     ConnectionInfo *_conInfo;
 };

@@ -9,20 +9,22 @@
 #include "ImageEvent.h"
 #include "FailureEvent.h"
 
-CameraNetwork::CameraNetwork(const rtabmap::Transform &localTransform) :
+CameraNetwork::CameraNetwork() :
     _loc(NULL),
     _httpServer(NULL)
 {
-    UDEBUG("");
-    _model.setLocalTransform(localTransform);
 }
 
 CameraNetwork::~CameraNetwork()
 {
+    _loc = NULL;
+    _httpServer = NULL;
 }
 
-bool CameraNetwork::init(const std::string &calibrationFolder, const std::string &cameraName)
+bool CameraNetwork::init(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName)
 {
+    _model.setLocalTransform(localTransform);
+
     // look for calibration files
     if (!calibrationFolder.empty() && !cameraName.empty())
     {

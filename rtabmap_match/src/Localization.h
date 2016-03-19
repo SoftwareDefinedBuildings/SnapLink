@@ -19,10 +19,10 @@ class Localization :
     public QObject
 {
 public:
-    Localization(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    Localization();
     virtual ~Localization();
 
-    bool init(const std::string &dbPath);
+    bool init(const std::string &dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);

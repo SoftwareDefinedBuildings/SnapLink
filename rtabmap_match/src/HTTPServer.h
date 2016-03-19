@@ -16,14 +16,14 @@ class HTTPServer :
     public QObject
 {
 public:
-    HTTPServer(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
+    HTTPServer();
     virtual ~HTTPServer();
 
-    bool start();
+    bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
     void stop();
 
-    void setMaxClients(unsigned int maxClients);
-    unsigned int getNumClients();
+    const unsigned int &maxClients() const;
+    unsigned int &numClients();
     void setCamera(CameraNetwork *camera);
 
 protected:
@@ -55,7 +55,11 @@ private:
     static int send_page(struct MHD_Connection *connection, const std::string &page, int status_code);
 
 private:
-    uint16_t _port;
+    static const std::string busypage;
+    static const std::string completepage;
+    static const std::string errorpage;
+    static const std::string servererrorpage;
+
     struct MHD_Daemon *_daemon;
     unsigned int _maxClients;
     unsigned int _numClients;

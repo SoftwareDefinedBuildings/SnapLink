@@ -8,17 +8,14 @@
 #include "DetectionEvent.h"
 #include "FailureEvent.h"
 
-const std::string busypage = "This server is busy, please try again later.";
-const std::string completepage = "The upload has been completed.";
-const std::string errorpage = "This doesn't seem to be right.";
-const std::string servererrorpage = "An internal server error has occured.";
-
+const std::string HTTPServer::busypage = "This server is busy, please try again later.";
+const std::string HTTPServer::completepage = "The upload has been completed.";
+const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
+const std::string HTTPServer::servererrorpage = "An internal server error has occured.";
 
 // ownership transferred
-HTTPServer::HTTPServer(uint16_t port, unsigned int maxClients):
-    _port(port),
+HTTPServer::HTTPServer():
     _daemon(NULL),
-    _maxClients(maxClients),
     _numClients(0),
     _camera(NULL)
 {
@@ -27,15 +24,19 @@ HTTPServer::HTTPServer(uint16_t port, unsigned int maxClients):
 HTTPServer::~HTTPServer()
 {
     stop();
+    _numClients = 0;
+    _camera = NULL;
 }
 
-bool HTTPServer::start()
+bool HTTPServer::start(uint16_t port, unsigned int maxClients)
 {
-    // start MHD daemon, listening on port number _port
+    _maxClients = maxClients;
+
+    // start MHD daemon, listening on port
     unsigned int flags = MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL;
-    _daemon = MHD_start_daemon(flags, _port, NULL, NULL,
-                               &answer_to_connection, this,
-                               MHD_OPTION_NOTIFY_COMPLETED, &request_completed, this,
+    _daemon = MHD_start_daemon(flags, port, NULL, NULL,
+                               &answer_to_connection, static_cast<void *>(this),
+                               MHD_OPTION_NOTIFY_COMPLETED, &request_completed, static_cast<void *>(this),
                                MHD_OPTION_END);
     if (_daemon == NULL)
     {
@@ -50,15 +51,16 @@ void HTTPServer::stop()
     if (_daemon != NULL)
     {
         MHD_stop_daemon(_daemon);
+        _daemon = NULL;
     }
 }
 
-void HTTPServer::setMaxClients(unsigned int maxClients)
+const unsigned int &HTTPServer::maxClients() const
 {
-    _maxClients = maxClients;
+    return _maxClients;
 }
 
-unsigned int HTTPServer::getNumClients()
+unsigned int &HTTPServer::numClients()
 {
     return _numClients;
 }
@@ -98,18 +100,17 @@ int HTTPServer::answer_to_connection(void *cls,
                                      size_t *upload_data_size,
                                      void **con_cls)
 {
-    HTTPServer *httpServer = (HTTPServer *) cls;
+    HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
 
     if (*con_cls == NULL)
     {
-        ConnectionInfo *con_info;
 
-        if (httpServer->_numClients >= httpServer->_maxClients)
+        if (httpServer->numClients() >= httpServer->maxClients())
         {
             return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
 
-        con_info = new ConnectionInfo();
+        ConnectionInfo *con_info = new ConnectionInfo();
         if (con_info == NULL)
         {
             return MHD_NO;
@@ -135,7 +136,7 @@ int HTTPServer::answer_to_connection(void *cls,
                 return MHD_NO;
             }
 
-            httpServer->_numClients++;
+            httpServer->numClients()++;
 
             con_info->names = NULL;
             con_info->connectiontype = POST;
@@ -147,7 +148,7 @@ int HTTPServer::answer_to_connection(void *cls,
             con_info->connectiontype = GET;
         }
 
-        *con_cls = (void *) con_info;
+        *con_cls = static_cast<void *>(con_info);
 
         return MHD_YES;
     }
@@ -251,7 +252,7 @@ void HTTPServer::request_completed(void *cls,
         if (con_info->postprocessor != NULL)
         {
             MHD_destroy_post_processor(con_info->postprocessor);
-            httpServer->_numClients--;
+            httpServer->numClients()--;
         }
     }
 

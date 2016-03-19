@@ -1,7 +1,6 @@
 #include "ImageEvent.h"
 
-// TODO init here
-QEvent::Type ImageEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
+const QEvent::Type ImageEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
 ImageEvent::ImageEvent(rtabmap::SensorData *sensorData, ConnectionInfo *conInfo) :
