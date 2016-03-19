@@ -15,8 +15,10 @@ class CameraNetwork :
     public QObject
 {
 public:
-    CameraNetwork(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName);
+    CameraNetwork(const rtabmap::Transform &localTransform);
     virtual ~CameraNetwork();
+
+    bool init(const std::string &calibrationFolder, const std::string &cameraName);
 
     void setLocalizer(Localization *loc);
     void setHTTPServer(HTTPServer *httpServer);

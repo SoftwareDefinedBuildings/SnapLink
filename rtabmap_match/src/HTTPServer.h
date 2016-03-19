@@ -5,6 +5,8 @@
 #include <microhttpd.h>
 #include "CameraNetwork.h"
 
+#define PORT 8080
+#define MAX_CLIENTS 10
 #define POST_BUFFER_SIZE 300000
 #define IMAGE_INIT_SIZE 300000
 
@@ -14,7 +16,7 @@ class HTTPServer :
     public QObject
 {
 public:
-    HTTPServer(uint16_t port, unsigned int maxClients);
+    HTTPServer(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
     virtual ~HTTPServer();
 
     bool start();

@@ -15,9 +15,11 @@
 #include "LocationEvent.h"
 #include "FailureEvent.h"
 
-Localization::Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters) :
-    _dbPath(dbPath),
-    _topk(TOP_K)
+Localization::Localization(const rtabmap::ParametersMap &parameters) :
+    _topk(TOP_K),
+    _memory(NULL),
+    _vis(NULL),
+    _httpServer(NULL)
 {
     // Setup memory
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
@@ -31,14 +33,6 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), "1")); // Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "20"));
-
-    _memory = new MemoryLoc();
-    if (!_memory || !_memory->init(_dbPath, false, _memoryParams))
-    {
-        UERROR("Error initializing the memory for Localization.");
-    }
-
-    optimizeGraph();
 
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
@@ -61,7 +55,24 @@ Localization::Localization(const std::string dbPath, const rtabmap::ParametersMa
 
 Localization::~Localization()
 {
-    delete _memory;
+    if (_memory != NULL)
+    {
+        delete _memory;
+    }
+}
+
+bool Localization::init(const std::string &dbPath)
+{
+    _memory = new MemoryLoc();
+    if (_memory == NULL || !_memory->init(dbPath, false, _memoryParams))
+    {
+        UERROR("Error initializing the memory for Localization.");
+        return false;
+    }
+
+    optimizeGraph();
+
+    return true;
 }
 
 void Localization::setVisibility(Visibility *vis)
@@ -216,7 +227,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
 void Localization::optimizeGraph()
 {
-    if(_memory->getLastWorkingSignature())
+    if (_memory->getLastWorkingSignature())
     {
         // Get all IDs linked to last signature (including those in Long-Term Memory)
         std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, -1);
@@ -230,7 +241,7 @@ void Localization::optimizeGraph()
 
         // Optimize the graph
         rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-        rtabmap::Optimizer * graphOptimizer = rtabmap::Optimizer::create(optimizerType);
+        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
         _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
         delete graphOptimizer;
     }

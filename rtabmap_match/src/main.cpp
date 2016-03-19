@@ -38,44 +38,51 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    uint16_t port = 8080;
-    unsigned int maxClients = 2;
-    HTTPServer httpServer(port, maxClients);
+    HTTPServer httpServer;
+    if (!httpServer.start())
+    {
+        return 1;
+    }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
-    // TODO read fx and fy from EXIF
     rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-    bool rectifyImages = false;
-    bool isDepth = false;
-    float imageRate = 10.0f;
-    CameraNetwork camera(localTransform, "../cameras/", "lg_g2_mini_640_480");
-    QThread cameraThread;
-    camera.moveToThread(&cameraThread);
-
-    Localization loc(dbfile);
-    QThread locThread;
-    loc.moveToThread(&locThread);
-
-    Visibility visibility;
-    if (!visibility.init(labelpath))
+    const std::string &calibrationFolder = "../cameras/";
+    const std::string &cameraName = "lg_g2_mini_640_480";
+    CameraNetwork camera(localTransform);
+    if (!camera.init(calibrationFolder, cameraName))
     {
-        UERROR("Visibility init failed!");
-        exit(1);
+        return 1;
     }
+    httpServer.setCamera(&camera);
+    camera.setHTTPServer(&httpServer);
+
+    Localization loc;
+    if (!loc.init(dbfile))
+    {
+        return 1;
+    }
+    camera.setLocalizer(&loc);
+    loc.setHTTPServer(&httpServer);
+
+    Visibility vis;
+    if (!vis.init(labelpath))
+    {
+        return 1;
+    }
+    loc.setVisibility(&vis);
+    vis.setHTTPServer(&httpServer);
+
     QThread visThread;
-    visibility.moveToThread(&visThread);
+    vis.moveToThread(&visThread);
     visThread.start();
 
-    httpServer.setCamera(&camera);
-    camera.setLocalizer(&loc);
-    camera.setHTTPServer(&httpServer);
-    loc.setVisibility(&visibility);
-    loc.setHTTPServer(&httpServer);
-    visibility.setHTTPServer(&httpServer);
-
-    cameraThread.start();
+    QThread locThread;
+    loc.moveToThread(&locThread);
     locThread.start();
-    httpServer.start();
+
+    QThread cameraThread;
+    camera.moveToThread(&cameraThread);
+    cameraThread.start();
 
     return app.exec();
 }

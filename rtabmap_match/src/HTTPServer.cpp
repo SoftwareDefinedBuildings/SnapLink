@@ -17,14 +17,16 @@ const std::string servererrorpage = "An internal server error has occured.";
 // ownership transferred
 HTTPServer::HTTPServer(uint16_t port, unsigned int maxClients):
     _port(port),
+    _daemon(NULL),
     _maxClients(maxClients),
     _numClients(0),
-    _daemon(NULL)
+    _camera(NULL)
 {
 }
 
 HTTPServer::~HTTPServer()
 {
+    stop();
 }
 
 bool HTTPServer::start()

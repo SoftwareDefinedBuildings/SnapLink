@@ -14,19 +14,8 @@
 #include "DetectionEvent.h"
 #include "FailureEvent.h"
 
-double CompareMeanDist::meanDist(const std::vector<double> &vec)
-{
-    double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
-    double mean = sum / vec.size();
-    return mean;
-}
-
-bool CompareMeanDist::operator()(const PairType &left, const PairType &right) const
-{
-    return meanDist(left.second) < meanDist(right.second);
-}
-
-Visibility::Visibility()
+Visibility::Visibility() :
+    _httpServer(NULL)
 {
     UDEBUG("");
 }
@@ -193,3 +182,16 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
     }
     return names;
 }
+
+double CompareMeanDist::meanDist(const std::vector<double> &vec)
+{
+    double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
+    double mean = sum / vec.size();
+    return mean;
+}
+
+bool CompareMeanDist::operator()(const PairType &left, const PairType &right) const
+{
+    return meanDist(left.second) < meanDist(right.second);
+}
+

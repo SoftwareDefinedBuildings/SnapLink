@@ -19,8 +19,10 @@ class Localization :
     public QObject
 {
 public:
-    Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    Localization(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~Localization();
+
+    bool init(const std::string &dbPath);
 
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);
@@ -37,7 +39,6 @@ private:
 
 private:
     int _topk;
-    std::string _dbPath;
     MemoryLoc *_memory;
     std::map<int, rtabmap::Transform> _optimizedPoses;
     rtabmap::ParametersMap _memoryParams;

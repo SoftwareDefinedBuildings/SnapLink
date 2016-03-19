@@ -9,32 +9,38 @@
 #include "ImageEvent.h"
 #include "FailureEvent.h"
 
-CameraNetwork::CameraNetwork(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName)
+CameraNetwork::CameraNetwork(const rtabmap::Transform &localTransform) :
+    _loc(NULL),
+    _httpServer(NULL)
 {
     UDEBUG("");
-
     _model.setLocalTransform(localTransform);
+}
 
+CameraNetwork::~CameraNetwork()
+{
+}
+
+bool CameraNetwork::init(const std::string &calibrationFolder, const std::string &cameraName)
+{
     // look for calibration files
     if (!calibrationFolder.empty() && !cameraName.empty())
     {
-        if (!_model.load(calibrationFolder, cameraName))
-        {
-            UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", cameraName.c_str(), calibrationFolder.c_str());
-        }
-        else
+        if (_model.load(calibrationFolder, cameraName))
         {
             UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
                   _model.fx(),
                   _model.fy(),
                   _model.cx(),
                   _model.cy());
+            return true;
+        }
+        else
+        {
+            UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", cameraName.c_str(), calibrationFolder.c_str());
         }
     }
-}
-
-CameraNetwork::~CameraNetwork(void)
-{
+    return false;
 }
 
 void CameraNetwork::setLocalizer(Localization *loc)
