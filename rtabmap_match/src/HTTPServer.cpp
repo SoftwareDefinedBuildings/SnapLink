@@ -116,14 +116,8 @@ int HTTPServer::answer_to_connection(void *cls,
             return MHD_NO;
         }
 
-        con_info->data = new std::vector<unsigned char>();
-        if (con_info->data == NULL)
-        {
-            delete con_info;
-            return MHD_NO;
-        }
         // reserve enough space for an image
-        con_info->data->reserve(IMAGE_INIT_SIZE);
+        con_info->data.reserve(IMAGE_INIT_SIZE);
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
         {
@@ -131,7 +125,6 @@ int HTTPServer::answer_to_connection(void *cls,
 
             if (con_info->postprocessor == NULL)
             {
-                delete con_info->data;
                 delete con_info;
                 return MHD_NO;
             }
@@ -172,12 +165,10 @@ int HTTPServer::answer_to_connection(void *cls,
         }
         else
         {
-            if (!con_info->data->empty())
+            if (!con_info->data.empty())
             {
                 // seperate ownership of data from con_info
-                std::vector<unsigned char> *payload = con_info->data;
-                con_info->data = NULL;
-                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(payload, con_info));
+                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(con_info));
             }
 
             // wait for the result to come
@@ -194,6 +185,7 @@ int HTTPServer::answer_to_connection(void *cls,
                 con_info->answerstring = "None";
             }
             delete con_info->names;
+            con_info->names = NULL;
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }
@@ -224,7 +216,7 @@ int HTTPServer::iterate_post(void *coninfo_cls,
 
     if (size > 0)
     {
-        con_info->data->insert(con_info->data->end(), (unsigned char *) data, (unsigned char *) data + size);
+        con_info->data.insert(con_info->data.end(), (unsigned char *) data, (unsigned char *) data + size);
     }
 
     con_info->answerstring = completepage;

@@ -29,7 +29,6 @@ protected:
 private:
     // ownership transferred
     rtabmap::SensorData *process(std::vector<unsigned char> *data);
-    static cv::Mat dataToImage(std::vector<unsigned char> *data);
 
 private:
     rtabmap::CameraModel _model;
