@@ -89,7 +89,7 @@ rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data)
         {
             rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, _model);
             img.release(); // decrement the reference counter
-            return sensorData; // no need to check if it's NULL
+            return sensorData;
         }
     }
 

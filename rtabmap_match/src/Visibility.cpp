@@ -167,7 +167,7 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
     }
 
     std::vector<std::string> *names = new std::vector<std::string>();
-    if (names != NULL && !distances.empty())
+    if (!distances.empty())
     {
         // find the label with minimum mean distance
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());

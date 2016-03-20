@@ -111,10 +111,6 @@ int HTTPServer::answer_to_connection(void *cls,
         }
 
         ConnectionInfo *con_info = new ConnectionInfo();
-        if (con_info == NULL)
-        {
-            return MHD_NO;
-        }
 
         // reserve enough space for an image
         con_info->data.reserve(IMAGE_INIT_SIZE);
