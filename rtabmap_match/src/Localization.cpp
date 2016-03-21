@@ -133,9 +133,6 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                 UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
                 likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
 
-                rtabmap::Rtabmap rtabmap;
-                rtabmap.adjustLikelihood(likelihood);
-
                 std::vector<int> topIds;
                 likelihood.erase(-1);
                 int topId;
