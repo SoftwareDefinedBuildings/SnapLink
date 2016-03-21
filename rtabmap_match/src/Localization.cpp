@@ -147,7 +147,6 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                                            top.begin(),
                                            top.end(),
                                            compareLikelihood);
-                    // TODO there is some bugs here
                     for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
                     {
                         topIds.push_back(it->first);
@@ -158,9 +157,6 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
                 MemoryLoc memoryLoc(_memoryLocParams);
 
-                std::string rejectedMsg;
-                int visualInliers = 0;
-                double variance = 1;
                 bool success = true;
                 sensorData->setId(newS->id());
                 if (sensorData->id() == rtabmap::Memory::kIdInvalid)
@@ -195,7 +191,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
                 if (success)
                 {
-                    output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id(), &rejectedMsg, &visualInliers, &variance);
+                    output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id());
 
                     if (!output.isNull())
                     {
@@ -203,7 +199,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                     }
                     else
                     {
-                        UWARN("transform is null, rejectMsg = %s, using pose of the closest image", rejectedMsg.c_str());
+                        UWARN("transform is null, using pose of the closest image");
                         output = getPose(_memory->getSignature(topId));
                     }
                 }

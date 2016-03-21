@@ -32,14 +32,9 @@ MemoryLoc::MemoryLoc(const rtabmap::ParametersMap &parameters) :
     UASSERT_MSG(_iterations > 0, uFormat("value=%d", _iterations).c_str());
 }
 
-rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
-    const std::vector<int> &oldIds,
-    int newId,
-    std::string *rejectedMsg,
-    int *inliers,
-    double *variance) const
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const
 {
-    std::vector<rtabmap::Signature> oldSigs;
+    std::vector<const rtabmap::Signature *> oldSigs;
     for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); it++)
     {
         const rtabmap::Signature *oldSig = getSignature(*it);
@@ -47,97 +42,104 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
         {
             return rtabmap::Transform();
         }
-        // TODO: how much memcopy is here? Maybe cv::Mat covers that?
-        oldSigs.push_back(*oldSig);
+        oldSigs.push_back(oldSig);
     }
 
-    const rtabmap::Signature *newSig = NULL;
-    newSig = getSignature(newId);
+    const rtabmap::Signature *newSig = getSignature(newId);
     if (newSig == NULL)
     {
         return rtabmap::Transform();
     }
 
-    return computeGlobalVisualTransform(oldSigs, *newSig, rejectedMsg, inliers, variance);
+    return computeGlobalVisualTransform(oldSigs, newSig);
 }
 
-rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
-    const std::vector<rtabmap::Signature> &oldSigs,
-    const rtabmap::Signature &newSig,
-    std::string *rejectedMsg,
-    int *inliersOut,
-    double *varianceOut) const
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const
 {
-    if (oldSigs.size() == 0)
+    if (oldSigs.size() == 0 || newSig == NULL)
     {
         return rtabmap::Transform();
     }
 
     rtabmap::Transform transform;
+    // TODO test to use the world coordiante as basePose
+    //rtabmap::Transform transform3;
     std::string msg;
 
     int inliersCount = 0;
     double variance = 1.0;
 
-    std::multimap<int, cv::Point3f> words3;
+    std::multimap<int, cv::Point3f> words;
+    //std::multimap<int, cv::Point3f> words3;
 
-    const std::vector<rtabmap::Signature>::const_iterator firstSig = oldSigs.begin();
-    const rtabmap::Transform &basePose = firstSig->getPose();
+    const std::vector<const rtabmap::Signature *>::const_iterator firstSig = oldSigs.begin();
+    const rtabmap::Transform &basePose = (*firstSig)->getPose();
 
-    for (std::vector<rtabmap::Signature>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
+    for (std::vector<const rtabmap::Signature *>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
     {
-        rtabmap::Transform relativeT = basePose.inverse() * sigIter->getPose();
-        const std::multimap<int, cv::Point3f> &sigWords3 = sigIter->getWords3();
+        rtabmap::Transform relativeT = basePose.inverse() * (*sigIter)->getPose();
+        //rtabmap::Transform pose = (*sigIter)->getPose();
+        const std::multimap<int, cv::Point3f> &sigWords3 = (*sigIter)->getWords3();
         std::multimap<int, cv::Point3f>::const_iterator word3Iter;
         for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
         {
             cv::Point3f point = rtabmap::util3d::transformPoint(word3Iter->second, relativeT);
-            words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point));
+            //cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, pose);
+            words.insert(std::pair<int, cv::Point3f>(word3Iter->first, point));
+            //words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
         }
     }
 
-    if (!newSig.sensorData().stereoCameraModel().isValidForProjection() && (newSig.sensorData().cameraModels().size() != 1 || !newSig.sensorData().cameraModels()[0].isValidForProjection()))
-    {
-        UERROR("Calibrated camera required (multi-cameras not supported).");
-        return rtabmap::Transform();
-    }
-
     // 3D to 2D (PnP)
-    if ((int)words3.size() >= _minInliers && (int)newSig.getWords().size() >= _minInliers)
+    if ((int)words.size() >= _minInliers && (int)newSig->getWords().size() >= _minInliers)
     {
-        UASSERT(newSig.sensorData().stereoCameraModel().isValidForProjection() || (newSig.sensorData().cameraModels().size() == 1 && newSig.sensorData().cameraModels()[0].isValidForProjection()));
-        const rtabmap::CameraModel &cameraModel = newSig.sensorData().stereoCameraModel().isValidForProjection() ? newSig.sensorData().stereoCameraModel().left() : newSig.sensorData().cameraModels()[0];
+        const rtabmap::CameraModel &cameraModel = newSig->sensorData().cameraModels()[0];
 
         std::vector<int> matches;
         std::vector<int> inliers;
         transform = rtabmap::util3d::estimateMotion3DTo2D(
-                        uMultimapToMapUnique(words3),
-                        uMultimapToMapUnique(newSig.getWords()),
-                        cameraModel, // cameraModel.localTransform has to be the same for all images
+                        uMultimapToMapUnique(words),
+                        uMultimapToMapUnique(newSig->getWords()),
+                        cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
                         _minInliers,
                         _iterations,
                         _pnpReprojError,
                         _pnpFlags,
                         _pnpRefineIterations,
                         rtabmap::Transform::getIdentity(),
-                        uMultimapToMapUnique(newSig.getWords3()),
+                        uMultimapToMapUnique(newSig->getWords3()),
                         &variance,
                         &matches,
                         &inliers);
+        //transform3 = rtabmap::util3d::estimateMotion3DTo2D(
+        //                uMultimapToMapUnique(words3),
+        //                uMultimapToMapUnique(newSig->getWords()),
+        //                cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
+        //                _minInliers,
+        //                _iterations,
+        //                _pnpReprojError,
+        //                _pnpFlags,
+        //                _pnpRefineIterations,
+        //                rtabmap::Transform::getIdentity(),
+        //                uMultimapToMapUnique(newSig->getWords3()),
+        //                &variance,
+        //                &matches,
+        //                &inliers);
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _minInliers, newSig.id());
+            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _minInliers, newSig->id());
             UINFO(msg.c_str());
         }
         else
         {
             transform = transform.inverse();
+            //transform3 = transform3.inverse();
         }
     }
     else
     {
-        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig.getWords().size(), _minInliers);
+        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words.size(), (int)newSig->getWords().size(), _minInliers);
         UINFO(msg.c_str());
     }
 
@@ -156,20 +158,10 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(
 
     // transfer to global frame
     transform = basePose * transform.inverse();
+    //transform3 = transform3.inverse();
 
-    if (rejectedMsg)
-    {
-        *rejectedMsg = msg;
-    }
-    if (inliersOut)
-    {
-        *inliersOut = inliersCount;
-    }
-    if (varianceOut)
-    {
-        *varianceOut = variance;
-    }
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
+    //UDEBUG("transform3=%s", transform3.prettyPrint().c_str());
     return transform;
 }
 
