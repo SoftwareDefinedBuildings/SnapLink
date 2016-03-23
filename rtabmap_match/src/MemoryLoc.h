@@ -1,15 +1,20 @@
 #pragma once
 
-#include "rtabmap/utilite/UEventsHandler.h"
-#include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/Link.h"
-#include "rtabmap/core/Features2d.h"
+#include <rtabmap/utilite/UEventsHandler.h>
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Link.h>
+#include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/Statistics.h>
+#include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/Registration.h>
+#include <rtabmap/core/RegistrationVis.h>
+#include <rtabmap/core/RegistrationIcp.h>
 #include <typeinfo>
 #include <list>
 #include <map>
 #include <set>
-#include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
@@ -22,7 +27,6 @@ class Statistics;
 class Registration;
 class RegistrationInfo;
 class RegistrationIcp;
-class Stereo;
 
 class MemoryLoc
 {
@@ -32,33 +36,33 @@ public:
     static const int kIdInvalid;
 
 public:
-    MemoryLoc(const ParametersMap &parameters = ParametersMap());
+    MemoryLoc(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~MemoryLoc();
 
-    virtual void parseParameters(const ParametersMap &parameters);
-    virtual const ParametersMap &getParameters() const
+    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
+    virtual const rtabmap::ParametersMap &getParameters() const
     {
         return parameters_;
     }
-    bool update(const SensorData &data,
-                Statistics *stats = 0);
-    bool update(const SensorData &data,
-                const Transform &pose,
+    bool update(const rtabmap::SensorData &data,
+                rtabmap::Statistics *stats = 0);
+    bool update(const rtabmap::SensorData &data,
+                const rtabmap::Transform &pose,
                 const cv::Mat &covariance,
-                Statistics *stats = 0);
+                rtabmap::Statistics *stats = 0);
     bool init(const std::string &dbUrl,
               bool dbOverwritten = false,
-              const ParametersMap &parameters = ParametersMap(),
+              const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap(),
               bool postInitClosingEvents = false);
     void close(bool databaseSaved = true, bool postInitClosingEvents = false);
-    std::map<int, float> computeLikelihood(const Signature *signature,
+    std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
                                            const std::list<int> &ids);
     int incrementMapId(std::map<int, int> *reducedIds = 0);
 
     int cleanup();
     void emptyTrash();
     void joinTrashThread();
-    bool addLink(const Link &link);
+    bool addLink(const rtabmap::Link &link);
     void removeVirtualLinks(int signatureId);
     std::map<int, int> getNeighborsId(
         int signatureId,
@@ -71,7 +75,7 @@ public:
     std::map<int, float> getNeighborsIdRadius(
         int signatureId,
         float radius,
-        const std::map<int, Transform> &optimizedPoses,
+        const std::map<int, rtabmap::Transform> &optimizedPoses,
         int maxGraphDepth) const;
     void deleteLocation(int locationId, std::list<int> *deletedWords = 0);
     void removeLink(int idA, int idB);
@@ -81,9 +85,9 @@ public:
     {
         return _workingMem;
     }
-    std::map<int, Link> getNeighborLinks(int signatureId,
+    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId,
                                          bool lookInDatabase = false) const;
-    std::map<int, Link> getLinks(int signatureId,
+    std::map<int, rtabmap::Link> getLinks(int signatureId,
                                  bool lookInDatabase = false) const;
     bool isBinDataKept() const
     {
@@ -93,21 +97,21 @@ public:
     {
         return _similarityThreshold;
     }
-    const Signature *getLastWorkingSignature() const;
+    const rtabmap::Signature *getLastWorkingSignature() const;
     int getSignatureIdByLabel(const std::string &label, bool lookInDatabase = true) const;
     std::map<int, std::string> getAllLabels() const;
     std::string getDatabaseVersion() const;
-    Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
-    Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
+    rtabmap::Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
+    rtabmap::Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
     bool getNodeInfo(int signatureId,
-                     Transform &odomPose,
+                     rtabmap::Transform &odomPose,
                      int &mapId,
                      int &weight,
                      std::string &label,
                      double &stamp,
-                     Transform &groundTruth,
+                     rtabmap::Transform &groundTruth,
                      bool lookInDatabase = false) const;
-    SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
+    rtabmap::SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
     void getNodeWords(int nodeId,
                       std::multimap<int, cv::KeyPoint> &words,
                       std::multimap<int, cv::Point3f> &words3);
@@ -120,7 +124,7 @@ public:
     {
         return _incrementalMemory;
     }
-    const Signature *getSignature(int id) const;
+    const rtabmap::Signature *getSignature(int id) const;
     bool isInSTM(int signatureId) const
     {
         return _stMem.find(signatureId) != _stMem.end();
@@ -141,7 +145,7 @@ public:
     {
         return _lastGlobalLoopClosureId;
     }
-    const Feature2D *getFeature2D() const
+    const rtabmap::Feature2D *getFeature2D() const
     {
         return _feature2D;
     }
@@ -151,13 +155,13 @@ public:
     }
 
     //keypoint stuff
-    const VWDictionary *getVWDictionary() const;
+    const rtabmap::VWDictionary *getVWDictionary() const;
 
     // RGB-D stuff
     void getMetricConstraints(
         const std::set<int> &ids,
-        std::map<int, Transform> &poses,
-        std::multimap<int, Link> &links,
+        std::map<int, rtabmap::Transform> &poses,
+        std::multimap<int, rtabmap::Link> &links,
         bool lookInDatabase = false);
 
     rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
@@ -165,30 +169,30 @@ public:
 
 private:
     void preUpdate();
-    void addSignatureToStm(Signature *signature, const cv::Mat &covariance);
+    void addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &covariance);
     void clear();
-    void moveToTrash(Signature *s, bool keepLinkedToGraph = true, std::list<int> *deletedWords = 0);
+    void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true, std::list<int> *deletedWords = 0);
 
     void moveSignatureToWMFromSTM(int id, int *reducedTo = 0);
-    void addSignatureToWmFromLTM(Signature *signature);
-    Signature *_getSignature(int id) const;
-    std::list<Signature *> getRemovableSignatures(int count,
+    void addSignatureToWmFromLTM(rtabmap::Signature *signature);
+    rtabmap::Signature *_getSignature(int id) const;
+    std::list<rtabmap::Signature *> getRemovableSignatures(int count,
             const std::set<int> &ignoredIds = std::set<int>());
     int getNextId();
     void initCountId();
-    void rehearsal(Signature *signature, Statistics *stats = 0);
+    void rehearsal(rtabmap::Signature *signature, rtabmap::Statistics *stats = 0);
     bool rehearsalMerge(int oldId, int newId);
 
-    const std::map<int, Signature *> &getSignatures() const
+    const std::map<int, rtabmap::Signature *> &getSignatures() const
     {
         return _signatures;
     }
 
-    void copyData(const Signature *from, Signature *to);
-    Signature *createSignature(
-        const SensorData &data,
-        const Transform &pose,
-        Statistics *stats = 0);
+    void copyData(const rtabmap::Signature *from, rtabmap::Signature *to);
+    rtabmap::Signature *createSignature(
+        const rtabmap::SensorData &data,
+        const rtabmap::Transform &pose,
+        rtabmap::Statistics *stats = 0);
 
     //keypoint stuff
     void disableWordsRef(int signatureId);
@@ -197,11 +201,11 @@ private:
     int getNi(int signatureId) const;
 
 protected:
-    DBDriver *_dbDriver;
+    rtabmap::DBDriver *_dbDriver;
 
 private:
     // parameters
-    ParametersMap parameters_;
+    rtabmap::ParametersMap parameters_;
     float _similarityThreshold;
     bool _binDataKept;
     bool _rawDescriptorsKept;
@@ -226,25 +230,25 @@ private:
 
     int _idCount;
     int _idMapCount;
-    Signature *_lastSignature;
+    rtabmap::Signature *_lastSignature;
     int _lastGlobalLoopClosureId;
     bool _memoryChanged; // False by default, become true only when MemoryLoc::update() is called.
     bool _linksChanged; // False by default, become true when links are modified.
     int _signaturesAdded;
 
-    std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
+    std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
     std::set<int> _stMem; // id
     std::map<int, double> _workingMem; // id,age
 
     //Keypoint stuff
-    VWDictionary *_vwd;
-    Feature2D *_feature2D;
+    rtabmap::VWDictionary *_vwd;
+    rtabmap::Feature2D *_feature2D;
     float _badSignRatio;;
     bool _tfIdfLikelihoodUsed;
     bool _parallelized;
 
-    Registration *_registrationPipeline;
-    RegistrationIcp *_registrationIcp;
+    rtabmap::Registration *_registrationPipeline;
+    rtabmap::RegistrationIcp *_registrationIcp;
 
     int _minInliers;
     int _iterations;
