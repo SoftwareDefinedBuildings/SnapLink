@@ -183,6 +183,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData, void 
                         {
                             UDEBUG("Calculate map transform with raw data");
                             memoryLoc.update(data, getPose(sig), sig->getPoseCovariance());
+                            con_info->time_pnp_update_1 = getTime(); // PnP timestamp after update()
                         }
                         else
                         {
@@ -191,13 +192,15 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData, void 
                             break;
                         }
                     }
-
                     memoryLoc.update(*sensorData);
+                    con_info->time_pnp_update_2 = getTime(); // PnP timestamp after update()
                 }
 
+                con_info->time_pnp_updates = getTime(); // PnP timestamp after update()
                 if (success)
                 {
                     output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id());
+                    con_info->time_pnp_global = getTime(); // PnP timestamp on computeGlobalVisualTransform()
 
                     if (!output.isNull())
                     {

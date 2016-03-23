@@ -248,10 +248,18 @@ void HTTPServer::request_completed(void *cls,
         long time_surf = con_info->time_surf_end - con_info->time_surf_start;
         long time_closest = con_info->time_closest_end - con_info->time_closest_start;
         long time_pnp = con_info->time_pnp_end - con_info->time_pnp_start;
+        long time_pnp_computeGlobal = con_info->time_pnp_global - con_info->time_pnp_updates;
+        long time_pnp_updates = con_info->time_pnp_updates - con_info->time_pnp_start;
+        long time_pnp_update1 = con_info->time_pnp_update_1 - con_info->time_pnp_start;
+        long time_pnp_update2 = con_info->time_pnp_update_2 - con_info->time_pnp_update_1;
         UINFO("TAG_TIME overall %ld", time_overall);
         UINFO("TAG_TIME surf %ld", time_surf);
         UINFO("TAG_TIME closest_match %ld", time_closest);
         UINFO("TAG_TIME pnp %ld", time_pnp);
+        UINFO("TAG_TIME pnpglobal %ld", time_pnp_computeGlobal);
+        UINFO("TAG_TIME pnpupdates %ld", time_pnp_updates);
+        UINFO("TAG_TIME pnpupdate1 %ld", time_pnp_update1);
+        UINFO("TAG_TIME pnpupdate2 %ld", time_pnp_update2);
 
         if (con_info->postprocessor != NULL)
         {
