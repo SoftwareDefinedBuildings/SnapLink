@@ -16,7 +16,7 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    bool init(const std::string &labelFolder);
+    bool init(const std::string &dir);
 
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -24,7 +24,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool readLabels(const std::string &labelFolder);
+    bool readLabels(const std::string &dir);
     std::vector<std::string> *process(const rtabmap::SensorData *data, const rtabmap::Transform &pose);
 
 private:

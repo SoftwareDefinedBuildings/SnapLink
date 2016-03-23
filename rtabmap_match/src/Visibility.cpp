@@ -1,11 +1,11 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UStl.h>
 #include <pcl/point_types.h>
 #include <opencv/cv.h>
 #include <QCoreApplication>
+#include <QDirIterator>
+#include <QTextStream>
 #include <fstream>
 #include <iostream>
 #include "Utility.h"
@@ -24,9 +24,9 @@ Visibility::~Visibility()
     _httpServer = NULL;
 }
 
-bool Visibility::init(const std::string &labelFolder)
+bool Visibility::init(const std::string &dir)
 {
-    return readLabels(labelFolder);
+    return readLabels(dir);
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -54,52 +54,35 @@ bool Visibility::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool Visibility::readLabels(const std::string &labelFolder)
+bool Visibility::readLabels(const std::string &dir)
 {
-    std::string path = labelFolder;
-    UDirectory dir(path, "txt");
-
-    if (path[path.size() - 1] != '\\' && path[path.size() - 1] != '/')
-    {
-        path.append("/");
-    }
-    if (!dir.isValid())
-    {
-        ULOGGER_ERROR("path is not valid \"%s\"", path.c_str());
-        return false;
-    }
-    else if (dir.getFileNames().size() == 0)
-    {
-        UWARN("path is empty \"%s\"", path.c_str());
-        return false;
-    }
-    else
-    {
-        UINFO("path=%s number of label files=%d", path.c_str(), dir.getFileNames().size());
-    }
-
-    std::string fileName;
-    std::string fullPath;
-    double x, y, z;
-    std::string label;
-    while (true)
-    {
-        fileName = dir.getNextFileName();
-        if (!fileName.size())
-        {
-            break;
-        }
-        fullPath = path + fileName;
+    QString filter = QString::fromStdString("*.txt");
+    QDirIterator it(QString::fromStdString(dir), QStringList() << filter, QDir::Files, QDirIterator::NoIteratorFlags);
+    while (it.hasNext()) {
+        QString fileName = it.next();
 
         // read labels from file
-        FILE *pFile = fopen(fullPath.c_str(), "r");
-        int count = 0;
-        while (fscanf(pFile, "%lf,%lf,%lf", &x, &y, &z) != EOF)
+        QFile file(fileName);
+        if (!file.open(QFile::ReadOnly | QFile::Text))
         {
+            return false;
+        }
+
+        std::string label = QFileInfo(fileName).baseName().toStdString();
+        QTextStream in(&file);
+        while (!in.atEnd())
+        {
+            QString line = in.readLine();
+            QStringList list = line.split(",");
+            if (list.size() != 3)
+            {
+                return false;
+            }
+            double x = list.at(0).toDouble();
+            double y = list.at(1).toDouble();
+            double z = list.at(2).toDouble();
             _points.push_back(cv::Point3f(x, y, z));
-            label = uSplit(fileName, '.').front();
             _labels.push_back(label);
-            count++;
             UDEBUG("Read point (%lf,%lf,%lf) with label %s", x, y, z, label.c_str());
         }
     }
