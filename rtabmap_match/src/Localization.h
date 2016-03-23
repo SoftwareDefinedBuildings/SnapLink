@@ -4,33 +4,46 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
-
-#include "HTTPServer.h" // needed for ConnectionInfo
+#include <QObject>
+#include <QEvent>
 #include "MemoryLoc.h"
+#include "Visibility.h"
+#include "HTTPServer.h"
 #include "Time.h"
 
-class UTimer;
+#define TOP_K 2
 
-namespace rtabmap
-{
+class Visibility;
+class HTTPServer;
 
-class MemoryLoc;
-
-class Localization
+class Localization :
+    public QObject
 {
 public:
-    Localization(const std::string dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    Localization();
     virtual ~Localization();
-    virtual Transform localize(const SensorData &data, void *context);
+
+    bool init(const std::string &dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+
+    void setVisibility(Visibility *vis);
+    void setHTTPServer(HTTPServer *httpServer);
+
+protected:
+    virtual bool event(QEvent *event);
 
 private:
+    rtabmap::Transform localize(rtabmap::SensorData *sensorData, void *context);
+    void optimizeGraph();  // optimize poses using TORO graph
+    // get pose from optimizedPoses if available, otherwise get from sig itself
+    rtabmap::Transform getPose(const rtabmap::Signature *sig) const;
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
 
 private:
+    int _topk;
     MemoryLoc *_memory;
-    std::string _dbPath;
-    ParametersMap _memoryParams;
-    ParametersMap _memoryLocParams;
+    std::map<int, rtabmap::Transform> _optimizedPoses;
+    rtabmap::ParametersMap _memoryParams;
+    rtabmap::ParametersMap _memoryLocParams;
+    Visibility *_vis;
+    HTTPServer *_httpServer;
 };
-
-} /* namespace rtabmap */

@@ -1,91 +1,88 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UStl.h>
 #include <pcl/point_types.h>
 #include <opencv/cv.h>
+#include <QCoreApplication>
+#include <QDirIterator>
+#include <QTextStream>
 #include <fstream>
 #include <iostream>
 #include "Utility.h"
 #include "Visibility.h"
+#include "LocationEvent.h"
+#include "DetectionEvent.h"
+#include "FailureEvent.h"
 
-namespace rtabmap
+Visibility::Visibility() :
+    _httpServer(NULL)
 {
-
-double CompareMeanDist::meanDist(const std::vector<double> &vec)
-{
-    double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
-    double mean = sum / vec.size();
-    return mean;
-}
-
-bool CompareMeanDist::operator()(const PairType &left, const PairType &right) const
-{
-    return meanDist(left.second) < meanDist(right.second);
-}
-
-Visibility::Visibility()
-{
-    UDEBUG("");
 }
 
 Visibility::~Visibility()
 {
-    UDEBUG("");
+    _httpServer = NULL;
 }
 
-bool Visibility::init(const std::string &labelFolder)
+bool Visibility::init(const std::string &dir)
 {
-    return readLabels(labelFolder);
+    return readLabels(dir);
 }
 
-bool Visibility::readLabels(const std::string &labelFolder)
+void Visibility::setHTTPServer(HTTPServer *httpServer)
 {
-    std::string path = labelFolder;
-    UDirectory dir(path, "txt");
+    _httpServer = httpServer;
+}
 
-    if (path[path.size() - 1] != '\\' && path[path.size() - 1] != '/')
+bool Visibility::event(QEvent *event)
+{
+    if (event->type() == LocationEvent::type())
     {
-        path.append("/");
-    }
-    if (!dir.isValid())
-    {
-        ULOGGER_ERROR("path is not valid \"%s\"", path.c_str());
-        return false;
-    }
-    else if (dir.getFileNames().size() == 0)
-    {
-        UWARN("path is empty \"%s\"", path.c_str());
-        return false;
-    }
-    else
-    {
-        UINFO("path=%s number of label files=%d", path.c_str(), dir.getFileNames().size());
-    }
-
-    std::string fileName;
-    std::string fullPath;
-    double x, y, z;
-    std::string label;
-    while (true)
-    {
-        fileName = dir.getNextFileName();
-        if (!fileName.size())
+        LocationEvent *locEvent = static_cast<LocationEvent *>(event);
+        std::vector<std::string> *names = process(locEvent->sensorData(), locEvent->pose());
+        if (names != NULL)
         {
-            break;
+            QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
         }
-        fullPath = path + fileName;
+        else
+        {
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(locEvent->conInfo()));
+        }
+        delete locEvent->sensorData();
+        return true;
+    }
+    return QObject::event(event);
+}
+
+bool Visibility::readLabels(const std::string &dir)
+{
+    QString filter = QString::fromStdString("*.txt");
+    QDirIterator it(QString::fromStdString(dir), QStringList() << filter, QDir::Files, QDirIterator::NoIteratorFlags);
+    while (it.hasNext()) {
+        QString fileName = it.next();
 
         // read labels from file
-        FILE *pFile = fopen(fullPath.c_str(), "r");
-        int count = 0;
-        while (fscanf(pFile, "%lf,%lf,%lf", &x, &y, &z) != EOF)
+        QFile file(fileName);
+        if (!file.open(QFile::ReadOnly | QFile::Text))
         {
+            return false;
+        }
+
+        std::string label = QFileInfo(fileName).baseName().toStdString();
+        QTextStream in(&file);
+        while (!in.atEnd())
+        {
+            QString line = in.readLine();
+            QStringList list = line.split(",");
+            if (list.size() != 3)
+            {
+                return false;
+            }
+            double x = list.at(0).toDouble();
+            double y = list.at(1).toDouble();
+            double z = list.at(2).toDouble();
             _points.push_back(cv::Point3f(x, y, z));
-            label = uSplit(fileName, '.').front();
             _labels.push_back(label);
-            count++;
             UDEBUG("Read point (%lf,%lf,%lf) with label %s", x, y, z, label.c_str());
         }
     }
@@ -93,16 +90,16 @@ bool Visibility::readLabels(const std::string &labelFolder)
     return true;
 }
 
-std::vector<std::string> Visibility::process(const SensorData &data, const Transform &pose)
+std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, const rtabmap::Transform &pose)
 {
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
-    const CameraModel &model = data.cameraModels()[0];
+    const rtabmap::CameraModel &model = data->cameraModels()[0];
     cv::Mat K = model.K();
-    Transform P = (pose * model.localTransform()).inverse();
+    rtabmap::Transform P = (pose * model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
                  (double)P.r11(), (double)P.r12(), (double)P.r13(),
                  (double)P.r21(), (double)P.r22(), (double)P.r23(),
@@ -116,8 +113,8 @@ std::vector<std::string> Visibility::process(const SensorData &data, const Trans
     cv::projectPoints(_points, rvec, tvec, K, cv::Mat(), planePoints);
 
     // find points in the image
-    int cols = data.imageRaw().cols;
-    int rows = data.imageRaw().rows;
+    int cols = data->imageRaw().cols;
+    int rows = data->imageRaw().rows;
     std::map< std::string, std::vector<double> > distances;
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
     cv::Point2f center(cols / 2, rows / 2);
@@ -139,36 +136,44 @@ std::vector<std::string> Visibility::process(const SensorData &data, const Trans
                 double dist = cv::norm(planePoints[i] - center);
                 distances[label].push_back(dist);
                 labelPoints[label].push_back(planePoints[i]);
-                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
-                       planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
             else
             {
-                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(),
-                       planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
         }
         else
         {
-            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(),
-                   planePoints[i].x, planePoints[i].y, cols, rows);
+            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }
 
-    std::vector<std::string> rv;
+    std::vector<std::string> *names = new std::vector<std::string>();
     if (!distances.empty())
     {
         // find the label with minimum mean distance
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
         std::string minlabel = minDist.first;
         UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-        rv.push_back(minlabel);
+        names->push_back(minlabel);
     }
     else
     {
         UINFO("No label is qualified");
     }
-    return rv;
+    return names;
 }
 
-} // namespace rtabmap
+double CompareMeanDist::meanDist(const std::vector<double> &vec)
+{
+    double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
+    double mean = sum / vec.size();
+    return mean;
+}
+
+bool CompareMeanDist::operator()(const PairType &left, const PairType &right) const
+{
+    return meanDist(left.second) < meanDist(right.second);
+}
+

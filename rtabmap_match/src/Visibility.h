@@ -4,9 +4,35 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
+#include "HTTPServer.h"
 
-namespace rtabmap
+class HTTPServer;
+
+class Visibility :
+    public QObject
 {
+
+public:
+    Visibility();
+    virtual ~Visibility();
+
+    bool init(const std::string &dir);
+
+    void setHTTPServer(HTTPServer *httpServer);
+
+protected:
+    virtual bool event(QEvent *event);
+
+private:
+    bool readLabels(const std::string &dir);
+    std::vector<std::string> *process(const rtabmap::SensorData *data, const rtabmap::Transform &pose);
+
+private:
+    // labels
+    std::vector<cv::Point3f> _points;
+    std::vector<std::string> _labels;
+    HTTPServer *_httpServer;
+};
 
 struct CompareMeanDist
 {
@@ -15,24 +41,3 @@ struct CompareMeanDist
     static double meanDist(const std::vector<double> &vec);
     bool operator()(const PairType &left, const PairType &right) const;
 };
-
-class Visibility
-{
-
-public:
-    Visibility();
-    virtual ~Visibility();
-
-    bool init(const std::string &labelFolder);
-    std::vector<std::string> process(const SensorData &data, const Transform &pose);
-
-private:
-    bool readLabels(const std::string &labelFolder);
-
-private:
-    // labels
-    std::vector<cv::Point3f> _points;
-    std::vector<std::string> _labels;
-};
-
-} // namespace rtabmap

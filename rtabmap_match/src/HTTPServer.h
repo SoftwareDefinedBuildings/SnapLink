@@ -1,32 +1,33 @@
 #pragma once
 
-#include <rtabmap/utilite/UEventsSender.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <rtabmap/utilite/USemaphore.h>
+#include <QSemaphore>
+#include <QObject>
 #include <microhttpd.h>
+#include "CameraNetwork.h"
 
+#define PORT 8080
+#define MAX_CLIENTS 10
 #define POST_BUFFER_SIZE 300000
 #define IMAGE_INIT_SIZE 300000
 
-namespace rtabmap
-{
+class CameraNetwork;
 
 class HTTPServer :
-    public UEventsHandler
+    public QObject
 {
 public:
-    HTTPServer(uint16_t port, unsigned int maxClients);
+    HTTPServer();
     virtual ~HTTPServer();
 
-    bool start();
+    bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
     void stop();
 
-    // TODO use getter and setter
-    unsigned int _maxClients;
-    unsigned int _numClients;
+    const unsigned int &maxClients() const;
+    unsigned int &numClients();
+    void setCamera(CameraNetwork *camera);
 
 protected:
-    virtual void handleEvent(UEvent *event);
+    virtual bool event(QEvent *event);
 
 private:
     // TODO use camelCase
@@ -54,8 +55,15 @@ private:
     static int send_page(struct MHD_Connection *connection, const std::string &page, int status_code);
 
 private:
-    uint16_t _port;
+    static const std::string busypage;
+    static const std::string completepage;
+    static const std::string errorpage;
+    static const std::string servererrorpage;
+
     struct MHD_Daemon *_daemon;
+    unsigned int _maxClients;
+    unsigned int _numClients;
+    CameraNetwork *_camera;
 };
 
 enum ConnectionType
@@ -68,11 +76,11 @@ typedef struct
 {
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
-    std::vector<unsigned char> *data;
+    std::vector<unsigned char> data;
     std::string answerstring;
     int answercode;
-    std::vector<std::string> names;
-    USemaphore detected;
+    const std::vector<std::string> *names;
+    QSemaphore detected;
 
     long time_start;
     long time_end;
@@ -83,5 +91,3 @@ typedef struct
     long time_pnp_start;
     long time_pnp_end;
 } ConnectionInfo;
-
-} // namespace rtabmap

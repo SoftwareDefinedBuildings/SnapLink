@@ -1,50 +1,28 @@
 #pragma once
 
-#include <rtabmap/utilite/UEvent.h>
+#include <QEvent>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Transform.h>
-
-namespace rtabmap
-{
+#include "HTTPServer.h"
 
 class LocationEvent :
-    public UEvent
+    public QEvent
 {
 public:
-    LocationEvent(const SensorData &data, const Transform &pose, void *context = NULL) :
-        UEvent(0),
-        _data(data),
-        _pose(pose),
-        _context(context)
-    {
-    }
+    // ownership transfer
+    LocationEvent(rtabmap::SensorData *sensorData, rtabmap::Transform pose, ConnectionInfo *conInfo);
 
-    SensorData &data()
-    {
-        return _data;
-    }
-    const SensorData &data() const
-    {
-        return _data;
-    }
-    const Transform &pose() const
-    {
-        return _pose;
-    }
-    void *context() const
-    {
-        return _context;
-    }
+    rtabmap::SensorData *sensorData() const;
+    rtabmap::Transform pose() const;
+    ConnectionInfo *conInfo() const;
 
-    virtual std::string getClassName() const
-    {
-        return "LocationEvent";
-    }
+    static QEvent::Type type();
+
+    Visibility _vis;
 
 private:
-    SensorData _data;
-    Transform _pose;
-    void *_context;
+    static const QEvent::Type _type;
+    rtabmap::SensorData *_sensorData;
+    rtabmap::Transform _pose;
+    ConnectionInfo *_conInfo;
 };
-
-}
