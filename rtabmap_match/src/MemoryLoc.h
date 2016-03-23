@@ -36,7 +36,7 @@ public:
     static const int kIdInvalid;
 
 public:
-    MemoryLoc(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    MemoryLoc();
     virtual ~MemoryLoc();
 
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
@@ -51,9 +51,7 @@ public:
                 const cv::Mat &covariance,
                 rtabmap::Statistics *stats = 0);
     bool init(const std::string &dbUrl,
-              bool dbOverwritten = false,
-              const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap(),
-              bool postInitClosingEvents = false);
+              const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close(bool databaseSaved = true, bool postInitClosingEvents = false);
     std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
                                            const std::list<int> &ids);
@@ -86,9 +84,9 @@ public:
         return _workingMem;
     }
     std::map<int, rtabmap::Link> getNeighborLinks(int signatureId,
-                                         bool lookInDatabase = false) const;
+            bool lookInDatabase = false) const;
     std::map<int, rtabmap::Link> getLinks(int signatureId,
-                                 bool lookInDatabase = false) const;
+                                          bool lookInDatabase = false) const;
     bool isBinDataKept() const
     {
         return _binDataKept;

@@ -67,7 +67,7 @@ bool Localization::init(const std::string &dbPath, const rtabmap::ParametersMap 
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 
     _memory = new MemoryLoc();
-    if (!_memory->init(dbPath, false, _memoryParams))
+    if (!_memory->init(dbPath, _memoryParams))
     {
         UERROR("Error initializing the memory for Localization.");
         return false;
@@ -152,7 +152,8 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                     UINFO("topId: %d", topId);
                 }
 
-                MemoryLoc memoryLoc(_memoryLocParams);
+                MemoryLoc memoryLoc;
+                memoryLoc.init("", _memoryLocParams);
 
                 bool success = true;
                 sensorData->setId(newS->id());

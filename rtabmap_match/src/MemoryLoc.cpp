@@ -34,8 +34,7 @@ const int MemoryLoc::kIdStart = 0;
 const int MemoryLoc::kIdVirtual = -1;
 const int MemoryLoc::kIdInvalid = 0;
 
-MemoryLoc::MemoryLoc(const rtabmap::ParametersMap &parameters) :
-    _dbDriver(0),
+MemoryLoc::MemoryLoc() :
     _similarityThreshold(rtabmap::Parameters::defaultMemRehearsalSimilarity()),
     _binDataKept(rtabmap::Parameters::defaultMemBinDataKept()),
     _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
@@ -64,6 +63,11 @@ MemoryLoc::MemoryLoc(const rtabmap::ParametersMap &parameters) :
     _memoryChanged(false),
     _linksChanged(false),
     _signaturesAdded(0),
+    _feature2D(NULL),
+    _vwd(NULL),
+    _registrationPipeline(NULL),
+    _registrationIcp(NULL),
+    _dbDriver(NULL),
 
     _badSignRatio(rtabmap::Parameters::defaultKpBadSignRatio()),
     _tfIdfLikelihoodUsed(rtabmap::Parameters::defaultKpTfIdfLikelihoodUsed()),
@@ -75,176 +79,108 @@ MemoryLoc::MemoryLoc(const rtabmap::ParametersMap &parameters) :
     _pnpReprojError(rtabmap::Parameters::defaultVisPnPReprojError()),
     _pnpFlags(rtabmap::Parameters::defaultVisPnPFlags())
 {
+}
+
+bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &parameters)
+{
+    UDEBUG("");
+
     _feature2D = rtabmap::Feature2D::create(parameters);
     _vwd = new rtabmap::VWDictionary(parameters);
     _registrationPipeline = rtabmap::Registration::create(parameters);
     _registrationIcp = new rtabmap::RegistrationIcp(parameters);
     this->parseParameters(parameters);
-}
 
-bool MemoryLoc::init(const std::string &dbUrl, bool dbOverwritten, const rtabmap::ParametersMap &parameters, bool postInitClosingEvents)
-{
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInitializing));
-
-    UDEBUG("");
-    this->parseParameters(parameters);
-    bool loadAllNodesInWM = rtabmap::Parameters::defaultMemInitWMWithAllNodes();
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemInitWMWithAllNodes(), loadAllNodesInWM);
-
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Clearing memory..."));
-    rtabmap::DBDriver *tmpDriver = 0;
-    if ((!_memoryChanged && !_linksChanged) || dbOverwritten)
+    if (dbUrl.empty())
     {
-        if (_dbDriver)
+        return true;
+    }
+
+    _dbDriver = rtabmap::DBDriver::create(parameters);
+
+    _dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
+    if (!_dbDriver->openConnection(dbUrl))
+    {
+        UDEBUG("Connecting to database %s, path is invalid!", dbUrl.c_str());
+        return false;
+    }
+    UDEBUG("Connecting to database %s done!", dbUrl.c_str());
+
+    // Load the last working memory...
+    std::list<rtabmap::Signature *> dbSignatures;
+    UDEBUG("Loading all nodes to WM...");
+    std::set<int> ids;
+    _dbDriver->getAllNodeIds(ids, true);
+    _dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
+
+    for (std::list<rtabmap::Signature *>::reverse_iterator iter = dbSignatures.rbegin(); iter != dbSignatures.rend(); ++iter)
+    {
+        // ignore bad signatures
+        if (!((*iter)->isBadSignature() && _badSignaturesIgnored))
         {
-            tmpDriver = _dbDriver;
-            _dbDriver = 0; // HACK for the clear() below to think that there is no db
-        }
-    }
-    else if (!_memoryChanged && _linksChanged)
-    {
-        _dbDriver->setTimestampUpdateEnabled(false); // update links only
-    }
-    this->clear();
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Clearing memory, done!"));
-
-    if (tmpDriver)
-    {
-        _dbDriver = tmpDriver;
-    }
-
-    if (_dbDriver)
-    {
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Closing database connection..."));
-        _dbDriver->closeConnection();
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Closing database connection, done!"));
-    }
-
-    if (_dbDriver == 0 && !dbUrl.empty())
-    {
-        _dbDriver = rtabmap::DBDriver::create(parameters);
-    }
-
-    bool success = true;
-    if (_dbDriver)
-    {
-        _dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
-        success = false;
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
-        if (_dbDriver->openConnection(dbUrl, dbOverwritten))
-        {
-            success = true;
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
-
-            // Load the last working memory...
-            std::list<rtabmap::Signature *> dbSignatures;
-
-            if (loadAllNodesInWM)
-            {
-                if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(std::string("Loading all nodes to WM...")));
-                std::set<int> ids;
-                _dbDriver->getAllNodeIds(ids, true);
-                _dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
-            }
-            else
-            {
-                // load previous session working memory
-                if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(std::string("Loading last nodes to WM...")));
-                _dbDriver->loadLastNodes(dbSignatures);
-            }
-            for (std::list<rtabmap::Signature *>::reverse_iterator iter = dbSignatures.rbegin(); iter != dbSignatures.rend(); ++iter)
-            {
-                // ignore bad signatures
-                if (!((*iter)->isBadSignature() && _badSignaturesIgnored))
-                {
-                    // insert all in WM
-                    // Note: it doesn't make sense to keep last STM images
-                    //       of the last session in the new STM because they can be
-                    //       only linked with the ones of the current session by
-                    //       global loop closures.
-                    _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
-                    _workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
-                }
-                else
-                {
-                    delete *iter;
-                }
-            }
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
-
-            // Assign the last signature
-            if (_stMem.size() > 0)
-            {
-                _lastSignature = uValue(_signatures, *_stMem.rbegin(), (rtabmap::Signature *)0);
-            }
-            else if (_workingMem.size() > 0)
-            {
-                _lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (rtabmap::Signature *)0);
-            }
-
-            // Last id
-            _dbDriver->getLastNodeId(_idCount);
-            _idMapCount = _lastSignature ? _lastSignature->mapId() + 1 : kIdStart;
+            // insert all in WM
+            // Note: it doesn't make sense to keep last STM images
+            //       of the last session in the new STM because they can be
+            //       only linked with the ones of the current session by
+            //       global loop closures.
+            _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
+            _workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
         }
         else
         {
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kError, std::string("Connecting to database ") + dbUrl + ", path is invalid!"));
+            delete *iter;
         }
     }
-    else
+    UDEBUG("Loading nodes to WM, done! (%d loaded)", int(_workingMem.size() + _stMem.size()));
+
+    // Assign the last signature
+    if (_stMem.size() > 0)
     {
-        _idCount = kIdStart;
-        _idMapCount = kIdStart;
+        _lastSignature = uValue(_signatures, *_stMem.rbegin(), (rtabmap::Signature *)0);
     }
+    else if (_workingMem.size() > 0)
+    {
+        _lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (rtabmap::Signature *)0);
+    }
+
+    // Last id
+    _dbDriver->getLastNodeId(_idCount);
+    _idMapCount = _lastSignature ? _lastSignature->mapId() + 1 : kIdStart;
 
     _workingMem.insert(std::make_pair(kIdVirtual, 0));
 
     UDEBUG("ids start with %d", _idCount + 1);
     UDEBUG("map ids start with %d", _idMapCount);
 
-
     // Now load the dictionary if we have a connection
-    if (_dbDriver && _dbDriver->isConnected())
-    {
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Loading dictionary..."));
-        if (loadAllNodesInWM)
-        {
-            // load all referenced words in working memory
-            std::set<int> wordIds;
-            const std::map<int, rtabmap::Signature *> &signatures = this->getSignatures();
-            for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
-            {
-                const std::multimap<int, cv::KeyPoint> &words = i->second->getWords();
-                std::list<int> keys = uUniqueKeys(words);
-                wordIds.insert(keys.begin(), keys.end());
-            }
-            if (wordIds.size())
-            {
-                std::list<rtabmap::VisualWord *> words;
-                _dbDriver->loadWords(wordIds, words);
-                for (std::list<rtabmap::VisualWord *>::iterator iter = words.begin(); iter != words.end(); ++iter)
-                {
-                    _vwd->addWord(*iter);
-                }
-                // Get Last word id
-                int id = 0;
-                _dbDriver->getLastWordId(id);
-                _vwd->setLastWordId(id);
-            }
-        }
-        else
-        {
-            // load the last dictionary
-            _dbDriver->load(_vwd);
-        }
-        UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
-        _vwd->update();
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
-    }
-
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(std::string("Adding word references...")));
-    // Enable loaded signatures
+    UDEBUG("Loading dictionary...");
+    // load all referenced words in working memory
+    std::set<int> wordIds;
     const std::map<int, rtabmap::Signature *> &signatures = this->getSignatures();
+    for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
+    {
+        const std::multimap<int, cv::KeyPoint> &words = i->second->getWords();
+        std::list<int> keys = uUniqueKeys(words);
+        wordIds.insert(keys.begin(), keys.end());
+    }
+    if (wordIds.size())
+    {
+        std::list<rtabmap::VisualWord *> words;
+        _dbDriver->loadWords(wordIds, words);
+        for (std::list<rtabmap::VisualWord *>::iterator iter = words.begin(); iter != words.end(); ++iter)
+        {
+            _vwd->addWord(*iter);
+        }
+        // Get Last word id
+        int id = 0;
+        _dbDriver->getLastWordId(id);
+        _vwd->setLastWordId(id);
+    }
+    UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+    _vwd->update();
+
+    UDEBUG("Adding word references...");
+    // Enable loaded signatures
     for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
     {
         rtabmap::Signature *s = this->_getSignature(i->first);
@@ -261,7 +197,7 @@ bool MemoryLoc::init(const std::string &dbUrl, bool dbOverwritten, const rtabmap
             s->setEnabled(true);
         }
     }
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
+    UDEBUG("Adding word references, done! (%d)", _vwd->getTotalActiveReferences());
 
     if (_vwd->getUnusedWordsSize())
     {
@@ -269,8 +205,7 @@ bool MemoryLoc::init(const std::string &dbUrl, bool dbOverwritten, const rtabmap
     }
     UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInitialized));
-    return success;
+    return true;
 }
 
 void MemoryLoc::close(bool databaseSaved, bool postInitClosingEvents)
@@ -751,8 +686,8 @@ void MemoryLoc::moveSignatureToWMFromSTM(int id, int *reducedTo)
                             if (!sTo->hasLink(jter->second.to()))
                             {
                                 rtabmap::Link l = iter->second.inverse().merge(
-                                             jter->second,
-                                             iter->second.userDataCompressed().empty() && iter->second.type() != rtabmap::Link::kVirtualClosure ? rtabmap::Link::kNeighborMerged : iter->second.type());
+                                                      jter->second,
+                                                      iter->second.userDataCompressed().empty() && iter->second.type() != rtabmap::Link::kVirtualClosure ? rtabmap::Link::kNeighborMerged : iter->second.type());
                                 sTo->addLink(l);
                                 rtabmap::Signature *sB = this->_getSignature(l.to());
                                 UASSERT(sB != 0);
@@ -2794,33 +2729,33 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
         ctUserData.join();
 
         s = new rtabmap::Signature(id,
-                          _idMapCount,
-                          isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
-                          data.stamp(),
-                          "",
-                          pose,
-                          data.groundTruth(),
-                          stereoCameraModel.isValidForProjection() ?
-                          rtabmap::SensorData(
-                              ctLaserScan.getCompressedData(),
-                              maxLaserScanMaxPts,
-                              data.laserScanMaxRange(),
-                              ctImage.getCompressedData(),
-                              ctDepth.getCompressedData(),
-                              stereoCameraModel,
-                              id,
-                              0,
-                              ctUserData.getCompressedData()) :
-                          rtabmap::SensorData(
-                              ctLaserScan.getCompressedData(),
-                              maxLaserScanMaxPts,
-                              data.laserScanMaxRange(),
-                              ctImage.getCompressedData(),
-                              ctDepth.getCompressedData(),
-                              cameraModels,
-                              id,
-                              0,
-                              ctUserData.getCompressedData()));
+                                   _idMapCount,
+                                   isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
+                                   data.stamp(),
+                                   "",
+                                   pose,
+                                   data.groundTruth(),
+                                   stereoCameraModel.isValidForProjection() ?
+                                   rtabmap::SensorData(
+                                       ctLaserScan.getCompressedData(),
+                                       maxLaserScanMaxPts,
+                                       data.laserScanMaxRange(),
+                                       ctImage.getCompressedData(),
+                                       ctDepth.getCompressedData(),
+                                       stereoCameraModel,
+                                       id,
+                                       0,
+                                       ctUserData.getCompressedData()) :
+                                   rtabmap::SensorData(
+                                       ctLaserScan.getCompressedData(),
+                                       maxLaserScanMaxPts,
+                                       data.laserScanMaxRange(),
+                                       ctImage.getCompressedData(),
+                                       ctDepth.getCompressedData(),
+                                       cameraModels,
+                                       id,
+                                       0,
+                                       ctUserData.getCompressedData()));
     }
     else
     {
@@ -2833,33 +2768,33 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
         ctUserData.join();
 
         s = new rtabmap::Signature(id,
-                          _idMapCount,
-                          isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
-                          data.stamp(),
-                          "",
-                          pose,
-                          data.groundTruth(),
-                          stereoCameraModel.isValidForProjection() ?
-                          rtabmap::SensorData(
-                              ctLaserScan.getCompressedData(),
-                              maxLaserScanMaxPts,
-                              data.laserScanMaxRange(),
-                              cv::Mat(),
-                              cv::Mat(),
-                              stereoCameraModel,
-                              id,
-                              0,
-                              ctUserData.getCompressedData()) :
-                          rtabmap::SensorData(
-                              ctLaserScan.getCompressedData(),
-                              maxLaserScanMaxPts,
-                              data.laserScanMaxRange(),
-                              cv::Mat(),
-                              cv::Mat(),
-                              cameraModels,
-                              id,
-                              0,
-                              ctUserData.getCompressedData()));
+                                   _idMapCount,
+                                   isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
+                                   data.stamp(),
+                                   "",
+                                   pose,
+                                   data.groundTruth(),
+                                   stereoCameraModel.isValidForProjection() ?
+                                   rtabmap::SensorData(
+                                       ctLaserScan.getCompressedData(),
+                                       maxLaserScanMaxPts,
+                                       data.laserScanMaxRange(),
+                                       cv::Mat(),
+                                       cv::Mat(),
+                                       stereoCameraModel,
+                                       id,
+                                       0,
+                                       ctUserData.getCompressedData()) :
+                                   rtabmap::SensorData(
+                                       ctLaserScan.getCompressedData(),
+                                       maxLaserScanMaxPts,
+                                       data.laserScanMaxRange(),
+                                       cv::Mat(),
+                                       cv::Mat(),
+                                       cameraModels,
+                                       id,
+                                       0,
+                                       ctUserData.getCompressedData()));
     }
 
     s->setWords(words);
