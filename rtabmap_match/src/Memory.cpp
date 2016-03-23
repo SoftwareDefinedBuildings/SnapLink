@@ -1,30 +1,3 @@
-/*
-Copyright (c) 2010-2014, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the Universite de Sherbrooke nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
@@ -32,43 +5,41 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UProcessInfo.h>
 #include <rtabmap/utilite/UMath.h>
 
-#include "rtabmap/core/Memory.h"
-#include "rtabmap/core/Signature.h"
-#include "rtabmap/core/Parameters.h"
-#include "rtabmap/core/RtabmapEvent.h"
-#include "rtabmap/core/VWDictionary.h"
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/RtabmapEvent.h>
+#include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/EpipolarGeometry.h>
-#include "rtabmap/core/VisualWord.h"
-#include "rtabmap/core/Features2d.h"
-#include "rtabmap/core/RegistrationIcp.h"
-#include "rtabmap/core/Registration.h"
-#include "rtabmap/core/RegistrationVis.h"
-#include "rtabmap/core/DBDriver.h"
-#include "rtabmap/core/util3d_features.h"
-#include "rtabmap/core/util3d_filtering.h"
-#include "rtabmap/core/util3d_correspondences.h"
-#include "rtabmap/core/util3d_registration.h"
-#include "rtabmap/core/util3d_surface.h"
-#include "rtabmap/core/util3d_transforms.h"
-#include "rtabmap/core/util3d_motion_estimation.h"
-#include "rtabmap/core/util3d.h"
-#include "rtabmap/core/util2d.h"
-#include "rtabmap/core/Statistics.h"
-#include "rtabmap/core/Compression.h"
-#include "rtabmap/core/Graph.h"
-#include "rtabmap/core/Stereo.h"
+#include <rtabmap/core/VisualWord.h>
+#include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/RegistrationIcp.h>
+#include <rtabmap/core/Registration.h>
+#include <rtabmap/core/RegistrationVis.h>
+#include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/util3d_features.h>
+#include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_correspondences.h>
+#include <rtabmap/core/util3d_registration.h>
+#include <rtabmap/core/util3d_surface.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d_motion_estimation.h>
+#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util2d.h>
+#include <rtabmap/core/Statistics.h>
+#include <rtabmap/core/Compression.h>
+#include <rtabmap/core/Graph.h>
+#include <rtabmap/core/Stereo.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 
-namespace rtabmap
-{
+#include "MemoryLoc.h"
 
-const int Memory::kIdStart = 0;
-const int Memory::kIdVirtual = -1;
-const int Memory::kIdInvalid = 0;
+const int MemoryLoc::kIdStart = 0;
+const int MemoryLoc::kIdVirtual = -1;
+const int MemoryLoc::kIdInvalid = 0;
 
-Memory::Memory(const ParametersMap &parameters) :
+MemoryLoc::MemoryLoc(const ParametersMap &parameters) :
     _dbDriver(0),
     _similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
     _binDataKept(Parameters::defaultMemBinDataKept()),
@@ -101,7 +72,13 @@ Memory::Memory(const ParametersMap &parameters) :
 
     _badSignRatio(Parameters::defaultKpBadSignRatio()),
     _tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
-    _parallelized(Parameters::defaultKpParallelized())
+    _parallelized(Parameters::defaultKpParallelized()),
+
+    _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
+    _iterations(rtabmap::Parameters::defaultVisIterations()),
+    _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
+    _pnpReprojError(rtabmap::Parameters::defaultVisPnPReprojError()),
+    _pnpFlags(rtabmap::Parameters::defaultVisPnPFlags())
 {
     _feature2D = Feature2D::create(parameters);
     _vwd = new VWDictionary(parameters);
@@ -110,7 +87,7 @@ Memory::Memory(const ParametersMap &parameters) :
     this->parseParameters(parameters);
 }
 
-bool Memory::init(const std::string &dbUrl, bool dbOverwritten, const ParametersMap &parameters, bool postInitClosingEvents)
+bool MemoryLoc::init(const std::string &dbUrl, bool dbOverwritten, const ParametersMap &parameters, bool postInitClosingEvents)
 {
     if (postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitializing));
 
@@ -301,7 +278,7 @@ bool Memory::init(const std::string &dbUrl, bool dbOverwritten, const Parameters
     return success;
 }
 
-void Memory::close(bool databaseSaved, bool postInitClosingEvents)
+void MemoryLoc::close(bool databaseSaved, bool postInitClosingEvents)
 {
     UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved ? 1 : 0, postInitClosingEvents ? 1 : 0);
     if (postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
@@ -352,13 +329,13 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents)
     if (postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosed));
 }
 
-Memory::~Memory()
+MemoryLoc::~MemoryLoc()
 {
     this->close();
 
     if (_dbDriver)
     {
-        UWARN("Please call Memory::close() before");
+        UWARN("Please call MemoryLoc::close() before");
     }
     if (_feature2D)
     {
@@ -378,7 +355,7 @@ Memory::~Memory()
     }
 }
 
-void Memory::parseParameters(const ParametersMap &parameters)
+void MemoryLoc::parseParameters(const ParametersMap &parameters)
 {
     uInsert(parameters_, parameters);
 
@@ -498,9 +475,15 @@ void Memory::parseParameters(const ParametersMap &parameters)
         }
         _incrementalMemory = value;
     }
+    
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPReprojError(), _pnpReprojError);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
 }
 
-void Memory::preUpdate()
+void MemoryLoc::preUpdate()
 {
     _signaturesAdded = 0;
     this->cleanUnusedWords();
@@ -511,14 +494,14 @@ void Memory::preUpdate()
     }
 }
 
-bool Memory::update(
+bool MemoryLoc::update(
     const SensorData &data,
     Statistics *stats)
 {
     return update(data, Transform(), cv::Mat(), stats);
 }
 
-bool Memory::update(
+bool MemoryLoc::update(
     const SensorData &data,
     const Transform &pose,
     const cv::Mat &covariance,
@@ -630,7 +613,7 @@ bool Memory::update(
     return true;
 }
 
-void Memory::addSignatureToStm(Signature *signature, const cv::Mat &covariance)
+void MemoryLoc::addSignatureToStm(Signature *signature, const cv::Mat &covariance)
 {
     UTimer timer;
     // add signature on top of the short-term memory
@@ -701,7 +684,7 @@ void Memory::addSignatureToStm(Signature *signature, const cv::Mat &covariance)
     UDEBUG("time = %fs", timer.ticks());
 }
 
-void Memory::addSignatureToWmFromLTM(Signature *signature)
+void MemoryLoc::addSignatureToWmFromLTM(Signature *signature)
 {
     if (signature)
     {
@@ -716,7 +699,7 @@ void Memory::addSignatureToWmFromLTM(Signature *signature)
     }
 }
 
-void Memory::moveSignatureToWMFromSTM(int id, int *reducedTo)
+void MemoryLoc::moveSignatureToWMFromSTM(int id, int *reducedTo)
 {
     UDEBUG("Inserting node %d from STM in WM...", id);
     UASSERT(_stMem.find(id) != _stMem.end());
@@ -816,22 +799,22 @@ void Memory::moveSignatureToWMFromSTM(int id, int *reducedTo)
     // else already removed from STM/WM in moveToTrash()
 }
 
-const Signature *Memory::getSignature(int id) const
+const Signature *MemoryLoc::getSignature(int id) const
 {
     return _getSignature(id);
 }
 
-Signature *Memory::_getSignature(int id) const
+Signature *MemoryLoc::_getSignature(int id) const
 {
     return uValue(_signatures, id, (Signature *)0);
 }
 
-const VWDictionary *Memory::getVWDictionary() const
+const VWDictionary *MemoryLoc::getVWDictionary() const
 {
     return _vwd;
 }
 
-std::map<int, Link> Memory::getNeighborLinks(
+std::map<int, Link> MemoryLoc::getNeighborLinks(
     int signatureId,
     bool lookInDatabase) const
 {
@@ -873,7 +856,7 @@ std::map<int, Link> Memory::getNeighborLinks(
     return links;
 }
 
-std::map<int, Link> Memory::getLoopClosureLinks(
+std::map<int, Link> MemoryLoc::getLoopClosureLinks(
     int signatureId,
     bool lookInDatabase) const
 {
@@ -912,7 +895,7 @@ std::map<int, Link> Memory::getLoopClosureLinks(
     return loopClosures;
 }
 
-std::map<int, Link> Memory::getLinks(
+std::map<int, Link> MemoryLoc::getLinks(
     int signatureId,
     bool lookInDatabase) const
 {
@@ -933,7 +916,7 @@ std::map<int, Link> Memory::getLinks(
     return links;
 }
 
-std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNullLinks) const
+std::multimap<int, Link> MemoryLoc::getAllLinks(bool lookInDatabase, bool ignoreNullLinks) const
 {
     std::multimap<int, Link> links;
 
@@ -963,7 +946,7 @@ std::multimap<int, Link> Memory::getAllLinks(bool lookInDatabase, bool ignoreNul
 // return map<Id,Margin>, including signatureId
 // maxCheckedInDatabase = -1 means no limit to check in database (default)
 // maxCheckedInDatabase = 0 means don't check in database
-std::map<int, int> Memory::getNeighborsId(
+std::map<int, int> MemoryLoc::getNeighborsId(
     int signatureId,
     int maxGraphDepth, // 0 means infinite margin
     int maxCheckedInDatabase, // default -1 (no limit)
@@ -1078,7 +1061,7 @@ std::map<int, int> Memory::getNeighborsId(
 }
 
 // return map<Id,sqrdDistance>, including signatureId
-std::map<int, float> Memory::getNeighborsIdRadius(
+std::map<int, float> MemoryLoc::getNeighborsIdRadius(
     int signatureId,
     float radius, // 0 means ignore radius
     const std::map<int, Transform> &optimizedPoses,
@@ -1145,12 +1128,12 @@ std::map<int, float> Memory::getNeighborsIdRadius(
     return ids;
 }
 
-int Memory::getNextId()
+int MemoryLoc::getNextId()
 {
     return ++_idCount;
 }
 
-int Memory::incrementMapId(std::map<int, int> *reducedIds)
+int MemoryLoc::incrementMapId(std::map<int, int> *reducedIds)
 {
     //don't increment if there is no location in the current map
     const Signature *s = getLastWorkingSignature();
@@ -1173,7 +1156,7 @@ int Memory::incrementMapId(std::map<int, int> *reducedIds)
     return _idMapCount;
 }
 
-void Memory::updateAge(int signatureId)
+void MemoryLoc::updateAge(int signatureId)
 {
     std::map<int, double>::iterator iter = _workingMem.find(signatureId);
     if (iter != _workingMem.end())
@@ -1182,7 +1165,7 @@ void Memory::updateAge(int signatureId)
     }
 }
 
-int Memory::getDatabaseMemoryUsed() const
+int MemoryLoc::getDatabaseMemoryUsed() const
 {
     int memoryUsed = 0;
     if (_dbDriver)
@@ -1192,7 +1175,7 @@ int Memory::getDatabaseMemoryUsed() const
     return memoryUsed;
 }
 
-std::string Memory::getDatabaseVersion() const
+std::string MemoryLoc::getDatabaseVersion() const
 {
     std::string version = "0.0.0";
     if (_dbDriver)
@@ -1202,12 +1185,12 @@ std::string Memory::getDatabaseVersion() const
     return version;
 }
 
-double Memory::getDbSavingTime() const
+double MemoryLoc::getDbSavingTime() const
 {
     return _dbDriver ? _dbDriver->getEmptyTrashesTime() : 0;
 }
 
-std::set<int> Memory::getAllSignatureIds() const
+std::set<int> MemoryLoc::getAllSignatureIds() const
 {
     std::set<int> ids;
     if (_dbDriver)
@@ -1221,7 +1204,7 @@ std::set<int> Memory::getAllSignatureIds() const
     return ids;
 }
 
-void Memory::clear()
+void MemoryLoc::clear()
 {
     UDEBUG("");
 
@@ -1335,7 +1318,7 @@ void Memory::clear()
  * Important: Assuming that all other ids are under 'signature' id.
  * If an error occurs, the result is empty.
  */
-std::map<int, float> Memory::computeLikelihood(const Signature *signature, const std::list<int> &ids)
+std::map<int, float> MemoryLoc::computeLikelihood(const Signature *signature, const std::list<int> &ids)
 {
     if (!_tfIdfLikelihoodUsed)
     {
@@ -1450,8 +1433,112 @@ std::map<int, float> Memory::computeLikelihood(const Signature *signature, const
     }
 }
 
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const
+{
+    std::vector<const rtabmap::Signature *> oldSigs;
+    for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); it++)
+    {
+        const rtabmap::Signature *oldSig = getSignature(*it);
+        if (oldSig == NULL)
+        {
+            return rtabmap::Transform();
+        }
+        oldSigs.push_back(oldSig);
+    }
+
+    const rtabmap::Signature *newSig = getSignature(newId);
+    if (newSig == NULL)
+    {
+        return rtabmap::Transform();
+    }
+
+    return computeGlobalVisualTransform(oldSigs, newSig);
+}
+
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const
+{
+    if (oldSigs.size() == 0 || newSig == NULL)
+    {
+        return rtabmap::Transform();
+    }
+
+    rtabmap::Transform transform;
+    std::string msg;
+
+    int inliersCount = 0;
+    double variance = 1.0;
+
+    std::multimap<int, cv::Point3f> words3;
+
+    const std::vector<const rtabmap::Signature *>::const_iterator firstSig = oldSigs.begin();
+    const rtabmap::Transform &guessPose = (*firstSig)->getPose();
+
+    for (std::vector<const rtabmap::Signature *>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
+    {
+        rtabmap::Transform pose = (*sigIter)->getPose();
+        const std::multimap<int, cv::Point3f> &sigWords3 = (*sigIter)->getWords3();
+        std::multimap<int, cv::Point3f>::const_iterator word3Iter;
+        for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
+        {
+            cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, pose);
+            words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
+        }
+    }
+
+    // 3D to 2D (PnP)
+    if ((int)words3.size() >= _minInliers && (int)newSig->getWords().size() >= _minInliers)
+    {
+        const rtabmap::CameraModel &cameraModel = newSig->sensorData().cameraModels()[0];
+
+        std::vector<int> matches;
+        std::vector<int> inliers;
+        transform = rtabmap::util3d::estimateMotion3DTo2D(
+                        uMultimapToMapUnique(words3),
+                        uMultimapToMapUnique(newSig->getWords()),
+                        cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
+                        _minInliers,
+                        _iterations,
+                        _pnpReprojError,
+                        _pnpFlags,
+                        _pnpRefineIterations,
+                        guessPose, // use the first signature's pose as a guess
+                        uMultimapToMapUnique(newSig->getWords3()),
+                        &variance,
+                        &matches,
+                        &inliers);
+        inliersCount = (int)inliers.size();
+        if (transform.isNull())
+        {
+            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _minInliers, newSig->id());
+            UINFO(msg.c_str());
+        }
+    }
+    else
+    {
+        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig->getWords().size(), _minInliers);
+        UINFO(msg.c_str());
+    }
+
+    // TODO check RegistrationVis.cpp to see whether this is necessary
+    if (!transform.isNull())
+    {
+        // verify if it is a 180 degree transform, well verify > 90
+        float x, y, z, roll, pitch, yaw;
+        transform.inverse().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+        if (fabs(roll) > CV_PI / 2 || fabs(pitch) > CV_PI / 2 || fabs(yaw) > CV_PI / 2)
+        {
+            transform.setNull();
+            msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)", roll, pitch, yaw);
+            UWARN(msg.c_str());
+        }
+    }
+
+    UDEBUG("transform=%s", transform.prettyPrint().c_str());
+    return transform;
+}
+
 // Weights of the signatures in the working memory <signature id, weight>
-std::map<int, int> Memory::getWeights() const
+std::map<int, int> MemoryLoc::getWeights() const
 {
     std::map<int, int> weights;
     for (std::map<int, double>::const_iterator iter = _workingMem.begin(); iter != _workingMem.end(); ++iter)
@@ -1473,7 +1560,7 @@ std::map<int, int> Memory::getWeights() const
     return weights;
 }
 
-std::list<int> Memory::forget(const std::set<int> &ignoredIds)
+std::list<int> MemoryLoc::forget(const std::set<int> &ignoredIds)
 {
     UDEBUG("");
     std::list<int> signaturesRemoved;
@@ -1545,7 +1632,7 @@ std::list<int> Memory::forget(const std::set<int> &ignoredIds)
 }
 
 
-int Memory::cleanup()
+int MemoryLoc::cleanup()
 {
     UDEBUG("");
     int signatureRemoved = 0;
@@ -1564,7 +1651,7 @@ int Memory::cleanup()
     return signatureRemoved;
 }
 
-void Memory::emptyTrash()
+void MemoryLoc::emptyTrash()
 {
     if (_dbDriver)
     {
@@ -1572,7 +1659,7 @@ void Memory::emptyTrash()
     }
 }
 
-void Memory::joinTrashThread()
+void MemoryLoc::joinTrashThread()
 {
     if (_dbDriver)
     {
@@ -1613,7 +1700,7 @@ public:
     }
     int weight, age, id;
 };
-std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<int> &ignoredIds)
+std::list<Signature *> MemoryLoc::getRemovableSignatures(int count, const std::set<int> &ignoredIds)
 {
     //UDEBUG("");
     std::list<Signature *> removableSignatures;
@@ -1744,7 +1831,7 @@ std::list<Signature *> Memory::getRemovableSignatures(int count, const std::set<
 /**
  * If saveToDatabase=false, deleted words are filled in deletedWords.
  */
-void Memory::moveToTrash(Signature *s, bool keepLinkedToGraph, std::list<int> *deletedWords)
+void MemoryLoc::moveToTrash(Signature *s, bool keepLinkedToGraph, std::list<int> *deletedWords)
 {
     UDEBUG("id=%d", s ? s->id() : 0);
     if (s)
@@ -1855,18 +1942,18 @@ void Memory::moveToTrash(Signature *s, bool keepLinkedToGraph, std::list<int> *d
     }
 }
 
-int Memory::getLastSignatureId() const
+int MemoryLoc::getLastSignatureId() const
 {
     return _idCount;
 }
 
-const Signature *Memory::getLastWorkingSignature() const
+const Signature *MemoryLoc::getLastWorkingSignature() const
 {
     UDEBUG("");
     return _lastSignature;
 }
 
-int Memory::getSignatureIdByLabel(const std::string &label, bool lookInDatabase) const
+int MemoryLoc::getSignatureIdByLabel(const std::string &label, bool lookInDatabase) const
 {
     UDEBUG("label=%s", label.c_str());
     int id = 0;
@@ -1889,7 +1976,7 @@ int Memory::getSignatureIdByLabel(const std::string &label, bool lookInDatabase)
     return id;
 }
 
-bool Memory::labelSignature(int id, const std::string &label)
+bool MemoryLoc::labelSignature(int id, const std::string &label)
 {
     // verify that this label is not used
     int idFound = getSignatureIdByLabel(label);
@@ -1928,7 +2015,7 @@ bool Memory::labelSignature(int id, const std::string &label)
     return false;
 }
 
-std::map<int, std::string> Memory::getAllLabels() const
+std::map<int, std::string> MemoryLoc::getAllLabels() const
 {
     std::map<int, std::string> labels;
     for (std::map<int, Signature *>::const_iterator iter = _signatures.begin(); iter != _signatures.end(); ++iter)
@@ -1945,7 +2032,7 @@ std::map<int, std::string> Memory::getAllLabels() const
     return labels;
 }
 
-bool Memory::setUserData(int id, const cv::Mat &data)
+bool MemoryLoc::setUserData(int id, const cv::Mat &data)
 {
     Signature *s  = this->_getSignature(id);
     if (s)
@@ -1960,7 +2047,7 @@ bool Memory::setUserData(int id, const cv::Mat &data)
     return false;
 }
 
-void Memory::deleteLocation(int locationId, std::list<int> *deletedWords)
+void MemoryLoc::deleteLocation(int locationId, std::list<int> *deletedWords)
 {
     UDEBUG("Deleting location %d", locationId);
     Signature *location = _getSignature(locationId);
@@ -1970,7 +2057,7 @@ void Memory::deleteLocation(int locationId, std::list<int> *deletedWords)
     }
 }
 
-void Memory::removeLink(int oldId, int newId)
+void MemoryLoc::removeLink(int oldId, int newId)
 {
     //this method assumes receiving oldId < newId, if not switch them
     Signature *oldS = this->_getSignature(oldId < newId ? oldId : newId);
@@ -2032,7 +2119,7 @@ void Memory::removeLink(int oldId, int newId)
     }
 }
 
-void Memory::removeRawData(int id, bool image, bool scan, bool userData)
+void MemoryLoc::removeRawData(int id, bool image, bool scan, bool userData)
 {
     Signature *s = this->_getSignature(id);
     if (s)
@@ -2054,7 +2141,7 @@ void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 }
 
 // compute transform fromId -> toId
-Transform Memory::computeTransform(
+Transform MemoryLoc::computeTransform(
     int fromId,
     int toId,
     Transform guess,
@@ -2188,7 +2275,7 @@ Transform Memory::computeTransform(
 }
 
 // compute transform fromId -> toId
-Transform Memory::computeIcpTransform(
+Transform MemoryLoc::computeIcpTransform(
     int fromId,
     int toId,
     Transform guess,
@@ -2243,7 +2330,7 @@ Transform Memory::computeIcpTransform(
 }
 
 // compute transform fromId -> multiple toId
-Transform Memory::computeIcpTransformMulti(
+Transform MemoryLoc::computeIcpTransformMulti(
     int fromId,
     int toId,
     const std::map<int, Transform> &poses,
@@ -2315,7 +2402,7 @@ Transform Memory::computeIcpTransformMulti(
     return t;
 }
 
-bool Memory::addLink(const Link &link)
+bool MemoryLoc::addLink(const Link &link)
 {
     UASSERT(link.type() > Link::kNeighbor && link.type() != Link::kUndef);
 
@@ -2382,7 +2469,7 @@ bool Memory::addLink(const Link &link)
     return false;
 }
 
-void Memory::updateLink(int fromId, int toId, const Transform &transform, float rotVariance, float transVariance)
+void MemoryLoc::updateLink(int fromId, int toId, const Transform &transform, float rotVariance, float transVariance)
 {
     Signature *fromS = this->_getSignature(fromId);
     Signature *toS = this->_getSignature(toId);
@@ -2407,7 +2494,7 @@ void Memory::updateLink(int fromId, int toId, const Transform &transform, float 
     }
 }
 
-void Memory::updateLink(int fromId, int toId, const Transform &transform, const cv::Mat &covariance)
+void MemoryLoc::updateLink(int fromId, int toId, const Transform &transform, const cv::Mat &covariance)
 {
     Signature *fromS = this->_getSignature(fromId);
     Signature *toS = this->_getSignature(toId);
@@ -2433,7 +2520,7 @@ void Memory::updateLink(int fromId, int toId, const Transform &transform, const 
     }
 }
 
-void Memory::removeAllVirtualLinks()
+void MemoryLoc::removeAllVirtualLinks()
 {
     UDEBUG("");
     for (std::map<int, Signature *>::iterator iter = _signatures.begin(); iter != _signatures.end(); ++iter)
@@ -2442,7 +2529,7 @@ void Memory::removeAllVirtualLinks()
     }
 }
 
-void Memory::removeVirtualLinks(int signatureId)
+void MemoryLoc::removeVirtualLinks(int signatureId)
 {
     UDEBUG("");
     Signature *s = this->_getSignature(signatureId);
@@ -2472,7 +2559,7 @@ void Memory::removeVirtualLinks(int signatureId)
     }
 }
 
-void Memory::dumpMemory(std::string directory) const
+void MemoryLoc::dumpMemory(std::string directory) const
 {
     UINFO("Dumping memory to directory \"%s\"", directory.c_str());
     this->dumpDictionary((directory + "DumpMemoryWordRef.txt").c_str(), (directory + "DumpMemoryWordDesc.txt").c_str());
@@ -2481,7 +2568,7 @@ void Memory::dumpMemory(std::string directory) const
     this->dumpMemoryTree((directory + "DumpMemoryTree.txt").c_str());
 }
 
-void Memory::dumpDictionary(const char *fileNameRef, const char *fileNameDesc) const
+void MemoryLoc::dumpDictionary(const char *fileNameRef, const char *fileNameDesc) const
 {
     if (_vwd)
     {
@@ -2489,7 +2576,7 @@ void Memory::dumpDictionary(const char *fileNameRef, const char *fileNameDesc) c
     }
 }
 
-void Memory::dumpSignatures(const char *fileNameSign, bool words3D) const
+void MemoryLoc::dumpSignatures(const char *fileNameSign, bool words3D) const
 {
     FILE *foutSign = 0;
 #ifdef _MSC_VER
@@ -2536,7 +2623,7 @@ void Memory::dumpSignatures(const char *fileNameSign, bool words3D) const
     }
 }
 
-void Memory::dumpMemoryTree(const char *fileNameTree) const
+void MemoryLoc::dumpMemoryTree(const char *fileNameTree) const
 {
     FILE *foutTree = 0;
 #ifdef _MSC_VER
@@ -2593,7 +2680,7 @@ void Memory::dumpMemoryTree(const char *fileNameTree) const
 
 }
 
-void Memory::rehearsal(Signature *signature, Statistics *stats)
+void MemoryLoc::rehearsal(Signature *signature, Statistics *stats)
 {
     UTimer timer;
     if (signature->getLinks().size() != 1 ||
@@ -2651,7 +2738,7 @@ void Memory::rehearsal(Signature *signature, Statistics *stats)
     }
 }
 
-bool Memory::rehearsalMerge(int oldId, int newId)
+bool MemoryLoc::rehearsalMerge(int oldId, int newId)
 {
     ULOGGER_INFO("old=%d, new=%d", oldId, newId);
     Signature *oldS = _getSignature(oldId);
@@ -2805,7 +2892,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
     return false;
 }
 
-Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
+Transform MemoryLoc::getOdomPose(int signatureId, bool lookInDatabase) const
 {
     Transform pose, groundTruth;
     int mapId, weight;
@@ -2815,7 +2902,7 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
     return pose;
 }
 
-Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
+Transform MemoryLoc::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 {
     Transform pose, groundTruth;
     int mapId, weight;
@@ -2825,7 +2912,7 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
     return groundTruth;
 }
 
-bool Memory::getNodeInfo(int signatureId,
+bool MemoryLoc::getNodeInfo(int signatureId,
                          Transform &odomPose,
                          int &mapId,
                          int &weight,
@@ -2852,7 +2939,7 @@ bool Memory::getNodeInfo(int signatureId,
     return false;
 }
 
-cv::Mat Memory::getImageCompressed(int signatureId) const
+cv::Mat MemoryLoc::getImageCompressed(int signatureId) const
 {
     cv::Mat image;
     const Signature *s = this->getSignature(signatureId);
@@ -2869,7 +2956,7 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
     return image;
 }
 
-SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoadedDataInMemory)
+SensorData MemoryLoc::getNodeData(int nodeId, bool uncompressedData, bool keepLoadedDataInMemory)
 {
     UDEBUG("nodeId=%d", nodeId);
     SensorData r;
@@ -2913,7 +3000,7 @@ SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoade
     return r;
 }
 
-void Memory::getNodeWords(int nodeId,
+void MemoryLoc::getNodeWords(int nodeId,
                           std::multimap<int, cv::KeyPoint> &words,
                           std::multimap<int, cv::Point3f> &words3)
 {
@@ -2949,7 +3036,7 @@ void Memory::getNodeWords(int nodeId,
     }
 }
 
-SensorData Memory::getSignatureDataConst(int locationId) const
+SensorData MemoryLoc::getSignatureDataConst(int locationId) const
 {
     UDEBUG("");
     SensorData r;
@@ -3000,7 +3087,7 @@ SensorData Memory::getSignatureDataConst(int locationId) const
     return r;
 }
 
-void Memory::generateGraph(const std::string &fileName, const std::set<int> &ids)
+void MemoryLoc::generateGraph(const std::string &fileName, const std::set<int> &ids)
 {
     if (!_dbDriver)
     {
@@ -3011,7 +3098,7 @@ void Memory::generateGraph(const std::string &fileName, const std::set<int> &ids
     _dbDriver->generateGraph(fileName, ids, _signatures);
 }
 
-int Memory::getNi(int signatureId) const
+int MemoryLoc::getNi(int signatureId) const
 {
     int ni = 0;
     const Signature *s = this->getSignature(signatureId);
@@ -3027,7 +3114,7 @@ int Memory::getNi(int signatureId) const
 }
 
 
-void Memory::copyData(const Signature *from, Signature *to)
+void MemoryLoc::copyData(const Signature *from, Signature *to)
 {
     UTimer timer;
     timer.start();
@@ -3079,7 +3166,7 @@ private:
     VWDictionary *_vwp;
 };
 
-Signature *Memory::createSignature(const SensorData &data, const Transform &pose, Statistics *stats)
+Signature *MemoryLoc::createSignature(const SensorData &data, const Transform &pose, Statistics *stats)
 {
     UDEBUG("");
     UASSERT(data.imageRaw().empty() ||
@@ -3599,7 +3686,7 @@ Signature *Memory::createSignature(const SensorData &data, const Transform &pose
     return s;
 }
 
-void Memory::disableWordsRef(int signatureId)
+void MemoryLoc::disableWordsRef(int signatureId)
 {
     UDEBUG("id=%d", signatureId);
 
@@ -3621,7 +3708,7 @@ void Memory::disableWordsRef(int signatureId)
     }
 }
 
-void Memory::cleanUnusedWords()
+void MemoryLoc::cleanUnusedWords()
 {
     if (_vwd->isIncremental())
     {
@@ -3647,7 +3734,7 @@ void Memory::cleanUnusedWords()
     }
 }
 
-void Memory::enableWordsRef(const std::list<int> &signatureIds)
+void MemoryLoc::enableWordsRef(const std::list<int> &signatureIds)
 {
     UDEBUG("size=%d", signatureIds.size());
     UTimer timer;
@@ -3740,7 +3827,7 @@ void Memory::enableWordsRef(const std::list<int> &signatureIds)
         {
             const VisualWord *wordFirst = _vwd->getWord(keys.front());  //get descriptor size
             UASSERT(wordFirst != 0);
-            //Descriptors used for Memory::computeTransform()
+            //Descriptors used for MemoryLoc::computeTransform()
             cv::Mat descriptors(keys.size(), wordFirst->getDescriptor().cols, wordFirst->getDescriptor().type());
             // Add all references
             for (unsigned int i = 0; i < keys.size(); ++i)
@@ -3761,7 +3848,7 @@ void Memory::enableWordsRef(const std::list<int> &signatureIds)
     UDEBUG("%d words total ref added from %d signatures, time=%fs...", count, surfSigns.size(), timer.ticks());
 }
 
-std::set<int> Memory::reactivateSignatures(const std::list<int> &ids, unsigned int maxLoaded, double &timeDbAccess)
+std::set<int> MemoryLoc::reactivateSignatures(const std::list<int> &ids, unsigned int maxLoaded, double &timeDbAccess)
 {
     // get the signatures, if not in the working memory, they
     // will be loaded from the database in an more efficient way
@@ -3805,7 +3892,7 @@ std::set<int> Memory::reactivateSignatures(const std::list<int> &ids, unsigned i
 
 // return all non-null poses
 // return unique links between nodes (for neighbors: old->new, for loops: parent->child)
-void Memory::getMetricConstraints(
+void MemoryLoc::getMetricConstraints(
     const std::set<int> &ids,
     std::map<int, Transform> &poses,
     std::multimap<int, Link> &links,
@@ -3874,5 +3961,3 @@ void Memory::getMetricConstraints(
         }
     }
 }
-
-} // namespace rtabmap

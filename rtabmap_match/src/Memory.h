@@ -1,34 +1,4 @@
-/*
-Copyright (c) 2010-2014, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the Universite de Sherbrooke nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-#ifndef MEMORY_H_
-#define MEMORY_H_
-
-#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+#pragma once
 
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
@@ -43,9 +13,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
-namespace rtabmap
-{
-
 class Signature;
 class DBDriver;
 class VWDictionary;
@@ -57,7 +24,7 @@ class RegistrationInfo;
 class RegistrationIcp;
 class Stereo;
 
-class RTABMAP_EXP Memory
+class MemoryLoc
 {
 public:
     static const int kIdStart;
@@ -65,8 +32,8 @@ public:
     static const int kIdInvalid;
 
 public:
-    Memory(const ParametersMap &parameters = ParametersMap());
-    virtual ~Memory();
+    MemoryLoc(const ParametersMap &parameters = ParametersMap());
+    virtual ~MemoryLoc();
 
     virtual void parseParameters(const ParametersMap &parameters);
     virtual const ParametersMap &getParameters() const
@@ -235,6 +202,9 @@ public:
         const std::map<int, Transform> &poses,
         RegistrationInfo *info = 0);
 
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
+
 private:
     void preUpdate();
     void addSignatureToStm(Signature *signature, const cv::Mat &covariance);
@@ -300,7 +270,7 @@ private:
     int _idMapCount;
     Signature *_lastSignature;
     int _lastGlobalLoopClosureId;
-    bool _memoryChanged; // False by default, become true only when Memory::update() is called.
+    bool _memoryChanged; // False by default, become true only when MemoryLoc::update() is called.
     bool _linksChanged; // False by default, become true when links are modified.
     int _signaturesAdded;
 
@@ -317,8 +287,10 @@ private:
 
     Registration *_registrationPipeline;
     RegistrationIcp *_registrationIcp;
+
+    int _minInliers;
+    int _iterations;
+    int _pnpRefineIterations;
+    double _pnpReprojError;
+    int _pnpFlags;
 };
-
-} // namespace rtabmap
-
-#endif /* MEMORY_H_ */
