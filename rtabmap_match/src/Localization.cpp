@@ -197,7 +197,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                     else
                     {
                         UWARN("transform is null, using pose of the closest image");
-                        output = getPose(_memory->getSignature(topId));
+                        //output = getPose(_memory->getSignature(topId));
                     }
                 }
             }

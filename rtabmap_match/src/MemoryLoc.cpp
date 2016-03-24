@@ -31,9 +31,7 @@ const int MemoryLoc::kIdVirtual = -1;
 const int MemoryLoc::kIdInvalid = 0;
 
 MemoryLoc::MemoryLoc() :
-    _binDataKept(rtabmap::Parameters::defaultMemBinDataKept()),
     _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
-    _saveDepth16Format(rtabmap::Parameters::defaultMemSaveDepth16Format()),
     _notLinkedNodesKeptInDb(rtabmap::Parameters::defaultMemNotLinkedNodesKept()),
     _incrementalMemory(rtabmap::Parameters::defaultMemIncrementalMemory()),
     _reduceGraph(rtabmap::Parameters::defaultMemReduceGraph()),
@@ -228,9 +226,7 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     UDEBUG("");
     rtabmap::ParametersMap::const_iterator iter;
 
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBinDataKept(), _binDataKept);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemReduceGraph(), _reduceGraph);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
@@ -757,74 +753,6 @@ std::map<int, int> MemoryLoc::getNeighborsId(
                                 }
                             }
                         }
-                    }
-                }
-            }
-        }
-        ++m;
-    }
-    return ids;
-}
-
-// return map<Id,sqrdDistance>, including signatureId
-std::map<int, float> MemoryLoc::getNeighborsIdRadius(
-    int signatureId,
-    float radius, // 0 means ignore radius
-    const std::map<int, rtabmap::Transform> &optimizedPoses,
-    int maxGraphDepth // 0 means infinite margin
-) const
-{
-    UASSERT(maxGraphDepth >= 0);
-    UASSERT(uContains(optimizedPoses, signatureId));
-    UASSERT(signatureId > 0);
-    std::map<int, float> ids;
-    std::list<int> curentMarginList;
-    std::set<int> currentMargin;
-    std::set<int> nextMargin;
-    nextMargin.insert(signatureId);
-    int m = 0;
-    rtabmap::Transform referential = optimizedPoses.at(signatureId);
-    UASSERT(!referential.isNull());
-    float radiusSqrd = radius * radius;
-    std::map<int, float> savedRadius;
-    savedRadius.insert(std::make_pair(signatureId, 0));
-    while ((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
-    {
-        curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
-        nextMargin.clear();
-
-        for (std::list<int>::iterator jter = curentMarginList.begin(); jter != curentMarginList.end(); ++jter)
-        {
-            if (ids.find(*jter) == ids.end())
-            {
-                //UDEBUG("Added %d with margin %d", *jter, m);
-                // Look up in STM/WM if all ids are here, if not... load them from the database
-                const rtabmap::Signature *s = this->getSignature(*jter);
-                std::map<int, rtabmap::Link> tmpLinks;
-                const std::map<int, rtabmap::Link> *links = &tmpLinks;
-                if (s)
-                {
-                    ids.insert(std::pair<int, float>(*jter, savedRadius.at(*jter)));
-
-                    links = &s->getLinks();
-                }
-
-                // links
-                for (std::map<int, rtabmap::Link>::const_iterator iter = links->begin(); iter != links->end(); ++iter)
-                {
-                    if (!uContains(ids, iter->first) &&
-                            uContains(optimizedPoses, iter->first) &&
-                            iter->second.type() != rtabmap::Link::kVirtualClosure)
-                    {
-                        const rtabmap::Transform &t = optimizedPoses.at(iter->first);
-                        UASSERT(!t.isNull());
-                        float distanceSqrd = referential.getDistanceSquared(t);
-                        if (radiusSqrd == 0 || distanceSqrd < radiusSqrd)
-                        {
-                            savedRadius.insert(std::make_pair(iter->first, distanceSqrd));
-                            nextMargin.insert(iter->first);
-                        }
-
                     }
                 }
             }
@@ -1800,11 +1728,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     }
 
     int treeSize = int(_workingMem.size() + _stMem.size());
-    int meanWordsPerLocation = 0;
-    if (treeSize > 0)
-    {
-        meanWordsPerLocation = _vwd->getTotalActiveReferences() / treeSize;
-    }
 
     std::vector<cv::Point3f> keypoints3D;
     if (!_useOdometryFeatures || data.keypoints().empty() || (int)data.keypoints().size() != data.descriptors().rows)
@@ -1844,12 +1767,7 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             t = timer.ticks();
             UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
-            UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
-            if (descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
-            {
-                descriptors = cv::Mat();
-            }
-            else if ((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
+            if ((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
                      (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
             {
                 keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
@@ -1962,12 +1880,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             }
             t = timer.ticks();
             UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
-        }
-
-        UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
-        if (descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
-        {
-            descriptors = cv::Mat();
         }
     }
 
@@ -2100,104 +2012,43 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     }
 
     rtabmap::Signature *s;
-    if (this->isBinDataKept())
-    {
-        UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
-               image.empty() ? 0 : 1,
-               depthOrRightImage.empty() ? 0 : 1,
-               laserScan.empty() ? 0 : 1,
-               data.userDataRaw().empty() ? 0 : 1);
+    UDEBUG("bin data not kept");
+    // just compress laser and user data
+    rtabmap::CompressionThread ctLaserScan(laserScan);
+    rtabmap::CompressionThread ctUserData(data.userDataRaw());
+    ctLaserScan.start();
+    ctUserData.start();
+    ctLaserScan.join();
+    ctUserData.join();
 
-        std::vector<unsigned char> imageBytes;
-        std::vector<unsigned char> depthBytes;
-
-        if (_saveDepth16Format && !depthOrRightImage.empty() && depthOrRightImage.type() == CV_32FC1)
-        {
-            UWARN("Save depth data to 16 bits format: depth type detected is 32FC1, use 16UC1 depth format to avoid this conversion (or set parameter \"Mem/SaveDepth16Format\"=false to use 32bits format).");
-            depthOrRightImage = rtabmap::util2d::cvtDepthFromFloat(depthOrRightImage);
-        }
-
-        rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
-        rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-        rtabmap::CompressionThread ctLaserScan(laserScan);
-        rtabmap::CompressionThread ctUserData(data.userDataRaw());
-        ctImage.start();
-        ctDepth.start();
-        ctLaserScan.start();
-        ctUserData.start();
-        ctImage.join();
-        ctDepth.join();
-        ctLaserScan.join();
-        ctUserData.join();
-
-        s = new rtabmap::Signature(id,
-                                   _idMapCount,
-                                   isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
-                                   data.stamp(),
-                                   "",
-                                   pose,
-                                   data.groundTruth(),
-                                   stereoCameraModel.isValidForProjection() ?
-                                   rtabmap::SensorData(
-                                       ctLaserScan.getCompressedData(),
-                                       maxLaserScanMaxPts,
-                                       data.laserScanMaxRange(),
-                                       ctImage.getCompressedData(),
-                                       ctDepth.getCompressedData(),
-                                       stereoCameraModel,
-                                       id,
-                                       0,
-                                       ctUserData.getCompressedData()) :
-                                   rtabmap::SensorData(
-                                       ctLaserScan.getCompressedData(),
-                                       maxLaserScanMaxPts,
-                                       data.laserScanMaxRange(),
-                                       ctImage.getCompressedData(),
-                                       ctDepth.getCompressedData(),
-                                       cameraModels,
-                                       id,
-                                       0,
-                                       ctUserData.getCompressedData()));
-    }
-    else
-    {
-        // just compress laser and user data
-        rtabmap::CompressionThread ctLaserScan(laserScan);
-        rtabmap::CompressionThread ctUserData(data.userDataRaw());
-        ctLaserScan.start();
-        ctUserData.start();
-        ctLaserScan.join();
-        ctUserData.join();
-
-        s = new rtabmap::Signature(id,
-                                   _idMapCount,
-                                   isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
-                                   data.stamp(),
-                                   "",
-                                   pose,
-                                   data.groundTruth(),
-                                   stereoCameraModel.isValidForProjection() ?
-                                   rtabmap::SensorData(
-                                       ctLaserScan.getCompressedData(),
-                                       maxLaserScanMaxPts,
-                                       data.laserScanMaxRange(),
-                                       cv::Mat(),
-                                       cv::Mat(),
-                                       stereoCameraModel,
-                                       id,
-                                       0,
-                                       ctUserData.getCompressedData()) :
-                                   rtabmap::SensorData(
-                                       ctLaserScan.getCompressedData(),
-                                       maxLaserScanMaxPts,
-                                       data.laserScanMaxRange(),
-                                       cv::Mat(),
-                                       cv::Mat(),
-                                       cameraModels,
-                                       id,
-                                       0,
-                                       ctUserData.getCompressedData()));
-    }
+    s = new rtabmap::Signature(id,
+                               _idMapCount,
+                               isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
+                               data.stamp(),
+                               "",
+                               pose,
+                               data.groundTruth(),
+                               stereoCameraModel.isValidForProjection() ?
+                               rtabmap::SensorData(
+                                   ctLaserScan.getCompressedData(),
+                                   maxLaserScanMaxPts,
+                                   data.laserScanMaxRange(),
+                                   cv::Mat(),
+                                   cv::Mat(),
+                                   stereoCameraModel,
+                                   id,
+                                   0,
+                                   ctUserData.getCompressedData()) :
+                               rtabmap::SensorData(
+                                   ctLaserScan.getCompressedData(),
+                                   maxLaserScanMaxPts,
+                                   data.laserScanMaxRange(),
+                                   cv::Mat(),
+                                   cv::Mat(),
+                                   cameraModels,
+                                   id,
+                                   0,
+                                   ctUserData.getCompressedData()));
 
     s->setWords(words);
     s->setWords3(words3D);

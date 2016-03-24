@@ -42,7 +42,6 @@ public:
     void close();
     std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
                                            const std::list<int> &ids);
-    int incrementMapId(std::map<int, int> *reducedIds = 0);
 
     int cleanup();
     void emptyTrash();
@@ -57,11 +56,6 @@ public:
         bool ignoreLoopIds = false,
         bool ignoreIntermediateNodes = false,
         double *dbAccessTime = 0) const;
-    std::map<int, float> getNeighborsIdRadius(
-        int signatureId,
-        float radius,
-        const std::map<int, rtabmap::Transform> &optimizedPoses,
-        int maxGraphDepth) const;
     void deleteLocation(int locationId, std::list<int> *deletedWords = 0);
     void removeLink(int idA, int idB);
 
@@ -74,10 +68,6 @@ public:
             bool lookInDatabase = false) const;
     std::map<int, rtabmap::Link> getLinks(int signatureId,
                                           bool lookInDatabase = false) const;
-    bool isBinDataKept() const
-    {
-        return _binDataKept;
-    }
     const rtabmap::Signature *getLastWorkingSignature() const;
     int getSignatureIdByLabel(const std::string &label, bool lookInDatabase = true) const;
     std::map<int, std::string> getAllLabels() const;
@@ -113,12 +103,13 @@ private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     void preUpdate();
     void addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &covariance);
-    void clear();
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true, std::list<int> *deletedWords = 0);
 
     void moveSignatureToWMFromSTM(int id, int *reducedTo = 0);
     rtabmap::Signature *_getSignature(int id) const;
     int getNextId();
+    int incrementMapId(std::map<int, int> *reducedIds = 0);
+    void clear();
     void initCountId();
 
     const std::map<int, rtabmap::Signature *> &getSignatures() const
@@ -143,9 +134,7 @@ protected:
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
-    bool _binDataKept;
     bool _rawDescriptorsKept;
-    bool _saveDepth16Format;
     bool _notLinkedNodesKeptInDb;
     bool _incrementalMemory;
     bool _reduceGraph;
@@ -173,9 +162,7 @@ private:
     //Keypoint stuff
     rtabmap::VWDictionary *_vwd;
     rtabmap::Feature2D *_feature2D;
-    float _badSignRatio;;
     bool _tfIdfLikelihoodUsed;
-    bool _parallelized;
 
     int _minInliers;
     int _iterations;
