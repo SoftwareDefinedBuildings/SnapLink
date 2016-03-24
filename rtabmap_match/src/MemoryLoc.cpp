@@ -34,7 +34,6 @@ MemoryLoc::MemoryLoc() :
     _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
     _notLinkedNodesKeptInDb(rtabmap::Parameters::defaultMemNotLinkedNodesKept()),
     _incrementalMemory(rtabmap::Parameters::defaultMemIncrementalMemory()),
-    _reduceGraph(rtabmap::Parameters::defaultMemReduceGraph()),
     _maxStMemSize(rtabmap::Parameters::defaultMemSTMSize()),
     _recentWmRatio(rtabmap::Parameters::defaultMemRecentWmRatio()),
     _transferSortingByWeightId(rtabmap::Parameters::defaultMemTransferSortingByWeightId()),
@@ -54,7 +53,6 @@ MemoryLoc::MemoryLoc() :
     _vwd(NULL),
     _dbDriver(NULL),
 
-    _badSignRatio(rtabmap::Parameters::defaultKpBadSignRatio()),
     _tfIdfLikelihoodUsed(rtabmap::Parameters::defaultKpTfIdfLikelihoodUsed()),
 
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
@@ -227,7 +225,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::ParametersMap::const_iterator iter;
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemReduceGraph(), _reduceGraph);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
@@ -255,7 +252,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     }
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kKpBadSignRatio(), _badSignRatio);
 
     //Keypoint detector
     UASSERT(_feature2D != 0);
@@ -409,55 +405,7 @@ void MemoryLoc::addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &
     if (signature)
     {
         UDEBUG("adding %d", signature->id());
-        // Update neighbors
-        if (_stMem.size())
-        {
-            if (_signatures.at(*_stMem.rbegin())->mapId() == signature->mapId())
-            {
-                rtabmap::Transform motionEstimate;
-                if (!signature->getPose().isNull() &&
-                        !_signatures.at(*_stMem.rbegin())->getPose().isNull())
-                {
-                    cv::Mat infMatrix = covariance.inv();
-                    motionEstimate = _signatures.at(*_stMem.rbegin())->getPose().inverse() * signature->getPose();
-                    _signatures.at(*_stMem.rbegin())->addLink(rtabmap::Link(*_stMem.rbegin(), signature->id(), rtabmap::Link::kNeighbor, motionEstimate, infMatrix));
-                    signature->addLink(rtabmap::Link(signature->id(), *_stMem.rbegin(), rtabmap::Link::kNeighbor, motionEstimate.inverse(), infMatrix));
-                }
-                else
-                {
-                    _signatures.at(*_stMem.rbegin())->addLink(rtabmap::Link(*_stMem.rbegin(), signature->id(), rtabmap::Link::kNeighbor, rtabmap::Transform()));
-                    signature->addLink(rtabmap::Link(signature->id(), *_stMem.rbegin(), rtabmap::Link::kNeighbor, rtabmap::Transform()));
-                }
-                UDEBUG("Min STM id = %d", *_stMem.begin());
-            }
-            else
-            {
-                UDEBUG("Ignoring neighbor link between %d and %d because they are not in the same map! (%d vs %d)",
-                       *_stMem.rbegin(), signature->id(),
-                       _signatures.at(*_stMem.rbegin())->mapId(), signature->mapId());
-
-                //Tag the first node of the map
-                std::string tag = uFormat("map%d", signature->mapId());
-                if (getSignatureIdByLabel(tag, false) == 0)
-                {
-                    UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
-                    signature->setLabel(tag);
-                }
-            }
-        }
-        else if (_mapLabelsAdded)
-        {
-            //Tag the first node of the map
-            std::string tag = uFormat("map%d", signature->mapId());
-            if (getSignatureIdByLabel(tag, false) == 0)
-            {
-                UINFO("Tagging node %d with label \"%s\"", signature->id(), tag.c_str());
-                signature->setLabel(tag);
-            }
-        }
-
         _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
-        _stMem.insert(_stMem.end(), signature->id());
 
         if (_vwd)
         {
@@ -479,91 +427,6 @@ void MemoryLoc::moveSignatureToWMFromSTM(int id, int *reducedTo)
     rtabmap::Signature *s = this->_getSignature(id);
     UASSERT(s != 0);
 
-    if (_reduceGraph)
-    {
-        bool merge = false;
-        const std::map<int, rtabmap::Link> &links = s->getLinks();
-        std::map<int, rtabmap::Link> neighbors;
-        for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-        {
-            if (!merge)
-            {
-                merge = iter->second.to() < s->id() && // should be a parent->child link
-                        iter->second.type() != rtabmap::Link::kNeighbor &&
-                        iter->second.type() != rtabmap::Link::kNeighborMerged &&
-                        iter->second.userDataCompressed().empty() &&
-                        iter->second.type() != rtabmap::Link::kUndef &&
-                        iter->second.type() != rtabmap::Link::kVirtualClosure;
-                if (merge)
-                {
-                    UDEBUG("Reduce %d to %d", s->id(), iter->second.to());
-                    if (reducedTo)
-                    {
-                        *reducedTo = iter->second.to();
-                    }
-                }
-
-            }
-            if (iter->second.type() == rtabmap::Link::kNeighbor)
-            {
-                neighbors.insert(*iter);
-            }
-        }
-        if (merge)
-        {
-            if (s->getLabel().empty())
-            {
-                for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-                {
-                    merge = true;
-                    rtabmap::Signature *sTo = this->_getSignature(iter->first);
-                    UASSERT(sTo != 0);
-                    sTo->removeLink(s->id());
-                    if (iter->second.type() != rtabmap::Link::kNeighbor &&
-                            iter->second.type() != rtabmap::Link::kNeighborMerged &&
-                            iter->second.type() != rtabmap::Link::kUndef)
-                    {
-                        // link to all neighbors
-                        for (std::map<int, rtabmap::Link>::iterator jter = neighbors.begin(); jter != neighbors.end(); ++jter)
-                        {
-                            if (!sTo->hasLink(jter->second.to()))
-                            {
-                                rtabmap::Link l = iter->second.inverse().merge(
-                                                      jter->second,
-                                                      iter->second.userDataCompressed().empty() && iter->second.type() != rtabmap::Link::kVirtualClosure ? rtabmap::Link::kNeighborMerged : iter->second.type());
-                                sTo->addLink(l);
-                                rtabmap::Signature *sB = this->_getSignature(l.to());
-                                UASSERT(sB != 0);
-                                UASSERT(!sB->hasLink(l.to()));
-                                sB->addLink(l.inverse());
-                            }
-                        }
-                    }
-                }
-
-                //remove neighbor links
-                std::map<int, rtabmap::Link> linksCopy = links;
-                for (std::map<int, rtabmap::Link>::iterator iter = linksCopy.begin(); iter != linksCopy.end(); ++iter)
-                {
-                    if (iter->second.type() == rtabmap::Link::kNeighbor ||
-                            iter->second.type() == rtabmap::Link::kNeighborMerged)
-                    {
-                        s->removeLink(iter->first);
-                        if (iter->second.type() == rtabmap::Link::kNeighbor)
-                        {
-                            if (_lastGlobalLoopClosureId == s->id())
-                            {
-                                _lastGlobalLoopClosureId = iter->first;
-                            }
-                        }
-                    }
-                }
-
-                this->moveToTrash(s, _notLinkedNodesKeptInDb);
-                s = 0;
-            }
-        }
-    }
     if (s != 0)
     {
         _workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
@@ -1203,12 +1066,11 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
         // If not saved to database or it is a bad signature (not saved), remove links!
         if (!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
         {
-            UASSERT_MSG(this->isInSTM(s->id()),
-                        uFormat("Deleting location (%d) outside the "
-                                "STM is not implemented!", s->id()).c_str());
+            UDEBUG("remove links");
             const std::map<int, rtabmap::Link> &links = s->getLinks();
             for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
             {
+                UDEBUG("remove link");
                 rtabmap::Signature *sTo = this->_getSignature(iter->first);
                 // neighbor to s
                 UASSERT_MSG(sTo != 0,
@@ -1238,6 +1100,7 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
         }
         else
         {
+            UDEBUG("remove virtual links");
             // Make sure that virtual links are removed.
             // It should be called before the signature is
             // removed from _signatures below.
@@ -1288,17 +1151,7 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
             _lastGlobalLoopClosureId = 0;
         }
 
-        if ((_notLinkedNodesKeptInDb || keepLinkedToGraph) &&
-                _dbDriver &&
-                s->id() > 0 &&
-                (_incrementalMemory || s->isSaved()))
-        {
-            _dbDriver->asyncSave(s);
-        }
-        else
-        {
-            delete s;
-        }
+        delete s;
     }
 }
 
@@ -1306,46 +1159,6 @@ const rtabmap::Signature *MemoryLoc::getLastWorkingSignature() const
 {
     UDEBUG("");
     return _lastSignature;
-}
-
-int MemoryLoc::getSignatureIdByLabel(const std::string &label, bool lookInDatabase) const
-{
-    UDEBUG("label=%s", label.c_str());
-    int id = 0;
-    if (label.size())
-    {
-        for (std::map<int, rtabmap::Signature *>::const_iterator iter = _signatures.begin(); iter != _signatures.end(); ++iter)
-        {
-            UASSERT(iter->second != 0);
-            if (iter->second->getLabel().compare(label) == 0)
-            {
-                id = iter->second->id();
-                break;
-            }
-        }
-        if (id == 0 && _dbDriver && lookInDatabase)
-        {
-            _dbDriver->getNodeIdByLabel(label, id);
-        }
-    }
-    return id;
-}
-
-std::map<int, std::string> MemoryLoc::getAllLabels() const
-{
-    std::map<int, std::string> labels;
-    for (std::map<int, rtabmap::Signature *>::const_iterator iter = _signatures.begin(); iter != _signatures.end(); ++iter)
-    {
-        if (!iter->second->getLabel().empty())
-        {
-            labels.insert(std::make_pair(iter->first, iter->second->getLabel()));
-        }
-    }
-    if (_dbDriver)
-    {
-        _dbDriver->getAllLabels(labels);
-    }
-    return labels;
 }
 
 void MemoryLoc::deleteLocation(int locationId, std::list<int> *deletedWords)
@@ -1457,8 +1270,7 @@ bool MemoryLoc::addLink(const rtabmap::Link &link)
                     // update weights only if the memory is incremental
                     // When reducing the graph, transfer weight to the oldest signature
                     UASSERT(fromS->getWeight() >= 0 && toS->getWeight() >= 0);
-                    if ((_reduceGraph && fromS->id() < toS->id()) ||
-                            (!_reduceGraph && fromS->id() > toS->id()))
+                    if (fromS->id() > toS->id())
                     {
                         fromS->setWeight(fromS->getWeight() + toS->getWeight());
                         toS->setWeight(0);

@@ -48,7 +48,7 @@ bool Localization::init(const std::string &dbPath, const rtabmap::ParametersMap 
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "20"));
 
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
+    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false")); // make sure it is incremental
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), "false"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "0"));
     _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental

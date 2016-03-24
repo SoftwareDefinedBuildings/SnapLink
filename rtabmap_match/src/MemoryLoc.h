@@ -69,9 +69,6 @@ public:
     std::map<int, rtabmap::Link> getLinks(int signatureId,
                                           bool lookInDatabase = false) const;
     const rtabmap::Signature *getLastWorkingSignature() const;
-    int getSignatureIdByLabel(const std::string &label, bool lookInDatabase = true) const;
-    std::map<int, std::string> getAllLabels() const;
-    std::string getDatabaseVersion() const;
     rtabmap::Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
     rtabmap::Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
     bool getNodeInfo(int signatureId,
