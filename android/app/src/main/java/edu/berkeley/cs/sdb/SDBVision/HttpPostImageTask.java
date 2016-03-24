@@ -95,10 +95,11 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         int rotateCount = (mSensorOrientation / 90) % 4;
 
         for (int i = 0; i < rotateCount; i++) {
-            if (i % 2 == 0)
+            if (i % 2 == 0) {
                 bytes = rotateY420Degree90(bytes, mImage.getWidth(), mImage.getHeight());
-            else // need to swap width and height
+            } else { // need to swap width and height
                 bytes = rotateY420Degree90(bytes, mImage.getHeight(), mImage.getWidth());
+            }
         }
 
         mImage.close();
