@@ -20,7 +20,7 @@ import okhttp3.Response;
 public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private static final String LOG_TAG = "SDBVision";
 
-    private static final MediaType MEDIA_TYPE_JPEG = MediaType.parse("application/octet-stream");
+    private static final MediaType MEDIA_TYPE_BINARY = MediaType.parse("application/octet-stream");
 
     private OkHttpClient mHttpClient;
     private String mUrl;
@@ -102,11 +102,19 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
             }
         }
 
+        // send image resolution along with data
+        int imageWidth = rotateCount % 2 == 0 ? mImage.getWidth() : mImage.getHeight();
+        int imageHeight= rotateCount % 2 == 0 ? mImage.getHeight() : mImage.getWidth();
+        byte [] widthBytes = ByteBuffer.allocate(4).putInt(imageWidth).array();
+        byte [] heightBytes = ByteBuffer.allocate(4).putInt(imageHeight).array();
+
         mImage.close();
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("file", timeStamp, RequestBody.create(MEDIA_TYPE_JPEG, bytes))
+                .addFormDataPart("file", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, bytes))
+                .addFormDataPart("width", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, widthBytes))
+                .addFormDataPart("height", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, heightBytes))
                 .build();
         Request request = new Request.Builder()
                 .url(mUrl)
