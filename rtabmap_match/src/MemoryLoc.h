@@ -27,8 +27,6 @@ class MemoryLoc
 {
 public:
     static const int kIdStart;
-    static const int kIdVirtual;
-    static const int kIdInvalid;
 
 public:
     MemoryLoc();
@@ -43,7 +41,6 @@ public:
     std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
                                            const std::list<int> &ids);
 
-    int cleanup();
     void emptyTrash();
     void removeVirtualLinks(int signatureId);
     std::map<int, int> getNeighborsId(
@@ -57,11 +54,6 @@ public:
     void deleteLocation(int locationId, std::list<int> *deletedWords = 0);
     void removeLink(int idA, int idB);
 
-    //getters
-    const std::map<int, double> &getWorkingMem() const
-    {
-        return _workingMem;
-    }
     std::map<int, rtabmap::Link> getNeighborLinks(int signatureId,
             bool lookInDatabase = false) const;
     std::map<int, rtabmap::Link> getLinks(int signatureId,
@@ -144,7 +136,6 @@ private:
     bool _linksChanged; // False by default, become true when links are modified.
 
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
-    std::map<int, double> _workingMem; // id,age
 
     //Keypoint stuff
     rtabmap::VWDictionary *_vwd;

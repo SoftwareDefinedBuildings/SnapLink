@@ -27,8 +27,6 @@
 #include "MemoryLoc.h"
 
 const int MemoryLoc::kIdStart = 0;
-const int MemoryLoc::kIdVirtual = -1;
-const int MemoryLoc::kIdInvalid = 0;
 
 MemoryLoc::MemoryLoc() :
     _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
@@ -104,26 +102,23 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
             //       only linked with the ones of the current session by
             //       global loop closures.
             _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
-            _workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
         }
         else
         {
             delete *iter;
         }
     }
-    UDEBUG("Loading nodes to WM, done! (%d loaded)", int(_workingMem.size()));
+    UDEBUG("Loading signatures done! (%d loaded)", int(_signatures.size()));
 
     // Assign the last signature
-    if (_workingMem.size() > 0)
+    if (_signatures.size() > 0)
     {
-        _lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (rtabmap::Signature *)0);
+        _lastSignature = uValue(_signatures, _signatures.rbegin()->first, (rtabmap::Signature *)0);
     }
 
     // Last id
     _dbDriver->getLastNodeId(_idCount);
     _idMapCount = _lastSignature ? _lastSignature->mapId() + 1 : kIdStart;
-
-    _workingMem.insert(std::make_pair(kIdVirtual, 0));
 
     UDEBUG("ids start with %d", _idCount + 1);
     UDEBUG("map ids start with %d", _idMapCount);
@@ -341,7 +336,7 @@ bool MemoryLoc::update(
 
     if (!_incrementalMemory)
     {
-        if (_workingMem.size() <= 1)
+        if (_signatures.size() <= 1)
         {
             UWARN("The working memory is empty and the memory is not "
                   "incremental (Mem/IncrementalMemory=False), no loop closure "
@@ -613,11 +608,6 @@ void MemoryLoc::clear()
         }
     }
 
-    if (_workingMem.size() != 0 && !(_workingMem.size() == 1 && _workingMem.begin()->first == kIdVirtual))
-    {
-        ULOGGER_ERROR("_workingMem must be empty here, size=%d", _workingMem.size());
-    }
-    _workingMem.clear();
     if (_signatures.size() != 0)
     {
         ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
@@ -879,25 +869,6 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<con
     return transform;
 }
 
-int MemoryLoc::cleanup()
-{
-    UDEBUG("");
-    int signatureRemoved = 0;
-
-    // bad signature
-    if (_lastSignature && ((_lastSignature->isBadSignature() && _badSignaturesIgnored) || !_incrementalMemory))
-    {
-        if (_lastSignature->isBadSignature())
-        {
-            UDEBUG("Bad signature! %d", _lastSignature->id());
-        }
-        signatureRemoved = _lastSignature->id();
-        moveToTrash(_lastSignature, _incrementalMemory);
-    }
-
-    return signatureRemoved;
-}
-
 void MemoryLoc::emptyTrash()
 {
     if (_dbDriver)
@@ -1012,15 +983,14 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
             }
         }
 
-        _workingMem.erase(s->id());
         _signatures.erase(s->id());
 
         if (_lastSignature == s)
         {
             _lastSignature = 0;
-            if (_workingMem.size())
+            if (_signatures.size())
             {
-                _lastSignature = this->_getSignature(_workingMem.rbegin()->first);
+                _lastSignature = this->_getSignature(_signatures.rbegin()->first);
             }
         }
 

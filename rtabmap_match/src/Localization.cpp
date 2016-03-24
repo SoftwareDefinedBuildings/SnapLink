@@ -115,107 +115,98 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
-    if (_memory->getWorkingMem().size() >= 1)
+    // generate kpts
+    if (_memory->update(*sensorData))
     {
-        // generate kpts
-        if (_memory->update(*sensorData))
+        UDEBUG("");
+        const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
+        UDEBUG("newWords=%d", (int)newS->getWords().size());
+        int minInliers;
+        rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
+        UDEBUG("");
+        if ((int)newS->getWords().size() > minInliers)
         {
             UDEBUG("");
-            const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
-            UDEBUG("newWords=%d", (int)newS->getWords().size());
-            int minInliers;
-            rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
-            UDEBUG("");
-            if ((int)newS->getWords().size() > minInliers)
+            std::map<int, float> likelihood;
+            std::list<int> signaturesToCompare = uKeysList(_memory->getSignatures());
+            signaturesToCompare.remove(newS->id());
+            UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
+            likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
+
+            std::vector<int> topIds;
+            likelihood.erase(-1);
+            int topId;
+            if (likelihood.size())
             {
-                UDEBUG("");
-                std::map<int, float> likelihood;
-                std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
-                UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-                likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
-
-                std::vector<int> topIds;
-                likelihood.erase(-1);
-                int topId;
-                if (likelihood.size())
+                std::vector< std::pair<int, float> > top(_topk);
+                std::partial_sort_copy(likelihood.begin(),
+                                       likelihood.end(),
+                                       top.begin(),
+                                       top.end(),
+                                       compareLikelihood);
+                for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
                 {
-                    std::vector< std::pair<int, float> > top(_topk);
-                    std::partial_sort_copy(likelihood.begin(),
-                                           likelihood.end(),
-                                           top.begin(),
-                                           top.end(),
-                                           compareLikelihood);
-                    for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
-                    {
-                        topIds.push_back(it->first);
-                    }
-                    topId = topIds[0];
-                    UINFO("topId: %d", topId);
+                    topIds.push_back(it->first);
+                    std::cout << it->first << " " << it->second << std::endl;
                 }
+                topId = topIds[0];
+                UINFO("topId: %d", topId);
+            }
 
-                MemoryLoc memoryLoc;
-                memoryLoc.init("", _memoryLocParams);
+            MemoryLoc memoryLoc;
+            memoryLoc.init("", _memoryLocParams);
 
-                bool success = true;
-                sensorData->setId(newS->id());
-                if (sensorData->id() == rtabmap::Memory::kIdInvalid)
+            bool success = true;
+            sensorData->setId(newS->id());
+
+            if (success)
+            {
+                std::vector<int> sortedIds = topIds;
+                std::sort(sortedIds.begin(), sortedIds.end());
+                for (std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it)
                 {
-                    success = false;
-                }
+                    rtabmap::SensorData data = _memory->getNodeData(*it, true);
+                    const rtabmap::Signature *sig = _memory->getSignature(*it);
 
-                if (success)
-                {
-                    std::vector<int> sortedIds = topIds;
-                    std::sort(sortedIds.begin(), sortedIds.end());
-                    for (std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it)
+                    if (!data.depthOrRightRaw().empty() && data.id() != rtabmap::Memory::kIdInvalid && sig != NULL)
                     {
-                        rtabmap::SensorData data = _memory->getNodeData(*it, true);
-                        const rtabmap::Signature *sig = _memory->getSignature(*it);
-
-                        if (!data.depthOrRightRaw().empty() && data.id() != rtabmap::Memory::kIdInvalid && sig != NULL)
-                        {
-                            UDEBUG("Calculate map transform with raw data");
-                            memoryLoc.update(data, getPose(sig), sig->getPoseCovariance());
-                        }
-                        else
-                        {
-                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d", data.depthOrRightRaw().empty(), data.id());
-                            success = false;
-                            break;
-                        }
-                    }
-
-                    memoryLoc.update(*sensorData);
-                }
-
-                if (success)
-                {
-                    output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id());
-
-                    if (!output.isNull())
-                    {
-                        UDEBUG("global transform = %s", output.prettyPrint().c_str());
+                        UDEBUG("Calculate map transform with raw data");
+                        memoryLoc.update(data, getPose(sig), sig->getPoseCovariance());
                     }
                     else
                     {
-                        UWARN("transform is null, using pose of the closest image");
-                        //output = getPose(_memory->getSignature(topId));
+                        UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d", data.depthOrRightRaw().empty(), data.id());
+                        success = false;
+                        break;
                     }
                 }
-            }
-            else
-            {
-                UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
+
+                memoryLoc.update(*sensorData);
             }
 
-            // remove new words from dictionary
-            _memory->deleteLocation(newS->id());
-            _memory->emptyTrash();
+            if (success)
+            {
+                output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id());
+
+                if (!output.isNull())
+                {
+                    UDEBUG("global transform = %s", output.prettyPrint().c_str());
+                }
+                else
+                {
+                    UWARN("transform is null, using pose of the closest image");
+                    //output = getPose(_memory->getSignature(topId));
+                }
+            }
         }
-    }
-    else
-    {
-        UERROR("Memory not initialized. _memory->getWorkingMem().size() = %d", _memory->getWorkingMem().size());
+        else
+        {
+            UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
+        }
+
+        // remove new words from dictionary
+        _memory->deleteLocation(newS->id());
+        _memory->emptyTrash();
     }
 
     UINFO("output transform = %s", output.prettyPrint().c_str());
