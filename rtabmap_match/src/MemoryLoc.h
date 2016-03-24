@@ -1,11 +1,10 @@
 #pragma once
 
-#include <rtabmap/utilite/UEventsHandler.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Features2d.h>
-#include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/utilite/UStl.h>
 #include <typeinfo>
@@ -20,7 +19,6 @@ class DBDriver;
 class VWDictionary;
 class VisualWord;
 class Feature2D;
-class Statistics;
 class Registration;
 class RegistrationInfo;
 class RegistrationIcp;
@@ -41,11 +39,8 @@ public:
         return parameters_;
     }
     bool update(const rtabmap::SensorData &data,
-                rtabmap::Statistics *stats = 0);
-    bool update(const rtabmap::SensorData &data,
-                const rtabmap::Transform &pose,
-                const cv::Mat &covariance,
-                rtabmap::Statistics *stats = 0);
+                const rtabmap::Transform &pose = rtabmap::Transform(),
+                const cv::Mat &covariance = cv::Mat());
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
@@ -175,7 +170,7 @@ private:
             const std::set<int> &ignoredIds = std::set<int>());
     int getNextId();
     void initCountId();
-    void rehearsal(rtabmap::Signature *signature, rtabmap::Statistics *stats = 0);
+    void rehearsal(rtabmap::Signature *signature);
     bool rehearsalMerge(int oldId, int newId);
 
     const std::map<int, rtabmap::Signature *> &getSignatures() const
@@ -186,8 +181,7 @@ private:
     void copyData(const rtabmap::Signature *from, rtabmap::Signature *to);
     rtabmap::Signature *createSignature(
         const rtabmap::SensorData &data,
-        const rtabmap::Transform &pose,
-        rtabmap::Statistics *stats = 0);
+        const rtabmap::Transform &pose);
 
     //keypoint stuff
     void disableWordsRef(int signatureId);

@@ -1,13 +1,10 @@
-#include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UProcessInfo.h>
 #include <rtabmap/utilite/UMath.h>
 
-#include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/RtabmapEvent.h>
 #include <rtabmap/core/EpipolarGeometry.h>
 #include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Features2d.h>
@@ -340,16 +337,8 @@ void MemoryLoc::preUpdate()
 
 bool MemoryLoc::update(
     const rtabmap::SensorData &data,
-    rtabmap::Statistics *stats)
-{
-    return update(data, rtabmap::Transform(), cv::Mat(), stats);
-}
-
-bool MemoryLoc::update(
-    const rtabmap::SensorData &data,
     const rtabmap::Transform &pose,
-    const cv::Mat &covariance,
-    rtabmap::Statistics *stats)
+    const cv::Mat &covariance)
 {
     UDEBUG("");
     UTimer timer;
@@ -363,13 +352,12 @@ bool MemoryLoc::update(
     UDEBUG("pre-updating...");
     this->preUpdate();
     t = timer.ticks() * 1000;
-    if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemPre_update(), t);
     UDEBUG("time preUpdate=%f ms", t);
 
     //============================================================
     // Create a signature with the image received.
     //============================================================
-    rtabmap::Signature *signature = this->createSignature(data, pose, stats);
+    rtabmap::Signature *signature = this->createSignature(data, pose);
     if (signature == 0)
     {
         UERROR("Failed to create a signature...");
@@ -377,7 +365,6 @@ bool MemoryLoc::update(
     }
 
     t = timer.ticks() * 1000;
-    if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemSignature_creation(), t);
     UDEBUG("time creating signature=%f ms", t);
 
     // It will be added to the short-term memory, no need to delete it...
@@ -395,10 +382,9 @@ bool MemoryLoc::update(
     {
         if (_similarityThreshold < 1.0f)
         {
-            this->rehearsal(signature, stats);
+            this->rehearsal(signature);
         }
         t = timer.ticks() * 1000;
-        if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemRehearsal(), t);
         UDEBUG("time rehearsal=%f ms", t);
     }
     else
@@ -445,7 +431,6 @@ bool MemoryLoc::update(
             reducedIds.insert(std::make_pair(id, reducedTo));
         }
     }
-    if (stats) stats->setReducedIds(reducedIds);
 
     if (!_memoryChanged && _incrementalMemory)
     {
@@ -1806,7 +1791,7 @@ void MemoryLoc::removeVirtualLinks(int signatureId)
     }
 }
 
-void MemoryLoc::rehearsal(rtabmap::Signature *signature, rtabmap::Statistics *stats)
+void MemoryLoc::rehearsal(rtabmap::Signature *signature)
 {
     UTimer timer;
     if (signature->getLinks().size() != 1 ||
@@ -1852,15 +1837,7 @@ void MemoryLoc::rehearsal(rtabmap::Signature *signature, rtabmap::Statistics *st
             }
         }
 
-        if (stats) stats->addStatistic(rtabmap::Statistics::kMemoryRehearsal_merged(), merged);
-        if (stats) stats->addStatistic(rtabmap::Statistics::kMemoryRehearsal_sim(), sim);
-        if (stats) stats->addStatistic(rtabmap::Statistics::kMemoryRehearsal_id(), sim >= _similarityThreshold ? id : 0);
         UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
-    }
-    else
-    {
-        if (stats) stats->addStatistic(rtabmap::Statistics::kMemoryRehearsal_merged(), 0);
-        if (stats) stats->addStatistic(rtabmap::Statistics::kMemoryRehearsal_sim(), 0);
     }
 }
 
@@ -2213,7 +2190,7 @@ private:
     rtabmap::VWDictionary *_vwp;
 };
 
-rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, const rtabmap::Transform &pose, rtabmap::Statistics *stats)
+rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, const rtabmap::Transform &pose)
 {
     UDEBUG("");
     UASSERT(data.imageRaw().empty() ||
@@ -2328,12 +2305,10 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
                             imageMono,
                             depthMask);
             t = timer.ticks();
-            if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemKeypoints_detection(), t * 1000.0f);
             UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
             descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
             t = timer.ticks();
-            if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemDescriptors_extraction(), t * 1000.0f);
             UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
             UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
@@ -2374,7 +2349,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
                     descriptors = validDescriptors.rowRange(0, oi).clone();
                 }
                 t = timer.ticks();
-                if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemKeypoints_3D(), t * 1000.0f);
                 UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
             }
         }
@@ -2418,7 +2392,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
 
             descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
             t = timer.ticks();
-            if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemDescriptors_extraction(), t * 1000.0f);
             UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
         }
 
@@ -2455,7 +2428,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
                 descriptors = validDescriptors.rowRange(0, oi).clone();
             }
             t = timer.ticks();
-            if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemKeypoints_3D(), t * 1000.0f);
             UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
         }
 
@@ -2477,7 +2449,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     if (descriptors.rows)
     {
         t = timer.ticks();
-        if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemJoining_dictionary_update(), t * 1000.0f);
         if (_parallelized)
         {
             UDEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
@@ -2489,7 +2460,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
 
         wordIds = _vwd->addNewWords(descriptors, id);
         t = timer.ticks();
-        if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemAdd_new_words(), t * 1000.0f);
         UDEBUG("time addNewWords %fs", t);
     }
     else if (id > 0)
@@ -2567,7 +2537,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
 
                 t = timer.ticks();
                 UASSERT(words3D.size() == words.size());
-                if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemKeypoints_3D(), t * 1000.0f);
                 UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
                 fillWithNaN = false;
             }
@@ -2724,7 +2693,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     s->sensorData().setGroundTruth(data.groundTruth());
 
     t = timer.ticks();
-    if (stats) stats->addStatistic(rtabmap::Statistics::kTimingMemCompressing_data(), t * 1000.0f);
     UDEBUG("time compressing data (id=%d) %fs", id, t);
     if (words.size())
     {
