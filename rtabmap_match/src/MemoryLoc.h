@@ -99,9 +99,6 @@ public:
         return _stMem.find(signatureId) != _stMem.end();
     }
 
-    //keypoint stuff
-    const rtabmap::VWDictionary *getVWDictionary() const;
-
     // RGB-D stuff
     void getMetricConstraints(
         const std::set<int> &ids,

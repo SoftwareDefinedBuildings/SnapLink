@@ -20,7 +20,6 @@
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Graph.h>
-#include <rtabmap/core/Stereo.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
@@ -59,7 +58,6 @@ MemoryLoc::MemoryLoc() :
 
     _badSignRatio(rtabmap::Parameters::defaultKpBadSignRatio()),
     _tfIdfLikelihoodUsed(rtabmap::Parameters::defaultKpTfIdfLikelihoodUsed()),
-    _parallelized(rtabmap::Parameters::defaultKpParallelized()),
 
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
     _iterations(rtabmap::Parameters::defaultVisIterations()),
@@ -261,7 +259,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     }
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kKpParallelized(), _parallelized);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kKpBadSignRatio(), _badSignRatio);
 
     //Keypoint detector
@@ -311,9 +308,8 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
 void MemoryLoc::preUpdate()
 {
     this->cleanUnusedWords();
-    if (_vwd && !_parallelized)
+    if (_vwd)
     {
-        //When parallelized, it is done in CreateSignature
         _vwd->update();
     }
 }
@@ -588,11 +584,6 @@ const rtabmap::Signature *MemoryLoc::getSignature(int id) const
 rtabmap::Signature *MemoryLoc::_getSignature(int id) const
 {
     return uValue(_signatures, id, (rtabmap::Signature *)0);
-}
-
-const rtabmap::VWDictionary *MemoryLoc::getVWDictionary() const
-{
-    return _vwd;
 }
 
 std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(
@@ -1740,23 +1731,6 @@ void MemoryLoc::copyData(const rtabmap::Signature *from, rtabmap::Signature *to)
     UDEBUG("Merging time = %fs", timer.ticks());
 }
 
-class PreUpdateThread : public UThreadNode
-{
-public:
-    PreUpdateThread(rtabmap::VWDictionary *vwp) : _vwp(vwp) {}
-    virtual ~PreUpdateThread() {}
-private:
-    void mainLoop()
-    {
-        if (_vwp)
-        {
-            _vwp->update();
-        }
-        this->kill();
-    }
-    rtabmap::VWDictionary *_vwp;
-};
-
 rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, const rtabmap::Transform &pose)
 {
     UDEBUG("");
@@ -1787,8 +1761,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
         return 0;
     }
     UASSERT(_feature2D != 0);
-
-    PreUpdateThread preUpdateThread(_vwd);
 
     UTimer timer;
     timer.start();
@@ -1832,12 +1804,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     if (treeSize > 0)
     {
         meanWordsPerLocation = _vwd->getTotalActiveReferences() / treeSize;
-    }
-
-    if (_parallelized)
-    {
-        UDEBUG("Start dictionary update thread");
-        preUpdateThread.start();
     }
 
     std::vector<cv::Point3f> keypoints3D;
@@ -2005,25 +1971,11 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
         }
     }
 
-    if (_parallelized)
-    {
-        UDEBUG("Joining dictionary update thread...");
-        preUpdateThread.join(); // Wait the dictionary to be updated
-        UDEBUG("Joining dictionary update thread... thread finished!");
-    }
-
     std::list<int> wordIds;
     if (descriptors.rows)
     {
         t = timer.ticks();
-        if (_parallelized)
-        {
-            UDEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
-        }
-        else
-        {
-            UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
-        }
+        UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
 
         wordIds = _vwd->addNewWords(descriptors, id);
         t = timer.ticks();
