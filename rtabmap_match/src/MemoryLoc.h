@@ -104,7 +104,6 @@ public:
     void getNodeWords(int nodeId,
                       std::multimap<int, cv::KeyPoint> &words,
                       std::multimap<int, cv::Point3f> &words3);
-    std::set<int> getAllSignatureIds() const;
     bool memoryChanged() const
     {
         return _memoryChanged;
@@ -164,14 +163,11 @@ private:
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true, std::list<int> *deletedWords = 0);
 
     void moveSignatureToWMFromSTM(int id, int *reducedTo = 0);
-    void addSignatureToWmFromLTM(rtabmap::Signature *signature);
     rtabmap::Signature *_getSignature(int id) const;
     std::list<rtabmap::Signature *> getRemovableSignatures(int count,
             const std::set<int> &ignoredIds = std::set<int>());
     int getNextId();
     void initCountId();
-    void rehearsal(rtabmap::Signature *signature);
-    bool rehearsalMerge(int oldId, int newId);
 
     const std::map<int, rtabmap::Signature *> &getSignatures() const
     {
@@ -205,16 +201,12 @@ private:
     int _maxStMemSize;
     float _recentWmRatio;
     bool _transferSortingByWeightId;
-    bool _idUpdatedToNewOneRehearsal;
     bool _generateIds;
     bool _badSignaturesIgnored;
     bool _mapLabelsAdded;
     int _imageDecimation;
     float _laserScanDownsampleStepSize;
     bool _reextractLoopClosureFeatures;
-    float _rehearsalMaxDistance;
-    float _rehearsalMaxAngle;
-    bool _rehearsalWeightIgnoredWhileMoving;
     bool _useOdometryFeatures;
 
     int _idCount;

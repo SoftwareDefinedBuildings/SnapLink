@@ -42,16 +42,12 @@ MemoryLoc::MemoryLoc() :
     _maxStMemSize(rtabmap::Parameters::defaultMemSTMSize()),
     _recentWmRatio(rtabmap::Parameters::defaultMemRecentWmRatio()),
     _transferSortingByWeightId(rtabmap::Parameters::defaultMemTransferSortingByWeightId()),
-    _idUpdatedToNewOneRehearsal(rtabmap::Parameters::defaultMemRehearsalIdUpdatedToNewOne()),
     _generateIds(rtabmap::Parameters::defaultMemGenerateIds()),
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
     _mapLabelsAdded(rtabmap::Parameters::defaultMemMapLabelsAdded()),
     _imageDecimation(rtabmap::Parameters::defaultMemImageDecimation()),
     _laserScanDownsampleStepSize(rtabmap::Parameters::defaultMemLaserScanDownsampleStepSize()),
     _reextractLoopClosureFeatures(rtabmap::Parameters::defaultRGBDLoopClosureReextractFeatures()),
-    _rehearsalMaxDistance(rtabmap::Parameters::defaultRGBDLinearUpdate()),
-    _rehearsalMaxAngle(rtabmap::Parameters::defaultRGBDAngularUpdate()),
-    _rehearsalWeightIgnoredWhileMoving(rtabmap::Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
     _useOdometryFeatures(rtabmap::Parameters::defaultMemUseOdomFeatures()),
     _idCount(kIdStart),
     _idMapCount(kIdStart),
@@ -242,7 +238,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemReduceGraph(), _reduceGraph);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
@@ -253,17 +248,12 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 
     UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
     UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
     UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
     UASSERT(_imageDecimation >= 1);
-    UASSERT(_rehearsalMaxDistance >= 0.0f);
-    UASSERT(_rehearsalMaxAngle >= 0.0f);
 
     if (_dbDriver)
     {
@@ -372,22 +362,7 @@ bool MemoryLoc::update(
 
     _lastSignature = signature;
 
-    //============================================================
-    // Rehearsal step...
-    // Compare with the X last signatures. If different, add this
-    // signature like a parent to the memory tree, otherwise add
-    // it as a child to the similar signature.
-    //============================================================
-    if (_incrementalMemory)
-    {
-        if (_similarityThreshold < 1.0f)
-        {
-            this->rehearsal(signature);
-        }
-        t = timer.ticks() * 1000;
-        UDEBUG("time rehearsal=%f ms", t);
-    }
-    else
+    if (!_incrementalMemory)
     {
         if (_workingMem.size() <= 1)
         {
@@ -511,21 +486,6 @@ void MemoryLoc::addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &
     }
 
     UDEBUG("time = %fs", timer.ticks());
-}
-
-void MemoryLoc::addSignatureToWmFromLTM(rtabmap::Signature *signature)
-{
-    if (signature)
-    {
-        UDEBUG("Inserting node %d in WM...", signature->id());
-        _workingMem.insert(std::make_pair(signature->id(), UTimer::now()));
-        _signatures.insert(std::pair<int, rtabmap::Signature *>(signature->id(), signature));
-        ++_signaturesAdded;
-    }
-    else
-    {
-        UERROR("Signature is null ?!?");
-    }
 }
 
 void MemoryLoc::moveSignatureToWMFromSTM(int id, int *reducedTo)
@@ -917,20 +877,6 @@ int MemoryLoc::incrementMapId(std::map<int, int> *reducedIds)
         return ++_idMapCount;
     }
     return _idMapCount;
-}
-
-std::set<int> MemoryLoc::getAllSignatureIds() const
-{
-    std::set<int> ids;
-    if (_dbDriver)
-    {
-        _dbDriver->getAllNodeIds(ids);
-    }
-    for (std::map<int, rtabmap::Signature *>::const_iterator iter = _signatures.begin(); iter != _signatures.end(); ++iter)
-    {
-        ids.insert(iter->first);
-    }
-    return ids;
 }
 
 void MemoryLoc::clear()
@@ -1789,210 +1735,6 @@ void MemoryLoc::removeVirtualLinks(int signatureId)
     {
         UERROR("Signature %d not in WM/STM?!?", signatureId);
     }
-}
-
-void MemoryLoc::rehearsal(rtabmap::Signature *signature)
-{
-    UTimer timer;
-    if (signature->getLinks().size() != 1 ||
-            signature->isBadSignature())
-    {
-        return;
-    }
-
-    //============================================================
-    // Compare with the last (not intermediate node)
-    //============================================================
-    rtabmap::Signature *sB = 0;
-    for (std::set<int>::reverse_iterator iter = _stMem.rbegin(); iter != _stMem.rend(); ++iter)
-    {
-        rtabmap::Signature *s = this->_getSignature(*iter);
-        UASSERT(s != 0);
-        if (s->getWeight() >= 0 && s->id() != signature->id())
-        {
-            sB = s;
-            break;
-        }
-    }
-    if (sB)
-    {
-        int id = sB->id();
-        UDEBUG("Comparing with signature (%d)...", id);
-
-        float sim = signature->compareTo(*sB);
-
-        int merged = 0;
-        if (sim >= _similarityThreshold)
-        {
-            if (_incrementalMemory)
-            {
-                if (this->rehearsalMerge(id, signature->id()))
-                {
-                    merged = id;
-                }
-            }
-            else
-            {
-                signature->setWeight(signature->getWeight() + 1 + sB->getWeight());
-            }
-        }
-
-        UDEBUG("merged=%d, sim=%f t=%fs", merged, sim, timer.ticks());
-    }
-}
-
-bool MemoryLoc::rehearsalMerge(int oldId, int newId)
-{
-    ULOGGER_INFO("old=%d, new=%d", oldId, newId);
-    rtabmap::Signature *oldS = _getSignature(oldId);
-    rtabmap::Signature *newS = _getSignature(newId);
-    if (oldS && newS && _incrementalMemory)
-    {
-        UASSERT_MSG(oldS->getWeight() >= 0 && newS->getWeight() >= 0, uFormat("%d %d", oldS->getWeight(), newS->getWeight()).c_str());
-        std::map<int, rtabmap::Link>::const_iterator iter = oldS->getLinks().find(newS->id());
-        if (iter != oldS->getLinks().end() &&
-                iter->second.type() != rtabmap::Link::kNeighbor &&
-                iter->second.type() != rtabmap::Link::kNeighborMerged)
-        {
-            // do nothing, already merged
-            UWARN("already merged, old=%d, new=%d", oldId, newId);
-            return false;
-        }
-        UASSERT(!newS->isSaved());
-
-        UINFO("Rehearsal merging %d (w=%d) and %d (w=%d)",
-              oldS->id(), oldS->getWeight(),
-              newS->id(), newS->getWeight());
-
-        bool fullMerge;
-        bool intermediateMerge = false;
-        if (!newS->getLinks().begin()->second.transform().isNull())
-        {
-            // we are in metric SLAM mode:
-            // 1) Normal merge if not moving AND has direct link
-            // 2) Transform to intermediate node (weight = -1) if not moving AND hasn't direct link.
-            float x, y, z, roll, pitch, yaw;
-            newS->getLinks().begin()->second.transform().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-            bool isMoving = fabs(x) > _rehearsalMaxDistance ||
-                            fabs(y) > _rehearsalMaxDistance ||
-                            fabs(z) > _rehearsalMaxDistance ||
-                            fabs(roll) > _rehearsalMaxAngle ||
-                            fabs(pitch) > _rehearsalMaxAngle ||
-                            fabs(yaw) > _rehearsalMaxAngle;
-            if (isMoving && _rehearsalWeightIgnoredWhileMoving)
-            {
-                UINFO("Rehearsal ignored because the robot has moved more than %f m or %f rad (\"Mem/RehearsalWeightIgnoredWhileMoving\"=true)",
-                      _rehearsalMaxDistance, _rehearsalMaxAngle);
-                return false;
-            }
-            fullMerge = !isMoving && newS->hasLink(oldS->id());
-            intermediateMerge = !isMoving && !newS->hasLink(oldS->id());
-        }
-        else
-        {
-            fullMerge = newS->hasLink(oldS->id()) && newS->getLinks().begin()->second.transform().isNull();
-        }
-
-        if (fullMerge)
-        {
-            //remove mutual links
-            rtabmap::Link newToOldLink = newS->getLinks().at(oldS->id());
-            oldS->removeLink(newId);
-            newS->removeLink(oldId);
-
-            if (_idUpdatedToNewOneRehearsal)
-            {
-                // redirect neighbor links
-                const std::map<int, rtabmap::Link> &links = oldS->getLinks();
-                for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-                {
-                    rtabmap::Link link = iter->second;
-                    rtabmap::Link mergedLink = newToOldLink.merge(link, link.type());
-                    UASSERT(mergedLink.from() == newS->id() && mergedLink.to() == link.to());
-
-                    rtabmap::Signature *s = this->_getSignature(link.to());
-                    if (s)
-                    {
-                        // modify neighbor "from"
-                        s->removeLink(oldS->id());
-                        s->addLink(mergedLink.inverse());
-
-                        newS->addLink(mergedLink);
-                    }
-                    else
-                    {
-                        UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
-                    }
-                }
-                newS->setLabel(oldS->getLabel());
-                oldS->setLabel("");
-                oldS->removeLinks(); // remove all links
-                oldS->addLink(rtabmap::Link(oldS->id(), newS->id(), rtabmap::Link::kGlobalClosure, rtabmap::Transform(), 1, 1)); // to keep track of the merged location
-
-                // Set old image to new signature
-                this->copyData(oldS, newS);
-
-                // update weight
-                newS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-                if (_lastGlobalLoopClosureId == oldS->id())
-                {
-                    _lastGlobalLoopClosureId = newS->id();
-                }
-            }
-            else
-            {
-                newS->addLink(rtabmap::Link(newS->id(), oldS->id(), rtabmap::Link::kGlobalClosure, rtabmap::Transform() , 1, 1)); // to keep track of the merged location
-
-                // update weight
-                oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
-
-                if (_lastSignature == newS)
-                {
-                    _lastSignature = oldS;
-                }
-            }
-
-            // remove location
-            moveToTrash(_idUpdatedToNewOneRehearsal ? oldS : newS, _notLinkedNodesKeptInDb);
-
-            return true;
-        }
-        else
-        {
-            // update only weights
-            if (_idUpdatedToNewOneRehearsal)
-            {
-                // just update weight
-                int w = oldS->getWeight() >= 0 ? oldS->getWeight() : 0;
-                newS->setWeight(w + newS->getWeight() + 1);
-                oldS->setWeight(intermediateMerge ? -1 : 0); // convert to intermediate node
-
-                if (_lastGlobalLoopClosureId == oldS->id())
-                {
-                    _lastGlobalLoopClosureId = newS->id();
-                }
-            }
-            else // !_idUpdatedToNewOneRehearsal
-            {
-                int w = newS->getWeight() >= 0 ? newS->getWeight() : 0;
-                oldS->setWeight(w + oldS->getWeight() + 1);
-                newS->setWeight(intermediateMerge ? -1 : 0); // convert to intermediate node
-            }
-        }
-    }
-    else
-    {
-        if (!newS)
-        {
-            UERROR("newId=%d, oldId=%d, Signature %d not found in working/st memories", newId, oldId, newId);
-        }
-        if (!oldS)
-        {
-            UERROR("newId=%d, oldId=%d, Signature %d not found in working/st memories", newId, oldId, oldId);
-        }
-    }
-    return false;
 }
 
 rtabmap::Transform MemoryLoc::getOdomPose(int signatureId, bool lookInDatabase) const
