@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
     private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50012/";
     private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50017/";
 
+    private Context mContext;
     private AutoFitTextureView mTextureView;
     private TextView mTextView;
     private Button mOnButton;
@@ -166,7 +167,15 @@ public class MainActivity extends Activity {
 
         @Override
         public void run() {
-            new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImage, mRecognitionListener).execute();
+            try {
+                CameraManager manager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
+                CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
+                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+
+                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImage, mRecognitionListener, sensorOrientation).execute();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -275,6 +284,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
+
+        mContext = this;
 
         mTextureView = (AutoFitTextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);

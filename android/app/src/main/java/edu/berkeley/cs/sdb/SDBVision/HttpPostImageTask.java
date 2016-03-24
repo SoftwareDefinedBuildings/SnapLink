@@ -26,16 +26,18 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private String mUrl;
     private Image mImage;
     private Listener mListener;
+    private int mSensorOrientation;
 
     public interface Listener {
         void onResponse(String response);
     }
 
-    public HttpPostImageTask(OkHttpClient httpClient, String url, Image image, Listener listener) {
+    public HttpPostImageTask(OkHttpClient httpClient, String url, Image image, Listener listener, int sensorOrientation) {
         mHttpClient = httpClient;
         mUrl = url;
         mImage = image;
         mListener = listener;
+        mSensorOrientation = sensorOrientation;
     }
 
     /**
@@ -66,9 +68,45 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         return data;
     }
 
+    /**
+     * Rotates YUV Y plane counter-clockwise by 90 degrees.
+     * ref: http://stackoverflow.com/a/15775173
+     * @param data byte array of Y plane
+     * @param imgWidth image width
+     * @param imgHeight image height
+     * @return Y plane rotated counter-clockwise by 90 degrees
+     */
+    private byte[] rotateY420Degree90(byte[] data, int imgWidth, int imgHeight) {
+        Log.d(LOG_TAG, "width " + imgWidth + ", height " + imgHeight);
+        Log.d(LOG_TAG, "data length " + data.length);
+        byte[] yuv = new byte[imgWidth * imgHeight];
+
+        // rotate Y values
+        int i = 0;
+        for (int x = 0; x < imgWidth; x++) {
+            for (int y = imgHeight-1; y >= 0; y--) {
+                yuv[i] = data[y*imgWidth+x];
+                i++;
+            }
+        }
+
+        return yuv;
+    }
+
     @Override
     protected String doInBackground(Void... voids) {
         byte[] bytes = imageToBytes(mImage);
+
+        // rotate image. mSensorOrientation gives us degree in counter-clockwise
+        int rotateCount = ((360 - mSensorOrientation) / 90) % 4;
+
+        for (int i = 0; i < rotateCount; i++) {
+            if (i % 2 == 0)
+                bytes = rotateY420Degree90(bytes, mImage.getWidth(), mImage.getHeight());
+            else // need to swap width and height
+                bytes = rotateY420Degree90(bytes, mImage.getHeight(), mImage.getWidth());
+        }
+
         mImage.close();
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
