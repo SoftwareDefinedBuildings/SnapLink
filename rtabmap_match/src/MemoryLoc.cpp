@@ -91,7 +91,7 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
     _registrationIcp = new rtabmap::RegistrationIcp(parameters);
     this->parseParameters(parameters);
 
-    if (dbUrl.empty())
+    if (dbUrl.empty()) // so this Memory will be empty
     {
         return true;
     }
@@ -208,65 +208,25 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
     return true;
 }
 
-void MemoryLoc::close(bool databaseSaved, bool postInitClosingEvents)
+void MemoryLoc::close()
 {
-    UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved ? 1 : 0, postInitClosingEvents ? 1 : 0);
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kClosing));
-
-    if (!databaseSaved || (!_memoryChanged && !_linksChanged))
+    if (_dbDriver)
     {
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(uFormat("No changes added to database.")));
-
-        UINFO("No changes added to database.");
-        if (_dbDriver)
-        {
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-            _dbDriver->closeConnection();
-            delete _dbDriver;
-            _dbDriver = 0;
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Closing database, done!"));
-        }
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Clearing memory..."));
-        this->clear();
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Clearing memory, done!"));
+        UDEBUG("Closing database \"%s\"...", _dbDriver->getUrl().c_str());
+        _dbDriver->closeConnection();
+        delete _dbDriver;
+        _dbDriver = NULL;
+        UDEBUG("Closing database, done!");
     }
-    else
-    {
-        UINFO("Saving memory...");
-        if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Saving memory..."));
-        if (!_memoryChanged && _linksChanged && _dbDriver)
-        {
-            // don't update the time stamps!
-            UDEBUG("");
-            _dbDriver->setTimestampUpdateEnabled(false);
-        }
-        this->clear();
-        if (_dbDriver)
-        {
-            _dbDriver->emptyTrashes();
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Saving memory, done!"));
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-            _dbDriver->closeConnection();
-            delete _dbDriver;
-            _dbDriver = 0;
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Closing database, done!"));
-        }
-        else
-        {
-            if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit("Saving memory, done!"));
-        }
-    }
-    if (postInitClosingEvents) UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kClosed));
+    UDEBUG("Clearing memory...");
+    this->clear();
+    UDEBUG("Clearing memory, done!");
 }
 
 MemoryLoc::~MemoryLoc()
 {
     this->close();
 
-    if (_dbDriver)
-    {
-        UWARN("Please call MemoryLoc::close() before");
-    }
     if (_feature2D)
     {
         delete _feature2D;

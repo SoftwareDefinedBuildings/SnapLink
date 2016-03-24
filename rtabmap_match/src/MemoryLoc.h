@@ -52,7 +52,7 @@ public:
                 rtabmap::Statistics *stats = 0);
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-    void close(bool databaseSaved = true, bool postInitClosingEvents = false);
+    void close();
     std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
                                            const std::list<int> &ids);
     int incrementMapId(std::map<int, int> *reducedIds = 0);
