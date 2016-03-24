@@ -77,28 +77,22 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
      * @return Y plane rotated counter-clockwise by 90 degrees
      */
     private byte[] rotateY420Degree90(byte[] data, int imgWidth, int imgHeight) {
-        Log.d(LOG_TAG, "width " + imgWidth + ", height " + imgHeight);
-        Log.d(LOG_TAG, "data length " + data.length);
-        byte[] yuv = new byte[imgWidth * imgHeight];
-
-        // rotate Y values
-        int i = 0;
-        for (int x = 0; x < imgWidth; x++) {
-            for (int y = imgHeight-1; y >= 0; y--) {
-                yuv[i] = data[y*imgWidth+x];
-                i++;
+        byte[] rotated = new byte[data.length];
+        for (int i = 0; i < imgHeight; i++) {
+            for (int j = 0; j < imgWidth; j++) {
+                rotated[imgHeight * (imgWidth-1 - j) + i] = data[imgWidth * i + j];
             }
         }
 
-        return yuv;
+        return rotated;
     }
 
     @Override
     protected String doInBackground(Void... voids) {
         byte[] bytes = imageToBytes(mImage);
 
-        // rotate image. mSensorOrientation gives us degree in counter-clockwise
-        int rotateCount = ((360 - mSensorOrientation) / 90) % 4;
+        // rotate image counter-clockwise. sensor orientation is clockwise relative to TextureView
+        int rotateCount = (mSensorOrientation / 90) % 4;
 
         for (int i = 0; i < rotateCount; i++) {
             if (i % 2 == 0)
