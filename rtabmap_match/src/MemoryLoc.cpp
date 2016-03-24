@@ -32,7 +32,6 @@ const int MemoryLoc::kIdVirtual = -1;
 const int MemoryLoc::kIdInvalid = 0;
 
 MemoryLoc::MemoryLoc() :
-    _similarityThreshold(rtabmap::Parameters::defaultMemRehearsalSimilarity()),
     _binDataKept(rtabmap::Parameters::defaultMemBinDataKept()),
     _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
     _saveDepth16Format(rtabmap::Parameters::defaultMemSaveDepth16Format()),
@@ -47,7 +46,6 @@ MemoryLoc::MemoryLoc() :
     _mapLabelsAdded(rtabmap::Parameters::defaultMemMapLabelsAdded()),
     _imageDecimation(rtabmap::Parameters::defaultMemImageDecimation()),
     _laserScanDownsampleStepSize(rtabmap::Parameters::defaultMemLaserScanDownsampleStepSize()),
-    _reextractLoopClosureFeatures(rtabmap::Parameters::defaultRGBDLoopClosureReextractFeatures()),
     _useOdometryFeatures(rtabmap::Parameters::defaultMemUseOdomFeatures()),
     _idCount(kIdStart),
     _idMapCount(kIdStart),
@@ -55,7 +53,6 @@ MemoryLoc::MemoryLoc() :
     _lastGlobalLoopClosureId(0),
     _memoryChanged(false),
     _linksChanged(false),
-    _signaturesAdded(0),
     _feature2D(NULL),
     _vwd(NULL),
     _dbDriver(NULL),
@@ -241,17 +238,14 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRecentWmRatio(), _recentWmRatio);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemSTMSize(), _maxStMemSize);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 
     UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
-    UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
     UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
     UASSERT(_imageDecimation >= 1);
 
@@ -316,7 +310,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
 
 void MemoryLoc::preUpdate()
 {
-    _signaturesAdded = 0;
     this->cleanUnusedWords();
     if (_vwd && !_parallelized)
     {
@@ -473,7 +466,6 @@ void MemoryLoc::addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &
 
         _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
         _stMem.insert(_stMem.end(), signature->id());
-        ++_signaturesAdded;
 
         if (_vwd)
         {
@@ -1280,133 +1272,6 @@ public:
     }
     int weight, age, id;
 };
-std::list<rtabmap::Signature *> MemoryLoc::getRemovableSignatures(int count, const std::set<int> &ignoredIds)
-{
-    //UDEBUG("");
-    std::list<rtabmap::Signature *> removableSignatures;
-    std::map<WeightAgeIdKey, rtabmap::Signature *> weightAgeIdMap;
-
-    // Find the last index to check...
-    UDEBUG("mem.size()=%d, ignoredIds.size()=%d", (int)_workingMem.size(), (int)ignoredIds.size());
-
-    if (_workingMem.size())
-    {
-        int recentWmMaxSize = _recentWmRatio * float(_workingMem.size());
-        bool recentWmImmunized = false;
-        // look for the position of the lastLoopClosureId in WM
-        int currentRecentWmSize = 0;
-        if (_lastGlobalLoopClosureId > 0 && _stMem.find(_lastGlobalLoopClosureId) == _stMem.end())
-        {
-            // If set, it must be in WM
-            std::map<int, double>::const_iterator iter = _workingMem.find(_lastGlobalLoopClosureId);
-            while (iter != _workingMem.end())
-            {
-                ++currentRecentWmSize;
-                ++iter;
-            }
-            if (currentRecentWmSize > 1 && currentRecentWmSize < recentWmMaxSize)
-            {
-                recentWmImmunized = true;
-            }
-            else if (currentRecentWmSize == 0 && _workingMem.size() > 1)
-            {
-                UERROR("Last loop closure id not found in WM (%d)", _lastGlobalLoopClosureId);
-            }
-            UDEBUG("currentRecentWmSize=%d, recentWmMaxSize=%d, _recentWmRatio=%f, end recent wM = %d", currentRecentWmSize, recentWmMaxSize, _recentWmRatio, _lastGlobalLoopClosureId);
-        }
-
-        // Ignore neighbor of the last location in STM (for neighbor links redirection issue during Rehearsal).
-        rtabmap::Signature *lastInSTM = 0;
-        if (_stMem.size())
-        {
-            lastInSTM = _signatures.at(*_stMem.begin());
-        }
-
-        for (std::map<int, double>::const_iterator memIter = _workingMem.begin(); memIter != _workingMem.end(); ++memIter)
-        {
-            if ((recentWmImmunized && memIter->first > _lastGlobalLoopClosureId) ||
-                    memIter->first == _lastGlobalLoopClosureId)
-            {
-                // ignore recent memory
-            }
-            else if (memIter->first > 0 && ignoredIds.find(memIter->first) == ignoredIds.end() && (!lastInSTM || !lastInSTM->hasLink(memIter->first)))
-            {
-                rtabmap::Signature *s = this->_getSignature(memIter->first);
-                if (s)
-                {
-                    // Links must not be in STM to be removable, rehearsal issue
-                    bool foundInSTM = false;
-                    for (std::map<int, rtabmap::Link>::const_iterator iter = s->getLinks().begin(); iter != s->getLinks().end(); ++iter)
-                    {
-                        if (_stMem.find(iter->first) != _stMem.end())
-                        {
-                            UDEBUG("Ignored %d because it has a link (%d) to STM", s->id(), iter->first);
-                            foundInSTM = true;
-                            break;
-                        }
-                    }
-                    if (!foundInSTM)
-                    {
-                        // less weighted signature priority to be transferred
-                        weightAgeIdMap.insert(std::make_pair(WeightAgeIdKey(s->getWeight(), _transferSortingByWeightId ? 0.0 : memIter->second, s->id()), s));
-                    }
-                }
-                else
-                {
-                    ULOGGER_ERROR("Not supposed to occur!!!");
-                }
-            }
-            else
-            {
-                //UDEBUG("Ignoring id %d", memIter->first);
-            }
-        }
-
-        int recentWmCount = 0;
-        // make the list of removable signatures
-        // Criteria : Weight -> ID
-        UDEBUG("signatureMap.size()=%d _lastGlobalLoopClosureId=%d currentRecentWmSize=%d recentWmMaxSize=%d",
-               (int)weightAgeIdMap.size(), _lastGlobalLoopClosureId, currentRecentWmSize, recentWmMaxSize);
-        for (std::map<WeightAgeIdKey, rtabmap::Signature *>::iterator iter = weightAgeIdMap.begin();
-                iter != weightAgeIdMap.end();
-                ++iter)
-        {
-            if (!recentWmImmunized)
-            {
-                UDEBUG("weight=%d, id=%d",
-                       iter->second->getWeight(),
-                       iter->second->id());
-                removableSignatures.push_back(iter->second);
-
-                if (_lastGlobalLoopClosureId && iter->second->id() > _lastGlobalLoopClosureId)
-                {
-                    ++recentWmCount;
-                    if (currentRecentWmSize - recentWmCount < recentWmMaxSize)
-                    {
-                        UDEBUG("switched recentWmImmunized");
-                        recentWmImmunized = true;
-                    }
-                }
-            }
-            else if (_lastGlobalLoopClosureId == 0 || iter->second->id() < _lastGlobalLoopClosureId)
-            {
-                UDEBUG("weight=%d, id=%d",
-                       iter->second->getWeight(),
-                       iter->second->id());
-                removableSignatures.push_back(iter->second);
-            }
-            if (removableSignatures.size() >= (unsigned int)count)
-            {
-                break;
-            }
-        }
-    }
-    else
-    {
-        ULOGGER_WARN("not enough signatures to get an old one...");
-    }
-    return removableSignatures;
-}
 
 /**
  * If saveToDatabase=false, deleted words are filled in deletedWords.
@@ -1485,10 +1350,6 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
         _workingMem.erase(s->id());
         _stMem.erase(s->id());
         _signatures.erase(s->id());
-        if (_signaturesAdded > 0)
-        {
-            --_signaturesAdded;
-        }
 
         if (_lastSignature == s)
         {
@@ -1826,42 +1687,6 @@ rtabmap::SensorData MemoryLoc::getNodeData(int nodeId, bool uncompressedData, bo
     }
 
     return r;
-}
-
-void MemoryLoc::getNodeWords(int nodeId,
-                             std::multimap<int, cv::KeyPoint> &words,
-                             std::multimap<int, cv::Point3f> &words3)
-{
-    UDEBUG("nodeId=%d", nodeId);
-    rtabmap::Signature *s = this->_getSignature(nodeId);
-    if (s)
-    {
-        words = s->getWords();
-        words3 = s->getWords3();
-    }
-    else if (_dbDriver)
-    {
-        // load from database
-        std::list<rtabmap::Signature *> signatures;
-        std::list<int> ids;
-        ids.push_back(nodeId);
-        std::set<int> loadedFromTrash;
-        _dbDriver->loadSignatures(ids, signatures, &loadedFromTrash);
-        if (signatures.size())
-        {
-            words = signatures.front()->getWords();
-            words3 = signatures.front()->getWords3();
-            if (loadedFromTrash.size())
-            {
-                //put back
-                _dbDriver->asyncSave(signatures.front());
-            }
-            else
-            {
-                delete signatures.front();
-            }
-        }
-    }
 }
 
 int MemoryLoc::getNi(int signatureId) const

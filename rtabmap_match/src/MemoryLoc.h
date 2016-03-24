@@ -34,10 +34,6 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    virtual const rtabmap::ParametersMap &getParameters() const
-    {
-        return parameters_;
-    }
     bool update(const rtabmap::SensorData &data,
                 const rtabmap::Transform &pose = rtabmap::Transform(),
                 const cv::Mat &covariance = cv::Mat());
@@ -82,10 +78,6 @@ public:
     {
         return _binDataKept;
     }
-    float getSimilarityThreshold() const
-    {
-        return _similarityThreshold;
-    }
     const rtabmap::Signature *getLastWorkingSignature() const;
     int getSignatureIdByLabel(const std::string &label, bool lookInDatabase = true) const;
     std::map<int, std::string> getAllLabels() const;
@@ -101,45 +93,10 @@ public:
                      rtabmap::Transform &groundTruth,
                      bool lookInDatabase = false) const;
     rtabmap::SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
-    void getNodeWords(int nodeId,
-                      std::multimap<int, cv::KeyPoint> &words,
-                      std::multimap<int, cv::Point3f> &words3);
-    bool memoryChanged() const
-    {
-        return _memoryChanged;
-    }
-    bool isIncremental() const
-    {
-        return _incrementalMemory;
-    }
     const rtabmap::Signature *getSignature(int id) const;
     bool isInSTM(int signatureId) const
     {
         return _stMem.find(signatureId) != _stMem.end();
-    }
-    bool isInWM(int signatureId) const
-    {
-        return _workingMem.find(signatureId) != _workingMem.end();
-    }
-    bool isInLTM(int signatureId) const
-    {
-        return !this->isInSTM(signatureId) && !this->isInWM(signatureId);
-    }
-    bool isIDsGenerated() const
-    {
-        return _generateIds;
-    }
-    int getLastGlobalLoopClosureId() const
-    {
-        return _lastGlobalLoopClosureId;
-    }
-    const rtabmap::Feature2D *getFeature2D() const
-    {
-        return _feature2D;
-    }
-    bool isGraphReduced() const
-    {
-        return _reduceGraph;
     }
 
     //keypoint stuff
@@ -164,8 +121,6 @@ private:
 
     void moveSignatureToWMFromSTM(int id, int *reducedTo = 0);
     rtabmap::Signature *_getSignature(int id) const;
-    std::list<rtabmap::Signature *> getRemovableSignatures(int count,
-            const std::set<int> &ignoredIds = std::set<int>());
     int getNextId();
     void initCountId();
 
@@ -191,7 +146,6 @@ protected:
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
-    float _similarityThreshold;
     bool _binDataKept;
     bool _rawDescriptorsKept;
     bool _saveDepth16Format;
@@ -206,7 +160,6 @@ private:
     bool _mapLabelsAdded;
     int _imageDecimation;
     float _laserScanDownsampleStepSize;
-    bool _reextractLoopClosureFeatures;
     bool _useOdometryFeatures;
 
     int _idCount;
@@ -215,7 +168,6 @@ private:
     int _lastGlobalLoopClosureId;
     bool _memoryChanged; // False by default, become true only when MemoryLoc::update() is called.
     bool _linksChanged; // False by default, become true when links are modified.
-    int _signaturesAdded;
 
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
     std::set<int> _stMem; // id
