@@ -125,8 +125,10 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
             UDEBUG("newWords=%d", (int)newS->getWords().size());
             int minInliers;
             rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
+            UDEBUG("");
             if ((int)newS->getWords().size() > minInliers)
             {
+                UDEBUG("");
                 std::map<int, float> likelihood;
                 std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
                 UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());

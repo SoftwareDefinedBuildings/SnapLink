@@ -45,8 +45,6 @@ public:
 
     int cleanup();
     void emptyTrash();
-    void joinTrashThread();
-    bool addLink(const rtabmap::Link &link);
     void removeVirtualLinks(int signatureId);
     std::map<int, int> getNeighborsId(
         int signatureId,
@@ -81,9 +79,9 @@ public:
                      bool lookInDatabase = false) const;
     rtabmap::SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
     const rtabmap::Signature *getSignature(int id) const;
-    bool isInSTM(int signatureId) const
+    const std::map<int, rtabmap::Signature *> &getSignatures() const
     {
-        return _stMem.find(signatureId) != _stMem.end();
+        return _signatures;
     }
 
     // RGB-D stuff
@@ -99,20 +97,14 @@ public:
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     void preUpdate();
-    void addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &covariance);
+    void addSignature(rtabmap::Signature *signature);
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true, std::list<int> *deletedWords = 0);
 
-    void moveSignatureToWMFromSTM(int id, int *reducedTo = 0);
     rtabmap::Signature *_getSignature(int id) const;
     int getNextId();
-    int incrementMapId(std::map<int, int> *reducedIds = 0);
+    int incrementMapId();
     void clear();
     void initCountId();
-
-    const std::map<int, rtabmap::Signature *> &getSignatures() const
-    {
-        return _signatures;
-    }
 
     void copyData(const rtabmap::Signature *from, rtabmap::Signature *to);
     rtabmap::Signature *createSignature(
@@ -134,7 +126,6 @@ private:
     bool _rawDescriptorsKept;
     bool _notLinkedNodesKeptInDb;
     bool _incrementalMemory;
-    bool _reduceGraph;
     int _maxStMemSize;
     float _recentWmRatio;
     bool _transferSortingByWeightId;
@@ -153,7 +144,6 @@ private:
     bool _linksChanged; // False by default, become true when links are modified.
 
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
-    std::set<int> _stMem; // id
     std::map<int, double> _workingMem; // id,age
 
     //Keypoint stuff

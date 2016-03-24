@@ -111,14 +111,10 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
             delete *iter;
         }
     }
-    UDEBUG("Loading nodes to WM, done! (%d loaded)", int(_workingMem.size() + _stMem.size()));
+    UDEBUG("Loading nodes to WM, done! (%d loaded)", int(_workingMem.size()));
 
     // Assign the last signature
-    if (_stMem.size() > 0)
-    {
-        _lastSignature = uValue(_signatures, *_stMem.rbegin(), (rtabmap::Signature *)0);
-    }
-    else if (_workingMem.size() > 0)
+    if (_workingMem.size() > 0)
     {
         _lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (rtabmap::Signature *)0);
     }
@@ -339,7 +335,7 @@ bool MemoryLoc::update(
     UDEBUG("time creating signature=%f ms", t);
 
     // It will be added to the short-term memory, no need to delete it...
-    this->addSignatureToStm(signature, covariance);
+    this->addSignature(signature);
 
     _lastSignature = signature;
 
@@ -350,41 +346,7 @@ bool MemoryLoc::update(
             UWARN("The working memory is empty and the memory is not "
                   "incremental (Mem/IncrementalMemory=False), no loop closure "
                   "can be detected! Please set Mem/IncrementalMemory=true to increase "
-                  "the memory with new images or decrease the STM size (which is %d "
-                  "including the new one added).", (int)_stMem.size());
-        }
-    }
-
-    //============================================================
-    // Transfer the oldest signature of the short-term memory to the working memory
-    //============================================================
-    int notIntermediateNodesCount = 0;
-    for (std::set<int>::iterator iter = _stMem.begin(); iter != _stMem.end(); ++iter)
-    {
-        const rtabmap::Signature *s = this->getSignature(*iter);
-        UASSERT(s != 0);
-        if (s->getWeight() >= 0)
-        {
-            ++notIntermediateNodesCount;
-        }
-    }
-    std::map<int, int> reducedIds;
-    while (_stMem.size() && _maxStMemSize > 0 && notIntermediateNodesCount > _maxStMemSize)
-    {
-        int id = *_stMem.begin();
-        rtabmap::Signature *s = this->_getSignature(id);
-        UASSERT(s != 0);
-        if (s->getWeight() >= 0)
-        {
-            --notIntermediateNodesCount;
-        }
-
-        int reducedTo = 0;
-        moveSignatureToWMFromSTM(id, &reducedTo);
-
-        if (reducedTo > 0)
-        {
-            reducedIds.insert(std::make_pair(id, reducedTo));
+                  "the memory with new images");
         }
     }
 
@@ -398,10 +360,8 @@ bool MemoryLoc::update(
     return true;
 }
 
-void MemoryLoc::addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &covariance)
+void MemoryLoc::addSignature(rtabmap::Signature *signature)
 {
-    UTimer timer;
-    // add signature on top of the short-term memory
     if (signature)
     {
         UDEBUG("adding %d", signature->id());
@@ -416,23 +376,6 @@ void MemoryLoc::addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &
             signature->setEnabled(true);
         }
     }
-
-    UDEBUG("time = %fs", timer.ticks());
-}
-
-void MemoryLoc::moveSignatureToWMFromSTM(int id, int *reducedTo)
-{
-    UDEBUG("Inserting node %d from STM in WM...", id);
-    UASSERT(_stMem.find(id) != _stMem.end());
-    rtabmap::Signature *s = this->_getSignature(id);
-    UASSERT(s != 0);
-
-    if (s != 0)
-    {
-        _workingMem.insert(_workingMem.end(), std::make_pair(*_stMem.begin(), UTimer::now()));
-        _stMem.erase(*_stMem.begin());
-    }
-    // else already removed from STM/WM in moveToTrash()
 }
 
 const rtabmap::Signature *MemoryLoc::getSignature(int id) const
@@ -630,24 +573,12 @@ int MemoryLoc::getNextId()
     return ++_idCount;
 }
 
-int MemoryLoc::incrementMapId(std::map<int, int> *reducedIds)
+int MemoryLoc::incrementMapId()
 {
     //don't increment if there is no location in the current map
     const rtabmap::Signature *s = getLastWorkingSignature();
     if (s && s->mapId() == _idMapCount)
     {
-        // New session! move all signatures from the STM to WM
-        while (_stMem.size())
-        {
-            int reducedId = 0;
-            int id = *_stMem.begin();
-            moveSignatureToWMFromSTM(id, &reducedId);
-            if (reducedIds && reducedId > 0)
-            {
-                reducedIds->insert(std::make_pair(id, reducedId));
-            }
-        }
-
         return ++_idMapCount;
     }
     return _idMapCount;
@@ -656,17 +587,6 @@ int MemoryLoc::incrementMapId(std::map<int, int> *reducedIds)
 void MemoryLoc::clear()
 {
     UDEBUG("");
-
-    // empty the STM
-    while (_stMem.size())
-    {
-        moveSignatureToWMFromSTM(*_stMem.begin());
-    }
-    if (_stMem.size() != 0)
-    {
-        ULOGGER_ERROR("_stMem must be empty here, size=%d", _stMem.size());
-    }
-    _stMem.clear();
 
     this->cleanUnusedWords();
 
@@ -681,33 +601,6 @@ void MemoryLoc::clear()
         // after for the next stuf added to database
         uSleep(1500);
     }
-
-    // Save some stats to the db, save only when the mem is not empty
-    if (_dbDriver && (_stMem.size() || _workingMem.size()))
-    {
-        unsigned int memSize = (unsigned int)(_workingMem.size() + _stMem.size());
-        if (_workingMem.size() && _workingMem.begin()->first < 0)
-        {
-            --memSize;
-        }
-
-        // this is only a safe check...not supposed to occur.
-        UASSERT_MSG(memSize == _signatures.size(),
-                    uFormat("The number of signatures don't match! _workingMem=%d, _stMem=%d, _signatures=%d",
-                            _workingMem.size(), _stMem.size(), _signatures.size()).c_str());
-
-        UDEBUG("Adding statistics after run...");
-        if (_memoryChanged)
-        {
-            UDEBUG("");
-            _dbDriver->addStatisticsAfterRun(memSize,
-                                             _lastSignature ? _lastSignature->id() : 0,
-                                             UProcessInfo::getMemoryUsage(),
-                                             _dbDriver->getMemoryUsed(),
-                                             (int)_vwd->getVisualWords().size());
-        }
-    }
-    UDEBUG("");
 
     //Get the tree root (parents)
     std::map<int, rtabmap::Signature *> mem = _signatures;
@@ -1013,16 +906,6 @@ void MemoryLoc::emptyTrash()
     }
 }
 
-void MemoryLoc::joinTrashThread()
-{
-    if (_dbDriver)
-    {
-        UDEBUG("");
-        _dbDriver->join();
-        UDEBUG("");
-    }
-}
-
 class WeightAgeIdKey
 {
 public:
@@ -1130,17 +1013,12 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
         }
 
         _workingMem.erase(s->id());
-        _stMem.erase(s->id());
         _signatures.erase(s->id());
 
         if (_lastSignature == s)
         {
             _lastSignature = 0;
-            if (_stMem.size())
-            {
-                _lastSignature = this->_getSignature(*_stMem.rbegin());
-            }
-            else if (_workingMem.size())
+            if (_workingMem.size())
             {
                 _lastSignature = this->_getSignature(_workingMem.rbegin()->first);
             }
@@ -1231,72 +1109,6 @@ void MemoryLoc::removeLink(int oldId, int newId)
             UERROR("Signature %d is not in working memory... cannot remove link.", oldS->id());
         }
     }
-}
-
-bool MemoryLoc::addLink(const rtabmap::Link &link)
-{
-    UASSERT(link.type() > rtabmap::Link::kNeighbor && link.type() != rtabmap::Link::kUndef);
-
-    ULOGGER_INFO("to=%d, from=%d transform: %s var=%f", link.to(), link.from(), link.transform().prettyPrint().c_str(), link.transVariance());
-    rtabmap::Signature *toS = _getSignature(link.to());
-    rtabmap::Signature *fromS = _getSignature(link.from());
-    if (toS && fromS)
-    {
-        if (toS->hasLink(link.from()))
-        {
-            // do nothing, already merged
-            UINFO("already linked! to=%d, from=%d", link.to(), link.from());
-            return true;
-        }
-
-        UDEBUG("Add link between %d and %d", toS->id(), fromS->id());
-
-        toS->addLink(link.inverse());
-        fromS->addLink(link);
-
-        if (_incrementalMemory)
-        {
-            if (link.type() != rtabmap::Link::kVirtualClosure)
-            {
-                _linksChanged = true;
-
-                // update weight
-                // ignore scan matching loop closures
-                if (link.type() != rtabmap::Link::kLocalSpaceClosure ||
-                        link.userDataCompressed().empty())
-                {
-                    _lastGlobalLoopClosureId = fromS->id() > toS->id() ? fromS->id() : toS->id();
-
-                    // update weights only if the memory is incremental
-                    // When reducing the graph, transfer weight to the oldest signature
-                    UASSERT(fromS->getWeight() >= 0 && toS->getWeight() >= 0);
-                    if (fromS->id() > toS->id())
-                    {
-                        fromS->setWeight(fromS->getWeight() + toS->getWeight());
-                        toS->setWeight(0);
-                    }
-                    else
-                    {
-                        toS->setWeight(toS->getWeight() + fromS->getWeight());
-                        fromS->setWeight(0);
-                    }
-                }
-            }
-        }
-        return true;
-    }
-    else
-    {
-        if (!fromS)
-        {
-            UERROR("from=%d, to=%d, Signature %d not found in working/st memories", link.from(), link.to(), link.from());
-        }
-        if (!toS)
-        {
-            UERROR("from=%d, to=%d, Signature %d not found in working/st memories", link.from(), link.to(), link.to());
-        }
-    }
-    return false;
 }
 
 void MemoryLoc::removeVirtualLinks(int signatureId)
@@ -1538,8 +1350,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             return 0;
         }
     }
-
-    int treeSize = int(_workingMem.size() + _stMem.size());
 
     std::vector<cv::Point3f> keypoints3D;
     if (!_useOdometryFeatures || data.keypoints().empty() || (int)data.keypoints().size() != data.descriptors().rows)
