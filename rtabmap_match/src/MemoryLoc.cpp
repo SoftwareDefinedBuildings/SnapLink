@@ -65,8 +65,6 @@ MemoryLoc::MemoryLoc() :
     _signaturesAdded(0),
     _feature2D(NULL),
     _vwd(NULL),
-    _registrationPipeline(NULL),
-    _registrationIcp(NULL),
     _dbDriver(NULL),
 
     _badSignRatio(rtabmap::Parameters::defaultKpBadSignRatio()),
@@ -87,8 +85,6 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
 
     _feature2D = rtabmap::Feature2D::create(parameters);
     _vwd = new rtabmap::VWDictionary(parameters);
-    _registrationPipeline = rtabmap::Registration::create(parameters);
-    _registrationIcp = new rtabmap::RegistrationIcp(parameters);
     this->parseParameters(parameters);
 
     if (dbUrl.empty()) // so this Memory will be empty
@@ -235,14 +231,6 @@ MemoryLoc::~MemoryLoc()
     {
         delete _vwd;
     }
-    if (_registrationPipeline)
-    {
-        delete _registrationPipeline;
-    }
-    if (_registrationIcp)
-    {
-        delete _registrationIcp;
-    }
 }
 
 void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
@@ -318,32 +306,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
         _feature2D->parseParameters(parameters);
     }
 
-    rtabmap::Registration::Type regStrategy = rtabmap::Registration::kTypeUndef;
-    if ((iter = parameters.find(rtabmap::Parameters::kRegStrategy())) != parameters.end())
-    {
-        regStrategy = (rtabmap::Registration::Type)std::atoi((*iter).second.c_str());
-    }
-    if (regStrategy != rtabmap::Registration::kTypeUndef)
-    {
-        UDEBUG("new registration strategy %d", int(regStrategy));
-        if (_registrationPipeline)
-        {
-            delete _registrationPipeline;
-            _registrationPipeline = 0;
-        }
-
-        _registrationPipeline = rtabmap::Registration::create(regStrategy, parameters_);
-    }
-    else if (_registrationPipeline)
-    {
-        _registrationPipeline->parseParameters(parameters);
-    }
-
-    if (_registrationIcp)
-    {
-        _registrationIcp->parseParameters(parameters);
-    }
-
     // do this after all parameters are parsed
     // SLAM mode vs Localization mode
     iter = parameters.find(rtabmap::Parameters::kMemIncrementalMemory());
@@ -354,14 +316,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
         {
             // From SLAM to localization, change map id
             this->incrementMapId();
-
-            // The easiest way to make sure that the mapping session is saved
-            // is to save the memory in the database and reload it.
-            if ((_memoryChanged || _linksChanged) && _dbDriver)
-            {
-                UWARN("Switching from Mapping to Localization mode, the database will be saved and reloaded.");
-                this->init(_dbDriver->getUrl());
-            }
         }
         _incrementalMemory = value;
     }

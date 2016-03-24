@@ -8,9 +8,6 @@
 #include <rtabmap/core/Statistics.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/utilite/UStl.h>
-#include <rtabmap/core/Registration.h>
-#include <rtabmap/core/RegistrationVis.h>
-#include <rtabmap/core/RegistrationIcp.h>
 #include <typeinfo>
 #include <list>
 #include <map>
@@ -39,7 +36,6 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     virtual const rtabmap::ParametersMap &getParameters() const
     {
         return parameters_;
@@ -166,6 +162,7 @@ public:
     rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
 
 private:
+    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     void preUpdate();
     void addSignatureToStm(rtabmap::Signature *signature, const cv::Mat &covariance);
     void clear();
@@ -244,9 +241,6 @@ private:
     float _badSignRatio;;
     bool _tfIdfLikelihoodUsed;
     bool _parallelized;
-
-    rtabmap::Registration *_registrationPipeline;
-    rtabmap::RegistrationIcp *_registrationIcp;
 
     int _minInliers;
     int _iterations;
