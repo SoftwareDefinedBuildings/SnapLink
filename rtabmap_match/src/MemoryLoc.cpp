@@ -30,11 +30,7 @@ const int MemoryLoc::kIdStart = 0;
 
 MemoryLoc::MemoryLoc() :
     _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
-    _notLinkedNodesKeptInDb(rtabmap::Parameters::defaultMemNotLinkedNodesKept()),
     _incrementalMemory(rtabmap::Parameters::defaultMemIncrementalMemory()),
-    _maxStMemSize(rtabmap::Parameters::defaultMemSTMSize()),
-    _recentWmRatio(rtabmap::Parameters::defaultMemRecentWmRatio()),
-    _transferSortingByWeightId(rtabmap::Parameters::defaultMemTransferSortingByWeightId()),
     _generateIds(rtabmap::Parameters::defaultMemGenerateIds()),
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
     _mapLabelsAdded(rtabmap::Parameters::defaultMemMapLabelsAdded()),
@@ -45,7 +41,6 @@ MemoryLoc::MemoryLoc() :
     _idMapCount(kIdStart),
     _lastSignature(0),
     _lastGlobalLoopClosureId(0),
-    _memoryChanged(false),
     _linksChanged(false),
     _feature2D(NULL),
     _vwd(NULL),
@@ -216,19 +211,13 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::ParametersMap::const_iterator iter;
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRecentWmRatio(), _recentWmRatio);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemSTMSize(), _maxStMemSize);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 
-    UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
-    UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
     UASSERT(_imageDecimation >= 1);
 
     if (_dbDriver)
@@ -265,20 +254,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     else if (_feature2D)
     {
         _feature2D->parseParameters(parameters);
-    }
-
-    // do this after all parameters are parsed
-    // SLAM mode vs Localization mode
-    iter = parameters.find(rtabmap::Parameters::kMemIncrementalMemory());
-    if (iter != parameters.end())
-    {
-        bool value = uStr2Bool(iter->second.c_str());
-        if (value == false && _incrementalMemory)
-        {
-            // From SLAM to localization, change map id
-            this->incrementMapId();
-        }
-        _incrementalMemory = value;
     }
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
@@ -333,22 +308,6 @@ bool MemoryLoc::update(
     this->addSignature(signature);
 
     _lastSignature = signature;
-
-    if (!_incrementalMemory)
-    {
-        if (_signatures.size() <= 1)
-        {
-            UWARN("The working memory is empty and the memory is not "
-                  "incremental (Mem/IncrementalMemory=False), no loop closure "
-                  "can be detected! Please set Mem/IncrementalMemory=true to increase "
-                  "the memory with new images");
-        }
-    }
-
-    if (!_memoryChanged && _incrementalMemory)
-    {
-        _memoryChanged = true;
-    }
 
     UDEBUG("totalTimer = %fs", totalTimer.ticks());
 
@@ -568,17 +527,6 @@ int MemoryLoc::getNextId()
     return ++_idCount;
 }
 
-int MemoryLoc::incrementMapId()
-{
-    //don't increment if there is no location in the current map
-    const rtabmap::Signature *s = getLastWorkingSignature();
-    if (s && s->mapId() == _idMapCount)
-    {
-        return ++_idMapCount;
-    }
-    return _idMapCount;
-}
-
 void MemoryLoc::clear()
 {
     UDEBUG("");
@@ -625,7 +573,6 @@ void MemoryLoc::clear()
     _lastGlobalLoopClosureId = 0;
     _idCount = kIdStart;
     _idMapCount = kIdStart;
-    _memoryChanged = false;
     _linksChanged = false;
 
     if (_dbDriver)
@@ -1158,44 +1105,31 @@ bool MemoryLoc::getNodeInfo(int signatureId,
     return false;
 }
 
-rtabmap::SensorData MemoryLoc::getNodeData(int nodeId, bool uncompressedData, bool keepLoadedDataInMemory)
+rtabmap::SensorData MemoryLoc::getNodeData(int nodeId)
 {
     UDEBUG("nodeId=%d", nodeId);
     rtabmap::SensorData r;
     rtabmap::Signature *s = this->_getSignature(nodeId);
     if (s && !s->sensorData().imageCompressed().empty())
     {
-        if (keepLoadedDataInMemory && uncompressedData)
-        {
-            s->sensorData().uncompressData();
-        }
+        s->sensorData().uncompressData();
         r = s->sensorData();
-        if (!keepLoadedDataInMemory && uncompressedData)
-        {
-            r.uncompressData();
-        }
     }
     else if (_dbDriver)
     {
         // load from database
-        if (s && keepLoadedDataInMemory)
+        if (s)
         {
             std::list<rtabmap::Signature *> signatures;
             signatures.push_back(s);
             _dbDriver->loadNodeData(signatures);
-            if (uncompressedData)
-            {
-                s->sensorData().uncompressData();
-            }
+            s->sensorData().uncompressData();
             r = s->sensorData();
         }
         else
         {
             _dbDriver->getNodeData(nodeId, r);
-            if (uncompressedData)
-            {
-                r.uncompressData();
-            }
+            r.uncompressData();
         }
     }
 
@@ -1215,42 +1149,6 @@ int MemoryLoc::getNi(int signatureId) const
         _dbDriver->getInvertedIndexNi(signatureId, ni);
     }
     return ni;
-}
-
-
-void MemoryLoc::copyData(const rtabmap::Signature *from, rtabmap::Signature *to)
-{
-    UTimer timer;
-    timer.start();
-    if (from && to)
-    {
-        // words 2d
-        this->disableWordsRef(to->id());
-        to->setWords(from->getWords());
-        std::list<int> id;
-        id.push_back(to->id());
-        this->enableWordsRef(id);
-
-        if (from->isSaved() && _dbDriver)
-        {
-            _dbDriver->getNodeData(from->id(), to->sensorData());
-            UDEBUG("Loaded image data from database");
-        }
-        else
-        {
-            to->sensorData() = (rtabmap::SensorData)from->sensorData();
-        }
-        to->sensorData().setId(to->id());
-
-        to->setPose(from->getPose());
-        to->setWords3(from->getWords3());
-        to->setWordsDescriptors(from->getWordsDescriptors());
-    }
-    else
-    {
-        ULOGGER_ERROR("Can't merge the signatures because there are not same type.");
-    }
-    UDEBUG("Merging time = %fs", timer.ticks());
 }
 
 rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, const rtabmap::Transform &pose)

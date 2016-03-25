@@ -165,7 +165,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                 std::sort(sortedIds.begin(), sortedIds.end());
                 for (std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it)
                 {
-                    rtabmap::SensorData data = _memory->getNodeData(*it, true);
+                    rtabmap::SensorData data = _memory->getNodeData(*it);
                     const rtabmap::Signature *sig = _memory->getSignature(*it);
 
                     if (!data.depthOrRightRaw().empty() && data.id() != rtabmap::Memory::kIdInvalid && sig != NULL)

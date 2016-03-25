@@ -69,7 +69,7 @@ public:
                      double &stamp,
                      rtabmap::Transform &groundTruth,
                      bool lookInDatabase = false) const;
-    rtabmap::SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
+    rtabmap::SensorData getNodeData(int nodeId);
     const rtabmap::Signature *getSignature(int id) const;
     const std::map<int, rtabmap::Signature *> &getSignatures() const
     {
@@ -98,7 +98,6 @@ private:
     void clear();
     void initCountId();
 
-    void copyData(const rtabmap::Signature *from, rtabmap::Signature *to);
     rtabmap::Signature *createSignature(
         const rtabmap::SensorData &data,
         const rtabmap::Transform &pose);
@@ -116,11 +115,7 @@ private:
     // parameters
     rtabmap::ParametersMap parameters_;
     bool _rawDescriptorsKept;
-    bool _notLinkedNodesKeptInDb;
     bool _incrementalMemory;
-    int _maxStMemSize;
-    float _recentWmRatio;
-    bool _transferSortingByWeightId;
     bool _generateIds;
     bool _badSignaturesIgnored;
     bool _mapLabelsAdded;
@@ -132,7 +127,6 @@ private:
     int _idMapCount;
     rtabmap::Signature *_lastSignature;
     int _lastGlobalLoopClosureId;
-    bool _memoryChanged; // False by default, become true only when MemoryLoc::update() is called.
     bool _linksChanged; // False by default, become true when links are modified.
 
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
