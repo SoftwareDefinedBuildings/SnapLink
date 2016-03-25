@@ -114,6 +114,9 @@ int HTTPServer::answer_to_connection(void *cls,
 
         // reserve enough space for an image
         con_info->data.reserve(IMAGE_INIT_SIZE);
+        // reserve enough space for an integer
+        con_info->width.reserve(4);
+        con_info->height.reserve(4);
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
         {
@@ -189,7 +192,6 @@ int HTTPServer::answer_to_connection(void *cls,
     return send_page(connection, errorpage, MHD_HTTP_BAD_REQUEST);
 }
 
-
 int HTTPServer::iterate_post(void *coninfo_cls,
                              enum MHD_ValueKind kind,
                              const char *key,
@@ -205,14 +207,23 @@ int HTTPServer::iterate_post(void *coninfo_cls,
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
-    if (strcmp(key, "file") != 0)
+    if (strcmp(key, "file") != 0 && strcmp(key, "width") != 0 && strcmp(key, "height") != 0)
     {
         return MHD_NO;
     }
 
     if (size > 0)
     {
-        con_info->data.insert(con_info->data.end(), (unsigned char *) data, (unsigned char *) data + size);
+        if (strcmp(key, "file") == 0)
+        {
+            con_info->data.insert(con_info->data.end(), (unsigned char *) data, (unsigned char *) data + size);
+        } else if (strcmp(key, "width") == 0)
+        {
+            con_info->width.insert(con_info->width.end(), (unsigned char *) data, (unsigned char *) data + size);
+        } else if (strcmp(key, "height") == 0)
+        {
+            con_info->height.insert(con_info->height.end(), (unsigned char *) data, (unsigned char *) data + size);
+        }
     }
 
     con_info->answerstring = completepage;

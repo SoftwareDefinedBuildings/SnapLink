@@ -60,7 +60,19 @@ bool CameraNetwork::event(QEvent *event)
     if (event->type() == NetworkEvent::type())
     {
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
-        rtabmap::SensorData *sensorData = process(&networkEvent->conInfo()->data);
+
+        std::vector<unsigned char> widthBytes = networkEvent->conInfo()->width;
+        std::vector<unsigned char> heightBytes = networkEvent->conInfo()->height;
+        if (widthBytes.size() != 4 || heightBytes.size() != 4) {
+            return false;
+        }
+
+        // convert into integers (vector bytes is in network order)
+        int width, height;
+        width = (widthBytes[0] << 24) | (widthBytes[1]) << 16 | (widthBytes[2] << 8) | (widthBytes[3]);
+        height = (heightBytes[0] << 24) | (heightBytes[1]) << 16 | (heightBytes[2] << 8) | (heightBytes[3]);
+
+        rtabmap::SensorData *sensorData = process(&networkEvent->conInfo()->data, width, height);
         if (sensorData != NULL)
         {
             QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
@@ -74,13 +86,13 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data)
+rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, int width, int height)
 {
     UDEBUG("");
     if (data != NULL)
     {
         // there is no data copy here, the cv::Mat has a pointer to the data
-        cv::Mat img(HEIGHT, WIDTH, CV_8UC1, &(*data)[0]);
+        cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
         cv::flip(img, img, 0); // flip the image around the x-axis
 
         //imwrite("image.jpg", img);
