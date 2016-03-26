@@ -13,8 +13,22 @@ def test(path):
     for filename in glob.glob(os.path.join(path, "*.jpg")):
         print filename
         obj_name = os.path.basename(filename).split(".")[0]
-        img = cv2.imread(filename, 0)
+        img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+
+        rows, cols = img.shape
+        if rows/cols == 480/640:
+            print "rotating..."
+            img = cv2.transpose(img)
+            img = cv2.flip(img, 1) # flip along y axis
+        elif cols/rows == 480/640:
+            pass
+        else:
+            print "wrong size"
+            return
+
+        img = cv2.resize(img, (480, 640)) # scale
         img = cv2.flip(img, 0) # flip along x axis TODO: why flip?
+        
         files = {'file': (filename, img.tostring())}
         r = requests.post(SERVER_ADDR, files=files)
         if r.text != obj_name:
