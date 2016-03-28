@@ -40,21 +40,19 @@ bool Localization::init(const std::string &dbPath, const rtabmap::ParametersMap 
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     // parameters that makes memory do PnP localization for RGB images
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), "1")); // Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "20"));
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
 
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "1500"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "false"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "1500"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "true"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 
     _memory = new MemoryLoc();
     if (!_memory->init(dbPath, _memoryParams))
@@ -113,7 +111,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
         const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
         UDEBUG("newWords=%d", (int)newS->getWords().size());
         int minInliers;
-        rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
+        rtabmap::Parameters::parse(_memoryParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
         UDEBUG("");
         if ((int)newS->getWords().size() > minInliers)
         {
@@ -144,50 +142,18 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                 UINFO("topId: %d", topId);
             }
 
-            MemoryLoc memoryLoc;
-            memoryLoc.init("", _memoryLocParams);
-
-            bool success = true;
             sensorData->setId(newS->id());
 
-            if (success)
+            output = _memory->computeGlobalVisualTransform(topIds, sensorData->id());
+
+            if (!output.isNull())
             {
-                std::vector<int> sortedIds = topIds;
-                std::sort(sortedIds.begin(), sortedIds.end());
-                for (std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it)
-                {
-                    rtabmap::SensorData data = _memory->getNodeData(*it);
-                    const rtabmap::Signature *sig = _memory->getSignature(*it);
-
-                    if (!data.depthOrRightRaw().empty() && data.id() != rtabmap::Memory::kIdInvalid && sig != NULL)
-                    {
-                        UDEBUG("Calculate map transform with raw data");
-                        memoryLoc.update(data, getPose(sig), sig->getPoseCovariance());
-                    }
-                    else
-                    {
-                        UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d", data.depthOrRightRaw().empty(), data.id());
-                        success = false;
-                        break;
-                    }
-                }
-
-                memoryLoc.update(*sensorData);
+                UDEBUG("global transform = %s", output.prettyPrint().c_str());
             }
-
-            if (success)
+            else
             {
-                output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id());
-
-                if (!output.isNull())
-                {
-                    UDEBUG("global transform = %s", output.prettyPrint().c_str());
-                }
-                else
-                {
-                    UWARN("transform is null, using pose of the closest image");
-                    //output = getPose(_memory->getSignature(topId));
-                }
+                UWARN("transform is null, using pose of the closest image");
+                //output = getPose(_memory->getSignature(topId));
             }
         }
         else

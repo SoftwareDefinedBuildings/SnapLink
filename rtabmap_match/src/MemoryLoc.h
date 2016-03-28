@@ -118,13 +118,10 @@ private:
     bool _badSignaturesIgnored;
     int _imageDecimation;
     float _laserScanDownsampleStepSize;
-    bool _useOdometryFeatures;
 
     int _idCount;
     int _idMapCount;
     rtabmap::Signature *_lastSignature;
-    int _lastGlobalLoopClosureId;
-    bool _linksChanged; // False by default, become true when links are modified.
 
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 

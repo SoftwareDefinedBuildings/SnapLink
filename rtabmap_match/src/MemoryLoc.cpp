@@ -35,12 +35,9 @@ MemoryLoc::MemoryLoc() :
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
     _imageDecimation(rtabmap::Parameters::defaultMemImageDecimation()),
     _laserScanDownsampleStepSize(rtabmap::Parameters::defaultMemLaserScanDownsampleStepSize()),
-    _useOdometryFeatures(rtabmap::Parameters::defaultMemUseOdomFeatures()),
     _idCount(kIdStart),
     _idMapCount(kIdStart),
     _lastSignature(0),
-    _lastGlobalLoopClosureId(0),
-    _linksChanged(false),
     _feature2D(NULL),
     _vwd(NULL),
     _dbDriver(NULL),
@@ -212,7 +209,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 
     UASSERT(_imageDecimation >= 1);
 
@@ -564,10 +560,8 @@ void MemoryLoc::clear()
     }
     UDEBUG("");
     _lastSignature = 0;
-    _lastGlobalLoopClosureId = 0;
     _idCount = kIdStart;
     _idMapCount = kIdStart;
-    _linksChanged = false;
 
     if (_dbDriver)
     {
@@ -857,11 +851,6 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
             }
         }
 
-        if (_lastGlobalLoopClosureId == s->id())
-        {
-            _lastGlobalLoopClosureId = 0;
-        }
-
         delete s;
     }
 }
@@ -901,14 +890,8 @@ void MemoryLoc::removeLink(int oldId, int newId)
                 newS->setWeight(newS->getWeight() > 0 ? newS->getWeight() - 1 : 0);
             }
 
-
             oldS->removeLink(newS->id());
             newS->removeLink(oldS->id());
-
-            if (type != rtabmap::Link::kVirtualClosure)
-            {
-                _linksChanged = true;
-            }
 
             bool noChildrenAnymore = true;
             for (std::map<int, rtabmap::Link>::const_iterator iter = newS->getLinks().begin(); iter != newS->getLinks().end(); ++iter)
@@ -920,10 +903,6 @@ void MemoryLoc::removeLink(int oldId, int newId)
                     noChildrenAnymore = false;
                     break;
                 }
-            }
-            if (noChildrenAnymore && newS->id() == _lastGlobalLoopClosureId)
-            {
-                _lastGlobalLoopClosureId = 0;
             }
         }
         else
@@ -1121,121 +1100,41 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     }
 
     std::vector<cv::Point3f> keypoints3D;
-    if (!_useOdometryFeatures || data.keypoints().empty() || (int)data.keypoints().size() != data.descriptors().rows)
+
+    if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
     {
-        if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
+        UINFO("Extract features");
+        cv::Mat imageMono;
+        if (data.imageRaw().channels() == 3)
         {
-            UINFO("Extract features");
-            cv::Mat imageMono;
-            if (data.imageRaw().channels() == 3)
-            {
-                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
-            }
-            else
-            {
-                imageMono = data.imageRaw();
-            }
-
-            cv::Mat depthMask;
-            if (!data.depthRaw().empty() &&
-                    _feature2D->getType() != rtabmap::Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
-            {
-                if (imageMono.rows % data.depthRaw().rows == 0 &&
-                        imageMono.cols % data.depthRaw().cols == 0 &&
-                        imageMono.rows / data.depthRaw().rows == imageMono.cols / data.depthRaw().cols)
-                {
-                    depthMask = rtabmap::util2d::interpolate(data.depthRaw(), imageMono.rows / data.depthRaw().rows, 0.1f);
-                }
-            }
-
-            keypoints = _feature2D->generateKeypoints(
-                            imageMono,
-                            depthMask);
-            t = timer.ticks();
-            UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
-
-            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-            t = timer.ticks();
-            UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-
-            if ((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
-                     (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
-            {
-                keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
-                if (_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
-                {
-                    UDEBUG("");
-                    //remove all keypoints/descriptors with no valid 3D points
-                    UASSERT((int)keypoints.size() == descriptors.rows &&
-                            keypoints3D.size() == keypoints.size());
-                    std::vector<cv::KeyPoint> validKeypoints(keypoints.size());
-                    std::vector<cv::Point3f> validKeypoints3D(keypoints.size());
-                    cv::Mat validDescriptors(descriptors.size(), descriptors.type());
-
-                    int oi = 0;
-                    for (unsigned int i = 0; i < keypoints3D.size(); ++i)
-                    {
-                        if (rtabmap::util3d::isFinite(keypoints3D[i]))
-                        {
-                            validKeypoints[oi] = keypoints[i];
-                            validKeypoints3D[oi] = keypoints3D[i];
-                            descriptors.row(i).copyTo(validDescriptors.row(oi));
-                            ++oi;
-                        }
-                    }
-                    UDEBUG("Removed %d invalid 3D points", (int)keypoints3D.size() - oi);
-                    validKeypoints.resize(oi);
-                    validKeypoints3D.resize(oi);
-                    keypoints = validKeypoints;
-                    keypoints3D = validKeypoints3D;
-                    descriptors = validDescriptors.rowRange(0, oi).clone();
-                }
-                t = timer.ticks();
-                UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
-            }
-        }
-        else if (data.imageRaw().empty())
-        {
-            UDEBUG("Empty image, cannot extract features...");
-        }
-        else if (_feature2D->getMaxFeatures() < 0)
-        {
-            UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+            cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
         }
         else
         {
-            UDEBUG("Intermediate node detected, don't extract features!");
+            imageMono = data.imageRaw();
         }
-    }
-    else if (_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
-    {
-        UINFO("Use odometry features");
-        keypoints = data.keypoints();
-        descriptors = data.descriptors().clone();
 
-        UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
-
-        if ((int)keypoints.size() > _feature2D->getMaxFeatures())
+        cv::Mat depthMask;
+        if (!data.depthRaw().empty() &&
+                _feature2D->getType() != rtabmap::Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
         {
-            _feature2D->limitKeypoints(keypoints, descriptors, _feature2D->getMaxFeatures());
+            if (imageMono.rows % data.depthRaw().rows == 0 &&
+                    imageMono.cols % data.depthRaw().cols == 0 &&
+                    imageMono.rows / data.depthRaw().rows == imageMono.cols / data.depthRaw().cols)
+            {
+                depthMask = rtabmap::util2d::interpolate(data.depthRaw(), imageMono.rows / data.depthRaw().rows, 0.1f);
+            }
         }
 
-        if (descriptors.empty())
-        {
-            cv::Mat imageMono;
-            if (data.imageRaw().channels() == 3)
-            {
-                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
-            }
-            else
-            {
-                imageMono = data.imageRaw();
-            }
+        keypoints = _feature2D->generateKeypoints(
+                        imageMono,
+                        depthMask);
+        t = timer.ticks();
+        UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
-            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-            t = timer.ticks();
-            UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-        }
+        descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+        t = timer.ticks();
+        UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
         if ((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
                 (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
@@ -1273,6 +1172,19 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
         }
     }
+    else if (data.imageRaw().empty())
+    {
+        UDEBUG("Empty image, cannot extract features...");
+    }
+    else if (_feature2D->getMaxFeatures() < 0)
+    {
+        UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+    }
+    else
+    {
+        UDEBUG("Intermediate node detected, don't extract features!");
+    }
+
 
     std::list<int> wordIds;
     if (descriptors.rows)
@@ -1318,57 +1230,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             if (_rawDescriptorsKept)
             {
                 wordsDescriptors.insert(std::pair<int, cv::Mat>(*iter, descriptors.row(i).clone()));
-            }
-        }
-    }
-
-    if (!pose.isNull() &&
-            data.cameraModels().size() == 1 &&
-            words.size() &&
-            words3D.size() == 0)
-    {
-        bool fillWithNaN = true;
-        if (_signatures.size())
-        {
-            UDEBUG("Generate 3D words using odometry");
-            rtabmap::Signature *previousS = _signatures.rbegin()->second;
-            if (previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
-            {
-                rtabmap::Transform cameraTransform = pose.inverse() * previousS->getPose();
-                // compute 3D words by epipolar geometry with the previous signature
-                std::map<int, cv::Point3f> inliers = rtabmap::util3d::generateWords3DMono(
-                        uMultimapToMapUnique(words),
-                        uMultimapToMapUnique(previousS->getWords()),
-                        data.cameraModels()[0],
-                        cameraTransform);
-
-                // words3D should have the same size than words
-                float bad_point = std::numeric_limits<float>::quiet_NaN();
-                for (std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter != words.end(); ++iter)
-                {
-                    std::map<int, cv::Point3f>::iterator jter = inliers.find(iter->first);
-                    if (jter != inliers.end())
-                    {
-                        words3D.insert(std::make_pair(iter->first, jter->second));
-                    }
-                    else
-                    {
-                        words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point, bad_point, bad_point)));
-                    }
-                }
-
-                t = timer.ticks();
-                UASSERT(words3D.size() == words.size());
-                UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
-                fillWithNaN = false;
-            }
-        }
-        if (fillWithNaN)
-        {
-            float bad_point = std::numeric_limits<float>::quiet_NaN();
-            for (std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter != words.end(); ++iter)
-            {
-                words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point, bad_point, bad_point)));
             }
         }
     }
