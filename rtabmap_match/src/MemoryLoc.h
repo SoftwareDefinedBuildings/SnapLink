@@ -19,9 +19,6 @@ class DBDriver;
 class VWDictionary;
 class VisualWord;
 class Feature2D;
-class Registration;
-class RegistrationInfo;
-class RegistrationIcp;
 
 class MemoryLoc
 {
@@ -116,8 +113,6 @@ private:
     bool _incrementalMemory;
     bool _generateIds;
     bool _badSignaturesIgnored;
-    int _imageDecimation;
-    float _laserScanDownsampleStepSize;
 
     int _idCount;
     int _idMapCount;

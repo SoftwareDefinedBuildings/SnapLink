@@ -33,8 +33,6 @@ MemoryLoc::MemoryLoc() :
     _incrementalMemory(rtabmap::Parameters::defaultMemIncrementalMemory()),
     _generateIds(rtabmap::Parameters::defaultMemGenerateIds()),
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
-    _imageDecimation(rtabmap::Parameters::defaultMemImageDecimation()),
-    _laserScanDownsampleStepSize(rtabmap::Parameters::defaultMemLaserScanDownsampleStepSize()),
     _idCount(kIdStart),
     _idMapCount(kIdStart),
     _lastSignature(0),
@@ -208,7 +206,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
 
     UASSERT(_imageDecimation >= 1);
 
@@ -1211,18 +1208,7 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
         unsigned int i = 0;
         for (std::list<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
         {
-            if (_imageDecimation > 1)
-            {
-                cv::KeyPoint kpt = keypoints[i];
-                kpt.pt.x /= float(_imageDecimation);
-                kpt.pt.y /= float(_imageDecimation);
-                kpt.size /= float(_imageDecimation);
-                words.insert(std::pair<int, cv::KeyPoint>(*iter, kpt));
-            }
-            else
-            {
-                words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-            }
+            words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
             if (keypoints3D.size())
             {
                 words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
@@ -1237,31 +1223,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     cv::Mat image = data.imageRaw();
     cv::Mat depthOrRightImage = data.depthOrRightRaw();
     std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
-    rtabmap::StereoCameraModel stereoCameraModel = data.stereoCameraModel();
-
-    // apply decimation?
-    if (_imageDecimation > 1)
-    {
-        image = rtabmap::util2d::decimate(image, _imageDecimation);
-        depthOrRightImage = rtabmap::util2d::decimate(depthOrRightImage, _imageDecimation);
-        for (unsigned int i = 0; i < cameraModels.size(); ++i)
-        {
-            cameraModels[i] = cameraModels[i].scaled(1.0 / double(_imageDecimation));
-        }
-        if (stereoCameraModel.isValidForProjection())
-        {
-            stereoCameraModel.scale(1.0 / double(_imageDecimation));
-        }
-    }
-
-    // downsampling the laser scan?
-    cv::Mat laserScan = data.laserScanRaw();
-    int maxLaserScanMaxPts = data.laserScanMaxPts();
-    if (!laserScan.empty() && _laserScanDownsampleStepSize > 1)
-    {
-        laserScan = rtabmap::util3d::downsample(laserScan, _laserScanDownsampleStepSize);
-        maxLaserScanMaxPts /= _laserScanDownsampleStepSize;
-    }
 
     rtabmap::Signature *s;
     UDEBUG("bin data not kept");
@@ -1280,17 +1241,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
                                "",
                                pose,
                                data.groundTruth(),
-                               stereoCameraModel.isValidForProjection() ?
-                               rtabmap::SensorData(
-                                   ctLaserScan.getCompressedData(),
-                                   maxLaserScanMaxPts,
-                                   data.laserScanMaxRange(),
-                                   cv::Mat(),
-                                   cv::Mat(),
-                                   stereoCameraModel,
-                                   id,
-                                   0,
-                                   ctUserData.getCompressedData()) :
                                rtabmap::SensorData(
                                    ctLaserScan.getCompressedData(),
                                    maxLaserScanMaxPts,
