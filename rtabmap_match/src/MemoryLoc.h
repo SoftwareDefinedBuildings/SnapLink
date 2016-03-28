@@ -104,9 +104,7 @@ private:
 
     //keypoint stuff
     void disableWordsRef(int signatureId);
-    void enableWordsRef(const std::list<int> &signatureIds);
     void cleanUnusedWords();
-    int getNi(int signatureId) const;
 
 protected:
     rtabmap::DBDriver *_dbDriver;
@@ -118,7 +116,6 @@ private:
     bool _incrementalMemory;
     bool _generateIds;
     bool _badSignaturesIgnored;
-    bool _mapLabelsAdded;
     int _imageDecimation;
     float _laserScanDownsampleStepSize;
     bool _useOdometryFeatures;
@@ -134,7 +131,6 @@ private:
     //Keypoint stuff
     rtabmap::VWDictionary *_vwd;
     rtabmap::Feature2D *_feature2D;
-    bool _tfIdfLikelihoodUsed;
 
     int _minInliers;
     int _iterations;

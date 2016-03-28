@@ -33,7 +33,6 @@ MemoryLoc::MemoryLoc() :
     _incrementalMemory(rtabmap::Parameters::defaultMemIncrementalMemory()),
     _generateIds(rtabmap::Parameters::defaultMemGenerateIds()),
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
-    _mapLabelsAdded(rtabmap::Parameters::defaultMemMapLabelsAdded()),
     _imageDecimation(rtabmap::Parameters::defaultMemImageDecimation()),
     _laserScanDownsampleStepSize(rtabmap::Parameters::defaultMemLaserScanDownsampleStepSize()),
     _useOdometryFeatures(rtabmap::Parameters::defaultMemUseOdomFeatures()),
@@ -45,8 +44,6 @@ MemoryLoc::MemoryLoc() :
     _feature2D(NULL),
     _vwd(NULL),
     _dbDriver(NULL),
-
-    _tfIdfLikelihoodUsed(rtabmap::Parameters::defaultKpTfIdfLikelihoodUsed()),
 
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
     _iterations(rtabmap::Parameters::defaultVisIterations()),
@@ -213,7 +210,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
@@ -230,8 +226,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     {
         _vwd->parseParameters(parameters);
     }
-
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
 
     //Keypoint detector
     UASSERT(_feature2D != 0);
@@ -599,117 +593,39 @@ void MemoryLoc::clear()
  */
 std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *signature, const std::list<int> &ids)
 {
-    if (!_tfIdfLikelihoodUsed)
+    UTimer timer;
+    timer.start();
+    std::map<int, float> likelihood;
+
+    if (!signature)
     {
-        UTimer timer;
-        timer.start();
-        std::map<int, float> likelihood;
-
-        if (!signature)
-        {
-            ULOGGER_ERROR("The signature is null");
-            return likelihood;
-        }
-        else if (ids.empty())
-        {
-            UWARN("ids list is empty");
-            return likelihood;
-        }
-
-        for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
-        {
-            float sim = 0.0f;
-            if (*iter > 0)
-            {
-                const rtabmap::Signature *sB = this->getSignature(*iter);
-                if (!sB)
-                {
-                    UFATAL("Signature %d not found in WM ?!?", *iter);
-                }
-                sim = signature->compareTo(*sB);
-            }
-
-            likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
-        }
-
-        UDEBUG("compute likelihood (similarity)... %f s", timer.ticks());
+        ULOGGER_ERROR("The signature is null");
         return likelihood;
     }
-    else
+    else if (ids.empty())
     {
-        UTimer timer;
-        timer.start();
-        std::map<int, float> likelihood;
-        std::map<int, float> calculatedWordsRatio;
-
-        if (!signature)
-        {
-            ULOGGER_ERROR("The signature is null");
-            return likelihood;
-        }
-        else if (ids.empty())
-        {
-            UWARN("ids list is empty");
-            return likelihood;
-        }
-
-        for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
-        {
-            likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, 0.0f));
-        }
-
-        const std::list<int> &wordIds = uUniqueKeys(signature->getWords());
-
-        float nwi; // nwi is the number of a specific word referenced by a place
-        float ni; // ni is the total of words referenced by a place
-        float nw; // nw is the number of places referenced by a specific word
-        float N; // N is the total number of places
-
-        float logNnw;
-        const rtabmap::VisualWord *vw;
-
-        N = this->getSignatures().size();
-
-        if (N)
-        {
-            UDEBUG("processing... ");
-            // Pour chaque mot dans la signature SURF
-            for (std::list<int>::const_iterator i = wordIds.begin(); i != wordIds.end(); ++i)
-            {
-                // "Inverted index" - Pour chaque endroit contenu dans chaque mot
-                vw = _vwd->getWord(*i);
-                if (vw)
-                {
-                    const std::map<int, int> &refs = vw->getReferences();
-                    nw = refs.size();
-                    if (nw)
-                    {
-                        logNnw = log10(N / nw);
-                        if (logNnw)
-                        {
-                            for (std::map<int, int>::const_iterator j = refs.begin(); j != refs.end(); ++j)
-                            {
-                                std::map<int, float>::iterator iter = likelihood.find(j->first);
-                                if (iter != likelihood.end())
-                                {
-                                    nwi = j->second;
-                                    ni = this->getNi(j->first);
-                                    if (ni != 0)
-                                    {
-                                        //UDEBUG("%d, %f %f %f %f", vw->id(), logNnw, nwi, ni, ( nwi  * logNnw ) / ni);
-                                        iter->second += (nwi  * logNnw) / ni;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        UDEBUG("compute likelihood (tf-idf) %f s", timer.ticks());
+        UWARN("ids list is empty");
         return likelihood;
     }
+
+    for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
+    {
+        float sim = 0.0f;
+        if (*iter > 0)
+        {
+            const rtabmap::Signature *sB = this->getSignature(*iter);
+            if (!sB)
+            {
+                UFATAL("Signature %d not found in WM ?!?", *iter);
+            }
+            sim = signature->compareTo(*sB);
+        }
+
+        likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
+    }
+
+    UDEBUG("compute likelihood (similarity)... %f s", timer.ticks());
+    return likelihood;
 }
 
 rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const
@@ -1134,21 +1050,6 @@ rtabmap::SensorData MemoryLoc::getNodeData(int nodeId)
     }
 
     return r;
-}
-
-int MemoryLoc::getNi(int signatureId) const
-{
-    int ni = 0;
-    const rtabmap::Signature *s = this->getSignature(signatureId);
-    if (s)
-    {
-        ni = (int)((rtabmap::Signature *)s)->getWords().size();
-    }
-    else
-    {
-        _dbDriver->getInvertedIndexNi(signatureId, ni);
-    }
-    return ni;
 }
 
 rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, const rtabmap::Transform &pose)
@@ -1607,120 +1508,6 @@ void MemoryLoc::cleanUnusedWords()
             }
         }
     }
-}
-
-void MemoryLoc::enableWordsRef(const std::list<int> &signatureIds)
-{
-    UDEBUG("size=%d", signatureIds.size());
-    UTimer timer;
-    timer.start();
-
-    std::map<int, int> refsToChange; //<oldWordId, activeWordId>
-
-    std::set<int> oldWordIds;
-    std::list<rtabmap::Signature *> surfSigns;
-    for (std::list<int>::const_iterator i = signatureIds.begin(); i != signatureIds.end(); ++i)
-    {
-        rtabmap::Signature *ss = dynamic_cast<rtabmap::Signature *>(this->_getSignature(*i));
-        if (ss && !ss->isEnabled())
-        {
-            surfSigns.push_back(ss);
-            std::list<int> uniqueKeys = uUniqueKeys(ss->getWords());
-
-            //Find words in the signature which they are not in the current dictionary
-            for (std::list<int>::const_iterator k = uniqueKeys.begin(); k != uniqueKeys.end(); ++k)
-            {
-                if (_vwd->getWord(*k) == 0 && _vwd->getUnusedWord(*k) == 0)
-                {
-                    oldWordIds.insert(oldWordIds.end(), *k);
-                }
-            }
-        }
-    }
-
-    UDEBUG("oldWordIds.size()=%d, getOldIds time=%fs", oldWordIds.size(), timer.ticks());
-
-    // the words were deleted, so try to math it with an active word
-    std::list<rtabmap::VisualWord *> vws;
-    if (oldWordIds.size() && _dbDriver)
-    {
-        // get the descriptors
-        _dbDriver->loadWords(oldWordIds, vws);
-    }
-    UDEBUG("loading words(%d) time=%fs", oldWordIds.size(), timer.ticks());
-
-
-    if (vws.size())
-    {
-        //Search in the dictionary
-        std::vector<int> vwActiveIds = _vwd->findNN(vws);
-        UDEBUG("find active ids (number=%d) time=%fs", vws.size(), timer.ticks());
-        int i = 0;
-        for (std::list<rtabmap::VisualWord *>::iterator iterVws = vws.begin(); iterVws != vws.end(); ++iterVws)
-        {
-            if (vwActiveIds[i] > 0)
-            {
-                //UDEBUG("Match found %d with %d", (*iterVws)->id(), vwActiveIds[i]);
-                refsToChange.insert(refsToChange.end(), std::pair<int, int>((*iterVws)->id(), vwActiveIds[i]));
-                if ((*iterVws)->isSaved())
-                {
-                    delete(*iterVws);
-                }
-                else if (_dbDriver)
-                {
-                    _dbDriver->asyncSave(*iterVws);
-                }
-            }
-            else
-            {
-                //add to dictionary
-                _vwd->addWord(*iterVws); // take ownership
-            }
-            ++i;
-        }
-        UDEBUG("Added %d to dictionary, time=%fs", vws.size() - refsToChange.size(), timer.ticks());
-
-        //update the global references map and update the signatures reactivated
-        for (std::map<int, int>::const_iterator iter = refsToChange.begin(); iter != refsToChange.end(); ++iter)
-        {
-            //uInsert(_wordRefsToChange, (const std::pair<int, int>)*iter); // This will be used to change references in the database
-            for (std::list<rtabmap::Signature *>::iterator j = surfSigns.begin(); j != surfSigns.end(); ++j)
-            {
-                (*j)->changeWordsRef(iter->first, iter->second);
-            }
-        }
-        UDEBUG("changing ref, total=%d, time=%fs", refsToChange.size(), timer.ticks());
-    }
-
-    int count = _vwd->getTotalActiveReferences();
-
-    // Reactivate references and signatures
-    for (std::list<rtabmap::Signature *>::iterator j = surfSigns.begin(); j != surfSigns.end(); ++j)
-    {
-        const std::vector<int> &keys = uKeys((*j)->getWords());
-        if (keys.size())
-        {
-            const rtabmap::VisualWord *wordFirst = _vwd->getWord(keys.front());  //get descriptor size
-            UASSERT(wordFirst != 0);
-            //Descriptors used for MemoryLoc::computeTransform()
-            cv::Mat descriptors(keys.size(), wordFirst->getDescriptor().cols, wordFirst->getDescriptor().type());
-            // Add all references
-            for (unsigned int i = 0; i < keys.size(); ++i)
-            {
-                _vwd->addWordRef(keys.at(i), (*j)->id());
-                const rtabmap::VisualWord *word = _vwd->getWord(keys.at(i));
-                UASSERT(word != 0);
-
-                word->getDescriptor().copyTo(descriptors.row(i));
-
-            }
-            (*j)->sensorData().setFeatures(std::vector<cv::KeyPoint>(), descriptors);
-            (*j)->setEnabled(true);
-        }
-    }
-
-    count = _vwd->getTotalActiveReferences() - count;
-    UDEBUG("%d words total ref added from %d signatures, time=%fs...", count, surfSigns.size(), timer.ticks());
 }
 
 // return all non-null poses
