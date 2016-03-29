@@ -48,13 +48,12 @@ public:
         double *dbAccessTime = 0) const;
     void deleteLocation(int locationId);
 
-    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId,
-            bool lookInDatabase = false) const;
+    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
     std::map<int, rtabmap::Link> getLinks(int signatureId,
                                           bool lookInDatabase = false) const;
     const rtabmap::Signature *getLastWorkingSignature() const;
     rtabmap::Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
-    rtabmap::Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
+    rtabmap::Transform getOptimizedPose(int signatureId) const;
     bool getNodeInfo(int signatureId,
                      rtabmap::Transform &odomPose,
                      int &mapId,
@@ -80,7 +79,8 @@ public:
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    void preUpdate();
+    void optimizeGraph();  // optimize poses using TORO graph
+
     void addSignature(rtabmap::Signature *signature);
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
 
@@ -93,7 +93,7 @@ private:
     //keypoint stuff
     void disableWordsRef(int signatureId);
     void cleanUnusedWords();
-    
+
     rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
 
 protected:
@@ -102,12 +102,11 @@ protected:
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
-    bool _incrementalMemory;
     bool _badSignaturesIgnored;
 
     int _idCount;
-    rtabmap::Signature *_lastSignature;
 
+    std::map<int, rtabmap::Transform> _optimizedPoses;
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 
     //Keypoint stuff

@@ -7,7 +7,6 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
-#include <rtabmap/core/Optimizer.h>
 #include <QCoreApplication>
 
 #include "Localization.h"
@@ -60,8 +59,6 @@ bool Localization::init(const std::string &dbPath, const rtabmap::ParametersMap 
         UERROR("Error initializing the memory for Localization.");
         return false;
     }
-
-    optimizeGraph();
 
     return true;
 }
@@ -153,7 +150,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
             else
             {
                 UWARN("transform is null, using pose of the closest image");
-                //output = getPose(_memory->getSignature(topId));
+                //output = _memory->getOptimizedPose(topId);
             }
         }
         else
@@ -169,44 +166,6 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
     UINFO("output transform = %s", output.prettyPrint().c_str());
 
     return output;
-}
-
-void Localization::optimizeGraph()
-{
-    if (_memory->getLastWorkingSignature())
-    {
-        // Get all IDs linked to last signature (including those in Long-Term Memory)
-        std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, -1);
-
-        UINFO("Optimize poses, ids.size() = %d", ids.size());
-
-        // Get all metric constraints (the graph)
-        std::map<int, rtabmap::Transform> poses;
-        std::multimap<int, rtabmap::Link> links;
-        _memory->getMetricConstraints(uKeysSet(ids), poses, links, true);
-
-        // Optimize the graph
-        rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
-        _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
-        delete graphOptimizer;
-    }
-}
-
-rtabmap::Transform Localization::getPose(const rtabmap::Signature *sig) const
-{
-    if (sig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-    rtabmap::Transform pose = sig->getPose();
-    const std::map<int, rtabmap::Transform>::const_iterator poseIter = _optimizedPoses.find(sig->id());
-    if (poseIter != _optimizedPoses.end())
-    {
-        pose = poseIter->second;
-    }
-
-    return pose;
 }
 
 bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
