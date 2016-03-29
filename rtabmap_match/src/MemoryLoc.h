@@ -37,7 +37,21 @@ public:
                                            const std::list<int> &ids);
 
     void emptyTrash();
-    void removeVirtualLinks(int signatureId);
+    void deleteLocation(int locationId);
+
+    rtabmap::Transform getOptimizedPose(int signatureId) const;
+    const rtabmap::Signature *getSignature(int id) const;
+    const std::map<int, rtabmap::Signature *> &getSignatures() const
+    {
+        return _signatures;
+    }
+
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
+
+private:
+    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
+    void optimizeGraph();  // optimize poses using TORO graph
+
     std::map<int, int> getNeighborsId(
         int signatureId,
         int maxGraphDepth,
@@ -46,14 +60,11 @@ public:
         bool ignoreLoopIds = false,
         bool ignoreIntermediateNodes = false,
         double *dbAccessTime = 0) const;
-    void deleteLocation(int locationId);
-
-    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
     std::map<int, rtabmap::Link> getLinks(int signatureId,
                                           bool lookInDatabase = false) const;
+    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
     const rtabmap::Signature *getLastWorkingSignature() const;
     rtabmap::Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
-    rtabmap::Transform getOptimizedPose(int signatureId) const;
     bool getNodeInfo(int signatureId,
                      rtabmap::Transform &odomPose,
                      int &mapId,
@@ -62,27 +73,16 @@ public:
                      double &stamp,
                      rtabmap::Transform &groundTruth,
                      bool lookInDatabase = false) const;
-    const rtabmap::Signature *getSignature(int id) const;
-    const std::map<int, rtabmap::Signature *> &getSignatures() const
-    {
-        return _signatures;
-    }
-
-    // RGB-D stuff
     void getMetricConstraints(
         const std::set<int> &ids,
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links,
         bool lookInDatabase = false);
 
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
-
-private:
-    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    void optimizeGraph();  // optimize poses using TORO graph
 
     void addSignature(rtabmap::Signature *signature);
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
+    void removeVirtualLinks(int signatureId);
 
     rtabmap::Signature *_getSignature(int id) const;
     int getNextId();

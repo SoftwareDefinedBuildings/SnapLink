@@ -233,40 +233,21 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
 bool MemoryLoc::update(const rtabmap::SensorData &data)
 {
     UDEBUG("");
-    UTimer timer;
-    UTimer totalTimer;
-    timer.start();
-    float t;
 
-    //============================================================
-    // Pre update...
-    //============================================================
-    UDEBUG("pre-updating...");
     cleanUnusedWords();
     if (_vwd)
     {
         _vwd->update();
     }
-    t = timer.ticks() * 1000;
-    UDEBUG("time preUpdate=%f ms", t);
 
-    //============================================================
-    // Create a signature with the image received.
-    //============================================================
     rtabmap::Signature *signature = this->createSignature(data);
-    if (signature == 0)
+    if (signature == NULL)
     {
         UERROR("Failed to create a signature...");
         return false;
     }
 
-    t = timer.ticks() * 1000;
-    UDEBUG("time creating signature=%f ms", t);
-
-    // It will be added to the short-term memory, no need to delete it...
-    this->addSignature(signature);
-
-    UDEBUG("totalTimer = %fs", totalTimer.ticks());
+    addSignature(signature);
 
     return true;
 }
@@ -301,10 +282,6 @@ void MemoryLoc::addSignature(rtabmap::Signature *signature)
         UDEBUG("adding %d", signature->id());
         _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
 
-        if (_vwd)
-        {
-            UDEBUG("%d words ref for the signature %d", signature->getWords().size(), signature->id());
-        }
         if (signature->getWords().size())
         {
             signature->setEnabled(true);
@@ -556,8 +533,6 @@ void MemoryLoc::clear()
  */
 std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *signature, const std::list<int> &ids)
 {
-    UTimer timer;
-    timer.start();
     std::map<int, float> likelihood;
 
     if (!signature)
@@ -577,9 +552,9 @@ std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *sign
         if (*iter > 0)
         {
             const rtabmap::Signature *sB = this->getSignature(*iter);
-            if (!sB)
+            if (sB == NULL)
             {
-                UFATAL("Signature %d not found in WM ?!?", *iter);
+                UFATAL("Signature %d not found ?!?", *iter);
             }
             sim = signature->compareTo(*sB);
         }
@@ -587,7 +562,6 @@ std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *sign
         likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
     }
 
-    UDEBUG("compute likelihood (similarity)... %f s", timer.ticks());
     return likelihood;
 }
 
@@ -881,9 +855,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
             data.imageRaw().type() == CV_8UC1 ||
             data.imageRaw().type() == CV_8UC3);
 
-    UTimer timer;
-    timer.start();
-    float t;
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
     int id = this->getNextId();
@@ -902,12 +873,7 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
         }
 
         keypoints = _feature2D->generateKeypoints(imageMono);
-        t = timer.ticks();
-        UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
-
         descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-        t = timer.ticks();
-        UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
     }
     else if (data.imageRaw().empty())
     {
@@ -921,12 +887,7 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
     std::list<int> wordIds;
     if (descriptors.rows)
     {
-        t = timer.ticks();
-        UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
-
         wordIds = _vwd->addNewWords(descriptors, id);
-        t = timer.ticks();
-        UDEBUG("time addNewWords %fs", t);
     }
     else if (id > 0)
     {
@@ -958,8 +919,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
     // set raw data
     s->sensorData().setImageRaw(image);
 
-    t = timer.ticks();
-    UDEBUG("time compressing data (id=%d) %fs", id, t);
     if (words.size())
     {
         s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())

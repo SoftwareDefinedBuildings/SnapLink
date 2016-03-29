@@ -133,7 +133,6 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                 for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
                 {
                     topIds.push_back(it->first);
-                    std::cout << it->first << " " << it->second << std::endl;
                 }
                 topId = topIds[0];
                 UINFO("topId: %d", topId);
