@@ -1,6 +1,5 @@
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
-#include <arpa/inet.h>
 #include <cstdio>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <QCoreApplication>
@@ -62,21 +61,11 @@ bool CameraNetwork::event(QEvent *event)
     {
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
 
-        std::vector<unsigned char> widthBytes = networkEvent->conInfo()->width;
-        std::vector<unsigned char> heightBytes = networkEvent->conInfo()->height;
-        if (widthBytes.size() != 4 || heightBytes.size() != 4) {
-            return false;
-        }
+        std::vector<unsigned char> *data = &networkEvent->conInfo()->data;
+        uint32_t width = networkEvent->conInfo()->width;
+        uint32_t height = networkEvent->conInfo()->height;
 
-        // convert into integers (vector bytes is in network order)
-        uint32_t raw32;
-        int width, height;
-        memcpy(&raw32, widthBytes.data(), 4);
-        width = ntohl(raw32);
-        memcpy(&raw32, heightBytes.data(), 4);
-        height = ntohl(raw32);
-
-        rtabmap::SensorData *sensorData = process(&networkEvent->conInfo()->data, width, height);
+        rtabmap::SensorData *sensorData = process(data, width, height);
         if (sensorData != NULL)
         {
             QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
@@ -90,7 +79,7 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, int width, int height)
+rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, uint32_t width, uint32_t height)
 {
     UDEBUG("");
     if (data != NULL)
@@ -99,7 +88,9 @@ rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, in
         cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
         cv::flip(img, img, 0); // flip the image around the x-axis
 
-        //imwrite("image.jpg", img);
+        std::cout << height << std::endl;
+        std::cout << width << std::endl;
+        imwrite("image.jpg", img);
 
         if (!img.empty())
         {

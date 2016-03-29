@@ -77,8 +77,8 @@ typedef struct
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
     std::vector<unsigned char> data;
-    std::vector<unsigned char> width;
-    std::vector<unsigned char> height;
+    uint32_t width;
+    uint32_t height;
     std::string answerstring;
     int answercode;
     const std::vector<std::string> *names;

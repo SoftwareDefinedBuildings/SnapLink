@@ -25,7 +25,7 @@ protected:
 
 private:
     // ownership transferred
-    rtabmap::SensorData *process(std::vector<unsigned char> *data, int width, int height);
+    rtabmap::SensorData *process(std::vector<unsigned char> *data, uint32_t width, uint32_t height);
 
 private:
     rtabmap::CameraModel _model;

@@ -1,6 +1,7 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <QCoreApplication>
 
 #include "HTTPServer.h"
@@ -114,9 +115,6 @@ int HTTPServer::answer_to_connection(void *cls,
 
         // reserve enough space for an image
         con_info->data.reserve(IMAGE_INIT_SIZE);
-        // reserve enough space for an integer
-        con_info->width.reserve(4);
-        con_info->height.reserve(4);
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
         {
@@ -217,12 +215,26 @@ int HTTPServer::iterate_post(void *coninfo_cls,
         if (strcmp(key, "file") == 0)
         {
             con_info->data.insert(con_info->data.end(), (unsigned char *) data, (unsigned char *) data + size);
-        } else if (strcmp(key, "width") == 0)
+        }
+        else if (strcmp(key, "width") == 0)
         {
-            con_info->width.insert(con_info->width.end(), (unsigned char *) data, (unsigned char *) data + size);
-        } else if (strcmp(key, "height") == 0)
+            uint32_t width;
+            if (size != sizeof(uint32_t)) {
+                return MHD_NO;
+            }
+            memcpy(&width, data, size);
+            width = ntohl(width);
+            con_info->width = width;
+        }
+        else if (strcmp(key, "height") == 0)
         {
-            con_info->height.insert(con_info->height.end(), (unsigned char *) data, (unsigned char *) data + size);
+            uint32_t height;
+            if (size != sizeof(uint32_t)) {
+                return MHD_NO;
+            }
+            memcpy(&height, data, size);
+            height = ntohl(height);
+            con_info->height = height;
         }
     }
 

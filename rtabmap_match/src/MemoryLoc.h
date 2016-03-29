@@ -39,6 +39,7 @@ public:
     void emptyTrash();
     void deleteLocation(int locationId);
 
+    const rtabmap::Signature *getLastWorkingSignature() const;
     rtabmap::Transform getOptimizedPose(int signatureId) const;
     const rtabmap::Signature *getSignature(int id) const;
     const std::map<int, rtabmap::Signature *> &getSignatures() const
@@ -63,7 +64,6 @@ private:
     std::map<int, rtabmap::Link> getLinks(int signatureId,
                                           bool lookInDatabase = false) const;
     std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
-    const rtabmap::Signature *getLastWorkingSignature() const;
     rtabmap::Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
     bool getNodeInfo(int signatureId,
                      rtabmap::Transform &odomPose,
