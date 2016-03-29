@@ -7,6 +7,7 @@ import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -105,8 +106,9 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         // send image resolution along with data
         int imageWidth = rotateCount % 2 == 0 ? mImage.getWidth() : mImage.getHeight();
         int imageHeight= rotateCount % 2 == 0 ? mImage.getHeight() : mImage.getWidth();
-        byte [] widthBytes = ByteBuffer.allocate(4).putInt(imageWidth).array();
-        byte [] heightBytes = ByteBuffer.allocate(4).putInt(imageHeight).array();
+        // Make sure the byte order is network order (big endian)
+        byte[] widthBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(imageWidth).array();
+        byte[] heightBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(imageHeight).array();
 
         mImage.close();
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
