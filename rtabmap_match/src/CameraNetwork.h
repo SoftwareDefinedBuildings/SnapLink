@@ -5,9 +5,6 @@
 #include "Localization.h"
 #include "HTTPServer.h"
 
-#define WIDTH 480
-#define HEIGHT 640
-
 class Localization;
 class HTTPServer;
 
@@ -28,7 +25,7 @@ protected:
 
 private:
     // ownership transferred
-    rtabmap::SensorData *process(std::vector<unsigned char> *data);
+    rtabmap::SensorData *process(std::vector<unsigned char> *data, int width, int height);
 
 private:
     rtabmap::CameraModel _model;
