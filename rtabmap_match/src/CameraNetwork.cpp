@@ -1,5 +1,6 @@
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <arpa/inet.h>
 #include <cstdio>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <QCoreApplication>
@@ -68,9 +69,12 @@ bool CameraNetwork::event(QEvent *event)
         }
 
         // convert into integers (vector bytes is in network order)
+        uint32_t raw32;
         int width, height;
-        width = (widthBytes[0] << 24) | (widthBytes[1]) << 16 | (widthBytes[2] << 8) | (widthBytes[3]);
-        height = (heightBytes[0] << 24) | (heightBytes[1]) << 16 | (heightBytes[2] << 8) | (heightBytes[3]);
+        memcpy(&raw32, widthBytes.data(), 4);
+        width = ntohl(raw32);
+        memcpy(&raw32, heightBytes.data(), 4);
+        height = ntohl(raw32);
 
         rtabmap::SensorData *sensorData = process(&networkEvent->conInfo()->data, width, height);
         if (sensorData != NULL)
