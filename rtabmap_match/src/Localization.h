@@ -32,7 +32,6 @@ protected:
 
 private:
     rtabmap::Transform localize(rtabmap::SensorData *sensorData);
-    void optimizeGraph();  // optimize poses using TORO graph
     // get pose from optimizedPoses if available, otherwise get from sig itself
     rtabmap::Transform getPose(const rtabmap::Signature *sig) const;
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
@@ -40,9 +39,7 @@ private:
 private:
     int _topk;
     MemoryLoc *_memory;
-    std::map<int, rtabmap::Transform> _optimizedPoses;
     rtabmap::ParametersMap _memoryParams;
-    rtabmap::ParametersMap _memoryLocParams;
     Visibility *_vis;
     HTTPServer *_httpServer;
 };
