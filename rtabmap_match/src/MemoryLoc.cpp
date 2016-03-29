@@ -29,12 +29,9 @@
 const int MemoryLoc::kIdStart = 0;
 
 MemoryLoc::MemoryLoc() :
-    _rawDescriptorsKept(rtabmap::Parameters::defaultMemRawDescriptorsKept()),
     _incrementalMemory(rtabmap::Parameters::defaultMemIncrementalMemory()),
-    _generateIds(rtabmap::Parameters::defaultMemGenerateIds()),
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
     _idCount(kIdStart),
-    _idMapCount(kIdStart),
     _lastSignature(0),
     _feature2D(NULL),
     _vwd(NULL),
@@ -83,11 +80,6 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
         // ignore bad signatures
         if (!((*iter)->isBadSignature() && _badSignaturesIgnored))
         {
-            // insert all in WM
-            // Note: it doesn't make sense to keep last STM images
-            //       of the last session in the new STM because they can be
-            //       only linked with the ones of the current session by
-            //       global loop closures.
             _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
         }
         else
@@ -105,10 +97,8 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
 
     // Last id
     _dbDriver->getLastNodeId(_idCount);
-    _idMapCount = _lastSignature ? _lastSignature->mapId() + 1 : kIdStart;
 
     UDEBUG("ids start with %d", _idCount + 1);
-    UDEBUG("map ids start with %d", _idMapCount);
 
     // Now load the dictionary if we have a connection
     UDEBUG("Loading dictionary...");
@@ -202,12 +192,7 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     UDEBUG("");
     rtabmap::ParametersMap::const_iterator iter;
 
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemGenerateIds(), _generateIds);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemImageDecimation(), _imageDecimation);
-
-    UASSERT(_imageDecimation >= 1);
 
     if (_dbDriver)
     {
@@ -259,10 +244,7 @@ void MemoryLoc::preUpdate()
     }
 }
 
-bool MemoryLoc::update(
-    const rtabmap::SensorData &data,
-    const rtabmap::Transform &pose,
-    const cv::Mat &covariance)
+bool MemoryLoc::update(const rtabmap::SensorData &data)
 {
     UDEBUG("");
     UTimer timer;
@@ -281,7 +263,7 @@ bool MemoryLoc::update(
     //============================================================
     // Create a signature with the image received.
     //============================================================
-    rtabmap::Signature *signature = this->createSignature(data, pose);
+    rtabmap::Signature *signature = this->createSignature(data);
     if (signature == 0)
     {
         UERROR("Failed to create a signature...");
@@ -558,7 +540,6 @@ void MemoryLoc::clear()
     UDEBUG("");
     _lastSignature = 0;
     _idCount = kIdStart;
-    _idMapCount = kIdStart;
 
     if (_dbDriver)
     {
@@ -997,108 +978,21 @@ bool MemoryLoc::getNodeInfo(int signatureId,
     return false;
 }
 
-rtabmap::SensorData MemoryLoc::getNodeData(int nodeId)
-{
-    UDEBUG("nodeId=%d", nodeId);
-    rtabmap::SensorData r;
-    rtabmap::Signature *s = this->_getSignature(nodeId);
-    if (s && !s->sensorData().imageCompressed().empty())
-    {
-        s->sensorData().uncompressData();
-        r = s->sensorData();
-    }
-    else if (_dbDriver)
-    {
-        // load from database
-        if (s)
-        {
-            std::list<rtabmap::Signature *> signatures;
-            signatures.push_back(s);
-            _dbDriver->loadNodeData(signatures);
-            s->sensorData().uncompressData();
-            r = s->sensorData();
-        }
-        else
-        {
-            _dbDriver->getNodeData(nodeId, r);
-            r.uncompressData();
-        }
-    }
-
-    return r;
-}
-
-rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, const rtabmap::Transform &pose)
+rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
 {
     UDEBUG("");
     UASSERT(data.imageRaw().empty() ||
             data.imageRaw().type() == CV_8UC1 ||
             data.imageRaw().type() == CV_8UC3);
-    UASSERT_MSG(data.depthOrRightRaw().empty() ||
-                ((data.depthOrRightRaw().type() == CV_16UC1 ||
-                  data.depthOrRightRaw().type() == CV_32FC1 ||
-                  data.depthOrRightRaw().type() == CV_8UC1)
-                 &&
-                 ((data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
-                  (data.imageRaw().rows % data.depthOrRightRaw().rows == 0 && data.imageRaw().cols % data.depthOrRightRaw().cols == 0))),
-                uFormat("image=(%d/%d) depth=(%d/%d, type=%d [accepted=%d,%d,%d])",
-                        data.imageRaw().cols,
-                        data.imageRaw().rows,
-                        data.depthOrRightRaw().cols,
-                        data.depthOrRightRaw().rows,
-                        data.depthOrRightRaw().type(),
-                        CV_16UC1, CV_32FC1, CV_8UC1).c_str());
-    UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(6));
-
-    if (!data.depthOrRightRaw().empty() &&
-            data.cameraModels().size() == 0 &&
-            !data.stereoCameraModel().isValidForProjection())
-    {
-        UERROR("Rectified images required! Calibrate your camera.");
-        return 0;
-    }
-    UASSERT(_feature2D != 0);
 
     UTimer timer;
     timer.start();
     float t;
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
-    bool isIntermediateNode = data.id() < 0 || data.imageRaw().empty();
-    int id = data.id();
-    if (_generateIds)
-    {
-        id = this->getNextId();
-    }
-    else
-    {
-        if (id <= 0)
-        {
-            UERROR("Received image ID is null. "
-                   "Please set parameter Mem/GenerateIds to \"true\" or "
-                   "make sure the input source provides image ids (seq).");
-            return 0;
-        }
-        else if (id > _idCount)
-        {
-            _idCount = id;
-        }
-        else
-        {
-            UERROR("Id of acquired image (%d) is smaller than the last in memory (%d). "
-                   "Please set parameter Mem/GenerateIds to \"true\" or "
-                   "make sure the input source provides image ids (seq) over the last in "
-                   "memory, which is %d.",
-                   id,
-                   _idCount,
-                   _idCount);
-            return 0;
-        }
-    }
+    int id = this->getNextId();
 
-    std::vector<cv::Point3f> keypoints3D;
-
-    if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
+    if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
     {
         UINFO("Extract features");
         cv::Mat imageMono;
@@ -1111,63 +1005,13 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             imageMono = data.imageRaw();
         }
 
-        cv::Mat depthMask;
-        if (!data.depthRaw().empty() &&
-                _feature2D->getType() != rtabmap::Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
-        {
-            if (imageMono.rows % data.depthRaw().rows == 0 &&
-                    imageMono.cols % data.depthRaw().cols == 0 &&
-                    imageMono.rows / data.depthRaw().rows == imageMono.cols / data.depthRaw().cols)
-            {
-                depthMask = rtabmap::util2d::interpolate(data.depthRaw(), imageMono.rows / data.depthRaw().rows, 0.1f);
-            }
-        }
-
-        keypoints = _feature2D->generateKeypoints(
-                        imageMono,
-                        depthMask);
+        keypoints = _feature2D->generateKeypoints(imageMono);
         t = timer.ticks();
         UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
         descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
         t = timer.ticks();
         UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-
-        if ((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
-                (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
-        {
-            keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
-            if (_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
-            {
-                UDEBUG("");
-                //remove all keypoints/descriptors with no valid 3D points
-                UASSERT((int)keypoints.size() == descriptors.rows &&
-                        keypoints3D.size() == keypoints.size());
-                std::vector<cv::KeyPoint> validKeypoints(keypoints.size());
-                std::vector<cv::Point3f> validKeypoints3D(keypoints.size());
-                cv::Mat validDescriptors(descriptors.size(), descriptors.type());
-
-                int oi = 0;
-                for (unsigned int i = 0; i < keypoints3D.size(); ++i)
-                {
-                    if (rtabmap::util3d::isFinite(keypoints3D[i]))
-                    {
-                        validKeypoints[oi] = keypoints[i];
-                        validKeypoints3D[oi] = keypoints3D[i];
-                        descriptors.row(i).copyTo(validDescriptors.row(oi));
-                        ++oi;
-                    }
-                }
-                UDEBUG("Removed %d invalid 3D points", (int)keypoints3D.size() - oi);
-                validKeypoints.resize(oi);
-                validKeypoints3D.resize(oi);
-                keypoints = validKeypoints;
-                keypoints3D = validKeypoints3D;
-                descriptors = validDescriptors.rowRange(0, oi).clone();
-            }
-            t = timer.ticks();
-            UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
-        }
     }
     else if (data.imageRaw().empty())
     {
@@ -1177,11 +1021,6 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     {
         UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
     }
-    else
-    {
-        UDEBUG("Intermediate node detected, don't extract features!");
-    }
-
 
     std::list<int> wordIds;
     if (descriptors.rows)
@@ -1199,70 +1038,29 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
     }
 
     std::multimap<int, cv::KeyPoint> words;
-    std::multimap<int, cv::Point3f> words3D;
-    std::multimap<int, cv::Mat> wordsDescriptors;
     if (wordIds.size() > 0)
     {
         UASSERT(wordIds.size() == keypoints.size());
-        UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
         unsigned int i = 0;
         for (std::list<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
         {
             words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-            if (keypoints3D.size())
-            {
-                words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
-            }
-            if (_rawDescriptorsKept)
-            {
-                wordsDescriptors.insert(std::pair<int, cv::Mat>(*iter, descriptors.row(i).clone()));
-            }
         }
     }
 
     cv::Mat image = data.imageRaw();
-    cv::Mat depthOrRightImage = data.depthOrRightRaw();
     std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
 
-    rtabmap::Signature *s;
     UDEBUG("bin data not kept");
-    // just compress laser and user data
-    rtabmap::CompressionThread ctLaserScan(laserScan);
-    rtabmap::CompressionThread ctUserData(data.userDataRaw());
-    ctLaserScan.start();
-    ctUserData.start();
-    ctLaserScan.join();
-    ctUserData.join();
+    rtabmap::Signature *s = new rtabmap::Signature(id);
 
-    s = new rtabmap::Signature(id,
-                               _idMapCount,
-                               isIntermediateNode ? -1 : 0, // tag intermediate nodes as weight=-1
-                               data.stamp(),
-                               "",
-                               pose,
-                               data.groundTruth(),
-                               rtabmap::SensorData(
-                                   ctLaserScan.getCompressedData(),
-                                   maxLaserScanMaxPts,
-                                   data.laserScanMaxRange(),
-                                   cv::Mat(),
-                                   cv::Mat(),
-                                   cameraModels,
-                                   id,
-                                   0,
-                                   ctUserData.getCompressedData()));
+    s->sensorData().setId(id);
+    s->sensorData().setCameraModels(cameraModels);
 
     s->setWords(words);
-    s->setWords3(words3D);
-    s->setWordsDescriptors(wordsDescriptors);
 
     // set raw data
     s->sensorData().setImageRaw(image);
-    s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-    s->sensorData().setLaserScanRaw(laserScan, maxLaserScanMaxPts, data.laserScanMaxRange());
-    s->sensorData().setUserDataRaw(data.userDataRaw());
-
-    s->sensorData().setGroundTruth(data.groundTruth());
 
     t = timer.ticks();
     UDEBUG("time compressing data (id=%d) %fs", id, t);

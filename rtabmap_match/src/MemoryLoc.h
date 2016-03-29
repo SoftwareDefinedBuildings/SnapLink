@@ -29,9 +29,7 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    bool update(const rtabmap::SensorData &data,
-                const rtabmap::Transform &pose = rtabmap::Transform(),
-                const cv::Mat &covariance = cv::Mat());
+    bool update(const rtabmap::SensorData &data);
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
@@ -66,7 +64,6 @@ public:
                      double &stamp,
                      rtabmap::Transform &groundTruth,
                      bool lookInDatabase = false) const;
-    rtabmap::SensorData getNodeData(int nodeId);
     const rtabmap::Signature *getSignature(int id) const;
     const std::map<int, rtabmap::Signature *> &getSignatures() const
     {
@@ -81,7 +78,6 @@ public:
         bool lookInDatabase = false);
 
     rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
@@ -91,17 +87,15 @@ private:
 
     rtabmap::Signature *_getSignature(int id) const;
     int getNextId();
-    int incrementMapId();
     void clear();
-    void initCountId();
 
-    rtabmap::Signature *createSignature(
-        const rtabmap::SensorData &data,
-        const rtabmap::Transform &pose);
+    rtabmap::Signature *createSignature(const rtabmap::SensorData &data);
 
     //keypoint stuff
     void disableWordsRef(int signatureId);
     void cleanUnusedWords();
+    
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
 
 protected:
     rtabmap::DBDriver *_dbDriver;
@@ -109,13 +103,10 @@ protected:
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
-    bool _rawDescriptorsKept;
     bool _incrementalMemory;
-    bool _generateIds;
     bool _badSignaturesIgnored;
 
     int _idCount;
-    int _idMapCount;
     rtabmap::Signature *_lastSignature;
 
     std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
