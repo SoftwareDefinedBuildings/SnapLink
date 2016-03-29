@@ -46,8 +46,7 @@ public:
         bool ignoreLoopIds = false,
         bool ignoreIntermediateNodes = false,
         double *dbAccessTime = 0) const;
-    void deleteLocation(int locationId, std::list<int> *deletedWords = 0);
-    void removeLink(int idA, int idB);
+    void deleteLocation(int locationId);
 
     std::map<int, rtabmap::Link> getNeighborLinks(int signatureId,
             bool lookInDatabase = false) const;
@@ -83,7 +82,7 @@ private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     void preUpdate();
     void addSignature(rtabmap::Signature *signature);
-    void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true, std::list<int> *deletedWords = 0);
+    void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
 
     rtabmap::Signature *_getSignature(int id) const;
     int getNextId();

@@ -747,7 +747,7 @@ public:
 /**
  * If saveToDatabase=false, deleted words are filled in deletedWords.
  */
-void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::list<int> *deletedWords)
+void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
 {
     UDEBUG("id=%d", s ? s->id() : 0);
     if (s)
@@ -809,10 +809,6 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph, std::
                     std::vector<rtabmap::VisualWord *> wordToDelete;
                     wordToDelete.push_back(w);
                     _vwd->removeWords(wordToDelete);
-                    if (deletedWords)
-                    {
-                        deletedWords->push_back(w->id());
-                    }
                     delete w;
                 }
             }
@@ -839,65 +835,13 @@ const rtabmap::Signature *MemoryLoc::getLastWorkingSignature() const
     return _lastSignature;
 }
 
-void MemoryLoc::deleteLocation(int locationId, std::list<int> *deletedWords)
+void MemoryLoc::deleteLocation(int locationId)
 {
     UDEBUG("Deleting location %d", locationId);
     rtabmap::Signature *location = _getSignature(locationId);
     if (location)
     {
-        this->moveToTrash(location, false, deletedWords);
-    }
-}
-
-void MemoryLoc::removeLink(int oldId, int newId)
-{
-    //this method assumes receiving oldId < newId, if not switch them
-    rtabmap::Signature *oldS = this->_getSignature(oldId < newId ? oldId : newId);
-    rtabmap::Signature *newS = this->_getSignature(oldId < newId ? newId : oldId);
-    if (oldS && newS)
-    {
-        UINFO("removing link between location %d and %d", oldS->id(), newS->id());
-
-        if (oldS->hasLink(newS->id()) && newS->hasLink(oldS->id()))
-        {
-            rtabmap::Link::Type type = oldS->getLinks().at(newS->id()).type();
-            if (type == rtabmap::Link::kGlobalClosure && newS->getWeight() > 0)
-            {
-                // adjust the weight
-                oldS->setWeight(oldS->getWeight() + 1);
-                newS->setWeight(newS->getWeight() > 0 ? newS->getWeight() - 1 : 0);
-            }
-
-            oldS->removeLink(newS->id());
-            newS->removeLink(oldS->id());
-
-            bool noChildrenAnymore = true;
-            for (std::map<int, rtabmap::Link>::const_iterator iter = newS->getLinks().begin(); iter != newS->getLinks().end(); ++iter)
-            {
-                if (iter->second.type() != rtabmap::Link::kNeighbor &&
-                        iter->second.type() != rtabmap::Link::kNeighborMerged &&
-                        iter->first < newS->id())
-                {
-                    noChildrenAnymore = false;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            UERROR("Signatures %d and %d don't have bidirectional link!", oldS->id(), newS->id());
-        }
-    }
-    else
-    {
-        if (!newS)
-        {
-            UERROR("Signature %d is not in working memory... cannot remove link.", newS->id());
-        }
-        if (!oldS)
-        {
-            UERROR("Signature %d is not in working memory... cannot remove link.", oldS->id());
-        }
+        this->moveToTrash(location, false);
     }
 }
 
