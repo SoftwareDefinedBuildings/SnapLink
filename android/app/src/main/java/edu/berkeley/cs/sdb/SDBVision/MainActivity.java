@@ -22,6 +22,7 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
@@ -31,6 +32,10 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.msgpack.core.MessageBufferPacker;
+import org.msgpack.core.MessagePack;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -39,12 +44,18 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import edu.berkeley.cs.sdb.bosswave.BosswaveClient;
 import okhttp3.OkHttpClient;
 
 public class MainActivity extends Activity {
     private static final String LOG_TAG = "SDBVision";
     private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50021/";
-    private static final String CONTROL_URL = "http://castle.cs.berkeley.edu:50022/";
+    private static final String BW_ROUTER_URL = "castle.cs.berkeley.edu";
+    private static final int BW_ROUTER_PORT = 50026;
+    private static final String CONTROL_TOPIC = "castle.bw2.io/michael/0/bwlifx/hsb-light.v1/slot/hsb";
+
+    // hard coded base64 format of the private key, such safe
+    private static final byte[] mKey = Base64.decode("Mqmvj8G02K4EncGpRkp3DFSy+rnNZNq2KPjz/t6FUHVLCDYSe/Bp4UapPeFjV6WGJm/KT6bddc8Mrr3vJZV+c7YCCEFVKemy7D4UAwiuUoex8k6fGAUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgNZdXAAhbDzkz/4amI9XxkhzwldzPQ6+Z2DkaTF9pjsp8tTxY1jrper6UziaO+Gs6skX3ICiwBI7A/71/7bVbGaAqOiDw==", Base64.DEFAULT);
 
     private Context mContext;
     private AutoFitTextureView mTextureView;
@@ -77,6 +88,8 @@ public class MainActivity extends Activity {
     private Semaphore mCameraOpenCloseLock = new Semaphore(1);
     // The HTTP Client used for transmitting image
     private OkHttpClient mHttpClient;
+    // The Bosswave Client used for sending control command
+    private BosswaveClient mBosswaveClient;
     // The current recognized object name
     private String mTarget;
 
@@ -215,16 +228,37 @@ public class MainActivity extends Activity {
     private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
-            String url = CONTROL_URL + mTarget + "/1";
-            new HttpGetTask(mHttpClient, url, mControlListener).execute();
+            String topic = CONTROL_TOPIC;// + mTarget + "/1";
+            MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+            try {
+                packer.packMapHeader(2).packString("Hue").packDouble(0.2);
+                packer.packMapHeader(2).packString("Saturation").packDouble(0.5);
+                packer.packMapHeader(2).packString("Brightness").packDouble(0.7);
+                packer.packMapHeader(2).packString("State").packBoolean(true);
+                packer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            new BosswavePublishTask(mBosswaveClient, topic, packer.toByteArray(), mBwPublishTaskListener).execute();
         }
     };
 
     private final View.OnClickListener mOffButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
-            String url = CONTROL_URL + mTarget + "/0";
-            new HttpGetTask(mHttpClient, url, mControlListener).execute();
+            String topic = CONTROL_TOPIC;// + mTarget + "/0";
+            MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
+            try {
+                packer.packMapHeader(2).packString("Hue").packDouble(0.8);
+                packer.packMapHeader(2).packString("Saturation").packDouble(0.5);
+                packer.packMapHeader(2).packString("Brightness").packDouble(0.7);
+                packer.packMapHeader(2).packString("State").packBoolean(true);
+                packer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            new BosswavePublishTask(mBosswaveClient, topic, packer.toByteArray(), mBwPublishTaskListener).execute();
+
         }
     };
 
@@ -251,13 +285,21 @@ public class MainActivity extends Activity {
         }
     };
 
-    private HttpGetTask.Listener mControlListener = new HttpGetTask.Listener() {
+    private BosswaveInitTask.Listener mBwInitTaskListener = new BosswaveInitTask.Listener() {
+        @Override
+        public void onResponse() {
+            setUIEnabled(false, false, true);
+        }
+    };
+
+    private BosswavePublishTask.Listener mBwPublishTaskListener = new BosswavePublishTask.Listener() {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent", Toast.LENGTH_SHORT);
             setUIEnabled(true, true, true);
         }
     };
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -276,9 +318,11 @@ public class MainActivity extends Activity {
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListener);
 
-        setUIEnabled(false, false, true);
+        setUIEnabled(false, false, false);
 
         mHttpClient = new OkHttpClient();
+        mBosswaveClient = new BosswaveClient(BW_ROUTER_URL, BW_ROUTER_PORT);
+        new BosswaveInitTask(mBosswaveClient, mKey, mBwInitTaskListener).execute();
     }
 
     @Override
