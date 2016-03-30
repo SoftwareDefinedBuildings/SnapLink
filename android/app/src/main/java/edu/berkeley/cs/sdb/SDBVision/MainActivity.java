@@ -231,10 +231,15 @@ public class MainActivity extends Activity {
             String topic = CONTROL_TOPIC;// + mTarget + "/1";
             MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
             try {
-                packer.packMapHeader(2).packString("Hue").packDouble(0.2);
-                packer.packMapHeader(2).packString("Saturation").packDouble(0.5);
-                packer.packMapHeader(2).packString("Brightness").packDouble(0.7);
-                packer.packMapHeader(2).packString("State").packBoolean(true);
+                packer.packMapHeader(4);
+                packer.packString("hue");
+                packer.packDouble(0.2);
+                packer.packString("saturation");
+                packer.packDouble(0.5);
+                packer.packString("brightness");
+                packer.packDouble(0.7);
+                packer.packString("state");
+                packer.packBoolean(true);
                 packer.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -249,10 +254,15 @@ public class MainActivity extends Activity {
             String topic = CONTROL_TOPIC;// + mTarget + "/0";
             MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
             try {
-                packer.packMapHeader(2).packString("Hue").packDouble(0.8);
-                packer.packMapHeader(2).packString("Saturation").packDouble(0.5);
-                packer.packMapHeader(2).packString("Brightness").packDouble(0.7);
-                packer.packMapHeader(2).packString("State").packBoolean(true);
+                packer.packMapHeader(4);
+                packer.packString("hue");
+                packer.packDouble(0.8);
+                packer.packString("saturation");
+                packer.packDouble(0.5);
+                packer.packString("brightness");
+                packer.packDouble(0.7);
+                packer.packString("state");
+                packer.packBoolean(true);
                 packer.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -295,7 +305,7 @@ public class MainActivity extends Activity {
     private BosswavePublishTask.Listener mBwPublishTaskListener = new BosswavePublishTask.Listener() {
         @Override
         public void onResponse(String response) {
-            showToast("Control command sent", Toast.LENGTH_SHORT);
+            showToast("Control command sent: "+response, Toast.LENGTH_SHORT);
             setUIEnabled(true, true, true);
         }
     };

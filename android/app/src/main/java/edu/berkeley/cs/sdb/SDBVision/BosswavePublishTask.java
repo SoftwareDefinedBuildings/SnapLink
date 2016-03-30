@@ -47,9 +47,9 @@ public class BosswavePublishTask extends AsyncTask<Void, Void, String> {
             builder.setAutoChain(true);
             builder.setChainElaborationLevel(ChainElaborationLevel.FULL);
             builder.clearPayloadObjects();
-            PayloadObject.Type poType = new PayloadObject.Type(new byte[]{64, 0, 0, 0});
+            PayloadObject.Type msgPackType = new PayloadObject.Type(new byte[]{2, 0, 5, 1}); // this is hard coded because we know it's a msgpack
             byte[] poContents = mData;
-            PayloadObject po = new PayloadObject(poType, poContents);
+            PayloadObject po = new PayloadObject(msgPackType, poContents);
             builder.addPayloadObject(po);
             PublishRequest request = builder.build();
 
