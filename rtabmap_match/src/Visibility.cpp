@@ -58,7 +58,8 @@ bool Visibility::readLabels(const std::string &dir)
 {
     QString filter = QString::fromStdString("*.txt");
     QDirIterator it(QString::fromStdString(dir), QStringList() << filter, QDir::Files, QDirIterator::NoIteratorFlags);
-    while (it.hasNext()) {
+    while (it.hasNext())
+    {
         QString fileName = it.next();
 
         // read labels from file

@@ -1,6 +1,7 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <QCoreApplication>
 
 #include "HTTPServer.h"
@@ -193,7 +194,6 @@ int HTTPServer::answer_to_connection(void *cls,
     return send_page(connection, errorpage, MHD_HTTP_BAD_REQUEST);
 }
 
-
 int HTTPServer::iterate_post(void *coninfo_cls,
                              enum MHD_ValueKind kind,
                              const char *key,
@@ -209,14 +209,37 @@ int HTTPServer::iterate_post(void *coninfo_cls,
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
-    if (strcmp(key, "file") != 0)
+    if (strcmp(key, "file") != 0 && strcmp(key, "width") != 0 && strcmp(key, "height") != 0)
     {
         return MHD_NO;
     }
 
     if (size > 0)
     {
-        con_info->data.insert(con_info->data.end(), (unsigned char *) data, (unsigned char *) data + size);
+        if (strcmp(key, "file") == 0)
+        {
+            con_info->data.insert(con_info->data.end(), (unsigned char *) data, (unsigned char *) data + size);
+        }
+        else if (strcmp(key, "width") == 0)
+        {
+            uint32_t width;
+            if (size != sizeof(uint32_t)) {
+                return MHD_NO;
+            }
+            memcpy(&width, data, size);
+            width = ntohl(width);
+            con_info->width = width;
+        }
+        else if (strcmp(key, "height") == 0)
+        {
+            uint32_t height;
+            if (size != sizeof(uint32_t)) {
+                return MHD_NO;
+            }
+            memcpy(&height, data, size);
+            height = ntohl(height);
+            con_info->height = height;
+        }
     }
 
     con_info->answerstring = completepage;
@@ -248,18 +271,10 @@ void HTTPServer::request_completed(void *cls,
         long time_surf = con_info->time_surf_end - con_info->time_surf_start;
         long time_closest = con_info->time_closest_end - con_info->time_closest_start;
         long time_pnp = con_info->time_pnp_end - con_info->time_pnp_start;
-        long time_pnp_computeGlobal = con_info->time_pnp_global - con_info->time_pnp_updates;
-        long time_pnp_updates = con_info->time_pnp_updates - con_info->time_pnp_start;
-        long time_pnp_update1 = con_info->time_pnp_update_1 - con_info->time_pnp_start;
-        long time_pnp_update2 = con_info->time_pnp_update_2 - con_info->time_pnp_update_1;
         UINFO("TAG_TIME overall %ld", time_overall);
         UINFO("TAG_TIME surf %ld", time_surf);
         UINFO("TAG_TIME closest_match %ld", time_closest);
         UINFO("TAG_TIME pnp %ld", time_pnp);
-        UINFO("TAG_TIME pnpglobal %ld", time_pnp_computeGlobal);
-        UINFO("TAG_TIME pnpupdates %ld", time_pnp_updates);
-        UINFO("TAG_TIME pnpupdate1 %ld", time_pnp_update1);
-        UINFO("TAG_TIME pnpupdate2 %ld", time_pnp_update2);
 
         if (con_info->postprocessor != NULL)
         {

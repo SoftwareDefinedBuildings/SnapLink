@@ -7,7 +7,6 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
-#include <rtabmap/core/Optimizer.h>
 #include <QCoreApplication>
 
 #include "Localization.h"
@@ -36,44 +35,30 @@ Localization::~Localization()
 bool Localization::init(const std::string &dbPath, const rtabmap::ParametersMap &parameters)
 {
     // Setup memory
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), "false"));
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImageKept(), "true"));
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "0"));
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), "false"));
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpTfIdfLikelihoodUsed(), "false"));
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     // parameters that makes memory do PnP localization for RGB images
     _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), "1")); // Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
-    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "20"));
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
 
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), "false"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemSTMSize(), "0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "1500"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "false"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
-    _memoryLocParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "1500"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+    // _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "true"));
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
+    _memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
 
     _memory = new MemoryLoc();
-    if (!_memory->init(dbPath, false, _memoryParams))
+    if (!_memory->init(dbPath, _memoryParams))
     {
         UERROR("Error initializing the memory for Localization.");
         return false;
     }
-
-    optimizeGraph();
 
     return true;
 }
@@ -118,158 +103,77 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData, void 
 
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
-    if (_memory->getWorkingMem().size() >= 1)
+    // generate kpts
+    con_info->time_surf_start = getTime(); // start of SURF extraction
+    if (_memory->update(*sensorData))
     {
-        con_info->time_surf_start = getTime(); // start of SURF extraction
-        // generate kpts
-        if (_memory->update(*sensorData))
+        UDEBUG("");
+        const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
+        UDEBUG("newWords=%d", (int)newS->getWords().size());
+        int minInliers;
+        rtabmap::Parameters::parse(_memoryParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
+        UDEBUG("");
+        if ((int)newS->getWords().size() > minInliers)
         {
             con_info->time_surf_end = getTime(); // end of SURF extraction
             UDEBUG("");
-            const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
-            UDEBUG("newWords=%d", (int)newS->getWords().size());
-            int minInliers;
-            rtabmap::Parameters::parse(_memoryLocParams, rtabmap::Parameters::kVisMinInliers(), minInliers);
-            if ((int)newS->getWords().size() > minInliers)
+            std::map<int, float> likelihood;
+            std::list<int> signaturesToCompare = uKeysList(_memory->getSignatures());
+            signaturesToCompare.remove(newS->id());
+            UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
+            likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
+
+            std::vector<int> topIds;
+            likelihood.erase(-1);
+            int topId;
+            if (likelihood.size())
             {
                 con_info->time_closest_start = getTime(); // start of find closest match
 
-                std::map<int, float> likelihood;
-                std::list<int> signaturesToCompare = uKeysList(_memory->getWorkingMem());
-                UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-                likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
-
-                std::vector<int> topIds;
-                likelihood.erase(-1);
-                int topId;
-                if (likelihood.size())
+                std::vector< std::pair<int, float> > top(_topk);
+                std::partial_sort_copy(likelihood.begin(),
+                                       likelihood.end(),
+                                       top.begin(),
+                                       top.end(),
+                                       compareLikelihood);
+                for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
                 {
-                    std::vector< std::pair<int, float> > top(_topk);
-                    std::partial_sort_copy(likelihood.begin(),
-                                           likelihood.end(),
-                                           top.begin(),
-                                           top.end(),
-                                           compareLikelihood);
-                    for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
-                    {
-                        topIds.push_back(it->first);
-                    }
-                    topId = topIds[0];
-                    UINFO("topId: %d", topId);
+                    topIds.push_back(it->first);
                 }
+                topId = topIds[0];
+                UINFO("topId: %d", topId);
+            }
+            con_info->time_closest_end = getTime(); // end of find closest match
+            con_info->time_pnp_start = getTime(); // start of Perspective N Points
 
-                con_info->time_closest_end = getTime(); // end of find closest match
-                con_info->time_pnp_start = getTime(); // start of Perspective N Points
+            sensorData->setId(newS->id());
 
-                MemoryLoc memoryLoc(_memoryLocParams);
+            output = _memory->computeGlobalVisualTransform(topIds, sensorData->id());
 
-                bool success = true;
-                sensorData->setId(newS->id());
-                if (sensorData->id() == rtabmap::Memory::kIdInvalid)
-                {
-                    success = false;
-                }
-
-                if (success)
-                {
-                    std::vector<int> sortedIds = topIds;
-                    std::sort(sortedIds.begin(), sortedIds.end());
-                    for (std::vector<int>::const_iterator it = sortedIds.begin(); it != sortedIds.end(); ++it)
-                    {
-                        rtabmap::SensorData data = _memory->getNodeData(*it, true);
-                        const rtabmap::Signature *sig = _memory->getSignature(*it);
-
-                        if (!data.depthOrRightRaw().empty() && data.id() != rtabmap::Memory::kIdInvalid && sig != NULL)
-                        {
-                            UDEBUG("Calculate map transform with raw data");
-                            memoryLoc.update(data, getPose(sig), sig->getPoseCovariance());
-                            con_info->time_pnp_update_1 = getTime(); // PnP timestamp after update()
-                        }
-                        else
-                        {
-                            UWARN("Data incomplete. data.depthOrRightRaw().empty() = %d, data.id() = %d", data.depthOrRightRaw().empty(), data.id());
-                            success = false;
-                            break;
-                        }
-                    }
-                    memoryLoc.update(*sensorData);
-                    con_info->time_pnp_update_2 = getTime(); // PnP timestamp after update()
-                }
-
-                con_info->time_pnp_updates = getTime(); // PnP timestamp after update()
-                if (success)
-                {
-                    output = memoryLoc.computeGlobalVisualTransform(topIds, sensorData->id());
-                    con_info->time_pnp_global = getTime(); // PnP timestamp on computeGlobalVisualTransform()
-
-                    if (!output.isNull())
-                    {
-                        UDEBUG("global transform = %s", output.prettyPrint().c_str());
-                    }
-                    else
-                    {
-                        UWARN("transform is null, using pose of the closest image");
-                        output = getPose(_memory->getSignature(topId));
-                    }
-                }
-                con_info->time_pnp_end = getTime(); // end of Perspective N Points
+            if (!output.isNull())
+            {
+                UDEBUG("global transform = %s", output.prettyPrint().c_str());
             }
             else
             {
-                UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
+                UWARN("transform is null, using pose of the closest image");
+                //output = _memory->getOptimizedPose(topId);
             }
-
-            // remove new words from dictionary
-            _memory->deleteLocation(newS->id());
-            _memory->emptyTrash();
+            con_info->time_pnp_end = getTime(); // end of Perspective N Points
         }
-    }
-    else
-    {
-        UERROR("Memory not initialized. _memory->getWorkingMem().size() = %d", _memory->getWorkingMem().size());
+        else
+        {
+            UWARN("new signature doesn't have enough words. newWords=%d ", (int)newS->getWords().size());
+        }
+
+        // remove new words from dictionary
+        _memory->deleteLocation(newS->id());
+        _memory->emptyTrash();
     }
 
     UINFO("output transform = %s", output.prettyPrint().c_str());
 
     return output;
-}
-
-void Localization::optimizeGraph()
-{
-    if (_memory->getLastWorkingSignature())
-    {
-        // Get all IDs linked to last signature (including those in Long-Term Memory)
-        std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastWorkingSignature()->id(), 0, -1);
-
-        UINFO("Optimize poses, ids.size() = %d", ids.size());
-
-        // Get all metric constraints (the graph)
-        std::map<int, rtabmap::Transform> poses;
-        std::multimap<int, rtabmap::Link> links;
-        _memory->getMetricConstraints(uKeysSet(ids), poses, links, true);
-
-        // Optimize the graph
-        rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
-        _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
-        delete graphOptimizer;
-    }
-}
-
-rtabmap::Transform Localization::getPose(const rtabmap::Signature *sig) const
-{
-    if (sig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-    rtabmap::Transform pose = sig->getPose();
-    const std::map<int, rtabmap::Transform>::const_iterator poseIter = _optimizedPoses.find(sig->id());
-    if (poseIter != _optimizedPoses.end())
-    {
-        pose = poseIter->second;
-    }
-
-    return pose;
 }
 
 bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)

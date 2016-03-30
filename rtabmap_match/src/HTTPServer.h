@@ -77,6 +77,8 @@ typedef struct
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
     std::vector<unsigned char> data;
+    uint32_t width;
+    uint32_t height;
     std::string answerstring;
     int answercode;
     const std::vector<std::string> *names;
@@ -90,8 +92,4 @@ typedef struct
     long time_closest_end;
     long time_pnp_start;
     long time_pnp_end;
-    long time_pnp_updates;
-    long time_pnp_global;
-    long time_pnp_update_1;
-    long time_pnp_update_2;
 } ConnectionInfo;
