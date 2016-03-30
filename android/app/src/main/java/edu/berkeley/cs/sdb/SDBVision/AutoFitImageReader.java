@@ -34,8 +34,10 @@ public class AutoFitImageReader implements AutoCloseable {
             if (mCaptureRequest.getAndSet(false)) {
                 // TODO: do the rotation and scaling here
                 byte[] imageData = imageToBytes(image);
+                int width = image.getWidth();
+                int height = image.getHeight();
                 image.close();
-                mListener.onImageAvailable(imageData, image.getWidth(), image.getHeight());
+                mListener.onImageAvailable(imageData, width, height);
             } else {
                 if (image != null) {
                     image.close();
@@ -49,11 +51,11 @@ public class AutoFitImageReader implements AutoCloseable {
         mCaptureRequest = new AtomicBoolean(false);
     }
 
-    public Surface getSurface () {
+    public Surface getSurface() {
         return mImageReader.getSurface();
     }
 
-    public void close (){
+    public void close() {
         if (mImageReader != null) {
             mImageReader.close();
             mImageReader = null;
