@@ -19,7 +19,6 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
-import android.media.Image;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -155,10 +154,14 @@ public class MainActivity extends Activity {
     };
 
     private class HttpPostImageRunnable implements Runnable {
-        private final Image mImage;
+        private final byte[] mImageData;
+        private final int mWidth;
+        private final int mHeight;
 
-        public HttpPostImageRunnable(Image image) {
-            mImage = image;
+        public HttpPostImageRunnable(byte[] imageData, int width, int height) {
+            mImageData = imageData;
+            mWidth = width;
+            mHeight = height;
         }
 
         @Override
@@ -168,7 +171,7 @@ public class MainActivity extends Activity {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
                 int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
 
-                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImage, mRecognitionListener, sensorOrientation).execute();
+                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImageData, mWidth, mHeight, mRecognitionListener, sensorOrientation).execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -177,10 +180,10 @@ public class MainActivity extends Activity {
 
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
-        public void onImageAvailable(Image image) {
+        public void onImageAvailable(byte[] image, int width, int height) {
             setUIEnabled(false, false, false);
             // AsyncTask task instance must be created and executed on the UI thread
-            runOnUiThread(new HttpPostImageRunnable(image));
+            runOnUiThread(new HttpPostImageRunnable(image, width, height));
         }
     };
 
