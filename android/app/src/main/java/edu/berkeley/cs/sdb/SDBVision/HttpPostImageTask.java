@@ -46,8 +46,9 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     /**
      * Rotates YUV Y plane counter-clockwise by 90 degrees.
      * ref: http://stackoverflow.com/a/15775173
-     * @param data byte array of Y plane
-     * @param imgWidth image width
+     *
+     * @param data      byte array of Y plane
+     * @param imgWidth  image width
      * @param imgHeight image height
      * @return Y plane rotated counter-clockwise by 90 degrees
      */
@@ -55,7 +56,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         byte[] rotated = new byte[data.length];
         for (int i = 0; i < imgHeight; i++) {
             for (int j = 0; j < imgWidth; j++) {
-                rotated[imgHeight * (imgWidth-1 - j) + i] = data[imgWidth * i + j];
+                rotated[imgHeight * (imgWidth - 1 - j) + i] = data[imgWidth * i + j];
             }
         }
 
@@ -77,7 +78,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
 
         // send image resolution along with data
         int imageWidth = rotateCount % 2 == 0 ? mWidth : mHeight;
-        int imageHeight= rotateCount % 2 == 0 ? mHeight : mWidth;
+        int imageHeight = rotateCount % 2 == 0 ? mHeight : mWidth;
         // Make sure the byte order is network order (big endian)
         byte[] widthBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(imageWidth).array();
         byte[] heightBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(imageHeight).array();

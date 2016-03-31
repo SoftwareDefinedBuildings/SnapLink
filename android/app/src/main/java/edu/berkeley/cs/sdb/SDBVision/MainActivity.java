@@ -305,11 +305,10 @@ public class MainActivity extends Activity {
     private BosswavePublishTask.Listener mBwPublishTaskListener = new BosswavePublishTask.Listener() {
         @Override
         public void onResponse(String response) {
-            showToast("Control command sent: "+response, Toast.LENGTH_SHORT);
+            showToast("Control command sent: " + response, Toast.LENGTH_SHORT);
             setUIEnabled(true, true, true);
         }
     };
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

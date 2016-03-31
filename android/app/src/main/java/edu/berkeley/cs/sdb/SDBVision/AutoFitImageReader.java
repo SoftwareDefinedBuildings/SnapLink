@@ -30,18 +30,26 @@ public class AutoFitImageReader implements AutoCloseable {
                 return;
             }
 
+            if (image == null) {
+                return;
+            }
+
             // Stop transmitting images after one result comes back
             if (mCaptureRequest.getAndSet(false)) {
-                // TODO: do the rotation and scaling here
-                byte[] imageData = imageToBytes(image);
+                // TODO: do the rotation and scaling here, this is a worker thread
                 int width = image.getWidth();
                 int height = image.getHeight();
+                byte[] imageData = imageToBytes(image);
                 image.close();
+
+                if (!isBlurred(imageData, width, height)) {
+                    return;
+                }
+                imageData = scale(imageData, width, height);
+                imageData = rotate(imageData, width, height);
                 mListener.onImageAvailable(imageData, width, height);
             } else {
-                if (image != null) {
-                    image.close();
-                }
+                image.close();
             }
         }
     };
@@ -102,4 +110,31 @@ public class AutoFitImageReader implements AutoCloseable {
 
         return data;
     }
+
+    private static boolean isBlurred(byte[] image, int width, int height) {
+        return false;
+    }
+
+    /**
+     * Scale the image to have the same aspect ratio as the camera sensor
+     *
+     * @param imageData the raw bytes of a greyscale image, every byte is a color sample
+     * @return the raw bytes of the scaled image, every byte is a color sample
+     */
+    private static byte[] scale(byte[] imageData, int width, int height) {
+        // TODO read characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+        return imageData;
+    }
+
+    /**
+     * Rotate image to the user-inspecting orientation
+     *
+     * @param imageData the raw bytes of a greyscale image, every byte is a color sample
+     * @return the raw bytes of the rotated image, every byte is a color sample
+     */
+    private static byte[] rotate(byte[] imageData, int width, int height) {
+        // TODO read getResources().getConfiguration().orientation AND/OR getWindowManager().getDefaultDisplay().getRotation()
+        return imageData;
+    }
+
 }
