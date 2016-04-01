@@ -257,14 +257,14 @@ void MemoryLoc::optimizeGraph()
     if (getLastWorkingSignature())
     {
         // Get all IDs linked to last signature (including those in Long-Term Memory)
-        std::map<int, int> ids = getNeighborsId(getLastWorkingSignature()->id(), 0, -1);
+        std::map<int, int> ids = getNeighborsId(getLastWorkingSignature()->id(), 0);
 
         UINFO("Optimize poses, ids.size() = %d", ids.size());
 
         // Get all metric constraints (the graph)
         std::map<int, rtabmap::Transform> poses;
         std::multimap<int, rtabmap::Link> links;
-        getMetricConstraints(uKeysSet(ids), poses, links, true);
+        getMetricConstraints(uKeysSet(ids), poses, links);
 
         // Optimize the graph
         rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
@@ -273,7 +273,6 @@ void MemoryLoc::optimizeGraph()
         delete graphOptimizer;
     }
 }
-
 
 void MemoryLoc::addSignature(rtabmap::Signature *signature)
 {
@@ -292,6 +291,11 @@ void MemoryLoc::addSignature(rtabmap::Signature *signature)
 const rtabmap::Signature *MemoryLoc::getSignature(int id) const
 {
     return _getSignature(id);
+}
+
+const std::map<int, rtabmap::Signature *> &MemoryLoc::getSignatures() const
+{
+    return _signatures;
 }
 
 rtabmap::Signature *MemoryLoc::_getSignature(int id) const
@@ -322,46 +326,17 @@ std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int signatureId) const
     return links;
 }
 
-std::map<int, rtabmap::Link> MemoryLoc::getLinks(
-    int signatureId,
-    bool lookInDatabase) const
-{
-    std::map<int, rtabmap::Link> links;
-    rtabmap::Signature *s = uValue(_signatures, signatureId, (rtabmap::Signature *)0);
-    if (s)
-    {
-        links = s->getLinks();
-    }
-    else if (lookInDatabase && _dbDriver)
-    {
-        _dbDriver->loadLinks(signatureId, links, rtabmap::Link::kUndef);
-    }
-    else
-    {
-        UWARN("Cannot find signature %d in memory", signatureId);
-    }
-    return links;
-}
-
 // return map<Id,Margin>, including signatureId
-// maxCheckedInDatabase = -1 means no limit to check in database (default)
-// maxCheckedInDatabase = 0 means don't check in database
 std::map<int, int> MemoryLoc::getNeighborsId(
     int signatureId,
     int maxGraphDepth, // 0 means infinite margin
-    int maxCheckedInDatabase, // default -1 (no limit)
     bool incrementMarginOnLoop, // default false
     bool ignoreLoopIds, // default false
-    bool ignoreIntermediateNodes, // default false
-    double *dbAccessTime
+    bool ignoreIntermediateNodes // default false
 ) const
 {
     UASSERT(maxGraphDepth >= 0);
     //UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
-    if (dbAccessTime)
-    {
-        *dbAccessTime = 0;
-    }
     std::map<int, int> ids;
     if (signatureId <= 0)
     {
@@ -389,31 +364,16 @@ std::map<int, int> MemoryLoc::getNeighborsId(
                 const rtabmap::Signature *s = this->getSignature(*jter);
                 std::map<int, rtabmap::Link> tmpLinks;
                 const std::map<int, rtabmap::Link> *links = &tmpLinks;
-                if (s)
+                UASSERT(s != NULL);
+                if (!ignoreIntermediateNodes || s->getWeight() != -1)
                 {
-                    if (!ignoreIntermediateNodes || s->getWeight() != -1)
-                    {
-                        ids.insert(std::pair<int, int>(*jter, m));
-                    }
-                    else
-                    {
-                        ignoredIds.insert(*jter);
-                    }
-
-                    links = &s->getLinks();
-                }
-                else if (maxCheckedInDatabase == -1 || (maxCheckedInDatabase > 0 && _dbDriver && nbLoadedFromDb < maxCheckedInDatabase))
-                {
-                    ++nbLoadedFromDb;
                     ids.insert(std::pair<int, int>(*jter, m));
-
-                    UTimer timer;
-                    _dbDriver->loadLinks(*jter, tmpLinks);
-                    if (dbAccessTime)
-                    {
-                        *dbAccessTime += timer.getElapsedTime();
-                    }
                 }
+                else
+                {
+                    ignoredIds.insert(*jter);
+                }
+                links = &s->getLinks();
 
                 // links
                 for (std::map<int, rtabmap::Link>::const_iterator iter = links->begin(); iter != links->end(); ++iter)
@@ -799,16 +759,6 @@ void MemoryLoc::removeVirtualLinks(int signatureId)
     }
 }
 
-rtabmap::Transform MemoryLoc::getOdomPose(int signatureId, bool lookInDatabase) const
-{
-    rtabmap::Transform pose, groundTruth;
-    int mapId, weight;
-    std::string label;
-    double stamp;
-    getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, lookInDatabase);
-    return pose;
-}
-
 rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
 {
     rtabmap::Transform pose;
@@ -819,33 +769,6 @@ rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
     }
 
     return pose;
-}
-
-bool MemoryLoc::getNodeInfo(int signatureId,
-                            rtabmap::Transform &odomPose,
-                            int &mapId,
-                            int &weight,
-                            std::string &label,
-                            double &stamp,
-                            rtabmap::Transform &groundTruth,
-                            bool lookInDatabase) const
-{
-    const rtabmap::Signature *s = this->getSignature(signatureId);
-    if (s)
-    {
-        odomPose = s->getPose();
-        mapId = s->mapId();
-        weight = s->getWeight();
-        label = s->getLabel();
-        stamp = s->getStamp();
-        groundTruth = s->getGroundTruthPose();
-        return true;
-    }
-    else if (lookInDatabase && _dbDriver)
-    {
-        return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth);
-    }
-    return false;
 }
 
 rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
@@ -972,13 +895,13 @@ void MemoryLoc::cleanUnusedWords()
 void MemoryLoc::getMetricConstraints(
     const std::set<int> &ids,
     std::map<int, rtabmap::Transform> &poses,
-    std::multimap<int, rtabmap::Link> &links,
-    bool lookInDatabase)
+    std::multimap<int, rtabmap::Link> &links)
 {
     UDEBUG("");
     for (std::set<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
     {
-        rtabmap::Transform pose = getOdomPose(*iter, lookInDatabase);
+        const rtabmap::Signature *s = getSignature(*iter);
+        rtabmap::Transform pose = s->getPose();
         if (!pose.isNull())
         {
             poses.insert(std::make_pair(*iter, pose));
@@ -989,20 +912,21 @@ void MemoryLoc::getMetricConstraints(
     {
         if (uContains(poses, *iter))
         {
-            std::map<int, rtabmap::Link> tmpLinks = getLinks(*iter, lookInDatabase);
+            const rtabmap::Signature *s = getSignature(*iter);
+            UASSERT(s != NULL);
+            std::map<int, rtabmap::Link> tmpLinks = s->getLinks();
             for (std::map<int, rtabmap::Link>::iterator jter = tmpLinks.begin(); jter != tmpLinks.end(); ++jter)
             {
                 if (jter->second.isValid() &&
                         uContains(poses, jter->first) &&
                         rtabmap::graph::findLink(links, *iter, jter->first) == links.end())
                 {
-                    if (!lookInDatabase &&
-                            (jter->second.type() == rtabmap::Link::kNeighbor ||
-                             jter->second.type() == rtabmap::Link::kNeighborMerged))
+                    if ((jter->second.type() == rtabmap::Link::kNeighbor ||
+                            jter->second.type() == rtabmap::Link::kNeighborMerged))
                     {
                         rtabmap::Link link = jter->second;
                         const rtabmap::Signature *s = this->getSignature(jter->first);
-                        UASSERT(s != 0);
+                        UASSERT(s != NULL);
                         while (s && s->getWeight() == -1)
                         {
                             // skip to next neighbor, well we assume that bad signatures

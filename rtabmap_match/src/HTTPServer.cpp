@@ -219,7 +219,8 @@ int HTTPServer::iterate_post(void *coninfo_cls,
         else if (strcmp(key, "width") == 0)
         {
             uint32_t width;
-            if (size != sizeof(uint32_t)) {
+            if (size != sizeof(uint32_t))
+            {
                 return MHD_NO;
             }
             memcpy(&width, data, size);
@@ -229,7 +230,8 @@ int HTTPServer::iterate_post(void *coninfo_cls,
         else if (strcmp(key, "height") == 0)
         {
             uint32_t height;
-            if (size != sizeof(uint32_t)) {
+            if (size != sizeof(uint32_t))
+            {
                 return MHD_NO;
             }
             memcpy(&height, data, size);
