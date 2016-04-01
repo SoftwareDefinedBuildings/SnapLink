@@ -16,7 +16,7 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    bool init(const std::string &dir);
+    bool init(const std::string &dir, const MemoryLoc *memory);
 
     void setHTTPServer(HTTPServer *httpServer);
 

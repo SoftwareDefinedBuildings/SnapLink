@@ -24,7 +24,7 @@ Visibility::~Visibility()
     _httpServer = NULL;
 }
 
-bool Visibility::init(const std::string &dir)
+bool Visibility::init(const std::string &dir, const MemoryLoc *memory)
 {
     return readLabels(dir);
 }
@@ -79,12 +79,12 @@ bool Visibility::readLabels(const std::string &dir)
             {
                 return false;
             }
-            double x = list.at(0).toDouble();
-            double y = list.at(1).toDouble();
-            double z = list.at(2).toDouble();
-            _points.push_back(cv::Point3f(x, y, z));
+            double imageId = list.at(0).toDouble();
+            double x = list.at(1).toDouble();
+            double y = list.at(2).toDouble();
+            _points.push_back(cv::Point3f(imageId, x, y));
             _labels.push_back(label);
-            UDEBUG("Read point (%lf,%lf,%lf) with label %s", x, y, z, label.c_str());
+            UDEBUG("Read point (%lf,%lf,%lf) with label %s", imageId, x, y, label.c_str());
         }
     }
 
