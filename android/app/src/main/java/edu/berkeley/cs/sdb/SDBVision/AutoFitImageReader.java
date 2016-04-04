@@ -3,6 +3,8 @@ package edu.berkeley.cs.sdb.SDBVision;
 import android.app.Activity;
 import android.content.Context;
 import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.hardware.camera2.CameraCharacteristics;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
@@ -13,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AutoFitImageReader implements AutoCloseable {
 
-    int mSensorOrientation;
+    CameraCharacteristics mCharacteristics;
     Context mContext;
     ImageReader mImageReader;
     OnImageAvailableListener mListener;
@@ -50,7 +52,7 @@ public class AutoFitImageReader implements AutoCloseable {
                     return;
                 }
 
-                imageData = scale(imageData, width, height);
+                //imageData = scale(imageData, width, height);
                 imageData = rotate(imageData, width, height);
 
                 if (getRotateCount() % 2 == 0) {
@@ -64,10 +66,19 @@ public class AutoFitImageReader implements AutoCloseable {
         }
     };
 
-    public AutoFitImageReader(Context context, int sensorOrientation, int width, int height, int format, int maxImages) {
+    public AutoFitImageReader(Context context, CameraCharacteristics characteristics, int width, int height, int format, int maxImages) {
         mContext = context;
-        mSensorOrientation = sensorOrientation;
-        mImageReader = ImageReader.newInstance(width, height, format, maxImages);
+        mCharacteristics = characteristics;
+
+        // TODO this is a temporary hack. Should force view to be in 4:3 so we won't have to change ImageReader aspect ratio
+        Rect sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+        if (sensorSize.width() / 9 * 16 == sensorSize.height() || sensorSize.height() / 9 * 16 == sensorSize.width()) {
+            // hardcoded common 16:9 resolution
+            mImageReader = ImageReader.newInstance(1280, 720, format, maxImages);
+        } else {
+            mImageReader = ImageReader.newInstance(width, height, format, maxImages);
+        }
+
         mCaptureRequest = new AtomicBoolean(false);
     }
 
@@ -100,8 +111,9 @@ public class AutoFitImageReader implements AutoCloseable {
      * @return number of times image has to be rotated 90 degrees clockwise.
      */
     private int getRotateCount() {
+        int sensorRotation = mCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) / 90;
         int userRotation = ((Activity) mContext).getWindowManager().getDefaultDisplay().getRotation();
-        return ((mSensorOrientation / 90) + userRotation) % 4;
+        return (sensorRotation + userRotation) % 4;
     }
 
     /**

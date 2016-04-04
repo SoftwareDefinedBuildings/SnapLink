@@ -361,7 +361,6 @@ public class MainActivity extends Activity {
         try {
             for (String cameraId : manager.getCameraIdList()) {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-
                 // We don't use a front facing camera in this sample.
                 Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
                 if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
@@ -382,13 +381,12 @@ public class MainActivity extends Activity {
                     throw new RuntimeException("640x480 size is not supported");
                 }
 
-                int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
-                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
-
-                mImageReader = new AutoFitImageReader(this, sensorOrientation, targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
+                mImageReader = new AutoFitImageReader(this, characteristics, targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor coordinate.
+                int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
+                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                 boolean swappedDimensions = false;
                 switch (displayRotation) {
                     case Surface.ROTATION_0:
