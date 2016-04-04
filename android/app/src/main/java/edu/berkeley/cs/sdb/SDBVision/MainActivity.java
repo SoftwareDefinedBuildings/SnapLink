@@ -180,11 +180,7 @@ public class MainActivity extends Activity {
         @Override
         public void run() {
             try {
-                CameraManager manager = (CameraManager) mContext.getSystemService(Context.CAMERA_SERVICE);
-                CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
-                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
-
-                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImageData, mWidth, mHeight, mRecognitionListener, sensorOrientation).execute();
+                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImageData, mWidth, mHeight, mRecognitionListener).execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -385,12 +381,14 @@ public class MainActivity extends Activity {
                 if (!imageSizes.contains(targetImageSize)) {
                     throw new RuntimeException("640x480 size is not supported");
                 }
-                mImageReader = new AutoFitImageReader(targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
+
+                int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
+                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+
+                mImageReader = new AutoFitImageReader(this, sensorOrientation, targetImageSize.getWidth(), targetImageSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler);
 
                 // Find out if we need to swap dimension to get the preview size relative to sensor coordinate.
-                int displayRotation = getWindowManager().getDefaultDisplay().getRotation();
-                int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                 boolean swappedDimensions = false;
                 switch (displayRotation) {
                     case Surface.ROTATION_0:
