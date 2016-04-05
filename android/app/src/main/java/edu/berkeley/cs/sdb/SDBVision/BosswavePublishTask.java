@@ -16,6 +16,7 @@ public class BosswavePublishTask extends AsyncTask<Void, Void, String> {
     private BosswaveClient mBosswaveClient;
     private String mTopic;
     private byte[] mData;
+    private PayloadObject.Type mType;
     private Listener mTaskListener;
     private Semaphore mSem;
     private String mResult;
@@ -24,10 +25,11 @@ public class BosswavePublishTask extends AsyncTask<Void, Void, String> {
         void onResponse(String response);
     }
 
-    public BosswavePublishTask(BosswaveClient bosswaveClient, String topic, byte[] data, Listener listener) {
+    public BosswavePublishTask(BosswaveClient bosswaveClient, String topic, byte[] data, PayloadObject.Type type, Listener listener) {
         mBosswaveClient = bosswaveClient;
         mTopic = topic;
         mData = data;
+        mType = type;
         mTaskListener = listener;
         mSem = new Semaphore(0);
     }
@@ -47,9 +49,7 @@ public class BosswavePublishTask extends AsyncTask<Void, Void, String> {
             builder.setAutoChain(true);
             builder.setChainElaborationLevel(ChainElaborationLevel.FULL);
             builder.clearPayloadObjects();
-            PayloadObject.Type msgPackType = new PayloadObject.Type(new byte[]{2, 0, 5, 1}); // this is hard coded because we know it's a msgpack
-            byte[] poContents = mData;
-            PayloadObject po = new PayloadObject(msgPackType, poContents);
+            PayloadObject po = new PayloadObject(mType, mData);
             builder.addPayloadObject(po);
             PublishRequest request = builder.build();
 

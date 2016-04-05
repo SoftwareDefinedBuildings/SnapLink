@@ -32,10 +32,6 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.msgpack.core.MessageBufferPacker;
-import org.msgpack.core.MessagePack;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,6 +41,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import edu.berkeley.cs.sdb.bosswave.BosswaveClient;
+import edu.berkeley.cs.sdb.bosswave.PayloadObject;
 import okhttp3.OkHttpClient;
 
 public class MainActivity extends Activity {
@@ -52,7 +49,8 @@ public class MainActivity extends Activity {
     private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50021/";
     private static final String BW_ROUTER_URL = "castle.cs.berkeley.edu";
     private static final int BW_ROUTER_PORT = 50026;
-    private static final String CONTROL_TOPIC = "castle.bw2.io/michael/0/bwlifx/hsb-light.v1/slot/hsb";
+    private static final String CONTROL_TOPIC_PREFIX = "sdb.bw2.io/demo/soda/410/plugstrip/";
+    private static final String CONTROL_TOPIC_SUFFIX = "/binary/ctl/state";
 
     // hard coded base64 format of the private key, such safe
     private static final byte[] mKey = Base64.decode("Mqmvj8G02K4EncGpRkp3DFSy+rnNZNq2KPjz/t6FUHVLCDYSe/Bp4UapPeFjV6WGJm/KT6bddc8Mrr3vJZV+c7YCCEFVKemy7D4UAwiuUoex8k6fGAUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgNZdXAAhbDzkz/4amI9XxkhzwldzPQ6+Z2DkaTF9pjsp8tTxY1jrper6UziaO+Gs6skX3ICiwBI7A/71/7bVbGaAqOiDw==", Base64.DEFAULT);
@@ -224,46 +222,16 @@ public class MainActivity extends Activity {
     private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
-            String topic = CONTROL_TOPIC;// + mTarget + "/1";
-            MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-            try {
-                packer.packMapHeader(4);
-                packer.packString("hue");
-                packer.packDouble(0.2);
-                packer.packString("saturation");
-                packer.packDouble(0.5);
-                packer.packString("brightness");
-                packer.packDouble(0.7);
-                packer.packString("state");
-                packer.packBoolean(true);
-                packer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            new BosswavePublishTask(mBosswaveClient, topic, packer.toByteArray(), mBwPublishTaskListener).execute();
+            String topic = CONTROL_TOPIC_PREFIX + mTarget + CONTROL_TOPIC_SUFFIX;
+            new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
         }
     };
 
     private final View.OnClickListener mOffButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             setUIEnabled(false, false, false);
-            String topic = CONTROL_TOPIC;// + mTarget + "/0";
-            MessageBufferPacker packer = MessagePack.newDefaultBufferPacker();
-            try {
-                packer.packMapHeader(4);
-                packer.packString("hue");
-                packer.packDouble(0.8);
-                packer.packString("saturation");
-                packer.packDouble(0.5);
-                packer.packString("brightness");
-                packer.packDouble(0.7);
-                packer.packString("state");
-                packer.packBoolean(true);
-                packer.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            new BosswavePublishTask(mBosswaveClient, topic, packer.toByteArray(), mBwPublishTaskListener).execute();
+            String topic = CONTROL_TOPIC_PREFIX + mTarget + CONTROL_TOPIC_SUFFIX;
+            new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
 
         }
     };
@@ -298,7 +266,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    private BosswavePublishTask.Listener mBwPublishTaskListener = new BosswavePublishTask.Listener() {
+    private BosswavePublishTask.Listener mBwPubTaskListener = new BosswavePublishTask.Listener() {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent: " + response, Toast.LENGTH_SHORT);
