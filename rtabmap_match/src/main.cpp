@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
     HTTPServer httpServer;
     if (!httpServer.start())
     {
+        UERROR("Starting HTTP Server failed");
         return 1;
     }
 
@@ -53,6 +54,7 @@ int main(int argc, char *argv[])
     CameraNetwork camera;
     if (!camera.init(localTransform, calibrationFolder, cameraName))
     {
+        UERROR("Initializing camera failed");
         return 1;
     }
     httpServer.setCamera(&camera);
@@ -79,6 +81,7 @@ int main(int argc, char *argv[])
     MemoryLoc memory;
     if (!memory.init(dbfile, memoryParams))
     {
+        UERROR("Initializing memory failed");
         return 1;
     }
 
@@ -90,6 +93,7 @@ int main(int argc, char *argv[])
     Visibility vis;
     if (!vis.init(labelpath, &memory))
     {
+        UERROR("Initializing visibility failed");
         return 1;
     }
     loc.setVisibility(&vis);

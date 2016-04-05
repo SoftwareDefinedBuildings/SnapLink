@@ -68,6 +68,7 @@ bool Visibility::processLabels(const std::string &dir, const MemoryLoc *memory)
         QFile file(fileName);
         if (!file.open(QFile::ReadOnly | QFile::Text))
         {
+            UWARN("Open file %s failed", fileName.toStdString().c_str());
             return false;
         }
 
@@ -79,6 +80,7 @@ bool Visibility::processLabels(const std::string &dir, const MemoryLoc *memory)
             QStringList list = line.split(",");
             if (list.size() != 3)
             {
+                UWARN("File %s has a wrong format", fileName.toStdString().c_str());
                 return false;
             }
             int imageId = list.at(0).toInt();

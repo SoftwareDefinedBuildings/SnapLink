@@ -449,7 +449,7 @@ void MemoryLoc::clear()
     {
         if (i->second)
         {
-            UDEBUG("deleting from the working and the short-term memory: %d", i->first);
+            UDEBUG("deleting from the memory: %d", i->first);
             this->moveToTrash(i->second);
         }
     }
