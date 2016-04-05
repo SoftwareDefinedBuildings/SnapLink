@@ -1,62 +1,104 @@
 #pragma once
 
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/Memory.h>
-#include <pcl/common/common.h>
-#include <pcl/io/vtk_lib_io.h>
-
-namespace rtabmap
-{
+#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Link.h>
+#include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/utilite/UStl.h>
+#include <typeinfo>
+#include <list>
+#include <map>
+#include <set>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d/features2d.hpp>
 
 class Signature;
+class DBDriver;
+class VWDictionary;
+class VisualWord;
+class Feature2D;
 
-class MemoryLoc : public Memory
+class MemoryLoc
 {
 public:
-    MemoryLoc(const ParametersMap &parameters = ParametersMap());
+    static const int kIdStart;
 
-    void generateImages();
-    Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
-    Transform computeGlobalVisualTransform(const std::vector<Signature> &oldSs, const Signature &newS, std::string *rejectedMsg = 0, int *inliers = 0, double *variance = 0) const;
+public:
+    MemoryLoc();
+    virtual ~MemoryLoc();
+
+    bool update(const rtabmap::SensorData &data);
+    bool init(const std::string &dbUrl,
+              const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    void close();
+    std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
+                                           const std::list<int> &ids);
+
+    void emptyTrash();
+    void deleteLocation(int locationId);
+
+    const rtabmap::Signature *getLastWorkingSignature() const;
+    rtabmap::Transform getOptimizedPose(int signatureId) const;
+    const rtabmap::Signature *getSignature(int id) const;
+    const std::map<int, rtabmap::Signature *> &getSignatures() const;
+
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
 
 private:
-    void getWordCoords();  // fill in _wordCoords
-    pcl::PolygonMesh::Ptr getMesh();
-    void getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
-                   std::map<int, Transform> &poses);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
-            const std::map<int, Transform> &poses,
-            std::vector<int> &rawCameraIndices);
-    Signature *createSignature(std::multimap<int, cv::KeyPoint> words,
-                               std::multimap<int, pcl::PointXYZ> words3D,
-                               const Transform &pose);
+    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
+    void optimizeGraph();  // optimize poses using TORO graph
 
+    std::map<int, int> getNeighborsId(
+        int signatureId,
+        int maxGraphDepth,
+        bool incrementMarginOnLoop = false,
+        bool ignoreLoopIds = false,
+        bool ignoreIntermediateNodes = false) const;
+    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
+    void getMetricConstraints(
+        const std::set<int> &ids,
+        std::map<int, rtabmap::Transform> &poses,
+        std::multimap<int, rtabmap::Link> &links);
+
+
+    void addSignature(rtabmap::Signature *signature);
+    void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
+    void removeVirtualLinks(int signatureId);
+
+    rtabmap::Signature *_getSignature(int id) const;
+    int getNextId();
+    void clear();
+
+    rtabmap::Signature *createSignature(const rtabmap::SensorData &data);
+
+    //keypoint stuff
+    void disableWordsRef(int signatureId);
+    void cleanUnusedWords();
+
+    rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
+
+protected:
+    rtabmap::DBDriver *_dbDriver;
 
 private:
-    int _bowMinInliers;
-    int _bowIterations;
-    int _bowRefineIterations;
-    double _bowPnPReprojError;
-    int _bowPnPFlags;
+    // parameters
+    rtabmap::ParametersMap parameters_;
+    bool _badSignaturesIgnored;
 
-    float _voxelSize;
-    float _filteringRadius;
-    int _filteringMinNeighbors;
-    float _MLSRadius;
-    int _MLSpolygonialOrder;
-    int _MLSUpsamplingMethod; // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
-    float _MLSUpsamplingRadius;
-    float _MLSUpsamplingStep;
-    int _MLSPointDensity;
-    float _MLSDilationVoxelSize;
-    int _MLSDilationIterations;
-    int _normalK;
-    float _gp3Radius;
-    float _gp3Mu;
+    int _idCount;
 
-    std::vector<cv::Point3f> _wordPoints3D;
-    std::map<long, int> _pointToWord; // _wordPoints3D index to virtual word id
-    std::map<int, std::vector<long> > _wordToPoint; // virtual word id to _wordPoints3D indices
+    std::map<int, rtabmap::Transform> _optimizedPoses;
+    std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
+
+    //Keypoint stuff
+    rtabmap::VWDictionary *_vwd;
+    rtabmap::Feature2D *_feature2D;
+
+    int _minInliers;
+    int _iterations;
+    int _pnpRefineIterations;
+    double _pnpReprojError;
+    int _pnpFlags;
 };
-
-} // namespace rtabmap

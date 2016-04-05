@@ -1,16 +1,16 @@
+#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/RtabmapThread.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <cstdio>
-
+#include <QCoreApplication>
+#include <QThread>
 #include "HTTPServer.h"
 #include "Localization.h"
 #include "CameraNetwork.h"
-#include "CameraNetworkThread.h"
-#include "LocalizationThread.h"
 #include "Visibility.h"
-#include "VisibilityThread.h"
+#include "MemoryLoc.h"
 
 
 void showUsage()
@@ -20,7 +20,6 @@ void showUsage()
     exit(1);
 }
 
-using namespace rtabmap;
 int main(int argc, char *argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
@@ -28,99 +27,85 @@ int main(int argc, char *argv[])
     ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
-    std::string imgpath;
     std::string labelpath;
-    if (argc != 4)
+    if (argc != 3)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc - 3]);
-        imgpath = std::string(argv[argc - 2]);
+        dbfile = std::string(argv[argc - 2]);
         labelpath = std::string(argv[argc - 1]);
     }
 
-    uint16_t port = 8080;
-    unsigned int maxClients = 2;
-    HTTPServer httpServer(port, maxClients);
+    QCoreApplication app(argc, argv);
+
+    HTTPServer httpServer;
+    if (!httpServer.start())
+    {
+        return 1;
+    }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
-    // TODO read fx and fy from EXIF
-    int cameraType = 1; // lg g2 mini = 1, kinect v1 = 2
-
-    Transform localTransform;
-
-    if (cameraType == 1)
+    rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+    const std::string &calibrationFolder = "../cameras/";
+    const std::string &cameraName = "lg_g2_mini_640_480";
+    CameraNetwork camera;
+    if (!camera.init(localTransform, calibrationFolder, cameraName))
     {
-        // now it is hardcoded for lg g2 mini
-        Transform tempTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-
-        localTransform = tempTransform;
-
-        // TODO undistort img (or call it rectify here, not same rectification as eipometry)
-        // k1 = 0.134408880645970, k2 = -0.177147104797916
+        return 1;
     }
-    else if (cameraType == 2)
+    httpServer.setCamera(&camera);
+    camera.setHTTPServer(&httpServer);
+
+    rtabmap::ParametersMap memoryParams;
+    // Setup memory
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImageKept(), "true"));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), "1")); // Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false"));
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "1500"));
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
+    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "true"));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
+
+    MemoryLoc memory;
+    if (!memory.init(dbfile, memoryParams))
     {
-        // hardcoded for map1_10Hz
-        Transform tempTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
-
-        localTransform = tempTransform;
+        return 1;
     }
-    bool rectifyImages = false;
-    bool isDepth = false;
-    float imageRate = 10.0f;
-    CameraNetwork *camera = new CameraNetwork(rectifyImages, isDepth, imageRate, localTransform);
-    CameraNetworkThread cameraThread(camera, 10);
-    if (!camera->init("../cameras/", "lg_g2_mini_640_480"))
+
+    Localization loc;
+    loc.setMemory(&memory);
+    camera.setLocalizer(&loc);
+    loc.setHTTPServer(&httpServer);
+
+    Visibility vis;
+    if (!vis.init(labelpath, &memory))
     {
-        UERROR("Camera init failed!");
-        exit(1);
+        return 1;
     }
+    loc.setVisibility(&vis);
+    vis.setHTTPServer(&httpServer);
 
-    // Create an odometry thread to process camera events, it will send OdometryEvent.
-    LocalizationThread odomThread(new Localization(dbfile), 10);
-
-    Visibility *visibility = new Visibility();
-    if (!visibility->init(labelpath))
-    {
-        UERROR("Visibility init failed!");
-        exit(1);
-    }
-    VisibilityThread visThread(visibility, 10);
-
-    // Setup handlers
-    httpServer.registerToEventsManager();
-    cameraThread.registerToEventsManager();
-    odomThread.registerToEventsManager();
-    visThread.registerToEventsManager();
-
-    // build "pipes" between threads
-    UEventsManager::createPipe(&httpServer, &cameraThread, "NetworkEvent");
-    UEventsManager::createPipe(&cameraThread, &odomThread, "ImageEvent");
-    UEventsManager::createPipe(&odomThread, &visThread, "LocationEvent");
-    UEventsManager::createPipe(&visThread, &httpServer, "DetectionEvent");
-
-    // Let's start the threads
-    httpServer.start();
-    cameraThread.start();
-    odomThread.start();
+    QThread visThread;
+    vis.moveToThread(&visThread);
     visThread.start();
 
-    pause();
+    QThread locThread;
+    loc.moveToThread(&locThread);
+    locThread.start();
 
-    // remove handlers
-    httpServer.unregisterFromEventsManager();
-    cameraThread.unregisterFromEventsManager();
-    odomThread.unregisterFromEventsManager();
-    visThread.unregisterFromEventsManager();
+    QThread cameraThread;
+    camera.moveToThread(&cameraThread);
+    cameraThread.start();
 
-    // Kill all threads
-    httpServer.stop();
-    cameraThread.join(true);
-    odomThread.join(true);
-    visThread.join(true);
-
-    return 0;
+    return app.exec();
 }

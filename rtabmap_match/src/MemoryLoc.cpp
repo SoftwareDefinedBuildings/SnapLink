@@ -1,477 +1,964 @@
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/Signature.h>
+#include <rtabmap/utilite/UProcessInfo.h>
+#include <rtabmap/utilite/UMath.h>
+
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/EpipolarGeometry.h>
+#include <rtabmap/core/VisualWord.h>
+#include <rtabmap/core/Features2d.h>
+#include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/util3d_features.h>
+#include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_correspondences.h>
+#include <rtabmap/core/util3d_registration.h>
+#include <rtabmap/core/util3d_surface.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
-#include <rtabmap/core/util3d_filtering.h>
-#include <rtabmap/core/util3d_surface.h>
-#include <pcl/io/ply_io.h>
-#include <algorithm>
-#include <iostream>
-#include <fstream>
+#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util2d.h>
+#include <rtabmap/core/Compression.h>
+#include <rtabmap/core/Graph.h>
+#include <rtabmap/core/Optimizer.h>
 
-#include "Utility.h"
+#include <pcl/io/pcd_io.h>
+#include <pcl/common/common.h>
+
 #include "MemoryLoc.h"
 
-namespace rtabmap
+const int MemoryLoc::kIdStart = 0;
+
+MemoryLoc::MemoryLoc() :
+    _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
+    _idCount(kIdStart),
+    _feature2D(NULL),
+    _vwd(NULL),
+    _dbDriver(NULL),
+
+    _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
+    _iterations(rtabmap::Parameters::defaultVisIterations()),
+    _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
+    _pnpReprojError(rtabmap::Parameters::defaultVisPnPReprojError()),
+    _pnpFlags(rtabmap::Parameters::defaultVisPnPFlags())
 {
-
-MemoryLoc::MemoryLoc(const ParametersMap &parameters) :
-    Memory(parameters),
-    _bowMinInliers(Parameters::defaultLccBowMinInliers()),
-    _bowIterations(Parameters::defaultLccBowIterations()),
-    _bowRefineIterations(Parameters::defaultLccBowRefineIterations()),
-    _bowPnPReprojError(Parameters::defaultLccBowPnPReprojError()),
-    _bowPnPFlags(Parameters::defaultLccBowPnPFlags())
-{
-    Parameters::parse(parameters, Parameters::kLccBowMinInliers(), _bowMinInliers);
-    Parameters::parse(parameters, Parameters::kLccBowIterations(), _bowIterations);
-    Parameters::parse(parameters, Parameters::kLccBowRefineIterations(), _bowRefineIterations);
-    Parameters::parse(parameters, Parameters::kLccBowPnPReprojError(), _bowPnPReprojError);
-    Parameters::parse(parameters, Parameters::kLccBowPnPFlags(), _bowPnPFlags);
-
-    UASSERT_MSG(_bowMinInliers >= 1, uFormat("value=%d", _bowMinInliers).c_str());
-    UASSERT_MSG(_bowIterations > 0, uFormat("value=%d", _bowIterations).c_str());
-
-    _voxelSize = 0.03f;
-    _filteringRadius = 0.1f;
-    _filteringMinNeighbors = 5;
-    _MLSRadius = 0.1f;
-    _MLSpolygonialOrder = 2;
-    _MLSUpsamplingMethod = 0; // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
-    _MLSUpsamplingRadius = 0.0f;   // SAMPLE_LOCAL_PLANE
-    _MLSUpsamplingStep = 0.0f;     // SAMPLE_LOCAL_PLANE
-    _MLSPointDensity = 0;            // RANDOM_UNIFORM_DENSITY
-    _MLSDilationVoxelSize = 0.04f;  // VOXEL_GRID_DILATION
-    _MLSDilationIterations = 0;     // VOXEL_GRID_DILATION
-    _normalK = 20;
-    _gp3Radius = 0.1f;
-    _gp3Mu = 5;
 }
 
-void MemoryLoc::generateImages()
+bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &parameters)
 {
-    if (_wordPoints3D.size() == 0)
+    UDEBUG("");
+
+    _feature2D = rtabmap::Feature2D::create(parameters);
+    _vwd = new rtabmap::VWDictionary(parameters);
+    this->parseParameters(parameters);
+
+    if (dbUrl.empty()) // so this Memory will be empty
     {
-        getWordCoords();
+        return true;
     }
-    if (_wordPoints3D.size() == 0)
+
+    _dbDriver = rtabmap::DBDriver::create(parameters);
+
+    _dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
+    if (!_dbDriver->openConnection(dbUrl))
     {
-        UWARN("No word in MemoryLoc");
+        UDEBUG("Connecting to database %s, path is invalid!", dbUrl.c_str());
+        return false;
     }
+    UDEBUG("Connecting to database %s done!", dbUrl.c_str());
 
-    //pcl::PolygonMesh::Ptr mesh = getMesh();
-    //pcl::io::savePolygonFilePLY("mesh.ply", *mesh);
+    // Load the last working memory...
+    std::list<rtabmap::Signature *> dbSignatures;
+    UDEBUG("Loading all nodes to WM...");
+    std::set<int> ids;
+    _dbDriver->getAllNodeIds(ids, true);
+    _dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
 
-    // pick grid locations
-    const Signature *s = getSignature(1);
-    const Transform &pose = s->getPose();
-    const Transform P = pose;
-    //std::cout << P << std::endl;
-    cv::Mat K = (cv::Mat_<double>(3, 3) <<
-                 525.0f, 0.0f, 320.0f,
-                 0.0f, 525.0f, 240.0f,
-                 0.0f, 0.0f, 1.0f);
-    /*cv::Mat R = (cv::Mat_<double>(3,3) <<
-                1.0f, 0.0f, 0.0f,
-                0.0f, 1.0f, 0.0f,
-                0.0f, 0.0f, 1.0f);*/
-    cv::Mat R = (cv::Mat_<double>(3, 3) <<
-                 (double)P.r11(), (double)P.r12(), (double)P.r13(),
-                 (double)P.r21(), (double)P.r22(), (double)P.r23(),
-                 (double)P.r31(), (double)P.r32(), (double)P.r33());
-    cv::Mat rvec(1, 3, CV_64FC1);
-    cv::Rodrigues(R, rvec);
-    /*cv::Mat tvec = (cv::Mat_<double>(1,3) <<
-                   1.0f, 1.0f, 1.0f); */
-    cv::Mat tvec = (cv::Mat_<double>(1, 3) <<
-                    (double)P.x(), (double)P.y(), (double)P.z());
-    Transform localTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
-
-    // generate image using projection
-    std::vector<cv::Point2f> planePoints;
-    cv::projectPoints(_wordPoints3D, rvec, tvec, K, cv::Mat(), planePoints);
-
-    UWARN("planePoints.size(): %d", planePoints.size());
-
-    std::multimap<int, cv::KeyPoint> words;
-    std::multimap<int, pcl::PointXYZ> words3D;
-    for (size_t i = 0; i < planePoints.size(); i++)
+    for (std::list<rtabmap::Signature *>::reverse_iterator iter = dbSignatures.rbegin(); iter != dbSignatures.rend(); ++iter)
     {
-        // TODO: check angle < 30
-        if (planePoints[i].x < 0 || planePoints[i].x > 640 || planePoints[i].y < 0 || planePoints[i].y > 480)
+        // ignore bad signatures
+        if (!((*iter)->isBadSignature() && _badSignaturesIgnored))
         {
-            continue;
-        }
-
-        int wordId = _pointToWord[i];
-        float kptSize = 1; // TODO figure out the size
-        cv::KeyPoint kpt(planePoints[i], kptSize);
-        words.insert(std::pair<int, cv::KeyPoint>(wordId, kpt));
-        pcl::PointXYZ kpt3D(_wordPoints3D[i].x, _wordPoints3D[i].y, _wordPoints3D[i].z);
-        kpt3D = util3d::transformPoint(kpt3D, pose.inverse()); // transform from global frame to local robot frame
-        kpt3D = util3d::transformPoint(kpt3D, localTransform); // transform from local robot frame to local camera frame
-        words3D.insert(std::pair<int, pcl::PointXYZ>(wordId, kpt3D));
-    }
-    UWARN("words.size() = %d, words3D.size() = %d", words.size(), words3D.size());
-
-    //save a new signature to memory
-    //Signature * createSignature(words, words3D, pose);
-
-
-}
-
-void MemoryLoc::getWordCoords()
-{
-    std::set<int> ids = getAllSignatureIds();
-    for (std::set<int>::const_iterator idIter = ids.begin(); idIter != ids.end(); idIter++)
-    {
-        const Signature *s = getSignature(*idIter);
-        if (!s)
-        {
-            UWARN("Signature with id %d is empty", *idIter);
-            continue;
-        }
-
-        const Transform &pose = s->getPose();
-        //std::cout << "Signature ID: " << *idIter << std::endl;
-        //std::cout << "pose: " << pose << std::endl;
-        //std::cout << "pose inverse: " << pose.inverse() << std::endl;
-        const SensorData &sensorData = s->sensorData();
-        const std::vector<CameraModel> &cameraModels = sensorData.cameraModels();
-        Transform localTransform;
-        if (cameraModels.size() == 0)
-        {
-            // TODO figure out how to know the local transform
-            //Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
-            Transform tempTransform(0, 0, 1, 0.105000, -1, 0, 0, 0, 0, -1, 0, 0.431921);
-            localTransform = tempTransform;
+            _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
         }
         else
         {
-            const CameraModel &cameraModel = cameraModels[0];
-            localTransform = cameraModel.localTransform();
+            delete *iter;
+        }
+    }
+    UDEBUG("Loading signatures done! (%d loaded)", int(_signatures.size()));
+
+    // Last id
+    _dbDriver->getLastNodeId(_idCount);
+
+    UDEBUG("ids start with %d", _idCount + 1);
+
+    // Now load the dictionary if we have a connection
+    UDEBUG("Loading dictionary...");
+    // load all referenced words in working memory
+    std::set<int> wordIds;
+    const std::map<int, rtabmap::Signature *> &signatures = this->getSignatures();
+    for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
+    {
+        const std::multimap<int, cv::KeyPoint> &words = i->second->getWords();
+        std::list<int> keys = uUniqueKeys(words);
+        wordIds.insert(keys.begin(), keys.end());
+    }
+    if (wordIds.size())
+    {
+        std::list<rtabmap::VisualWord *> words;
+        _dbDriver->loadWords(wordIds, words);
+        for (std::list<rtabmap::VisualWord *>::iterator iter = words.begin(); iter != words.end(); ++iter)
+        {
+            _vwd->addWord(*iter);
+        }
+        // Get Last word id
+        int id = 0;
+        _dbDriver->getLastWordId(id);
+        _vwd->setLastWordId(id);
+    }
+    UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+    _vwd->update();
+
+    UDEBUG("Adding word references...");
+    // Enable loaded signatures
+    for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
+    {
+        rtabmap::Signature *s = this->_getSignature(i->first);
+        UASSERT(s != 0);
+
+        const std::multimap<int, cv::KeyPoint> &words = s->getWords();
+        if (words.size())
+        {
+            UDEBUG("node=%d, word references=%d", s->id(), words.size());
+            for (std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter != words.end(); ++iter)
+            {
+                _vwd->addWordRef(iter->first, i->first);
+            }
+            s->setEnabled(true);
+        }
+    }
+    UDEBUG("Adding word references, done! (%d)", _vwd->getTotalActiveReferences());
+
+    if (_vwd->getUnusedWordsSize())
+    {
+        UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
+    }
+    UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+
+    optimizeGraph();
+
+    return true;
+}
+
+void MemoryLoc::close()
+{
+    if (_dbDriver)
+    {
+        UDEBUG("Closing database \"%s\"...", _dbDriver->getUrl().c_str());
+        _dbDriver->closeConnection();
+        delete _dbDriver;
+        _dbDriver = NULL;
+        UDEBUG("Closing database, done!");
+    }
+    UDEBUG("Clearing memory...");
+    this->clear();
+    UDEBUG("Clearing memory, done!");
+}
+
+MemoryLoc::~MemoryLoc()
+{
+    this->close();
+
+    if (_feature2D)
+    {
+        delete _feature2D;
+    }
+    if (_vwd)
+    {
+        delete _vwd;
+    }
+}
+
+void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
+{
+    uInsert(parameters_, parameters);
+
+    UDEBUG("");
+    rtabmap::ParametersMap::const_iterator iter;
+
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
+
+    if (_dbDriver)
+    {
+        _dbDriver->parseParameters(parameters);
+    }
+
+    // Keypoint stuff
+    if (_vwd)
+    {
+        _vwd->parseParameters(parameters);
+    }
+
+    //Keypoint detector
+    UASSERT(_feature2D != 0);
+    rtabmap::Feature2D::Type detectorStrategy = rtabmap::Feature2D::kFeatureUndef;
+    if ((iter = parameters.find(rtabmap::Parameters::kKpDetectorStrategy())) != parameters.end())
+    {
+        detectorStrategy = (rtabmap::Feature2D::Type)std::atoi((*iter).second.c_str());
+    }
+    if (detectorStrategy != rtabmap::Feature2D::kFeatureUndef)
+    {
+        UDEBUG("new detector strategy %d", int(detectorStrategy));
+        if (_feature2D)
+        {
+            delete _feature2D;
+            _feature2D = 0;
         }
 
-        //const std::multimap<int, cv::KeyPoint> &words2D = s->getWords();
-        const std::multimap<int, pcl::PointXYZ> &words3D = s->getWords3();
-        for (std::multimap<int, pcl::PointXYZ>::const_iterator pointIter = words3D.begin();
-                pointIter != words3D.end();
-                pointIter++)
+        _feature2D = rtabmap::Feature2D::create(detectorStrategy, parameters_);
+    }
+    else if (_feature2D)
+    {
+        _feature2D->parseParameters(parameters);
+    }
+
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPReprojError(), _pnpReprojError);
+    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
+}
+
+bool MemoryLoc::update(const rtabmap::SensorData &data)
+{
+    UDEBUG("");
+
+    cleanUnusedWords();
+    if (_vwd)
+    {
+        _vwd->update();
+    }
+
+    rtabmap::Signature *signature = this->createSignature(data);
+    if (signature == NULL)
+    {
+        UERROR("Failed to create a signature...");
+        return false;
+    }
+
+    addSignature(signature);
+
+    return true;
+}
+
+void MemoryLoc::optimizeGraph()
+{
+    if (getLastWorkingSignature())
+    {
+        // Get all IDs linked to last signature (including those in Long-Term Memory)
+        std::map<int, int> ids = getNeighborsId(getLastWorkingSignature()->id(), 0);
+
+        UINFO("Optimize poses, ids.size() = %d", ids.size());
+
+        // Get all metric constraints (the graph)
+        std::map<int, rtabmap::Transform> poses;
+        std::multimap<int, rtabmap::Link> links;
+        getMetricConstraints(uKeysSet(ids), poses, links);
+
+        // Optimize the graph
+        rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
+        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
+        _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        delete graphOptimizer;
+    }
+}
+
+void MemoryLoc::addSignature(rtabmap::Signature *signature)
+{
+    if (signature)
+    {
+        UDEBUG("adding %d", signature->id());
+        _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
+
+        if (signature->getWords().size())
         {
-            /*std::cout << "Word ID: " << pointIter->first << std::endl << "2D Coord: ";
-            for (std::multimap<int, cv::KeyPoint>::const_iterator point2Iter = words2D.begin();
-                 point2Iter != words2D.end();
-                 point2Iter++)
+            signature->setEnabled(true);
+        }
+    }
+}
+
+const rtabmap::Signature *MemoryLoc::getSignature(int id) const
+{
+    return _getSignature(id);
+}
+
+const std::map<int, rtabmap::Signature *> &MemoryLoc::getSignatures() const
+{
+    return _signatures;
+}
+
+rtabmap::Signature *MemoryLoc::_getSignature(int id) const
+{
+    return uValue(_signatures, id, (rtabmap::Signature *)0);
+}
+
+std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int signatureId) const
+{
+    std::map<int, rtabmap::Link> links;
+    rtabmap::Signature *s = uValue(_signatures, signatureId, (rtabmap::Signature *)0);
+    if (s)
+    {
+        const std::map<int, rtabmap::Link> &allLinks = s->getLinks();
+        for (std::map<int, rtabmap::Link>::const_iterator iter = allLinks.begin(); iter != allLinks.end(); ++iter)
+        {
+            if (iter->second.type() == rtabmap::Link::kNeighbor ||
+                    iter->second.type() == rtabmap::Link::kNeighborMerged)
             {
-                if (point2Iter->first == pointIter->first) {
-                    std::cout << point2Iter->second.pt << " ";
+                links.insert(*iter);
+            }
+        }
+    }
+    else
+    {
+        UWARN("Cannot find signature %d in memory", signatureId);
+    }
+    return links;
+}
+
+// return map<Id,Margin>, including signatureId
+std::map<int, int> MemoryLoc::getNeighborsId(
+    int signatureId,
+    int maxGraphDepth, // 0 means infinite margin
+    bool incrementMarginOnLoop, // default false
+    bool ignoreLoopIds, // default false
+    bool ignoreIntermediateNodes // default false
+) const
+{
+    UASSERT(maxGraphDepth >= 0);
+    //UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
+    std::map<int, int> ids;
+    if (signatureId <= 0)
+    {
+        return ids;
+    }
+    int nbLoadedFromDb = 0;
+    std::list<int> curentMarginList;
+    std::set<int> currentMargin;
+    std::set<int> nextMargin;
+    nextMargin.insert(signatureId);
+    int m = 0;
+    std::set<int> ignoredIds;
+    while ((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
+    {
+        // insert more recent first (priority to be loaded first from the database below if set)
+        curentMarginList = std::list<int>(nextMargin.rbegin(), nextMargin.rend());
+        nextMargin.clear();
+
+        for (std::list<int>::iterator jter = curentMarginList.begin(); jter != curentMarginList.end(); ++jter)
+        {
+            if (ids.find(*jter) == ids.end())
+            {
+                //UDEBUG("Added %d with margin %d", *jter, m);
+                // Look up in STM/WM if all ids are here, if not... load them from the database
+                const rtabmap::Signature *s = this->getSignature(*jter);
+                std::map<int, rtabmap::Link> tmpLinks;
+                const std::map<int, rtabmap::Link> *links = &tmpLinks;
+                UASSERT(s != NULL);
+                if (!ignoreIntermediateNodes || s->getWeight() != -1)
+                {
+                    ids.insert(std::pair<int, int>(*jter, m));
+                }
+                else
+                {
+                    ignoredIds.insert(*jter);
+                }
+                links = &s->getLinks();
+
+                // links
+                for (std::map<int, rtabmap::Link>::const_iterator iter = links->begin(); iter != links->end(); ++iter)
+                {
+                    if (!uContains(ids, iter->first) && ignoredIds.find(iter->first) == ignoredIds.end())
+                    {
+                        UASSERT(iter->second.type() != rtabmap::Link::kUndef);
+                        if (iter->second.type() == rtabmap::Link::kNeighbor ||
+                                iter->second.type() == rtabmap::Link::kNeighborMerged)
+                        {
+                            if (ignoreIntermediateNodes && s->getWeight() == -1)
+                            {
+                                // stay on the same margin
+                                if (currentMargin.insert(iter->first).second)
+                                {
+                                    curentMarginList.push_back(iter->first);
+                                }
+                            }
+                            else
+                            {
+                                nextMargin.insert(iter->first);
+                            }
+                        }
+                        else if (!ignoreLoopIds)
+                        {
+                            if (incrementMarginOnLoop)
+                            {
+                                nextMargin.insert(iter->first);
+                            }
+                            else
+                            {
+                                if (currentMargin.insert(iter->first).second)
+                                {
+                                    curentMarginList.push_back(iter->first);
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            std::cout << std::endl;*/
+        }
+        ++m;
+    }
+    return ids;
+}
 
-            pcl::PointXYZ localPointPCL = util3d::transformPoint(pointIter->second, localTransform.inverse()); // because words3 is in base_link frame (localTransform applied))
-            //std::cout << "Local 3D Coord: " << localPointPCL << std::endl;
-            pcl::PointXYZ globalPointPCL = util3d::transformPoint(localPointPCL, pose);
-            //std::cout << "Global 3D Coord: " << globalPointPCL << std::endl;
-            cv::Point3f pointCV(globalPointPCL.x, globalPointPCL.y, globalPointPCL.z);
-            _wordPoints3D.push_back(pointCV);
-            long pointIdx = _wordPoints3D.size() - 1;
-            int wordId = pointIter->first;
-            _pointToWord.insert(std::pair<long, int>(pointIdx, wordId));
-            _wordToPoint[pointIter->first].push_back(pointIdx);
+int MemoryLoc::getNextId()
+{
+    return ++_idCount;
+}
+
+void MemoryLoc::clear()
+{
+    UDEBUG("");
+
+    this->cleanUnusedWords();
+
+    if (_dbDriver)
+    {
+        _dbDriver->emptyTrashes();
+        _dbDriver->join();
+    }
+    if (_dbDriver)
+    {
+        // make sure time_enter in database is at least 1 second
+        // after for the next stuf added to database
+        uSleep(1500);
+    }
+
+    //Get the tree root (parents)
+    std::map<int, rtabmap::Signature *> mem = _signatures;
+    for (std::map<int, rtabmap::Signature *>::iterator i = mem.begin(); i != mem.end(); ++i)
+    {
+        if (i->second)
+        {
+            UDEBUG("deleting from the working and the short-term memory: %d", i->first);
+            this->moveToTrash(i->second);
         }
     }
+
+    if (_signatures.size() != 0)
+    {
+        ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
+    }
+    _signatures.clear();
+
+    UDEBUG("");
+    // Wait until the db trash has finished cleaning the memory
+    if (_dbDriver)
+    {
+        _dbDriver->emptyTrashes();
+    }
+    UDEBUG("");
+    _idCount = kIdStart;
+
+    if (_dbDriver)
+    {
+        _dbDriver->join(true);
+        cleanUnusedWords();
+        _dbDriver->emptyTrashes();
+    }
+    else
+    {
+        cleanUnusedWords();
+    }
+    if (_vwd)
+    {
+        _vwd->clear();
+    }
+    UDEBUG("");
 }
 
-pcl::PolygonMesh::Ptr MemoryLoc::getMesh()
+/**
+ * Compute the likelihood of the signature with some others in the memory.
+ * Important: Assuming that all other ids are under 'signature' id.
+ * If an error occurs, the result is empty.
+ */
+std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *signature, const std::list<int> &ids)
 {
-    pcl::PolygonMesh::Ptr getMesh();
-    std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
-    std::map<int, Transform> poses;
-    std::vector<int> rawCameraIndices;
+    std::map<int, float> likelihood;
 
-    getClouds(clouds, poses);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud = assembleClouds(clouds, poses, rawCameraIndices);
+    if (!signature)
+    {
+        ULOGGER_ERROR("The signature is null");
+        return likelihood;
+    }
+    else if (ids.empty())
+    {
+        UWARN("ids list is empty");
+        return likelihood;
+    }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
+    for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
+    {
+        float sim = 0.0f;
+        if (*iter > 0)
+        {
+            const rtabmap::Signature *sB = this->getSignature(*iter);
+            if (sB == NULL)
+            {
+                UFATAL("Signature %d not found ?!?", *iter);
+            }
+            sim = signature->compareTo(*sB);
+        }
 
-    assembledCloud = util3d::voxelize(assembledCloud, _voxelSize);
-    //pcl::io::savePLYFileASCII("output.ply", *assembledCloud);
+        likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
+    }
 
-    // radius filtering as in MainWindow.cpp
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, _filteringRadius, _filteringMinNeighbors);
-    pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
-    assembledCloud = cloudFiltered;
-
-    // use MLS to get normals
-    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-    cloudWithNormals = util3d::mls(
-                           assembledCloud,
-                           _MLSRadius,
-                           _MLSpolygonialOrder,
-                           _MLSUpsamplingMethod,
-                           _MLSUpsamplingRadius,
-                           _MLSUpsamplingStep,
-                           _MLSPointDensity,
-                           _MLSDilationVoxelSize,
-                           _MLSDilationIterations);
-    // Re-voxelize to make sure to have uniform density
-    cloudWithNormals = util3d::voxelize(cloudWithNormals, _voxelSize);
-
-    // adjust normals to view points
-    util3d::adjustNormalsToViewPoints(poses, rawAssembledCloud, rawCameraIndices, cloudWithNormals);
-
-    pcl::PolygonMesh::Ptr mesh = util3d::createMesh(cloudWithNormals, _gp3Radius, _gp3Mu);
-
-    return mesh;
+    return likelihood;
 }
 
-Transform MemoryLoc::computeGlobalVisualTransform(
-    const std::vector<int> &oldIds,
-    int newId,
-    std::string *rejectedMsg,
-    int *inliers,
-    double *variance) const
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const
 {
-    bool success = true;
-
-    std::vector<Signature> oldSs;
+    std::vector<const rtabmap::Signature *> oldSigs;
     for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); it++)
     {
-        if (*it)
+        const rtabmap::Signature *oldSig = getSignature(*it);
+        if (oldSig == NULL)
         {
-            const Signature *oldS = getSignature(*it);
-            const Transform &pose = oldS->getPose();
-            oldSs.push_back(*oldS);
+            return rtabmap::Transform();
         }
-        else
-        {
-            success = false;
-            break;
-        }
+        oldSigs.push_back(oldSig);
     }
 
-    const Signature *newS = NULL;
-    if (newId)
+    const rtabmap::Signature *newSig = getSignature(newId);
+    if (newSig == NULL)
     {
-        newS = getSignature(newId);
-    }
-    else
-    {
-        success = false;
+        return rtabmap::Transform();
     }
 
-    if (success)
-    {
-        return computeGlobalVisualTransform(oldSs, *newS, rejectedMsg, inliers, variance);
-    }
-    else
-    {
-        std::string msg = uFormat("Did not find nodes in oldIds and/or %d", newId);
-        if (rejectedMsg)
-        {
-            *rejectedMsg = msg;
-        }
-        UWARN(msg.c_str());
-    }
-    return Transform();
+    return computeGlobalVisualTransform(oldSigs, newSig);
 }
 
-Transform MemoryLoc::computeGlobalVisualTransform(
-    const std::vector<Signature> &oldSs,
-    const Signature &newS,
-    std::string *rejectedMsg,
-    int *inliersOut,
-    double *varianceOut) const
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const
 {
-    Transform transform;
+    if (oldSigs.size() == 0 || newSig == NULL)
+    {
+        return rtabmap::Transform();
+    }
+
+    rtabmap::Transform transform;
     std::string msg;
-    // Guess transform from visual words
 
     int inliersCount = 0;
     double variance = 1.0;
 
-    std::multimap<int, pcl::PointXYZ> words3;
-    const Transform &basePose = oldSs.begin()->getPose();
-    for (std::vector<Signature>::const_iterator it1 = oldSs.begin(); it1 != oldSs.end(); it1++)
+    std::multimap<int, cv::Point3f> words3;
+
+    const std::vector<const rtabmap::Signature *>::const_iterator firstSig = oldSigs.begin();
+    const rtabmap::Transform &guessPose = getOptimizedPose((*firstSig)->id());
+
+    for (std::vector<const rtabmap::Signature *>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
     {
-        Transform relativeT = basePose.inverse() * it1->getPose();
-        std::multimap<int, pcl::PointXYZ>::const_iterator it2;
-        for (it2 = it1->getWords3().begin(); it2 != it1->getWords3().end(); it2++)
+        rtabmap::Transform pose = getOptimizedPose((*sigIter)->id());
+        const std::multimap<int, cv::Point3f> &sigWords3 = (*sigIter)->getWords3();
+        std::multimap<int, cv::Point3f>::const_iterator word3Iter;
+        for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
         {
-            pcl::PointXYZ globalPoint = util3d::transformPoint(it2->second, relativeT);
-            std::multimap<int, pcl::PointXYZ>::iterator it3 = words3.find(it2->first);
-            //if (it3 != words3.end())
-            //{
-            //    std::cout<< "existing point in base frame: " << it3->second << std::endl;
-            //    std::cout<< "new point in own frame: " << it2->second << std::endl;
-            //    std::cout<< "new point in base frame: " << globalPoint << std::endl << std::endl;
-            //    std::cout<< "base pose: " << basePose << std::endl;
-            //    std::cout<< "own pose: " << it1->getPose() << std::endl;
-            //}
-            words3.insert(std::pair<int, pcl::PointXYZ>(it2->first, globalPoint));
+            cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, pose);
+            words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
         }
     }
 
-    // PnP
-    if (!newS.sensorData().stereoCameraModel().isValid() &&
-            (newS.sensorData().cameraModels().size() != 1 ||
-             !newS.sensorData().cameraModels()[0].isValid()))
+    // 3D to 2D (PnP)
+    if ((int)words3.size() >= _minInliers && (int)newSig->getWords().size() >= _minInliers)
     {
-        UERROR("Calibrated camera required (multi-cameras not supported).");
-    }
-    else
-    {
-        // 3D to 2D
-        if ((int)words3.size() >= _bowMinInliers &&
-                (int)newS.getWords().size() >= _bowMinInliers)
-        {
-            UASSERT(newS.sensorData().stereoCameraModel().isValid() || (newS.sensorData().cameraModels().size() == 1 && newS.sensorData().cameraModels()[0].isValid()));
-            const CameraModel &cameraModel = newS.sensorData().stereoCameraModel().isValid() ? newS.sensorData().stereoCameraModel().left() : newS.sensorData().cameraModels()[0];
+        const rtabmap::CameraModel &cameraModel = newSig->sensorData().cameraModels()[0];
 
-            std::vector<int> inliersV;
-            transform = util3d::estimateMotion3DTo2D(
-                            uMultimapToMap(words3),
-                            uMultimapToMap(newS.getWords()),
-                            cameraModel,
-                            _bowMinInliers,
-                            _bowIterations,
-                            _bowPnPReprojError,
-                            _bowPnPFlags,
-                            Transform::getIdentity(),
-                            uMultimapToMap(newS.getWords3()),
-                            &variance,
-                            0,
-                            &inliersV);
-            inliersCount = (int)inliersV.size();
-            if (transform.isNull())
-            {
-                msg = uFormat("Not enough inliers %d/%d between the old signatures and %d",
-                              inliersCount, _bowMinInliers, newS.id());
-                UINFO(msg.c_str());
-            }
-            else
-            {
-                transform = transform.inverse();
-            }
-        }
-        else
+        std::vector<int> matches;
+        std::vector<int> inliers;
+        transform = rtabmap::util3d::estimateMotion3DTo2D(
+                        uMultimapToMapUnique(words3),
+                        uMultimapToMapUnique(newSig->getWords()),
+                        cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
+                        _minInliers,
+                        _iterations,
+                        _pnpReprojError,
+                        _pnpFlags,
+                        _pnpRefineIterations,
+                        guessPose, // use the first signature's pose as a guess
+                        uMultimapToMapUnique(newSig->getWords3()),
+                        &variance,
+                        &matches,
+                        &inliers);
+        inliersCount = (int)inliers.size();
+        if (transform.isNull())
         {
-            msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)",
-                          (int)words3.size(), (int)newS.getWords().size(), _bowMinInliers);
+            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _minInliers, newSig->id());
             UINFO(msg.c_str());
         }
     }
+    else
+    {
+        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig->getWords().size(), _minInliers);
+        UINFO(msg.c_str());
+    }
 
+    // TODO check RegistrationVis.cpp to see whether this is necessary
     if (!transform.isNull())
     {
         // verify if it is a 180 degree transform, well verify > 90
         float x, y, z, roll, pitch, yaw;
-        transform.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-        if (fabs(roll) > CV_PI / 2 ||
-                fabs(pitch) > CV_PI / 2 ||
-                fabs(yaw) > CV_PI / 2)
+        transform.inverse().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+        if (fabs(roll) > CV_PI / 2 || fabs(pitch) > CV_PI / 2 || fabs(yaw) > CV_PI / 2)
         {
             transform.setNull();
-            msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-                          roll, pitch, yaw);
+            msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)", roll, pitch, yaw);
             UWARN(msg.c_str());
         }
     }
 
-    // transfer to global frame
-    transform = basePose * transform.inverse();
-
-    if (rejectedMsg)
-    {
-        *rejectedMsg = msg;
-    }
-    if (inliersOut)
-    {
-        *inliersOut = inliersCount;
-    }
-    if (varianceOut)
-    {
-        *varianceOut = variance;
-    }
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
     return transform;
 }
 
-void MemoryLoc::getClouds(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
-                          std::map<int, Transform> &poses)
+void MemoryLoc::emptyTrash()
 {
-    std::set<int> ids = getAllSignatureIds();
-    for (std::set<int>::const_iterator it = ids.begin(); it != ids.end(); it++)
+    if (_dbDriver)
     {
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-        SensorData d = getNodeData(*it);
-        cv::Mat image, depth;
-        d.uncompressData(&image, &depth, 0);
-        if (!image.empty() && !depth.empty())
-        {
-            UASSERT(*it == d.id());
-            cloud = util3d::cloudRGBFromSensorData(d);
-        }
-        else
-        {
-            UWARN("SensorData missing information");
-        }
-
-        if (cloud->size())
-        {
-            UDEBUG("cloud size: %d", cloud->size());
-            clouds.insert(std::make_pair(*it, cloud));
-        }
-        else
-        {
-            UWARN("cloud is empty");
-        }
-
-        const Signature *s = getSignature(*it);
-        if (!s)
-        {
-            UWARN("Signature with id %d is empty", *it);
-            continue;
-        }
-        const Transform &pose = s->getPose();
-        poses.insert(std::make_pair(*it, pose));
+        _dbDriver->emptyTrashes(true);
     }
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr MemoryLoc::assembleClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > &clouds,
-        const std::map<int, Transform> &poses,
-        std::vector<int> &rawCameraIndices)
+/**
+ * If saveToDatabase=false, deleted words are filled in deletedWords.
+ */
+void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
 {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    for (std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::const_iterator it1 = clouds.begin();
-            it1 != clouds.end();
-            it1++)
+    UDEBUG("id=%d", s ? s->id() : 0);
+    if (s)
     {
-        std::map<int, Transform>::const_iterator it2 = poses.find(it1->first);
-        if (it2 == poses.end())
+        // If not saved to database or it is a bad signature (not saved), remove links!
+        if (!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
         {
-            continue;
-        }
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(it1->second, it2->second);
-        *assembledCloud += *transformed;
+            UDEBUG("remove links");
+            const std::map<int, rtabmap::Link> &links = s->getLinks();
+            for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
+            {
+                UDEBUG("remove link");
+                rtabmap::Signature *sTo = this->_getSignature(iter->first);
+                // neighbor to s
+                UASSERT_MSG(sTo != 0,
+                            uFormat("A neighbor (%d) of the deleted location %d is "
+                                    "not found in WM/STM! Are you deleting a location "
+                                    "outside the STM?", iter->first, s->id()).c_str());
 
-        rawCameraIndices.resize(assembledCloud->size(), it1->first);
+                if (iter->first > s->id() && links.size() > 1 && sTo->hasLink(s->id()))
+                {
+                    UWARN("Link %d of %d is newer, removing neighbor link "
+                          "may split the map!",
+                          iter->first, s->id());
+                }
+
+                // child
+                if (iter->second.type() == rtabmap::Link::kGlobalClosure && s->id() > sTo->id())
+                {
+                    sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
+                }
+
+                sTo->removeLink(s->id());
+
+            }
+            s->removeLinks(); // remove all links
+            s->setWeight(0);
+            s->setLabel(""); // reset label
+        }
+        else
+        {
+            UDEBUG("remove virtual links");
+            // Make sure that virtual links are removed.
+            // It should be called before the signature is
+            // removed from _signatures below.
+            removeVirtualLinks(s->id());
+        }
+
+        this->disableWordsRef(s->id());
+        if (!keepLinkedToGraph)
+        {
+            std::list<int> keys = uUniqueKeys(s->getWords());
+            for (std::list<int>::const_iterator i = keys.begin(); i != keys.end(); ++i)
+            {
+                // assume just removed word doesn't have any other references
+                rtabmap::VisualWord *w = _vwd->getUnusedWord(*i);
+                if (w)
+                {
+                    std::vector<rtabmap::VisualWord *> wordToDelete;
+                    wordToDelete.push_back(w);
+                    _vwd->removeWords(wordToDelete);
+                    delete w;
+                }
+            }
+        }
+
+        _signatures.erase(s->id());
+
+        delete s;
+    }
+}
+
+const rtabmap::Signature *MemoryLoc::getLastWorkingSignature() const
+{
+    UDEBUG("");
+    return this->_getSignature(_signatures.rbegin()->first);
+}
+
+void MemoryLoc::deleteLocation(int locationId)
+{
+    UDEBUG("Deleting location %d", locationId);
+    rtabmap::Signature *location = _getSignature(locationId);
+    if (location)
+    {
+        this->moveToTrash(location, false);
+    }
+}
+
+void MemoryLoc::removeVirtualLinks(int signatureId)
+{
+    UDEBUG("");
+    rtabmap::Signature *s = this->_getSignature(signatureId);
+    if (s)
+    {
+        const std::map<int, rtabmap::Link> &links = s->getLinks();
+        for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
+        {
+            if (iter->second.type() == rtabmap::Link::kVirtualClosure)
+            {
+                rtabmap::Signature *sTo = this->_getSignature(iter->first);
+                if (sTo)
+                {
+                    sTo->removeLink(s->id());
+                }
+                else
+                {
+                    UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
+                }
+            }
+        }
+        s->removeVirtualLinks();
+    }
+    else
+    {
+        UERROR("Signature %d not in WM/STM?!?", signatureId);
+    }
+}
+
+rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
+{
+    rtabmap::Transform pose;
+    const std::map<int, rtabmap::Transform>::const_iterator poseIter = _optimizedPoses.find(signatureId);
+    if (poseIter != _optimizedPoses.end())
+    {
+        pose = poseIter->second;
     }
 
-    return assembledCloud;
+    return pose;
 }
 
-Signature *createSignature(std::multimap<int, cv::KeyPoint> words,
-                           std::multimap<int, pcl::PointXYZ> words3D,
-                           const Transform &pose)
+rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
 {
-    return NULL;
+    UDEBUG("");
+    UASSERT(data.imageRaw().empty() ||
+            data.imageRaw().type() == CV_8UC1 ||
+            data.imageRaw().type() == CV_8UC3);
+
+    std::vector<cv::KeyPoint> keypoints;
+    cv::Mat descriptors;
+    int id = this->getNextId();
+
+    if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
+    {
+        UINFO("Extract features");
+        cv::Mat imageMono;
+        if (data.imageRaw().channels() == 3)
+        {
+            cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+        }
+        else
+        {
+            imageMono = data.imageRaw();
+        }
+
+        keypoints = _feature2D->generateKeypoints(imageMono);
+        descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+    }
+    else if (data.imageRaw().empty())
+    {
+        UDEBUG("Empty image, cannot extract features...");
+    }
+    else if (_feature2D->getMaxFeatures() < 0)
+    {
+        UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+    }
+
+    std::list<int> wordIds;
+    if (descriptors.rows)
+    {
+        wordIds = _vwd->addNewWords(descriptors, id);
+    }
+    else if (id > 0)
+    {
+        UDEBUG("id %d is a bad signature", id);
+    }
+
+    std::multimap<int, cv::KeyPoint> words;
+    if (wordIds.size() > 0)
+    {
+        UASSERT(wordIds.size() == keypoints.size());
+        unsigned int i = 0;
+        for (std::list<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
+        {
+            words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+        }
+    }
+
+    cv::Mat image = data.imageRaw();
+    std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
+
+    UDEBUG("bin data not kept");
+    rtabmap::Signature *s = new rtabmap::Signature(id);
+
+    s->sensorData().setId(id);
+    s->sensorData().setCameraModels(cameraModels);
+
+    s->setWords(words);
+
+    // set raw data
+    s->sensorData().setImageRaw(image);
+
+    if (words.size())
+    {
+        s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
+    }
+    return s;
 }
 
-} // namespace rtabmap
+void MemoryLoc::disableWordsRef(int signatureId)
+{
+    UDEBUG("id=%d", signatureId);
+
+    rtabmap::Signature *ss = this->_getSignature(signatureId);
+    if (ss && ss->isEnabled())
+    {
+        const std::multimap<int, cv::KeyPoint> &words = ss->getWords();
+        const std::list<int> &keys = uUniqueKeys(words);
+        int count = _vwd->getTotalActiveReferences();
+        // First remove all references
+        for (std::list<int>::const_iterator i = keys.begin(); i != keys.end(); ++i)
+        {
+            _vwd->removeAllWordRef(*i, signatureId);
+        }
+
+        count -= _vwd->getTotalActiveReferences();
+        ss->setEnabled(false);
+        UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
+    }
+}
+
+void MemoryLoc::cleanUnusedWords()
+{
+    if (_vwd->isIncremental())
+    {
+        std::vector<rtabmap::VisualWord *> removedWords = _vwd->getUnusedWords();
+        UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
+        if (removedWords.size())
+        {
+            // remove them from the dictionary
+            _vwd->removeWords(removedWords);
+
+            for (unsigned int i = 0; i < removedWords.size(); ++i)
+            {
+                delete removedWords[i];
+            }
+        }
+    }
+}
+
+// return all non-null poses
+// return unique links between nodes (for neighbors: old->new, for loops: parent->child)
+void MemoryLoc::getMetricConstraints(
+    const std::set<int> &ids,
+    std::map<int, rtabmap::Transform> &poses,
+    std::multimap<int, rtabmap::Link> &links)
+{
+    UDEBUG("");
+    for (std::set<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
+    {
+        const rtabmap::Signature *s = getSignature(*iter);
+        rtabmap::Transform pose = s->getPose();
+        if (!pose.isNull())
+        {
+            poses.insert(std::make_pair(*iter, pose));
+        }
+    }
+
+    for (std::set<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
+    {
+        if (uContains(poses, *iter))
+        {
+            const rtabmap::Signature *s = getSignature(*iter);
+            UASSERT(s != NULL);
+            std::map<int, rtabmap::Link> tmpLinks = s->getLinks();
+            for (std::map<int, rtabmap::Link>::iterator jter = tmpLinks.begin(); jter != tmpLinks.end(); ++jter)
+            {
+                if (jter->second.isValid() &&
+                        uContains(poses, jter->first) &&
+                        rtabmap::graph::findLink(links, *iter, jter->first) == links.end())
+                {
+                    if ((jter->second.type() == rtabmap::Link::kNeighbor ||
+                            jter->second.type() == rtabmap::Link::kNeighborMerged))
+                    {
+                        rtabmap::Link link = jter->second;
+                        const rtabmap::Signature *s = this->getSignature(jter->first);
+                        UASSERT(s != NULL);
+                        while (s && s->getWeight() == -1)
+                        {
+                            // skip to next neighbor, well we assume that bad signatures
+                            // are only linked by max 2 neighbor links.
+                            std::map<int, rtabmap::Link> n = this->getNeighborLinks(s->id());
+                            UASSERT(n.size() <= 2);
+                            std::map<int, rtabmap::Link>::iterator uter = n.upper_bound(s->id());
+                            if (uter != n.end())
+                            {
+                                const rtabmap::Signature *s2 = this->getSignature(uter->first);
+                                if (s2)
+                                {
+                                    link = link.merge(uter->second, uter->second.type());
+                                    poses.erase(s->id());
+                                    s = s2;
+                                }
+
+                            }
+                            else
+                            {
+                                break;
+                            }
+                        }
+
+                        links.insert(std::make_pair(*iter, link));
+                    }
+                    else
+                    {
+                        links.insert(std::make_pair(*iter, jter->second));
+                    }
+                }
+            }
+        }
+    }
+}

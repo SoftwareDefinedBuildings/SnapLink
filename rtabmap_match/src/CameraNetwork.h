@@ -1,41 +1,34 @@
 #pragma once
 
 #include <rtabmap/core/Camera.h>
+#include <QObject>
+#include "Localization.h"
+#include "HTTPServer.h"
 
-class UTimer;
-
-namespace rtabmap
-{
+class Localization;
+class HTTPServer;
 
 class CameraNetwork :
-    public Camera
+    public QObject
 {
 public:
-    CameraNetwork(bool rectifyImages = false,
-                  bool isDepth = false,
-                  float imageRate = 0,
-                  const Transform &localTransform = Transform::getIdentity());
+    CameraNetwork();
     virtual ~CameraNetwork();
 
-    virtual bool init(const std::string &calibrationFolder = ".", const std::string &cameraName = "");
-    virtual bool isCalibrated() const;
-    virtual std::string getSerial() const;
-    // ownership transferred
-    bool addImage(std::vector<unsigned char> *);
+    bool init(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName);
+
+    void setLocalizer(Localization *loc);
+    void setHTTPServer(HTTPServer *httpServer);
 
 protected:
-    virtual SensorData captureImage();
+    virtual bool event(QEvent *event);
 
 private:
-    static cv::Mat dataToImage(std::vector<unsigned char> *data);
+    // ownership transferred
+    rtabmap::SensorData *process(std::vector<unsigned char> *data, uint32_t width, uint32_t height);
 
 private:
-    cv::Mat _img;
-    bool _rectifyImages;
-    bool _isDepth;
-
-    std::string _cameraName;
-    CameraModel _model;
+    rtabmap::CameraModel _model;
+    Localization *_loc;
+    HTTPServer *_httpServer;
 };
-
-} // namespace rtabmap
