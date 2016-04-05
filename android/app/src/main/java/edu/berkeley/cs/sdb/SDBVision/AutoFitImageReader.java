@@ -52,6 +52,13 @@ public class AutoFitImageReader implements AutoCloseable {
                     return;
                 }
 
+                // scale image to half size if 16:9 ratio
+                if (width / 16 * 9 == height || height / 16 * 9 == width) {
+                    imageData = halfImage(imageData, width, height);
+                    width /= 2;
+                    height /= 2;
+                }
+
                 //imageData = scale(imageData, width, height);
                 imageData = rotate(imageData, width, height);
 
@@ -146,6 +153,22 @@ public class AutoFitImageReader implements AutoCloseable {
 
     private boolean isBlurred(byte[] image, int width, int height) {
         return false;
+    }
+
+    /**
+     * Scale an image to half size
+     *
+     * @param imageData the raw bytes of a greyscale image, every byte is a color sample
+     * @return imageData scaled down to half size
+     */
+    private byte[] halfImage(byte[] imageData, int width, int height) {
+        byte[] halved = new byte[imageData.length / 4];
+        for (int i = 0; i < height / 2; i++) {
+            for (int j = 0; j < width / 2; j++) {
+                halved[width /2 * i + j] = imageData[width * 2 * i + 2 * j];
+            }
+        }
+        return halved;
     }
 
     /**
