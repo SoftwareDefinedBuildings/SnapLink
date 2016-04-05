@@ -6,8 +6,9 @@ import sys
 import numpy as np
 import cv2
 import requests
+import struct
 
-SERVER_ADDR = "http://castle.cs.berkeley.edu:50021"
+SERVER_ADDR = "http://castle.cs.berkeley.edu:50012"
 
 def test_file(filename):
     print filename
@@ -15,19 +16,21 @@ def test_file(filename):
     img = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
 
     rows, cols = img.shape
-    if rows/cols == 480/640:
+    width = 480
+    height = 640
+    if rows/cols == width/height:
         img = cv2.transpose(img)
         img = cv2.flip(img, 1) # flip along y axis
-    elif cols/rows == 480/640:
+    elif cols/rows == width/height:
         pass
     else:
         print "wrong image aspect ratio"
         return False
 
-    img = cv2.resize(img, (480, 640)) # scale
+    img = cv2.resize(img, (width, height)) # scale
     img = cv2.flip(img, 0) # flip along x axis TODO: why flip?
     
-    files = {'file': (filename, img.tostring())}
+    files = {'file': (filename, img.tostring()), 'width': ("", struct.pack("!I", width)), 'height': ("", struct.pack("!I", height))}
     r = requests.post(SERVER_ADDR, files=files)
     if r.text != obj_name:
         print "test failed. response =", r.text, "obj =", obj_name
