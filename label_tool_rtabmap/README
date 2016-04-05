@@ -1,0 +1,17 @@
+in rtabmap source, replace following files and make;make install:
+
+guilib/include/rtabmap/gui/ImageView.h
+guilib/src/DatabaseViewer.cpp
+guilib/src/ImageView.cpp
+guilib/src/ui/DatabaseViewer
+
+
+Run rtabmap-databaseViewer
+
+click on upper-left corner of IMAGE (with no text in label (left side textbox of the 3 )).
+This will record (X,Y) to compute relative position.
+
+to record label:
+    enter text in label textbox
+    click on point on image
+    if good value, it will say "Good value recorded", otherwise "NaN detected!"
