@@ -25,24 +25,75 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/RtabmapThread.h"
-#include "rtabmap/core/CameraRGBD.h"
-#include "rtabmap/core/Odometry.h"
-#include "rtabmap/core/Parameters.h"
-#include "OdometryMonoLoc.h"
-#include "rtabmap/utilite/UEventsManager.h"
+#include <rtabmap/core/Memory.h>
+#include <rtabmap/core/RtabmapThread.h>
+#include <rtabmap/core/CameraRGBD.h>
+#include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d.h>
 #include <stdio.h>
 
-#include "OdometryMonoLoc.h"
+using namespace rtabmap;
 
 void showUsage()
 {
     printf("\nUsage:\n"
-            "rtabmap-rgbd_mapping database_file imageID x y\n");
+            "rtabmap-rgbd_mapping database_file imageId x y\n");
     exit(1);
 }
 
-using namespace rtabmap;
+std::map<int, Transform> optimizeGraph(Memory &memory)
+{
+    if (memory.getLastWorkingSignature())
+    {
+        // Get all IDs linked to last signature (including those in Long-Term Memory)
+        std::map<int, int> ids = memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0);
+
+        UINFO("Optimize poses, ids.size() = %d", ids.size());
+
+        // Get all metric constraints (the graph)
+        std::map<int, rtabmap::Transform> poses;
+        std::multimap<int, rtabmap::Link> links;
+        memory.getMetricConstraints(uKeysSet(ids), poses, links);
+
+        // Optimize the graph
+        Optimizer::Type optimizerType = Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
+        Optimizer *graphOptimizer = Optimizer::create(optimizerType);
+        std::map<int, Transform> optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        delete graphOptimizer;
+
+        return optimizedPoses;
+    }
+}
+
+bool convert(int imageId, int x, int y, Memory &memory, std::map<int, Transform> &poses, pcl::PointXYZ &pWorld)
+{
+    const SensorData &data = memory.getNodeData(imageId, true);
+    const CameraModel &cm = data.cameraModels()[0];
+    bool smoothing = false;
+    //std::cout << data.depthRaw().size() << " " << cm.cx() << " " << cm.cy() << " " << cm.fx() << " " << cm.fy() << " " << cm.localTransform().prettyPrint() << std::endl;
+    pcl::PointXYZ pLocal = util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
+    {
+        UWARN("Depth value not valid");
+        return false;
+    }
+    std::map<int, Transform>::const_iterator iter = poses.find(imageId);
+    if (iter == poses.end() || iter->second.isNull())
+    {
+        UWARN("Image pose not found or is Null");
+        return false;
+    }
+    Transform poseWorld = iter->second;
+    poseWorld = poseWorld * cm.localTransform();
+    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    return true;
+}
+
+
 int main(int argc, char * argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
@@ -50,7 +101,7 @@ int main(int argc, char * argv[])
     //ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
-    int imgID;
+    int imageId;
     int x;
     int y;
     if(argc != 5)
@@ -60,51 +111,28 @@ int main(int argc, char * argv[])
     else
     {
         dbfile = std::string(argv[argc-4]);
-        imgID = std::stoi(std::string(argv[argc-3]));
+        imageId = std::stoi(std::string(argv[argc-3]));
         x = std::stoi(std::string(argv[argc-2]));
         y = std::stoi(std::string(argv[argc-1]));
     }
 
-    // Hardcoded for CameraRGBImages for Android LG G2 Mini
-    // TODO read fx and fy from EXIF
-    // THIS SHOULD ALWAYS BE 2
-    int cameraType = 2; // lg g2 mini = 1, kinect v1 = 2
-
-    float fx;
-    float fy;
-    float cx;
-    float cy;
-    Transform localTransform;
-    if (cameraType == 1)
+    Memory memory;
+    if (!memory.init(dbfile, false))
     {
-        // now it is hardcoded for lg g2 mini
-        fx = 2248.90280131777f;
-        fy = 2249.05827505121f;
-        cx = 1303.16905149739f;
-        cy = 936.309085911272f;
-        Transform tempTransform(0,0,1,0,-1,0,0,0,0,-1,0,0);
-    
-        localTransform = tempTransform;
-
-        // TODO undistort img (or call it rectify here, not same rectification as eipometry)
-        // k1 = 0.134408880645970, k2 = -0.177147104797916
-    }
-    else if (cameraType == 2)
-    { 
-        // hardcoded for map1_10Hz
-        fx = 525.0f;
-        fy = 525.0f;
-        cx = 320.0f;
-        cy = 240.0f;
-        Transform tempTransform(0,0,1,0.105000,-1,0,0,0,0,-1,0,0.431921);
-    
-        localTransform = tempTransform;
+        UERROR("Error init memory");
+        return 1;
     }
 
-    OdometryMonoLoc * odom = new OdometryMonoLoc(dbfile);
-    std::cout << odom->convert(imgID, x, y, fx, fy, cx, cy, localTransform) << std::endl;
-
-    delete odom;
+    std::map<int, Transform> optimizedPoses = optimizeGraph(memory);
+    pcl::PointXYZ pWorld;
+    if (convert(imageId, x, y, memory, optimizedPoses, pWorld))
+    {
+        std::cout << pWorld << std::endl;
+    }
+    else
+    {
+        std::cout << "Fail to convert" << std::endl;
+    }
 
     return 0;
 }
