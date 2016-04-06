@@ -8,7 +8,7 @@ import cv2
 import requests
 import struct
 
-SERVER_ADDR = "http://castle.cs.berkeley.edu:50012"
+SERVER_ADDR = "http://castle.cs.berkeley.edu:50021"
 
 def test_file(filename):
     print filename
@@ -33,19 +33,21 @@ def test_file(filename):
     files = {'file': (filename, img.tostring()), 'width': ("", struct.pack("!I", width)), 'height': ("", struct.pack("!I", height))}
     r = requests.post(SERVER_ADDR, files=files)
     if r.text != obj_name:
-        print "test failed. response =", r.text, "obj =", obj_name
+        print "test failed. response =", r.text, "obj =", obj_name, "\n"
         return False
-    print "test passed. response =", r.text, "obj =", obj_name
-    print ""
-    return True
+    else:
+        print "test passed. response =", r.text, "obj =", obj_name, "\n"
+        return True
 
 
 def test_dir(directory):
+    pass_count = 0
+    total_count = 0
     for filename in glob.glob(os.path.join(directory, "*.jpg")):
-        if not test_file(filename):
-            return False
-    print "all tests passed"
-    return True
+        total_count += 1
+        if test_file(filename):
+            pass_count += 1
+    print "{0}/{1} tests passed".format(pass_count, total_count)
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
