@@ -86,7 +86,6 @@ rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, ui
     {
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
-        cv::flip(img, img, 0); // flip the image around the x-axis
 
         //imwrite("image.jpg", img);
 
