@@ -91,7 +91,7 @@ bool Visibility::processLabels(const std::string &dir, const MemoryLoc *memory)
             {
                 _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
                 _labels.push_back(label);
-                UDEBUG("Read point (%lf,%lf,%lf) with label %s", imageId, x, y, label.c_str());
+                UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
             }
         }
     }
