@@ -73,6 +73,7 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
     std::set<int> ids;
     _dbDriver->getAllNodeIds(ids, true);
     _dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
+    _dbDriver->loadNodeData(dbSignatures);
 
     for (std::list<rtabmap::Signature *>::reverse_iterator iter = dbSignatures.rbegin(); iter != dbSignatures.rend(); ++iter)
     {
@@ -80,6 +81,10 @@ bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &par
         if (!((*iter)->isBadSignature() && _badSignaturesIgnored))
         {
             _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
+            if (!(*iter)->sensorData().imageCompressed().empty())
+            {
+                (*iter)->sensorData().uncompressData();
+            }
         }
         else
         {
@@ -247,7 +252,13 @@ bool MemoryLoc::update(const rtabmap::SensorData &data)
         return false;
     }
 
-    addSignature(signature);
+    UDEBUG("adding %d", signature->id());
+    _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
+
+    if (signature->getWords().size())
+    {
+        signature->setEnabled(true);
+    }
 
     return true;
 }
@@ -271,20 +282,6 @@ void MemoryLoc::optimizeGraph()
         rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
         _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
         delete graphOptimizer;
-    }
-}
-
-void MemoryLoc::addSignature(rtabmap::Signature *signature)
-{
-    if (signature)
-    {
-        UDEBUG("adding %d", signature->id());
-        _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
-
-        if (signature->getWords().size())
-        {
-            signature->setEnabled(true);
-        }
     }
 }
 
@@ -449,7 +446,7 @@ void MemoryLoc::clear()
     {
         if (i->second)
         {
-            UDEBUG("deleting from the working and the short-term memory: %d", i->first);
+            UDEBUG("deleting from the memory: %d", i->first);
             this->moveToTrash(i->second);
         }
     }
