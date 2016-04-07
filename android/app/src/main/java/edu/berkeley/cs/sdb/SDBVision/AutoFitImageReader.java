@@ -7,6 +7,7 @@ import android.graphics.Rect;
 import android.hardware.camera2.CameraCharacteristics;
 import android.media.Image;
 import android.media.ImageReader;
+import android.os.Build;
 import android.os.Handler;
 import android.view.Surface;
 
@@ -52,8 +53,10 @@ public class AutoFitImageReader implements AutoCloseable {
                     return;
                 }
 
-                // image from camera is flipped along x-axis
-                imageData = flipVertical(imageData, width, height);
+                if (! "D6503".equals(Build.PRODUCT)) {
+                    // image from camera is flipped along x-axis
+                    imageData = flipVertical(imageData, width, height);
+                }
 
                 // scale image to half size if 16:9 ratio
                 if (width / 16 * 9 == height || height / 16 * 9 == width) {
