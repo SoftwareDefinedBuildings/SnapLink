@@ -120,7 +120,11 @@ public class AutoFitImageReader implements AutoCloseable {
     private int getRotateCount() {
         int sensorRotation = mCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) / 90;
         int userRotation = ((Activity) mContext).getWindowManager().getDefaultDisplay().getRotation();
-        return (sensorRotation + userRotation) % 4;
+        if (sensorRotation - userRotation < 0) {
+            return sensorRotation - userRotation + 4; // loop around to positive value
+        } else {
+            return sensorRotation - userRotation;
+        }
     }
 
     /**
