@@ -6,5 +6,26 @@
     <string name="off">Off</string>
     <string name="none">None</string>
     <string name="settings">Settings</string>
-    <string name="server_addr">Server Address</string>
+
+    <string name="cellmate_server_addr_title">CallMate Server Address</string>
+    <string name="cellmate_server_addr_val">castle.cs.berkeley.edu</string>
+    <string name="cellmate_server_port_title">CellMate Server Port</string>
+    <string name="cellmate_server_port_val">50021</string>
+    <string name="bosswave_router_addr_title">BOSSWAVE Router Address</string>
+    <string name="bosswave_router_addr_val">castle.cs.berkeley.edu</string>
+    <string name="bosswave_router_port_title">BOSSWAVE Router Port</string>
+    <string name="bosswave_router_port_val">50012</string>
+    <string name="bosswave_key_base64_title">BOSSWAVE Key Base64</string>
+    <string name="bosswave_key_base64_val">Mqmvj8G02K4EncGpRkp3DFSy+rnNZNq2KPjz/t6FUHVLCDYSe/Bp4UapPeFjV6WGJm/KT6bddc8Mrr3vJZV+c7YCCEFVKemy7D4UAwiuUoex8k6fGAUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgNZdXAAhbDzkz/4amI9XxkhzwldzPQ6+Z2DkaTF9pjsp8tTxY1jrper6UziaO+Gs6skX3ICiwBI7A/71/7bVbGaAqOiDw==</string>
+    <string name="fx_title">fx</string>
+    <string name="fx_val">525</string>
+    <string name="fy_title">fy</string>
+    <string name="fy_val">525</string>
+    <string name="cx_title">cx</string>
+    <string name="cx_val">0</string>
+    <string name="cy_title">cy</string>
+    <string name="cy_val">0</string>
+    <string name="calib_summary">You need to calibrate your camera out of band at resolution</string>
+    <string name="flip_x_title">Flip along x axis</string>
+    <string name="flip_x_summary">Some cameras generate flipped images</string>
 </resources>
