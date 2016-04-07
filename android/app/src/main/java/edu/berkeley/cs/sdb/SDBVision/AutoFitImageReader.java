@@ -52,6 +52,9 @@ public class AutoFitImageReader implements AutoCloseable {
                     return;
                 }
 
+                // image from camera is flipped along x-axis
+                imageData = flipVertical(imageData, width, height);
+
                 // scale image to half size if 16:9 ratio
                 if (width / 16 * 9 == height || height / 16 * 9 == width) {
                     imageData = halfImage(imageData, width, height);
@@ -184,6 +187,20 @@ public class AutoFitImageReader implements AutoCloseable {
     private byte[] scale(byte[] imageData, int width, int height) {
         // TODO read characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
         return imageData;
+    }
+
+    /**
+     * Flip the image vertically
+     *
+     * @param imageData the raw bytes of a greyscale image, every byte is a color sample
+     * @return the raw bytes of the image, flipped vertically
+     */
+    private byte[] flipVertical(byte[] imageData, int width, int height) {
+        byte[] flipped = new byte[imageData.length];
+        for (int i = 0; i < height; i++) {
+            System.arraycopy(imageData, width * i, flipped, width * (height - 1 - i), width);
+        }
+        return flipped;
     }
 
     /**
