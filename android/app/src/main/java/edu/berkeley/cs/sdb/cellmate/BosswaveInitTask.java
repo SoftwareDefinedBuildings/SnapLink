@@ -23,6 +23,7 @@ public class BosswaveInitTask extends AsyncTask<Void, Void, Void> {
 
     public BosswaveInitTask(BosswaveClient bosswaveClient, byte[] key, Listener listener) {
         mBosswaveClient = bosswaveClient;
+
         mKey = key;
         mTaskListener = listener;
         mSem = new Semaphore(0);

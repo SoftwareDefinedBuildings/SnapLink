@@ -2,43 +2,49 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <EditTextPreference
         android:defaultValue="@string/cellmate_server_addr_val"
-        android:key="cellmate_server_addr"
+        android:key="@string/cellmate_server_addr_key"
         android:title="@string/cellmate_server_addr_title"/>
     <EditTextPreference
         android:defaultValue="@string/cellmate_server_port_val"
-        android:key="cellmate_server_port"
+        android:numeric="integer"
+        android:key="@string/cellmate_server_port_key"
         android:title="@string/cellmate_server_port_title"/>
     <EditTextPreference
         android:defaultValue="@string/bosswave_router_addr_val"
-        android:key="bosswave_router_addr"
+        android:key="@string/bosswave_router_addr_key"
         android:title="@string/bosswave_router_addr_title"/>
     <EditTextPreference
         android:defaultValue="@string/bosswave_router_port_val"
-        android:key="bosswave_router_port"
+        android:numeric="integer"
+        android:key="@string/bosswave_router_port_key"
         android:title="@string/bosswave_router_port_title"/>
     <EditTextPreference
         android:defaultValue="@string/bosswave_key_base64_val"
-        android:key="bosswave_key_base64"
+        android:key="@string/bosswave_key_base64_key"
         android:title="@string/bosswave_key_base64_title"/>
     <EditTextPreference
         android:defaultValue="@string/fx_val"
-        android:key="fx"
+        android:numeric="decimal"
+        android:key="@string/fx_key"
         android:title="@string/fx_title"/>
     <EditTextPreference
         android:defaultValue="@string/fy_val"
-        android:key="fy"
+        android:numeric="decimal"
+        android:key="@string/fy_key"
         android:title="@string/fy_title"/>
     <EditTextPreference
         android:defaultValue="@string/cx_val"
-        android:key="cx"
+        android:numeric="decimal"
+        android:key="@string/cx_key"
         android:title="@string/cx_title"/>
     <EditTextPreference
         android:defaultValue="@string/cy_val"
-        android:key="cy"
+        android:numeric="decimal"
+        android:key="@string/cy_key"
         android:title="@string/cy_title"/>
     <CheckBoxPreference
-        android:key="flip_x_title"
-        android:title="@string/flip_x_title"
+        android:defaultValue="true"
+        android:key="@string/flip_x_key"
         android:summary="@string/flip_x_summary"
-        android:defaultValue="true"/>
+        android:title="@string/flip_x_title"/>
 </PreferenceScreen>
