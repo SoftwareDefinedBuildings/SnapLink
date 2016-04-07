@@ -39,6 +39,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -183,7 +186,7 @@ public class MainActivity extends ActionBarActivity {
                 SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
                 String cellmateServerAddr = preferences.getString(getString(R.string.cellmate_server_addr_key), getString(R.string.cellmate_server_addr_val));
                 String cellmateServerPort = preferences.getString(getString(R.string.cellmate_server_port_key), getString(R.string.cellmate_server_port_val));
-                String imagePostUrl = "http://" + cellmateServerAddr + ":" + cellmateServerPort;
+                String imagePostUrl = "http://" + cellmateServerAddr + ":" + cellmateServerPort + "/";
                 new HttpPostImageTask(mHttpClient, imagePostUrl, mImageData, mWidth, mHeight, mRecognitionListener).execute();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -320,7 +323,15 @@ public class MainActivity extends ActionBarActivity {
         mBosswaveClient = new BosswaveClient(bosswaveRouterAddr, bosswaveRouterPort);
         String bosswaveKey = preferences.getString(getString(R.string.bosswave_key_base64_key), getString(R.string.bosswave_key_base64_val));
         final byte[] mKey = Base64.decode(bosswaveKey, Base64.DEFAULT);
-        new BosswaveInitTask(mBosswaveClient, mKey, mBwInitTaskListener).execute();
+        try {
+            File tempKeyFile = File.createTempFile("key", null, null);
+            tempKeyFile.deleteOnExit();
+            FileOutputStream fos = new FileOutputStream(tempKeyFile);
+            fos.write(mKey);
+            new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -373,9 +384,10 @@ public class MainActivity extends ActionBarActivity {
 
     private void updatePref() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        float cx = Float.parseFloat(preferences.getString(getString(R.string.cx_key), "0f"));
-        float cy = Float.parseFloat(preferences.getString(getString(R.string.cy_key), "0f"));
-        if (cx == 0 || cy == 0) { // if it's not set, we update using to the center of camera
+        String cx = preferences.getString(getString(R.string.cx_key), getString(R.string.cx_val));
+        String cy = preferences.getString(getString(R.string.cy_key), getString(R.string.cy_val));
+        String resolution = preferences.getString(getString(R.string.resolution_key), getString(R.string.resolution_val));
+        if (cx.equals(getString(R.string.cx_val)) || cy.equals(getString(R.string.cy_val)) || resolution.equals(getString(R.string.resolution_val))) { // if it's not set, we update using to the center of camera
             CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
             try {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
@@ -383,6 +395,8 @@ public class MainActivity extends ActionBarActivity {
                 SharedPreferences.Editor editor = preferences.edit();
                 editor.putString(getString(R.string.cx_key), Float.toString((float) sensorRect.width() / 2));
                 editor.putString(getString(R.string.cy_key), Float.toString((float) sensorRect.height() / 2));
+                resolution = String.format("width: %d, height: %d", sensorRect.width(), sensorRect.height());
+                editor.putString(getString(R.string.resolution_key), resolution);
                 editor.commit();
             } catch (CameraAccessException e) {
                 e.printStackTrace();

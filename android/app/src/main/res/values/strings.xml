@@ -22,19 +22,21 @@
     <string name="bosswave_key_base64_key">bosswave_key_base64</string>
     <string name="bosswave_key_base64_title">BOSSWAVE Key Base64</string>
     <string name="bosswave_key_base64_val">Mqmvj8G02K4EncGpRkp3DFSy+rnNZNq2KPjz/t6FUHVLCDYSe/Bp4UapPeFjV6WGJm/KT6bddc8Mrr3vJZV+c7YCCEFVKemy7D4UAwiuUoex8k6fGAUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgNZdXAAhbDzkz/4amI9XxkhzwldzPQ6+Z2DkaTF9pjsp8tTxY1jrper6UziaO+Gs6skX3ICiwBI7A/71/7bVbGaAqOiDw==</string>
+    <string name="resolution_key">resolution</string>
+    <string name="resolution_title">resolution (for intrinsic matrix values)</string>
+    <string name="resolution_val">0x0</string>
     <string name="fx_key">fx</string>
     <string name="fx_title">fx</string>
-    <string name="fx_val">525</string>
+    <string name="fx_val">525.0</string>
     <string name="fy_key">fy</string>
     <string name="fy_title">fy</string>
-    <string name="fy_val">525</string>
+    <string name="fy_val">525.0</string>
     <string name="cx_key">cx</string>
     <string name="cx_title">cx</string>
-    <string name="cx_val">0</string>
+    <string name="cx_val">0.0</string>
     <string name="cy_key">cy</string>
     <string name="cy_title">cy</string>
-    <string name="cy_val">0</string>
-    <string name="calib_summary">You need to calibrate your camera out of band at resolution</string>
+    <string name="cy_val">0.0</string>
     <string name="flip_x_key">flip_x</string>
     <string name="flip_x_title">Flip along x axis</string>
     <string name="flip_x_summary">Some cameras generate flipped images</string>
