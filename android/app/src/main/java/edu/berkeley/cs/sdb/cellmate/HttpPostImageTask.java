@@ -17,7 +17,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
-    private static final String LOG_TAG = "SDBVision";
+    private static final String LOG_TAG = "cellmate";
 
     private static final MediaType MEDIA_TYPE_BINARY = MediaType.parse("application/octet-stream");
 
