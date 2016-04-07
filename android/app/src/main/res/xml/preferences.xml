@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--android:defaultValue="@string/pref_syncConnectionTypes_default"-->
+    <!--android:dialogTitle="@string/pref_syncConnectionType"-->
+    <EditTextPreference
+        android:key="server_addr"
+        android:title="@string/server_addr"/>
+</PreferenceScreen>
