@@ -28,7 +28,6 @@ def test_file(filename):
         return False
 
     img = cv2.resize(img, (width, height)) # scale
-    img = cv2.flip(img, 0) # flip along x axis TODO: why flip?
     
     files = {'file': (filename, img.tostring()), 'width': ("", struct.pack("!I", width)), 'height': ("", struct.pack("!I", height))}
     r = requests.post(SERVER_ADDR, files=files)
