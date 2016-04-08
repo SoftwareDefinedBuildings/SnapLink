@@ -17,8 +17,6 @@ import okhttp3.Response;
 public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private static final String LOG_TAG = "cellmate";
 
-    private static final MediaType MEDIA_TYPE_BINARY = MediaType.parse("application/octet-stream");
-
     private OkHttpClient mHttpClient;
     private String mUrl;
     private byte[] mImageData;
@@ -52,7 +50,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("file", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, mImageData))
+                .addFormDataPart("file", timeStamp, RequestBody.create(MediaType.parse("application/octet-stream"), mImageData))
                 .addFormDataPart("width", Integer.toString(mWidth))
                 .addFormDataPart("height", Integer.toString(mHeight))
                 .addFormDataPart("fx", Double.toString(mFx))

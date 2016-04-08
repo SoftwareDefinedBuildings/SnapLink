@@ -20,6 +20,7 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -195,7 +196,7 @@ public class MainActivity extends ActionBarActivity {
                 String cellmateServerAddr = preferences.getString(getString(R.string.cellmate_server_addr_key), getString(R.string.cellmate_server_addr_val));
                 String cellmateServerPort = preferences.getString(getString(R.string.cellmate_server_port_key), getString(R.string.cellmate_server_port_val));
                 String imagePostUrl = "http://" + cellmateServerAddr + ":" + cellmateServerPort + "/";
-                new HttpPostImageTask(mHttpClient, imagePostUrl, mImageData, mWidth, mHeight, mFx, mFy, mCx, mCy, mRecognitionListener).execute();
+                new HttpPostImageTask(mHttpClient, imagePostUrl, mImageData, mWidth, mHeight, mFx, mFy, mCx, mCy, mRecognitionListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -205,7 +206,7 @@ public class MainActivity extends ActionBarActivity {
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
-            setUIEnabled(false, false, false);
+            setButtonsEnabled(false, false, false);
             // AsyncTask task instance must be created and executed on the UI thread
             runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
         }
@@ -239,9 +240,9 @@ public class MainActivity extends ActionBarActivity {
     private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
-                setUIEnabled(false, false, false);
+                setButtonsEnabled(false, false, false);
                 String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
-                new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
+                new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } else {
                 showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
             }
@@ -251,9 +252,9 @@ public class MainActivity extends ActionBarActivity {
     private final View.OnClickListener mOffButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
-                setUIEnabled(false, false, false);
+                setButtonsEnabled(false, false, false);
                 String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
-                new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
+                new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } else {
                 showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
             }
@@ -273,12 +274,12 @@ public class MainActivity extends ActionBarActivity {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
                 mTextView.setText(response);
-                setUIEnabled(true, true, true);
+                setButtonsEnabled(true, true, true);
             } else {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
-                setUIEnabled(false, false, true);
+                setButtonsEnabled(false, false, true);
             }
         }
     };
@@ -289,7 +290,7 @@ public class MainActivity extends ActionBarActivity {
             showToast("Bosswave connected", Toast.LENGTH_SHORT);
             mIsBosswaveConnected = true;
             if (mTarget != null) {
-                setUIEnabled(true, true, true);
+                setButtonsEnabled(true, true, true);
             }
         }
     };
@@ -298,7 +299,7 @@ public class MainActivity extends ActionBarActivity {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent: " + response, Toast.LENGTH_SHORT);
-            setUIEnabled(true, true, true);
+            setButtonsEnabled(true, true, true);
         }
     };
 
@@ -319,7 +320,7 @@ public class MainActivity extends ActionBarActivity {
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListener);
 
-        setUIEnabled(false, false, true);
+        setButtonsEnabled(false, false, true);
 
         mHttpClient = new OkHttpClient();
 
@@ -336,7 +337,7 @@ public class MainActivity extends ActionBarActivity {
             tempKeyFile.deleteOnExit();
             FileOutputStream fos = new FileOutputStream(tempKeyFile);
             fos.write(mKey);
-            new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).execute();
+            new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -733,7 +734,7 @@ public class MainActivity extends ActionBarActivity {
      * @param off     true to make the Off button clickable, false otherwise
      * @param capture true to make the Capture button clickable, false otherwise
      */
-    private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
+    private void setButtonsEnabled(final boolean on, final boolean off, final boolean capture) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
