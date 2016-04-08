@@ -21,30 +21,6 @@ CameraNetwork::~CameraNetwork()
     _httpServer = NULL;
 }
 
-bool CameraNetwork::init(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName)
-{
-    _model.setLocalTransform(localTransform);
-
-    // look for calibration files
-    if (!calibrationFolder.empty() && !cameraName.empty())
-    {
-        if (_model.load(calibrationFolder, cameraName))
-        {
-            UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-                  _model.fx(),
-                  _model.fy(),
-                  _model.cx(),
-                  _model.cy());
-            return true;
-        }
-        else
-        {
-            UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", cameraName.c_str(), calibrationFolder.c_str());
-        }
-    }
-    return false;
-}
-
 void CameraNetwork::setLocalizer(Localization *loc)
 {
     _loc = loc;
@@ -65,7 +41,7 @@ bool CameraNetwork::event(QEvent *event)
         uint32_t width = networkEvent->conInfo()->width;
         uint32_t height = networkEvent->conInfo()->height;
 
-        rtabmap::SensorData *sensorData = process(data, width, height);
+        rtabmap::SensorData *sensorData = createSensorData(data, width, height);
         if (sensorData != NULL)
         {
             QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
@@ -79,7 +55,7 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, uint32_t width, uint32_t height)
+rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> *data, uint32_t width, uint32_t height)
 {
     UDEBUG("");
     if (data != NULL)
@@ -87,11 +63,14 @@ rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, ui
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
 
-        //imwrite("image.jpg", img);
+        imwrite("image.jpg", img);
+
+        rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+        rtabmap::CameraModel model(565, 565, width/2, height/2, localTransform);
 
         if (!img.empty())
         {
-            rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, _model);
+            rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, model);
             img.release(); // decrement the reference counter
             return sensorData;
         }

@@ -15,8 +15,6 @@ public:
     CameraNetwork();
     virtual ~CameraNetwork();
 
-    bool init(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName);
-
     void setLocalizer(Localization *loc);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -25,10 +23,9 @@ protected:
 
 private:
     // ownership transferred
-    rtabmap::SensorData *process(std::vector<unsigned char> *data, uint32_t width, uint32_t height);
+    rtabmap::SensorData *createSensorData(std::vector<unsigned char> *data, uint32_t width, uint32_t height);
 
 private:
-    rtabmap::CameraModel _model;
     Localization *_loc;
     HTTPServer *_httpServer;
 };

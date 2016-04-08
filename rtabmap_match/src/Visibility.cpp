@@ -102,7 +102,8 @@ bool Visibility::processLabels(const std::string &dir, const MemoryLoc *memory)
 bool Visibility::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld) const
 {
     const rtabmap::Signature *s = memory->getSignature(imageId);
-    if (s == NULL) {
+    if (s == NULL)
+    {
         UWARN("Signature %d does not exist", imageId);
         return false;
     }

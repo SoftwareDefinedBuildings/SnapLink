@@ -48,15 +48,7 @@ int main(int argc, char *argv[])
     }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
-    rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-    const std::string &calibrationFolder = "../cameras/";
-    const std::string &cameraName = "lg_g2_mini_640_480";
     CameraNetwork camera;
-    if (!camera.init(localTransform, calibrationFolder, cameraName))
-    {
-        UERROR("Initializing camera failed");
-        return 1;
-    }
     httpServer.setCamera(&camera);
     camera.setHTTPServer(&httpServer);
 
