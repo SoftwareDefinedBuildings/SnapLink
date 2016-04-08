@@ -38,10 +38,15 @@ bool CameraNetwork::event(QEvent *event)
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
 
         std::vector<unsigned char> *data = &networkEvent->conInfo()->data;
-        uint32_t width = networkEvent->conInfo()->width;
-        uint32_t height = networkEvent->conInfo()->height;
+        int width = networkEvent->conInfo()->width;
+        int height = networkEvent->conInfo()->height;
+        double fx = networkEvent->conInfo()->fx;
+        double fy = networkEvent->conInfo()->fy;
+        double cx = networkEvent->conInfo()->cx;
+        double cy = networkEvent->conInfo()->cy;
 
-        rtabmap::SensorData *sensorData = createSensorData(data, width, height);
+        std::cout << width << " " << height << " " << fx << " " << fy << " " << cx << " " << cy << std::endl;
+        rtabmap::SensorData *sensorData = createSensorData(data, width, height, fx, fy, cx, cy);
         if (sensorData != NULL)
         {
             QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
@@ -55,7 +60,7 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> *data, uint32_t width, uint32_t height)
+rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> *data, int width, int height, double fx, double fy, double cx, double cy)
 {
     UDEBUG("");
     if (data != NULL)
@@ -63,13 +68,12 @@ rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> 
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
 
-        imwrite("image.jpg", img);
-
-        rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-        rtabmap::CameraModel model(565, 565, width/2, height/2, localTransform);
+        //imwrite("image.jpg", img);
 
         if (!img.empty())
         {
+            rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+            rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
             rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, model);
             img.release(); // decrement the reference counter
             return sensorData;

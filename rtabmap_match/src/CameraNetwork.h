@@ -23,7 +23,7 @@ protected:
 
 private:
     // ownership transferred
-    rtabmap::SensorData *createSensorData(std::vector<unsigned char> *data, uint32_t width, uint32_t height);
+    rtabmap::SensorData *createSensorData(std::vector<unsigned char> *data, int width, int height, double fx, double fy, double cx, double cy);
 
 private:
     Localization *_loc;
