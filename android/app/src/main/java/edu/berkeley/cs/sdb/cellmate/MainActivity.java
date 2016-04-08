@@ -1,10 +1,11 @@
 /*
  * Based on code from http://blog.csdn.net/torvalbill/article/details/40378539
  */
-package edu.berkeley.cs.sdb.SDBVision;
+package edu.berkeley.cs.sdb.cellmate;
 
-import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
@@ -19,12 +20,19 @@ import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.preference.PreferenceManager;
+import android.support.v7.app.ActionBar;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Base64;
 import android.util.Log;
 import android.util.Size;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -32,6 +40,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,18 +55,11 @@ import edu.berkeley.cs.sdb.bosswave.BosswaveClient;
 import edu.berkeley.cs.sdb.bosswave.PayloadObject;
 import okhttp3.OkHttpClient;
 
-public class MainActivity extends Activity {
-    private static final String LOG_TAG = "SDBVision";
-    private static final String IMAGE_POST_URL = "http://castle.cs.berkeley.edu:50021/";
-    private static final String BW_ROUTER_URL = "castle.cs.berkeley.edu";
-    private static final int BW_ROUTER_PORT = 50026;
-    private static final String CONTROL_TOPIC_PREFIX = "sdb.bw2.io/demo/soda/410/plugstrip/";
-    private static final String CONTROL_TOPIC_SUFFIX = "/binary/ctl/state";
+public class MainActivity extends ActionBarActivity {
+    private static final String LOG_TAG = "CellMate";
+    private static final String CONTROL_TOPIC_PREFIX = "410.dev/plugctl/front/s.powerup.v0/";
+    private static final String CONTROL_TOPIC_SUFFIX = "/i.binact/slot/state";
 
-    // hard coded base64 format of the private key, such safe
-    private static final byte[] mKey = Base64.decode("Mqmvj8G02K4EncGpRkp3DFSy+rnNZNq2KPjz/t6FUHVLCDYSe/Bp4UapPeFjV6WGJm/KT6bddc8Mrr3vJZV+c7YCCEFVKemy7D4UAwiuUoex8k6fGAUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgNZdXAAhbDzkz/4amI9XxkhzwldzPQ6+Z2DkaTF9pjsp8tTxY1jrper6UziaO+Gs6skX3ICiwBI7A/71/7bVbGaAqOiDw==", Base64.DEFAULT);
-
-    private Context mContext;
     private AutoFitTextureView mTextureView;
     private TextView mTextView;
     private Button mOnButton;
@@ -88,6 +92,8 @@ public class MainActivity extends Activity {
     private OkHttpClient mHttpClient;
     // The Bosswave Client used for sending control command
     private BosswaveClient mBosswaveClient;
+    // Whethre the Bosswave Client is connected
+    private boolean mIsBosswaveConnected;
     // The current recognized object name
     private String mTarget;
 
@@ -168,17 +174,29 @@ public class MainActivity extends Activity {
         private final byte[] mImageData;
         private final int mWidth;
         private final int mHeight;
+        private final double mFx;
+        private final double mFy;
+        private final double mCx;
+        private final double mCy;
 
-        public HttpPostImageRunnable(byte[] imageData, int width, int height) {
+        public HttpPostImageRunnable(byte[] imageData, int width, int height, double fx, double fy, double cx, double cy) {
             mImageData = imageData;
             mWidth = width;
             mHeight = height;
+            mFx = fx;
+            mFy = fy;
+            mCx = cx;
+            mCy = cy;
         }
 
         @Override
         public void run() {
             try {
-                new HttpPostImageTask(mHttpClient, IMAGE_POST_URL, mImageData, mWidth, mHeight, mRecognitionListener).execute();
+                SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+                String cellmateServerAddr = preferences.getString(getString(R.string.cellmate_server_addr_key), getString(R.string.cellmate_server_addr_val));
+                String cellmateServerPort = preferences.getString(getString(R.string.cellmate_server_port_key), getString(R.string.cellmate_server_port_val));
+                String imagePostUrl = "http://" + cellmateServerAddr + ":" + cellmateServerPort + "/";
+                new HttpPostImageTask(mHttpClient, imagePostUrl, mImageData, mWidth, mHeight, mFx, mFy, mCx, mCy, mRecognitionListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -187,10 +205,10 @@ public class MainActivity extends Activity {
 
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
-        public void onImageAvailable(byte[] image, int width, int height) {
-            setUIEnabled(false, false, false);
+        public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
+            setButtonsEnabled(false, false, false);
             // AsyncTask task instance must be created and executed on the UI thread
-            runOnUiThread(new HttpPostImageRunnable(image, width, height));
+            runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
         }
     };
 
@@ -221,18 +239,25 @@ public class MainActivity extends Activity {
 
     private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false, false, false);
-            String topic = CONTROL_TOPIC_PREFIX + mTarget + CONTROL_TOPIC_SUFFIX;
-            new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
+            if (mIsBosswaveConnected) {
+                setButtonsEnabled(false, false, false);
+                String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
+                new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            } else {
+                showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
+            }
         }
     };
 
     private final View.OnClickListener mOffButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
-            setUIEnabled(false, false, false);
-            String topic = CONTROL_TOPIC_PREFIX + mTarget + CONTROL_TOPIC_SUFFIX;
-            new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
-
+            if (mIsBosswaveConnected) {
+                setButtonsEnabled(false, false, false);
+                String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
+                new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            } else {
+                showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
+            }
         }
     };
 
@@ -249,12 +274,12 @@ public class MainActivity extends Activity {
                 showToast(response + " recognized", Toast.LENGTH_SHORT);
                 mTarget = response.trim();
                 mTextView.setText(response);
-                setUIEnabled(true, true, true);
+                setButtonsEnabled(true, true, true);
             } else {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
-                setUIEnabled(false, false, true);
+                setButtonsEnabled(false, false, true);
             }
         }
     };
@@ -262,7 +287,11 @@ public class MainActivity extends Activity {
     private BosswaveInitTask.Listener mBwInitTaskListener = new BosswaveInitTask.Listener() {
         @Override
         public void onResponse() {
-            setUIEnabled(false, false, true);
+            showToast("Bosswave connected", Toast.LENGTH_SHORT);
+            mIsBosswaveConnected = true;
+            if (mTarget != null) {
+                setButtonsEnabled(true, true, true);
+            }
         }
     };
 
@@ -270,7 +299,7 @@ public class MainActivity extends Activity {
         @Override
         public void onResponse(String response) {
             showToast("Control command sent: " + response, Toast.LENGTH_SHORT);
-            setUIEnabled(true, true, true);
+            setButtonsEnabled(true, true, true);
         }
     };
 
@@ -279,7 +308,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        mContext = this;
+        updateUI();
 
         mTextureView = (AutoFitTextureView) findViewById(R.id.texture);
         mTextureView.setSurfaceTextureListener(mSurfaceTextureListener);
@@ -291,11 +320,27 @@ public class MainActivity extends Activity {
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListener);
 
-        setUIEnabled(false, false, false);
+        setButtonsEnabled(false, false, true);
 
         mHttpClient = new OkHttpClient();
-        mBosswaveClient = new BosswaveClient(BW_ROUTER_URL, BW_ROUTER_PORT);
-        new BosswaveInitTask(mBosswaveClient, mKey, mBwInitTaskListener).execute();
+
+        // Use onSharedPreferenceChanged for reconnection if user changes BOSSWAVE router
+        mIsBosswaveConnected = false;
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String bosswaveRouterAddr = preferences.getString(getString(R.string.bosswave_router_addr_key), getString(R.string.bosswave_router_addr_val));
+        int bosswaveRouterPort = Integer.parseInt(preferences.getString(getString(R.string.bosswave_router_port_key), getString(R.string.bosswave_router_port_val)));
+        mBosswaveClient = new BosswaveClient(bosswaveRouterAddr, bosswaveRouterPort);
+        String bosswaveKey = preferences.getString(getString(R.string.bosswave_key_base64_key), getString(R.string.bosswave_key_base64_val));
+        final byte[] mKey = Base64.decode(bosswaveKey, Base64.DEFAULT);
+        try {
+            File tempKeyFile = File.createTempFile("key", null, null);
+            tempKeyFile.deleteOnExit();
+            FileOutputStream fos = new FileOutputStream(tempKeyFile);
+            fos.write(mKey);
+            new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -319,6 +364,53 @@ public class MainActivity extends Activity {
         closeCamera();
         stopBackgroundThread();
         super.onPause();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.settings:
+                Intent intent = new Intent(this, SettingsActivity.class);
+                startActivity(intent);
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void updateUI() {
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setDisplayShowHomeEnabled(false);
+        actionBar.setDisplayShowTitleEnabled(false);
+    }
+
+    private void updatePreferenceCameraInfo() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String cx = preferences.getString(getString(R.string.cx_key), getString(R.string.cx_val));
+        String cy = preferences.getString(getString(R.string.cy_key), getString(R.string.cy_val));
+        String resolution = preferences.getString(getString(R.string.resolution_key), getString(R.string.resolution_val));
+        if (cx.equals(getString(R.string.cx_val)) || cy.equals(getString(R.string.cy_val)) || resolution.equals(getString(R.string.resolution_val))) { // if it's not set, we update using to the center of camera
+            CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            try {
+                CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
+                Rect sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+                SharedPreferences.Editor editor = preferences.edit();
+                editor.putString(getString(R.string.cx_key), Float.toString((float) sensorRect.width() / 2));
+                editor.putString(getString(R.string.cy_key), Float.toString((float) sensorRect.height() / 2));
+                resolution = String.format("width: %d, height: %d", sensorRect.width(), sensorRect.height());
+                editor.putString(getString(R.string.resolution_key), resolution);
+                editor.commit();
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -431,6 +523,8 @@ public class MainActivity extends Activity {
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while trying to lock camera opening.", e);
         }
+
+        updatePreferenceCameraInfo(); // update preference values after we get camera set up
     }
 
     /**
@@ -508,7 +602,6 @@ public class MainActivity extends Activity {
     /**
      * Configure the given CaptureRequest.Builder to use auto-focus, auto-exposure, and
      * auto-white-balance controls if available.
-     * Call this only with mCameraStateLock held.
      */
     private void setup3AControlsLocked() {
         // Enable auto-magical 3A run by camera device
@@ -641,7 +734,7 @@ public class MainActivity extends Activity {
      * @param off     true to make the Off button clickable, false otherwise
      * @param capture true to make the Capture button clickable, false otherwise
      */
-    private void setUIEnabled(final boolean on, final boolean off, final boolean capture) {
+    private void setButtonsEnabled(final boolean on, final boolean off, final boolean capture) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {

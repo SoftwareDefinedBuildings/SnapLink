@@ -1,8 +1,43 @@
 <resources>
-    <string name="app_name">SDBVision</string>
+    <string name="app_name">CellMate</string>
     <string name="img_desc">Background Image</string>
     <string name="capture">Capture</string>
     <string name="on">On</string>
     <string name="off">Off</string>
     <string name="none">None</string>
+    <string name="settings">Settings</string>
+
+    <string name="cellmate_server_addr_key">cellmate_server_addr</string>
+    <string name="cellmate_server_addr_title">CellMate Server Address</string>
+    <string name="cellmate_server_addr_val">castle.cs.berkeley.edu</string>
+    <string name="cellmate_server_port_key">cellmate_server_port</string>
+    <string name="cellmate_server_port_title">CellMate Server Port</string>
+    <string name="cellmate_server_port_val">50021</string>
+    <string name="bosswave_router_addr_key">bosswave_router_addr</string>
+    <string name="bosswave_router_addr_title">BOSSWAVE Router Address</string>
+    <string name="bosswave_router_addr_val">castle.cs.berkeley.edu</string>
+    <string name="bosswave_router_port_key">bosswave_router_port</string>
+    <string name="bosswave_router_port_title">BOSSWAVE Router Port</string>
+    <string name="bosswave_router_port_val">50022</string>
+    <string name="bosswave_key_base64_key">bosswave_key_base64</string>
+    <string name="bosswave_key_base64_title">BOSSWAVE Key Base64</string>
+    <string name="bosswave_key_base64_val">MvQf3NbUJZbup7ToYhfVitMeGPX8vf0oQCZnp/TXpG5vu5ZfksWQzeqM5PETdum72J1a6UexHHzF+69v2HTpzNcCCJeiavGi9EIUAwjmoLBMSQgjFQUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgpNYXN0ZXIgS2V5AN0gC2JfUURxujnRcme3c9rxhW1CPnraNY563ZFRga8mpJVGGb3pqNYRc0cv4NONnZIRgJSfVhSdjR0Mb2tatwY=</string>
+    <string name="resolution_key">resolution</string>
+    <string name="resolution_title">Resolution (for intrinsic matrix values)</string>
+    <string name="resolution_val">0x0</string>
+    <string name="fx_key">fx</string>
+    <string name="fx_title">fx</string>
+    <string name="fx_val">525.0</string>
+    <string name="fy_key">fy</string>
+    <string name="fy_title">fy</string>
+    <string name="fy_val">525.0</string>
+    <string name="cx_key">cx</string>
+    <string name="cx_title">cx</string>
+    <string name="cx_val">0.0</string>
+    <string name="cy_key">cy</string>
+    <string name="cy_title">cy</string>
+    <string name="cy_val">0.0</string>
+    <string name="flip_x_key">flip_x</string>
+    <string name="flip_x_title">Flip along x axis</string>
+    <string name="flip_x_summary">Some cameras generate flipped images</string>
 </resources>

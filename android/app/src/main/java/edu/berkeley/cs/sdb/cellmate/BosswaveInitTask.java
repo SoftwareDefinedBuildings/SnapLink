@@ -1,9 +1,8 @@
-package edu.berkeley.cs.sdb.SDBVision;
+package edu.berkeley.cs.sdb.cellmate;
 
 import android.os.AsyncTask;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
@@ -13,7 +12,7 @@ import edu.berkeley.cs.sdb.bosswave.ResponseHandler;
 
 public class BosswaveInitTask extends AsyncTask<Void, Void, Void> {
     private BosswaveClient mBosswaveClient;
-    private byte[] mKey;
+    private File mKeyFile;
     private Listener mTaskListener;
     private Semaphore mSem;
 
@@ -21,9 +20,9 @@ public class BosswaveInitTask extends AsyncTask<Void, Void, Void> {
         void onResponse();
     }
 
-    public BosswaveInitTask(BosswaveClient bosswaveClient, byte[] key, Listener listener) {
+    public BosswaveInitTask(BosswaveClient bosswaveClient, File keyFile, Listener listener) {
         mBosswaveClient = bosswaveClient;
-        mKey = key;
+        mKeyFile = keyFile;
         mTaskListener = listener;
         mSem = new Semaphore(0);
     }
@@ -39,12 +38,7 @@ public class BosswaveInitTask extends AsyncTask<Void, Void, Void> {
     protected Void doInBackground(Void... voids) {
         try {
             mBosswaveClient.connect();
-
-            File tempKeyFile = File.createTempFile("key", null, null);
-            tempKeyFile.deleteOnExit();
-            FileOutputStream fos = new FileOutputStream(tempKeyFile);
-            fos.write(mKey);
-            mBosswaveClient.setEntityFile(tempKeyFile, mResponseHandler);
+            mBosswaveClient.setEntityFile(mKeyFile, mResponseHandler);
         } catch (IOException e) {
             e.printStackTrace();
         }

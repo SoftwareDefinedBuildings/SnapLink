@@ -1,4 +1,4 @@
-package edu.berkeley.cs.sdb.SDBVision;
+package edu.berkeley.cs.sdb.cellmate;
 
 import android.content.Context;
 import android.util.AttributeSet;
