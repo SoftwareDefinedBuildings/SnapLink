@@ -18,12 +18,12 @@
     <string name="bosswave_router_addr_val">castle.cs.berkeley.edu</string>
     <string name="bosswave_router_port_key">bosswave_router_port</string>
     <string name="bosswave_router_port_title">BOSSWAVE Router Port</string>
-    <string name="bosswave_router_port_val">50012</string>
+    <string name="bosswave_router_port_val">50022</string>
     <string name="bosswave_key_base64_key">bosswave_key_base64</string>
     <string name="bosswave_key_base64_title">BOSSWAVE Key Base64</string>
-    <string name="bosswave_key_base64_val">Mqmvj8G02K4EncGpRkp3DFSy+rnNZNq2KPjz/t6FUHVLCDYSe/Bp4UapPeFjV6WGJm/KT6bddc8Mrr3vJZV+c7YCCEFVKemy7D4UAwiuUoex8k6fGAUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgNZdXAAhbDzkz/4amI9XxkhzwldzPQ6+Z2DkaTF9pjsp8tTxY1jrper6UziaO+Gs6skX3ICiwBI7A/71/7bVbGaAqOiDw==</string>
+    <string name="bosswave_key_base64_val">MvQf3NbUJZbup7ToYhfVitMeGPX8vf0oQCZnp/TXpG5vu5ZfksWQzeqM5PETdum72J1a6UexHHzF+69v2HTpzNcCCJeiavGi9EIUAwjmoLBMSQgjFQUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgpNYXN0ZXIgS2V5AN0gC2JfUURxujnRcme3c9rxhW1CPnraNY563ZFRga8mpJVGGb3pqNYRc0cv4NONnZIRgJSfVhSdjR0Mb2tatwY=</string>
     <string name="resolution_key">resolution</string>
-    <string name="resolution_title">resolution (for intrinsic matrix values)</string>
+    <string name="resolution_title">Resolution (for intrinsic matrix values)</string>
     <string name="resolution_val">0x0</string>
     <string name="fx_key">fx</string>
     <string name="fx_title">fx</string>

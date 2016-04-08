@@ -56,8 +56,8 @@ import okhttp3.OkHttpClient;
 
 public class MainActivity extends ActionBarActivity {
     private static final String LOG_TAG = "CellMate";
-    private static final String CONTROL_TOPIC_PREFIX = "sdb.bw2.io/demo/soda/410/plugstrip/";
-    private static final String CONTROL_TOPIC_SUFFIX = "/binary/ctl/state";
+    private static final String CONTROL_TOPIC_PREFIX = "410.dev/plugctl/front/s.powerup.v0/";
+    private static final String CONTROL_TOPIC_SUFFIX = "/i.binact/slot/state";
 
     private AutoFitTextureView mTextureView;
     private TextView mTextView;
@@ -173,11 +173,19 @@ public class MainActivity extends ActionBarActivity {
         private final byte[] mImageData;
         private final int mWidth;
         private final int mHeight;
+        private final double mFx;
+        private final double mFy;
+        private final double mCx;
+        private final double mCy;
 
-        public HttpPostImageRunnable(byte[] imageData, int width, int height) {
+        public HttpPostImageRunnable(byte[] imageData, int width, int height, double fx, double fy, double cx, double cy) {
             mImageData = imageData;
             mWidth = width;
             mHeight = height;
+            mFx = fx;
+            mFy = fy;
+            mCx = cx;
+            mCy = cy;
         }
 
         @Override
@@ -187,7 +195,7 @@ public class MainActivity extends ActionBarActivity {
                 String cellmateServerAddr = preferences.getString(getString(R.string.cellmate_server_addr_key), getString(R.string.cellmate_server_addr_val));
                 String cellmateServerPort = preferences.getString(getString(R.string.cellmate_server_port_key), getString(R.string.cellmate_server_port_val));
                 String imagePostUrl = "http://" + cellmateServerAddr + ":" + cellmateServerPort + "/";
-                new HttpPostImageTask(mHttpClient, imagePostUrl, mImageData, mWidth, mHeight, mRecognitionListener).execute();
+                new HttpPostImageTask(mHttpClient, imagePostUrl, mImageData, mWidth, mHeight, mFx, mFy, mCx, mCy, mRecognitionListener).execute();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -196,10 +204,10 @@ public class MainActivity extends ActionBarActivity {
 
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
-        public void onImageAvailable(byte[] image, int width, int height) {
+        public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
             setUIEnabled(false, false, false);
             // AsyncTask task instance must be created and executed on the UI thread
-            runOnUiThread(new HttpPostImageRunnable(image, width, height));
+            runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
         }
     };
 
@@ -232,7 +240,7 @@ public class MainActivity extends ActionBarActivity {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
                 setUIEnabled(false, false, false);
-                String topic = CONTROL_TOPIC_PREFIX + mTarget + CONTROL_TOPIC_SUFFIX;
+                String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
                 new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
             } else {
                 showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
@@ -244,7 +252,7 @@ public class MainActivity extends ActionBarActivity {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
                 setUIEnabled(false, false, false);
-                String topic = CONTROL_TOPIC_PREFIX + mTarget + CONTROL_TOPIC_SUFFIX;
+                String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
                 new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).execute();
             } else {
                 showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
@@ -382,7 +390,7 @@ public class MainActivity extends ActionBarActivity {
         actionBar.setDisplayShowTitleEnabled(false);
     }
 
-    private void updatePref() {
+    private void updatePreferenceCameraInfo() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         String cx = preferences.getString(getString(R.string.cx_key), getString(R.string.cx_val));
         String cy = preferences.getString(getString(R.string.cy_key), getString(R.string.cy_val));
@@ -515,7 +523,7 @@ public class MainActivity extends ActionBarActivity {
             throw new RuntimeException("Interrupted while trying to lock camera opening.", e);
         }
 
-        updatePref(); // update preference values after we get camera set up
+        updatePreferenceCameraInfo(); // update preference values after we get camera set up
     }
 
     /**
@@ -593,7 +601,6 @@ public class MainActivity extends ActionBarActivity {
     /**
      * Configure the given CaptureRequest.Builder to use auto-focus, auto-exposure, and
      * auto-white-balance controls if available.
-     * Call this only with mCameraStateLock held.
      */
     private void setup3AControlsLocked() {
         // Enable auto-magical 3A run by camera device

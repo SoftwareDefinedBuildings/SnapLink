@@ -2,12 +2,14 @@ package edu.berkeley.cs.sdb.cellmate;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.camera2.CameraCharacteristics;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.view.Surface;
 
 import java.nio.ByteBuffer;
@@ -15,14 +17,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class AutoFitImageReader implements AutoCloseable {
 
-    CameraCharacteristics mCharacteristics;
-    Context mContext;
-    ImageReader mImageReader;
-    OnImageAvailableListener mListener;
-    AtomicBoolean mCaptureRequest;
+    private CameraCharacteristics mCharacteristics;
+    private Context mContext;
+    private ImageReader mImageReader;
+    private OnImageAvailableListener mListener;
+    private AtomicBoolean mCaptureRequest;
 
     public interface OnImageAvailableListener {
-        void onImageAvailable(byte[] imageData, int width, int height);
+        void onImageAvailable(byte[] imageData, int width, int height, double fx, double fy, double cx, double cy);
     }
 
     private final ImageReader.OnImageAvailableListener mOnImageAvailableListener = new ImageReader.OnImageAvailableListener() {
@@ -62,10 +64,16 @@ public class AutoFitImageReader implements AutoCloseable {
                 //imageData = scale(imageData, width, height);
                 imageData = rotate(imageData, width, height);
 
+                // TODO get intrinsic matrix from the preference value and the current resolution
+                double fx = getFx();
+                double fy = getFy();
+                double cx = getCx();
+                double cy = getCy();
+
                 if (getRotateCount() % 2 == 0) {
-                    mListener.onImageAvailable(imageData, width, height);
+                    mListener.onImageAvailable(imageData, width, height, fx, fy, cx, cy);
                 } else {
-                    mListener.onImageAvailable(imageData, height, width);
+                    mListener.onImageAvailable(imageData, height, width, fx, fy, cx, cy);
                 }
             } else {
                 image.close();
@@ -115,6 +123,7 @@ public class AutoFitImageReader implements AutoCloseable {
 
     /**
      * Returns the number of times image has to be rotated clockwise to be in user perspective.
+     *
      * @return number of times image has to be rotated 90 degrees clockwise.
      */
     private int getRotateCount() {
@@ -165,7 +174,7 @@ public class AutoFitImageReader implements AutoCloseable {
         byte[] halved = new byte[imageData.length / 4];
         for (int i = 0; i < height / 2; i++) {
             for (int j = 0; j < width / 2; j++) {
-                halved[width /2 * i + j] = imageData[width * 2 * i + 2 * j];
+                halved[width / 2 * i + j] = imageData[width * 2 * i + 2 * j];
             }
         }
         return halved;
@@ -206,7 +215,7 @@ public class AutoFitImageReader implements AutoCloseable {
     private byte[] rotate90(byte[] imageData, int width, int height) {
         byte[] rotated = new byte[imageData.length];
         for (int i = 0; i < height; i++) {
-            for (int j  = 0; j < width; j++) {
+            for (int j = 0; j < width; j++) {
                 rotated[height * j + (height - 1 - i)] = imageData[width * i + j];
             }
         }
@@ -231,5 +240,29 @@ public class AutoFitImageReader implements AutoCloseable {
             }
         }
         return rotated;
+    }
+
+    private double getFx() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        double fx = Double.parseDouble(preferences.getString(mContext.getString(R.string.fx_key), mContext.getString(R.string.fx_val)));
+        return 565.25;
+    }
+
+    private double getFy() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        double fy = Double.parseDouble(preferences.getString(mContext.getString(R.string.fy_key), mContext.getString(R.string.fy_val)));
+        return 565.25;
+    }
+
+    private double getCx() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        double cx = Double.parseDouble(preferences.getString(mContext.getString(R.string.cx_key), mContext.getString(R.string.cx_val)));
+        return 240;
+    }
+
+    private double getCy() {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        double cy = Double.parseDouble(preferences.getString(mContext.getString(R.string.cy_key), mContext.getString(R.string.cy_val)));
+        return 320;
     }
 }

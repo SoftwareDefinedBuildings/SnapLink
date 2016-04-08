@@ -4,8 +4,6 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -26,33 +24,41 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private byte[] mImageData;
     private int mWidth;
     private int mHeight;
+    private double mFx;
+    private double mFy;
+    private double mCx;
+    private double mCy;
     private Listener mListener;
 
     public interface Listener {
         void onResponse(String response);
     }
 
-    public HttpPostImageTask(OkHttpClient httpClient, String url, byte[] imageData, int width, int height, Listener listener) {
+    public HttpPostImageTask(OkHttpClient httpClient, String url, byte[] imageData, int width, int height, double fx, double fy, double cx, double cy, Listener listener) {
         mHttpClient = httpClient;
         mUrl = url;
         mImageData = imageData;
         mWidth = width;
         mHeight = height;
+        mFx = fx;
+        mFy = fy;
+        mCx = cx;
+        mCy = cy;
         mListener = listener;
     }
 
     @Override
     protected String doInBackground(Void... voids) {
-        // Make sure the byte order is network order (big endian)
-        byte[] widthBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(mWidth).array();
-        byte[] heightBytes = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN).putInt(mHeight).array();
-
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("file", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, mImageData))
-                .addFormDataPart("width", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, widthBytes))
-                .addFormDataPart("height", timeStamp, RequestBody.create(MEDIA_TYPE_BINARY, heightBytes))
+                .addFormDataPart("width", Integer.toString(mWidth))
+                .addFormDataPart("height", Integer.toString(mHeight))
+                .addFormDataPart("fx", Double.toString(mFx))
+                .addFormDataPart("fy", Double.toString(mFy))
+                .addFormDataPart("cx", Double.toString(mCx))
+                .addFormDataPart("cy", Double.toString(mCy))
                 .build();
         Request request = new Request.Builder()
                 .url(mUrl)
