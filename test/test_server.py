@@ -6,7 +6,6 @@ import sys
 import numpy as np
 import cv2
 import requests
-import struct
 
 SERVER_ADDR = "http://castle.cs.berkeley.edu:50021"
 
@@ -29,7 +28,7 @@ def test_file(filename):
 
     img = cv2.resize(img, (width, height)) # scale
     
-    files = {'file': (filename, img.tostring()), 'width': ("", struct.pack("!I", width)), 'height': ("", struct.pack("!I", height))}
+    files = {'file': (filename, img.tostring()), 'width': str(width), 'height': str(height), 'fx': str(562.25), 'fy': str(562.25), 'cx': str(240), 'cy': str(320)}
     r = requests.post(SERVER_ADDR, files=files)
     if r.text != obj_name:
         print "test failed. response =", r.text, "obj =", obj_name, "\n"
