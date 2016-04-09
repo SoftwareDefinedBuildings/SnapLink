@@ -24,8 +24,9 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool readLabels(const std::string &dir);
-    std::vector<std::string> *process(const rtabmap::SensorData *data, const rtabmap::Transform &pose);
+    bool processLabels(const std::string &dir, const MemoryLoc *memory);
+    bool getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld) const;
+    std::vector<std::string> *process(const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
 
 private:
     // labels

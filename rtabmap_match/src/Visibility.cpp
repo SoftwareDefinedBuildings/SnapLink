@@ -1,6 +1,8 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <pcl/point_types.h>
 #include <opencv/cv.h>
 #include <QCoreApplication>
@@ -26,7 +28,7 @@ Visibility::~Visibility()
 
 bool Visibility::init(const std::string &dir, const MemoryLoc *memory)
 {
-    return readLabels(dir);
+    return processLabels(dir, memory);
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -54,7 +56,7 @@ bool Visibility::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool Visibility::readLabels(const std::string &dir)
+bool Visibility::processLabels(const std::string &dir, const MemoryLoc *memory)
 {
     QString filter = QString::fromStdString("*.txt");
     QDirIterator it(QString::fromStdString(dir), QStringList() << filter, QDir::Files, QDirIterator::NoIteratorFlags);
@@ -66,6 +68,7 @@ bool Visibility::readLabels(const std::string &dir)
         QFile file(fileName);
         if (!file.open(QFile::ReadOnly | QFile::Text))
         {
+            UWARN("Open file %s failed", fileName.toStdString().c_str());
             return false;
         }
 
@@ -77,22 +80,61 @@ bool Visibility::readLabels(const std::string &dir)
             QStringList list = line.split(",");
             if (list.size() != 3)
             {
+                UWARN("File %s has a wrong format", fileName.toStdString().c_str());
                 return false;
             }
-            double imageId = list.at(0).toDouble();
+            int imageId = list.at(0).toInt();
             double x = list.at(1).toDouble();
             double y = list.at(2).toDouble();
-            _points.push_back(cv::Point3f(imageId, x, y));
-            _labels.push_back(label);
-            UDEBUG("Read point (%lf,%lf,%lf) with label %s", imageId, x, y, label.c_str());
+            pcl::PointXYZ pWorld;
+            if (getPoint3World(imageId, x, y, memory, pWorld))
+            {
+                _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
+                _labels.push_back(label);
+                UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
+            }
         }
     }
 
     return true;
 }
 
-std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, const rtabmap::Transform &pose)
+bool Visibility::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld) const
 {
+    const rtabmap::Signature *s = memory->getSignature(imageId);
+    if (s == NULL)
+    {
+        UWARN("Signature %d does not exist", imageId);
+        return false;
+    }
+    const rtabmap::SensorData &data = s->sensorData();
+    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    bool smoothing = false;
+    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
+    {
+        UWARN("Depth value not valid");
+        return false;
+    }
+    rtabmap::Transform poseWorld = memory->getOptimizedPose(imageId);
+    if (poseWorld.isNull())
+    {
+        UWARN("Image pose is Null");
+        return false;
+    }
+    poseWorld = poseWorld * cm.localTransform();
+    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    return true;
+}
+
+std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
+{
+    std::vector<std::string> *names = new std::vector<std::string>();
+    if (_points.size() == 0)
+    {
+        return names;
+    }
+
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
     std::vector<cv::Point2f> planePoints;
@@ -128,7 +170,7 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
         {
             if (Utility::isInFrontOfCamera(_points[i], P))
             {
-                std::string &label = _labels[i];
+                std::string label = _labels[i];
                 visibleLabels.push_back(label);
                 float x, y, z, roll, pitch, yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -150,7 +192,6 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
         }
     }
 
-    std::vector<std::string> *names = new std::vector<std::string>();
     if (!distances.empty())
     {
         // find the label with minimum mean distance

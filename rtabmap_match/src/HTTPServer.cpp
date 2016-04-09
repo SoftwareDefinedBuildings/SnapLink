@@ -1,7 +1,7 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
-#include <arpa/inet.h>
+#include <cstdlib>
 #include <QCoreApplication>
 
 #include "HTTPServer.h"
@@ -205,7 +205,7 @@ int HTTPServer::iterate_post(void *coninfo_cls,
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
-    if (strcmp(key, "file") != 0 && strcmp(key, "width") != 0 && strcmp(key, "height") != 0)
+    if (strcmp(key, "file") != 0 && strcmp(key, "width") != 0 && strcmp(key, "height") != 0 && strcmp(key, "fx") != 0 && strcmp(key, "fy") != 0 && strcmp(key, "cx") != 0 && strcmp(key, "cy") != 0 )
     {
         return MHD_NO;
     }
@@ -218,25 +218,45 @@ int HTTPServer::iterate_post(void *coninfo_cls,
         }
         else if (strcmp(key, "width") == 0)
         {
-            uint32_t width;
-            if (size != sizeof(uint32_t))
-            {
-                return MHD_NO;
-            }
-            memcpy(&width, data, size);
-            width = ntohl(width);
-            con_info->width = width;
+            char buf[size + 1];
+            memcpy(buf, data, size);
+            buf[size] = 0;
+            con_info->width = atoi(buf);
         }
         else if (strcmp(key, "height") == 0)
         {
-            uint32_t height;
-            if (size != sizeof(uint32_t))
-            {
-                return MHD_NO;
-            }
-            memcpy(&height, data, size);
-            height = ntohl(height);
-            con_info->height = height;
+            char buf[size + 1];
+            memcpy(buf, data, size);
+            buf[size] = 0;
+            con_info->height = atoi(buf);
+        }
+        else if (strcmp(key, "fx") == 0)
+        {
+            char buf[size + 1];
+            memcpy(buf, data, size);
+            buf[size] = 0;
+            con_info->fx = atof(buf);
+        }
+        else if (strcmp(key, "fy") == 0)
+        {
+            char buf[size + 1];
+            memcpy(buf, data, size);
+            buf[size] = 0;
+            con_info->fy = atof(buf);
+        }
+        else if (strcmp(key, "cx") == 0)
+        {
+            char buf[size + 1];
+            memcpy(buf, data, size);
+            buf[size] = 0;
+            con_info->cx = atof(buf);
+        }
+        else if (strcmp(key, "cy") == 0)
+        {
+            char buf[size + 1];
+            memcpy(buf, data, size);
+            buf[size] = 0;
+            con_info->cy = atof(buf);
         }
     }
 

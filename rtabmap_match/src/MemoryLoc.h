@@ -63,7 +63,6 @@ private:
         std::multimap<int, rtabmap::Link> &links);
 
 
-    void addSignature(rtabmap::Signature *signature);
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 

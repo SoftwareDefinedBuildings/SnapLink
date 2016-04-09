@@ -43,18 +43,12 @@ int main(int argc, char *argv[])
     HTTPServer httpServer;
     if (!httpServer.start())
     {
+        UERROR("Starting HTTP Server failed");
         return 1;
     }
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
-    rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-    const std::string &calibrationFolder = "../cameras/";
-    const std::string &cameraName = "lg_g2_mini_640_480";
     CameraNetwork camera;
-    if (!camera.init(localTransform, calibrationFolder, cameraName))
-    {
-        return 1;
-    }
     httpServer.setCamera(&camera);
     camera.setHTTPServer(&httpServer);
 
@@ -79,6 +73,7 @@ int main(int argc, char *argv[])
     MemoryLoc memory;
     if (!memory.init(dbfile, memoryParams))
     {
+        UERROR("Initializing memory failed");
         return 1;
     }
 
@@ -90,6 +85,7 @@ int main(int argc, char *argv[])
     Visibility vis;
     if (!vis.init(labelpath, &memory))
     {
+        UERROR("Initializing visibility failed");
         return 1;
     }
     loc.setVisibility(&vis);
