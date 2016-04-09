@@ -18,7 +18,7 @@
     <string name="bosswave_router_addr_val">castle.cs.berkeley.edu</string>
     <string name="bosswave_router_port_key">bosswave_router_port</string>
     <string name="bosswave_router_port_title">BOSSWAVE Router Port</string>
-    <string name="bosswave_router_port_val">50022</string>
+    <string name="bosswave_router_port_val">50025</string>
     <string name="bosswave_key_base64_key">bosswave_key_base64</string>
     <string name="bosswave_key_base64_title">BOSSWAVE Key Base64</string>
     <string name="bosswave_key_base64_val">MvQf3NbUJZbup7ToYhfVitMeGPX8vf0oQCZnp/TXpG5vu5ZfksWQzeqM5PETdum72J1a6UexHHzF+69v2HTpzNcCCJeiavGi9EIUAwjmoLBMSQgjFQUhS2FpZmVpIENoZW4gPGthaWZlaUBiZXJrZWxleS5lZHU+BgpNYXN0ZXIgS2V5AN0gC2JfUURxujnRcme3c9rxhW1CPnraNY563ZFRga8mpJVGGb3pqNYRc0cv4NONnZIRgJSfVhSdjR0Mb2tatwY=</string>

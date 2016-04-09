@@ -241,7 +241,7 @@ public class MainActivity extends ActionBarActivity {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
                 setButtonsEnabled(false, false, false);
-                String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
+                String topic = CONTROL_TOPIC_PREFIX + Integer.toString(deviceNameToid(mTarget)) + CONTROL_TOPIC_SUFFIX;
                 new BosswavePublishTask(mBosswaveClient, topic, new byte[]{1}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } else {
                 showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
@@ -253,7 +253,7 @@ public class MainActivity extends ActionBarActivity {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
                 setButtonsEnabled(false, false, false);
-                String topic = CONTROL_TOPIC_PREFIX + "0" + CONTROL_TOPIC_SUFFIX;
+                String topic = CONTROL_TOPIC_PREFIX + Integer.toString(deviceNameToid(mTarget)) + CONTROL_TOPIC_SUFFIX;
                 new BosswavePublishTask(mBosswaveClient, topic, new byte[]{0}, new PayloadObject.Type(new byte[]{1, 0, 1, 0}), mBwPubTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             } else {
                 showToast("Bosswave is not connected", Toast.LENGTH_SHORT);
@@ -286,11 +286,15 @@ public class MainActivity extends ActionBarActivity {
 
     private BosswaveInitTask.Listener mBwInitTaskListener = new BosswaveInitTask.Listener() {
         @Override
-        public void onResponse() {
-            showToast("Bosswave connected", Toast.LENGTH_SHORT);
-            mIsBosswaveConnected = true;
-            if (mTarget != null) {
-                setButtonsEnabled(true, true, true);
+        public void onResponse(boolean success) {
+            if (success) {
+                showToast("Bosswave connected", Toast.LENGTH_SHORT);
+                mIsBosswaveConnected = true;
+                if (mTarget != null) {
+                    setButtonsEnabled(true, true, true);
+                }
+            } else {
+                showToast("Bosswave connection failed", Toast.LENGTH_SHORT);
             }
         }
     };
@@ -776,5 +780,20 @@ public class MainActivity extends ActionBarActivity {
                     (long) rhs.getWidth() * rhs.getHeight());
         }
 
+    }
+
+    /**
+     * Hard-coded device name to id conversion
+     * TODO have better metadata integration with BOSSWAVE
+     */
+    private int deviceNameToid(String name) {
+        if ("heater".equals(name)) {
+            return 0;
+        } else if ("fan".equals(name)) {
+            return 1;
+        } else if ("light".equals(name)) {
+            return 2;
+        }
+        return -1;
     }
 }
