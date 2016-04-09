@@ -23,32 +23,39 @@
         android:key="@string/bosswave_key_base64_key"
         android:title="@string/bosswave_key_base64_title"/>
     <EditTextPreference
-        android:defaultValue="@string/resolution_val"
+        android:defaultValue="@string/camera_width_val"
         android:enabled="false"
-        android:key="@string/resolution_key"
-        android:title="@string/resolution_title"/>
+        android:key="@string/camera_width_key"
+        android:numeric="integer"
+        android:title="@string/camera_width_title"/>
     <EditTextPreference
-        android:defaultValue="@string/fx_val"
-        android:key="@string/fx_key"
-        android:numeric="decimal"
-        android:title="@string/fx_title"/>
+        android:defaultValue="@string/camera_height_val"
+        android:enabled="false"
+        android:key="@string/camera_height_key"
+        android:numeric="integer"
+        android:title="@string/camera_height_title"/>
     <EditTextPreference
-        android:defaultValue="@string/fy_val"
-        android:key="@string/fy_key"
+        android:defaultValue="@string/camera_fx_val"
+        android:key="@string/camera_fx_key"
         android:numeric="decimal"
-        android:title="@string/fy_title"/>
+        android:title="@string/camera_fx_title"/>
     <EditTextPreference
-        android:defaultValue="@string/cx_val"
-        android:key="@string/cx_key"
+        android:defaultValue="@string/camera_fy_val"
+        android:key="@string/camera_fy_key"
         android:numeric="decimal"
-        android:title="@string/cx_title"/>
+        android:title="@string/camera_fy_title"/>
     <EditTextPreference
-        android:defaultValue="@string/cy_val"
-        android:key="@string/cy_key"
+        android:defaultValue="@string/camera_cx_val"
+        android:key="@string/camera_cx_key"
         android:numeric="decimal"
-        android:title="@string/cy_title"/>
+        android:title="@string/camera_cx_title"/>
+    <EditTextPreference
+        android:defaultValue="@string/camera_cy_val"
+        android:key="@string/camera_cy_key"
+        android:numeric="decimal"
+        android:title="@string/camera_cy_title"/>
     <CheckBoxPreference
-        android:defaultValue="true"
+        android:defaultValue="@string/flip_x_value"
         android:key="@string/flip_x_key"
         android:summary="@string/flip_x_summary"
         android:title="@string/flip_x_title"/>

@@ -8,7 +8,6 @@ import android.graphics.Rect;
 import android.hardware.camera2.CameraCharacteristics;
 import android.media.Image;
 import android.media.ImageReader;
-import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.view.Surface;
@@ -23,6 +22,13 @@ public class AutoFitImageReader implements AutoCloseable {
     private ImageReader mImageReader;
     private OnImageAvailableListener mListener;
     private AtomicBoolean mCaptureRequest;
+    private int mCameraWidth;
+    private int mCameraHeight;
+    private double mCameraFx;
+    private double mCameraFy;
+    private double mCameraCx;
+    private double mCameraCy;
+    private boolean mFlipX;
 
     public interface OnImageAvailableListener {
         void onImageAvailable(byte[] imageData, int width, int height, double fx, double fy, double cx, double cy);
@@ -48,38 +54,38 @@ public class AutoFitImageReader implements AutoCloseable {
                 // TODO: do the rotation and scaling here, this is a worker thread
                 int width = image.getWidth();
                 int height = image.getHeight();
+
+                double aspectRatioCam = (double) mCameraWidth / mCameraHeight;
+                double aspectRatioImg = (double) width / height;
+                if (aspectRatioCam != aspectRatioImg) { // aspect ratio has to be the same
+                    image.close();
+                    return;
+                }
+
                 byte[] imageData = imageToBytes(image);
                 image.close();
 
                 if (isBlurred(imageData, width, height)) {
+                    mCaptureRequest.set(true);
                     return;
                 }
 
-                if (! "D6503".equals(Build.PRODUCT)) {
+                if (mFlipX) {
                     // image from camera is flipped along x-axis
                     imageData = flipVertical(imageData, width, height);
                 }
 
-                // scale image to half size if 16:9 ratio
-                if (width / 16 * 9 == height || height / 16 * 9 == width) {
-                    imageData = halfImage(imageData, width, height);
-                    width /= 2;
-                    height /= 2;
-                }
-
-                //imageData = scale(imageData, width, height);
                 imageData = rotate(imageData, width, height);
 
-                // TODO get intrinsic matrix from the preference value and the current resolution
-                double fx = getFx();
-                double fy = getFy();
-                double cx = getCx();
-                double cy = getCy();
-
+                double scale = (double) width / (double) mCameraWidth;
+                double fx = mCameraFx * scale;
+                double fy = mCameraFy * scale;
+                double cx = mCameraCx * scale;
+                double cy = mCameraCy * scale;
                 if (getRotateCount() % 2 == 0) {
                     mListener.onImageAvailable(imageData, width, height, fx, fy, cx, cy);
                 } else {
-                    mListener.onImageAvailable(imageData, height, width, fx, fy, cx, cy);
+                    mListener.onImageAvailable(imageData, height, width, fy, fx, cy, cx);
                 }
             } else {
                 image.close();
@@ -123,8 +129,30 @@ public class AutoFitImageReader implements AutoCloseable {
      * Request the ImageReader to call the listener with the next imediate image.
      * This method is thread safe.
      */
-    public void requestCapture() {
-        mCaptureRequest.set(true);
+    public boolean requestCapture() {
+        // Assume the camera is not changed between here and when the image is available
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        mCameraWidth = Integer.parseInt(preferences.getString(mContext.getString(R.string.camera_width_key), mContext.getString(R.string.camera_width_val)));
+        mCameraHeight = Integer.parseInt(preferences.getString(mContext.getString(R.string.camera_height_key), mContext.getString(R.string.camera_height_val)));
+        mCameraFx = Double.parseDouble(preferences.getString(mContext.getString(R.string.camera_fx_key), mContext.getString(R.string.camera_fx_val)));
+        mCameraFy = Double.parseDouble(preferences.getString(mContext.getString(R.string.camera_fy_key), mContext.getString(R.string.camera_fy_val)));
+        mCameraCx = Double.parseDouble(preferences.getString(mContext.getString(R.string.camera_cx_key), mContext.getString(R.string.camera_cx_val)));
+        mCameraCy = Double.parseDouble(preferences.getString(mContext.getString(R.string.camera_cy_key), mContext.getString(R.string.camera_cy_val)));
+        mFlipX = preferences.getBoolean(mContext.getString(R.string.flip_x_key), Boolean.parseBoolean(mContext.getString(R.string.flip_x_value)));
+        if (mCameraWidth == Integer.parseInt(mContext.getString(R.string.camera_width_val))
+                || mCameraHeight == Integer.parseInt(mContext.getString(R.string.camera_height_val))
+                || mCameraFx == Double.parseDouble(mContext.getString(R.string.camera_fx_val))
+                || mCameraFy == Double.parseDouble(mContext.getString(R.string.camera_fy_val))
+                || mCameraCx == Double.parseDouble(mContext.getString(R.string.camera_cx_val))
+                || mCameraCy == Double.parseDouble(mContext.getString(R.string.camera_cy_val))) {
+            return false;
+        } else {
+            if (!mCaptureRequest.getAndSet(true)) { // one capture request at a time
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     /**
@@ -172,33 +200,6 @@ public class AutoFitImageReader implements AutoCloseable {
 
     private boolean isBlurred(byte[] image, int width, int height) {
         return false;
-    }
-
-    /**
-     * Scale an image to half size
-     *
-     * @param imageData the raw bytes of a greyscale image, every byte is a color sample
-     * @return imageData scaled down to half size
-     */
-    private byte[] halfImage(byte[] imageData, int width, int height) {
-        byte[] halved = new byte[imageData.length / 4];
-        for (int i = 0; i < height / 2; i++) {
-            for (int j = 0; j < width / 2; j++) {
-                halved[width / 2 * i + j] = imageData[width * 2 * i + 2 * j];
-            }
-        }
-        return halved;
-    }
-
-    /**
-     * Scale the image to have the same aspect ratio as the camera sensor
-     *
-     * @param imageData the raw bytes of a greyscale image, every byte is a color sample
-     * @return the raw bytes of the scaled image, every byte is a color sample
-     */
-    private byte[] scale(byte[] imageData, int width, int height) {
-        // TODO read characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
-        return imageData;
     }
 
     /**
@@ -264,29 +265,5 @@ public class AutoFitImageReader implements AutoCloseable {
             }
         }
         return rotated;
-    }
-
-    private double getFx() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        double fx = Double.parseDouble(preferences.getString(mContext.getString(R.string.fx_key), mContext.getString(R.string.fx_val)));
-        return 565.25;
-    }
-
-    private double getFy() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        double fy = Double.parseDouble(preferences.getString(mContext.getString(R.string.fy_key), mContext.getString(R.string.fy_val)));
-        return 565.25;
-    }
-
-    private double getCx() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        double cx = Double.parseDouble(preferences.getString(mContext.getString(R.string.cx_key), mContext.getString(R.string.cx_val)));
-        return 240;
-    }
-
-    private double getCy() {
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        double cy = Double.parseDouble(preferences.getString(mContext.getString(R.string.cy_key), mContext.getString(R.string.cy_val)));
-        return 320;
     }
 }

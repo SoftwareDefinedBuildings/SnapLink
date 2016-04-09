@@ -206,7 +206,6 @@ public class MainActivity extends ActionBarActivity {
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
-            setButtonsEnabled(false, false, false);
             // AsyncTask task instance must be created and executed on the UI thread
             runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
         }
@@ -263,7 +262,11 @@ public class MainActivity extends ActionBarActivity {
 
     private final View.OnClickListener mCaptureButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
-            mImageReader.requestCapture();
+            if (mImageReader.requestCapture()) {
+                setButtonsEnabled(false, false, false);
+            } else {
+                showToast("Image capture failed. (Have you set the intrinsic parameters?)", Toast.LENGTH_SHORT);
+            }
         }
     };
 
@@ -397,19 +400,16 @@ public class MainActivity extends ActionBarActivity {
 
     private void updatePreferenceCameraInfo() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String cx = preferences.getString(getString(R.string.cx_key), getString(R.string.cx_val));
-        String cy = preferences.getString(getString(R.string.cy_key), getString(R.string.cy_val));
-        String resolution = preferences.getString(getString(R.string.resolution_key), getString(R.string.resolution_val));
-        if (cx.equals(getString(R.string.cx_val)) || cy.equals(getString(R.string.cy_val)) || resolution.equals(getString(R.string.resolution_val))) { // if it's not set, we update using to the center of camera
+        String cameraWidth = preferences.getString(getString(R.string.camera_width_key), getString(R.string.camera_width_val));
+        String cameraHeight = preferences.getString(getString(R.string.camera_height_key), getString(R.string.camera_height_val));
+        if (cameraWidth.equals(getString(R.string.camera_width_val)) || cameraHeight.equals(getString(R.string.camera_height_val))) {
             CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
             try {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
                 Rect sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
                 SharedPreferences.Editor editor = preferences.edit();
-                editor.putString(getString(R.string.cx_key), Float.toString((float) sensorRect.width() / 2));
-                editor.putString(getString(R.string.cy_key), Float.toString((float) sensorRect.height() / 2));
-                resolution = String.format("width: %d, height: %d", sensorRect.width(), sensorRect.height());
-                editor.putString(getString(R.string.resolution_key), resolution);
+                editor.putString(getString(R.string.camera_width_key), Integer.toString(sensorRect.width()));
+                editor.putString(getString(R.string.camera_height_key), Integer.toString(sensorRect.height()));
                 editor.commit();
             } catch (CameraAccessException e) {
                 e.printStackTrace();
