@@ -236,6 +236,20 @@ public class MainActivity extends ActionBarActivity {
         }
     };
 
+    private SharedPreferences.OnSharedPreferenceChangeListener mOnSharedPreferenceChanged = new SharedPreferences.OnSharedPreferenceChangeListener() {
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+            // when BOSSWAVE router changes, we need to reconnect
+            if (key.equals(getString(R.string.bosswave_router_addr_key))
+                    || key.equals(getString(R.string.bosswave_router_port_key))
+                    || key.equals(getString(R.string.bosswave_key_base64_key))) {
+                if (mIsBosswaveConnected) {
+                    new BosswaveCloseTask(mBosswaveClient, mBwCloseTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                } else {
+                    initBosswaveClient();
+                }
+            }
+        }
+    };
     private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
@@ -297,7 +311,22 @@ public class MainActivity extends ActionBarActivity {
                     setButtonsEnabled(true, true, true);
                 }
             } else {
+                mBosswaveClient = null;
                 showToast("Bosswave connection failed", Toast.LENGTH_SHORT);
+            }
+        }
+    };
+
+    private BosswaveCloseTask.Listener mBwCloseTaskListener = new BosswaveCloseTask.Listener() {
+        @Override
+        public void onResponse(boolean success) {
+            if (success) {
+                showToast("Bosswave disconnected", Toast.LENGTH_SHORT);
+                mIsBosswaveConnected = false;
+                mBosswaveClient = null;
+                initBosswaveClient();
+            } else {
+                showToast("Bosswave close failed", Toast.LENGTH_SHORT);
             }
         }
     };
@@ -333,21 +362,11 @@ public class MainActivity extends ActionBarActivity {
 
         // Use onSharedPreferenceChanged for reconnection if user changes BOSSWAVE router
         mIsBosswaveConnected = false;
+        mBosswaveClient = null;
+        initBosswaveClient();
+
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String bosswaveRouterAddr = preferences.getString(getString(R.string.bosswave_router_addr_key), getString(R.string.bosswave_router_addr_val));
-        int bosswaveRouterPort = Integer.parseInt(preferences.getString(getString(R.string.bosswave_router_port_key), getString(R.string.bosswave_router_port_val)));
-        mBosswaveClient = new BosswaveClient(bosswaveRouterAddr, bosswaveRouterPort);
-        String bosswaveKey = preferences.getString(getString(R.string.bosswave_key_base64_key), getString(R.string.bosswave_key_base64_val));
-        final byte[] mKey = Base64.decode(bosswaveKey, Base64.DEFAULT);
-        try {
-            File tempKeyFile = File.createTempFile("key", null, null);
-            tempKeyFile.deleteOnExit();
-            FileOutputStream fos = new FileOutputStream(tempKeyFile);
-            fos.write(mKey);
-            new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        preferences.registerOnSharedPreferenceChangeListener(mOnSharedPreferenceChanged);
     }
 
     @Override
@@ -389,6 +408,27 @@ public class MainActivity extends ActionBarActivity {
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void initBosswaveClient() {
+        // Use onSharedPreferenceChanged for reconnection if user changes BOSSWAVE router
+        if (!mIsBosswaveConnected && mBosswaveClient == null) {
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            String bosswaveRouterAddr = preferences.getString(getString(R.string.bosswave_router_addr_key), getString(R.string.bosswave_router_addr_val));
+            int bosswaveRouterPort = Integer.parseInt(preferences.getString(getString(R.string.bosswave_router_port_key), getString(R.string.bosswave_router_port_val)));
+            mBosswaveClient = new BosswaveClient(bosswaveRouterAddr, bosswaveRouterPort);
+            String bosswaveKey = preferences.getString(getString(R.string.bosswave_key_base64_key), getString(R.string.bosswave_key_base64_val));
+            final byte[] mKey = Base64.decode(bosswaveKey, Base64.DEFAULT);
+            try {
+                File tempKeyFile = File.createTempFile("key", null, null);
+                tempKeyFile.deleteOnExit();
+                FileOutputStream fos = new FileOutputStream(tempKeyFile);
+                fos.write(mKey);
+                new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
