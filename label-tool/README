@@ -1,0 +1,4 @@
+To compile successfully, look in src/:
+ - for any *.ui files, make sure there is a corresonding ui_*.h header.
+ - if the ui_*.h does not exist, run uic. Example:
+  - uic widget.ui -o ui_widget.h
