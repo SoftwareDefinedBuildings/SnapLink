@@ -205,7 +205,7 @@ int HTTPServer::iterate_post(void *coninfo_cls,
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
-    if (strcmp(key, "file") != 0 && strcmp(key, "width") != 0 && strcmp(key, "height") != 0 && strcmp(key, "fx") != 0 && strcmp(key, "fy") != 0 && strcmp(key, "cx") != 0 && strcmp(key, "cy") != 0 )
+    if (strcmp(key, "file") != 0 && strcmp(key, "width") != 0 && strcmp(key, "height") != 0 && strcmp(key, "fx") != 0 && strcmp(key, "fy") != 0 && strcmp(key, "cx") != 0 && strcmp(key, "cy") != 0)
     {
         return MHD_NO;
     }

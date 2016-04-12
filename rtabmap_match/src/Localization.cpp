@@ -101,7 +101,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
                 topIds.push_back(it->first);
             }
             topId = topIds[0];
-            UINFO("topId: %d", topId);
+            UDEBUG("topId: %d", topId);
         }
 
         sensorData->setId(newS->id());

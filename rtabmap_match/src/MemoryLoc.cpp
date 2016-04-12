@@ -781,7 +781,7 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
 
     if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
     {
-        UINFO("Extract features");
+        UDEBUG("Extract features");
         cv::Mat imageMono;
         if (data.imageRaw().channels() == 3)
         {
