@@ -10,7 +10,7 @@
 #include "Visibility.h"
 #include "HTTPServer.h"
 
-#define TOP_K 2
+#define TOP_K 1
 
 class Visibility;
 class HTTPServer;

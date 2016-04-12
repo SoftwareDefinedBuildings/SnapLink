@@ -45,7 +45,6 @@ bool CameraNetwork::event(QEvent *event)
         double cx = networkEvent->conInfo()->cx;
         double cy = networkEvent->conInfo()->cy;
 
-        std::cout << width << " " << height << " " << fx << " " << fy << " " << cx << " " << cy << std::endl;
         rtabmap::SensorData *sensorData = createSensorData(data, width, height, fx, fy, cx, cy);
         if (sensorData != NULL)
         {
