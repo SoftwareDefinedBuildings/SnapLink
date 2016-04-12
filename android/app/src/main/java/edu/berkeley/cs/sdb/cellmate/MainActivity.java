@@ -206,7 +206,6 @@ public class MainActivity extends ActionBarActivity {
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
         public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
-            setButtonsEnabled(false, false, false);
             // AsyncTask task instance must be created and executed on the UI thread
             runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
         }
@@ -237,6 +236,20 @@ public class MainActivity extends ActionBarActivity {
         }
     };
 
+    private SharedPreferences.OnSharedPreferenceChangeListener mOnSharedPreferenceChanged = new SharedPreferences.OnSharedPreferenceChangeListener() {
+        public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+            // when BOSSWAVE router changes, we need to reconnect
+            if (key.equals(getString(R.string.bosswave_router_addr_key))
+                    || key.equals(getString(R.string.bosswave_router_port_key))
+                    || key.equals(getString(R.string.bosswave_key_base64_key))) {
+                if (mIsBosswaveConnected) {
+                    new BosswaveCloseTask(mBosswaveClient, mBwCloseTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                } else {
+                    initBosswaveClient();
+                }
+            }
+        }
+    };
     private final View.OnClickListener mOnButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
             if (mIsBosswaveConnected) {
@@ -263,7 +276,11 @@ public class MainActivity extends ActionBarActivity {
 
     private final View.OnClickListener mCaptureButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
-            mImageReader.requestCapture();
+            if (mImageReader.requestCapture()) {
+                setButtonsEnabled(false, false, false);
+            } else {
+                showToast("Image capture failed. (Have you set the intrinsic parameters?)", Toast.LENGTH_SHORT);
+            }
         }
     };
 
@@ -294,7 +311,22 @@ public class MainActivity extends ActionBarActivity {
                     setButtonsEnabled(true, true, true);
                 }
             } else {
+                mBosswaveClient = null;
                 showToast("Bosswave connection failed", Toast.LENGTH_SHORT);
+            }
+        }
+    };
+
+    private BosswaveCloseTask.Listener mBwCloseTaskListener = new BosswaveCloseTask.Listener() {
+        @Override
+        public void onResponse(boolean success) {
+            if (success) {
+                showToast("Bosswave disconnected", Toast.LENGTH_SHORT);
+                mIsBosswaveConnected = false;
+                mBosswaveClient = null;
+                initBosswaveClient();
+            } else {
+                showToast("Bosswave close failed", Toast.LENGTH_SHORT);
             }
         }
     };
@@ -330,21 +362,11 @@ public class MainActivity extends ActionBarActivity {
 
         // Use onSharedPreferenceChanged for reconnection if user changes BOSSWAVE router
         mIsBosswaveConnected = false;
+        mBosswaveClient = null;
+        initBosswaveClient();
+
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String bosswaveRouterAddr = preferences.getString(getString(R.string.bosswave_router_addr_key), getString(R.string.bosswave_router_addr_val));
-        int bosswaveRouterPort = Integer.parseInt(preferences.getString(getString(R.string.bosswave_router_port_key), getString(R.string.bosswave_router_port_val)));
-        mBosswaveClient = new BosswaveClient(bosswaveRouterAddr, bosswaveRouterPort);
-        String bosswaveKey = preferences.getString(getString(R.string.bosswave_key_base64_key), getString(R.string.bosswave_key_base64_val));
-        final byte[] mKey = Base64.decode(bosswaveKey, Base64.DEFAULT);
-        try {
-            File tempKeyFile = File.createTempFile("key", null, null);
-            tempKeyFile.deleteOnExit();
-            FileOutputStream fos = new FileOutputStream(tempKeyFile);
-            fos.write(mKey);
-            new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        preferences.registerOnSharedPreferenceChangeListener(mOnSharedPreferenceChanged);
     }
 
     @Override
@@ -389,6 +411,27 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    private void initBosswaveClient() {
+        // Use onSharedPreferenceChanged for reconnection if user changes BOSSWAVE router
+        if (!mIsBosswaveConnected && mBosswaveClient == null) {
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            String bosswaveRouterAddr = preferences.getString(getString(R.string.bosswave_router_addr_key), getString(R.string.bosswave_router_addr_val));
+            int bosswaveRouterPort = Integer.parseInt(preferences.getString(getString(R.string.bosswave_router_port_key), getString(R.string.bosswave_router_port_val)));
+            mBosswaveClient = new BosswaveClient(bosswaveRouterAddr, bosswaveRouterPort);
+            String bosswaveKey = preferences.getString(getString(R.string.bosswave_key_base64_key), getString(R.string.bosswave_key_base64_val));
+            final byte[] mKey = Base64.decode(bosswaveKey, Base64.DEFAULT);
+            try {
+                File tempKeyFile = File.createTempFile("key", null, null);
+                tempKeyFile.deleteOnExit();
+                FileOutputStream fos = new FileOutputStream(tempKeyFile);
+                fos.write(mKey);
+                new BosswaveInitTask(mBosswaveClient, tempKeyFile, mBwInitTaskListener).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     private void updateUI() {
         ActionBar actionBar = getSupportActionBar();
         actionBar.setDisplayShowHomeEnabled(false);
@@ -397,19 +440,16 @@ public class MainActivity extends ActionBarActivity {
 
     private void updatePreferenceCameraInfo() {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String cx = preferences.getString(getString(R.string.cx_key), getString(R.string.cx_val));
-        String cy = preferences.getString(getString(R.string.cy_key), getString(R.string.cy_val));
-        String resolution = preferences.getString(getString(R.string.resolution_key), getString(R.string.resolution_val));
-        if (cx.equals(getString(R.string.cx_val)) || cy.equals(getString(R.string.cy_val)) || resolution.equals(getString(R.string.resolution_val))) { // if it's not set, we update using to the center of camera
+        String cameraWidth = preferences.getString(getString(R.string.camera_width_key), getString(R.string.camera_width_val));
+        String cameraHeight = preferences.getString(getString(R.string.camera_height_key), getString(R.string.camera_height_val));
+        if (cameraWidth.equals(getString(R.string.camera_width_val)) || cameraHeight.equals(getString(R.string.camera_height_val))) {
             CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
             try {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(mCameraId);
                 Rect sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
                 SharedPreferences.Editor editor = preferences.edit();
-                editor.putString(getString(R.string.cx_key), Float.toString((float) sensorRect.width() / 2));
-                editor.putString(getString(R.string.cy_key), Float.toString((float) sensorRect.height() / 2));
-                resolution = String.format("width: %d, height: %d", sensorRect.width(), sensorRect.height());
-                editor.putString(getString(R.string.resolution_key), resolution);
+                editor.putString(getString(R.string.camera_width_key), Integer.toString(sensorRect.width()));
+                editor.putString(getString(R.string.camera_height_key), Integer.toString(sensorRect.height()));
                 editor.commit();
             } catch (CameraAccessException e) {
                 e.printStackTrace();
