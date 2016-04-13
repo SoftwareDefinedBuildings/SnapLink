@@ -293,10 +293,15 @@ void HTTPServer::request_completed(void *cls,
         long time_surf = con_info->time_surf_end - con_info->time_surf_start;
         long time_closest = con_info->time_closest_end - con_info->time_closest_start;
         long time_pnp = con_info->time_pnp_end - con_info->time_pnp_start;
+        long time_keypoints = con_info->time_keypoints_end - con_info->time_keypoints_start;
+        long time_descriptors = con_info->time_descriptors_end - con_info->time_descriptors_start;
+
         UINFO("TAG_TIME overall %ld", time_overall);
         UINFO("TAG_TIME surf %ld", time_surf);
         UINFO("TAG_TIME closest_match %ld", time_closest);
         UINFO("TAG_TIME pnp %ld", time_pnp);
+        UINFO("TAG_TIME generateKeypoints %ld", time_keypoints);
+        UINFO("TAG_TIME generateDescriptors %ld", time_descriptors);
 
         if (con_info->postprocessor != NULL)
         {

@@ -30,12 +30,12 @@ def log_to_csv(log_clean, log_csv):
         sys.exit(1)
 
     # write CSV header
-    outfile.write("overall,SURF,closest_match,PnP\n")
+    outfile.write("overall,SURF,closest_match,PnP,keypoints,descriptors\n")
 
     # write timing data
     i = 0
     while i < len(lines):
-        KEYWORDS = ["overall", "surf", "closest_match", "pnp"] # keywords in log file
+        KEYWORDS = ["overall", "surf", "closest_match", "pnp", "generateKeypoints", "generateDescriptors"] # keywords in log file
 
         results_good = True
         for j in range(len(KEYWORDS)):
@@ -48,9 +48,11 @@ def log_to_csv(log_clean, log_csv):
             surf = int(lines[i+1][-1])
             closest = int(lines[i+2][-1])
             pnp = int(lines[i+3][-1])
-            outfile.write("{},{},{},{}\n".format(overall, surf, closest, pnp))
+            keypoints = int(lines[i+4][-1])
+            descriptors = int(lines[i+5][-1])
+            outfile.write("{},{},{},{},{},{}\n".format(overall, surf, closest, pnp, keypoints, descriptors))
 
-        i += 4
+        i += 6
 
     # close file except for stdout
     if len(log_csv):

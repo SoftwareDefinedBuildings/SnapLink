@@ -795,8 +795,13 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             imageMono = data.imageRaw();
         }
 
+        con_info->time_keypoints_start = getTime(); // start of generateKeypoints
         keypoints = _feature2D->generateKeypoints(imageMono);
+        con_info->time_keypoints_end = getTime(); // end of generateKeypoints
+        con_info->time_descriptors_start = getTime(); // start of generateDescriptors
         descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+        con_info->time_descriptors_end = getTime(); // end of generateDescriptors
+
         con_info->time_surf_end = getTime(); // end of SURF extraction
         con_info->time_closest_start = getTime(); // start of find closest match
     }

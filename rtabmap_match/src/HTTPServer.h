@@ -96,4 +96,8 @@ typedef struct
     long time_closest_end;
     long time_pnp_start;
     long time_pnp_end;
+    long time_keypoints_start;
+    long time_keypoints_end;
+    long time_descriptors_start;
+    long time_descriptors_end;
 } ConnectionInfo;
