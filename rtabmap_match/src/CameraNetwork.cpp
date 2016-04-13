@@ -21,30 +21,6 @@ CameraNetwork::~CameraNetwork()
     _httpServer = NULL;
 }
 
-bool CameraNetwork::init(const rtabmap::Transform &localTransform, const std::string &calibrationFolder, const std::string &cameraName)
-{
-    _model.setLocalTransform(localTransform);
-
-    // look for calibration files
-    if (!calibrationFolder.empty() && !cameraName.empty())
-    {
-        if (_model.load(calibrationFolder, cameraName))
-        {
-            UINFO("Camera parameters: fx=%f fy=%f cx=%f cy=%f",
-                  _model.fx(),
-                  _model.fy(),
-                  _model.cx(),
-                  _model.cy());
-            return true;
-        }
-        else
-        {
-            UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!", cameraName.c_str(), calibrationFolder.c_str());
-        }
-    }
-    return false;
-}
-
 void CameraNetwork::setLocalizer(Localization *loc)
 {
     _loc = loc;
@@ -62,10 +38,14 @@ bool CameraNetwork::event(QEvent *event)
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
 
         std::vector<unsigned char> *data = &networkEvent->conInfo()->data;
-        uint32_t width = networkEvent->conInfo()->width;
-        uint32_t height = networkEvent->conInfo()->height;
+        int width = networkEvent->conInfo()->width;
+        int height = networkEvent->conInfo()->height;
+        double fx = networkEvent->conInfo()->fx;
+        double fy = networkEvent->conInfo()->fy;
+        double cx = networkEvent->conInfo()->cx;
+        double cy = networkEvent->conInfo()->cy;
 
-        rtabmap::SensorData *sensorData = process(data, width, height);
+        rtabmap::SensorData *sensorData = createSensorData(data, width, height, fx, fy, cx, cy);
         if (sensorData != NULL)
         {
             QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
@@ -79,20 +59,21 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::process(std::vector<unsigned char> *data, uint32_t width, uint32_t height)
+rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> *data, int width, int height, double fx, double fy, double cx, double cy)
 {
     UDEBUG("");
     if (data != NULL)
     {
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
-        cv::flip(img, img, 0); // flip the image around the x-axis
 
         //imwrite("image.jpg", img);
 
         if (!img.empty())
         {
-            rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, _model);
+            rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+            rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
+            rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, model);
             img.release(); // decrement the reference counter
             return sensorData;
         }

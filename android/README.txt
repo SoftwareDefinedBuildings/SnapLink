@@ -1,0 +1,3 @@
+Download bw2android-0.1-all.jar from https://www.dropbox.com/s/nx2x6ra6od7swhm/bw2android-0.1-all.jar?dl=0
+Put it in $(GIT_ROOT)/android/app/libs/ 
+I really don't know how to set up a maven server for this...

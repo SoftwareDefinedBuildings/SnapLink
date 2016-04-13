@@ -42,10 +42,7 @@ public:
     const rtabmap::Signature *getLastWorkingSignature() const;
     rtabmap::Transform getOptimizedPose(int signatureId) const;
     const rtabmap::Signature *getSignature(int id) const;
-    const std::map<int, rtabmap::Signature *> &getSignatures() const
-    {
-        return _signatures;
-    }
+    const std::map<int, rtabmap::Signature *> &getSignatures() const;
 
     rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
 
@@ -56,31 +53,16 @@ private:
     std::map<int, int> getNeighborsId(
         int signatureId,
         int maxGraphDepth,
-        int maxCheckedInDatabase = -1,
         bool incrementMarginOnLoop = false,
         bool ignoreLoopIds = false,
-        bool ignoreIntermediateNodes = false,
-        double *dbAccessTime = 0) const;
-    std::map<int, rtabmap::Link> getLinks(int signatureId,
-                                          bool lookInDatabase = false) const;
+        bool ignoreIntermediateNodes = false) const;
     std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
-    rtabmap::Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
-    bool getNodeInfo(int signatureId,
-                     rtabmap::Transform &odomPose,
-                     int &mapId,
-                     int &weight,
-                     std::string &label,
-                     double &stamp,
-                     rtabmap::Transform &groundTruth,
-                     bool lookInDatabase = false) const;
     void getMetricConstraints(
         const std::set<int> &ids,
         std::map<int, rtabmap::Transform> &poses,
-        std::multimap<int, rtabmap::Link> &links,
-        bool lookInDatabase = false);
+        std::multimap<int, rtabmap::Link> &links);
 
 
-    void addSignature(rtabmap::Signature *signature);
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 

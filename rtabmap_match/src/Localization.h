@@ -11,7 +11,7 @@
 #include "HTTPServer.h"
 #include "Time.h"
 
-#define TOP_K 2
+#define TOP_K 1
 
 class Visibility;
 class HTTPServer;
@@ -23,8 +23,7 @@ public:
     Localization();
     virtual ~Localization();
 
-    bool init(const std::string &dbPath, const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-
+    void setMemory(MemoryLoc *memory);
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -38,9 +37,7 @@ private:
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
 
 private:
-    int _topk;
     MemoryLoc *_memory;
-    rtabmap::ParametersMap _memoryParams;
     Visibility *_vis;
     HTTPServer *_httpServer;
 };
