@@ -26,6 +26,8 @@
 #include <pcl/common/common.h>
 
 #include "MemoryLoc.h"
+#include "HTTPServer.h"
+#include "Time.h"
 
 const int MemoryLoc::kIdStart = 0;
 
@@ -235,7 +237,7 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
 }
 
-bool MemoryLoc::update(const rtabmap::SensorData &data)
+bool MemoryLoc::update(const rtabmap::SensorData &data, void *context)
 {
     UDEBUG("");
 
@@ -245,7 +247,7 @@ bool MemoryLoc::update(const rtabmap::SensorData &data)
         _vwd->update();
     }
 
-    rtabmap::Signature *signature = this->createSignature(data);
+    rtabmap::Signature *signature = this->createSignature(data, context);
     if (signature == NULL)
     {
         UERROR("Failed to create a signature...");
@@ -768,12 +770,13 @@ rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
     return pose;
 }
 
-rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
+rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, void *context)
 {
     UDEBUG("");
     UASSERT(data.imageRaw().empty() ||
             data.imageRaw().type() == CV_8UC1 ||
             data.imageRaw().type() == CV_8UC3);
+    ConnectionInfo *con_info = (ConnectionInfo *) context;
 
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
@@ -794,6 +797,8 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
 
         keypoints = _feature2D->generateKeypoints(imageMono);
         descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+        con_info->time_surf_end = getTime(); // end of SURF extraction
+        con_info->time_closest_start = getTime(); // start of find closest match
     }
     else if (data.imageRaw().empty())
     {

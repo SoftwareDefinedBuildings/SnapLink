@@ -77,7 +77,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData, void 
 
     // generate kpts
     con_info->time_surf_start = getTime(); // start of SURF extraction
-    if (_memory->update(*sensorData))
+    if (_memory->update(*sensorData, con_info))
     {
         UDEBUG("");
         const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
@@ -93,8 +93,6 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData, void 
         int topId;
         if (likelihood.size())
         {
-            // TODO: move this to memoryloc con_info->time_surf_end = getTime(); // end of SURF extraction
-            // TODO: move this to memoryloc con_info->time_closest_start = getTime(); // start of find closest match
             std::vector< std::pair<int, float> > top(TOP_K);
             std::partial_sort_copy(likelihood.begin(),
                                    likelihood.end(),

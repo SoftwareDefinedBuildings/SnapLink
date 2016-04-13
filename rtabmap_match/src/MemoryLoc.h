@@ -29,7 +29,7 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    bool update(const rtabmap::SensorData &data);
+    bool update(const rtabmap::SensorData &data, void *context);
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
@@ -70,7 +70,7 @@ private:
     int getNextId();
     void clear();
 
-    rtabmap::Signature *createSignature(const rtabmap::SensorData &data);
+    rtabmap::Signature *createSignature(const rtabmap::SensorData &data, void *context);
 
     //keypoint stuff
     void disableWordsRef(int signatureId);
