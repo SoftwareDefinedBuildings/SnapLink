@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
     w.setDbPath(argv[1]);
     if (!w.openDatabase())
     {
-        std::cout << "Couldn't open database " << argv[1] << std::endl;
         return -1;
     }
     if (!w.setSliderRange())
