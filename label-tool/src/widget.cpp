@@ -1,5 +1,7 @@
 #include "widget.h"
 #include "ui_widget.h"
+#include <iostream>
+#include <rtabmap/core/SensorData.h>
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
@@ -46,7 +48,11 @@ bool Widget::setSliderRange()
         return false;
     }
 
-    ui->slider->setRange(1, numImages); // image ID is 1-indexed
+    // image ID is 1-indexed
+    ui->slider->setRange(1, numImages);
+
+    // display first image
+    showImage(1);
 
     return true;
 }
@@ -57,6 +63,20 @@ void Widget::setSliderValue(int value)
     stream << value << " out of " << numImages;
 
     ui->label_id->setText(QString::fromStdString(stream.str()));
+    showImage(value);
+}
+
+void Widget::showImage(int index)
+{
+    rtabmap::SensorData data;
+    dbDriver->getNodeData(index, data);
+    data.uncompressData();
+    cv::Mat raw = data.imageRaw();
+
+    QImage image = QImage(raw.data, raw.cols, raw.rows, raw.step, QImage::Format_RGB888);
+    QPixmap pixmap = QPixmap::fromImage(image.rgbSwapped()); // need to change BGR -> RGBz
+
+    ui->imgLabel->setPixmap(pixmap);
 }
 
 void Widget::setLabel(const QString &name)

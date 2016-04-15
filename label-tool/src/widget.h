@@ -1,9 +1,8 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
-#include <iostream>
 #include <QWidget>
-#include "rtabmap/core/DBDriver.h"
+#include <rtabmap/core/DBDriver.h>
 
 namespace Ui {
 class Widget;
@@ -33,6 +32,8 @@ private:
     rtabmap::DBDriver *dbDriver;
     QString dbPath;
     int numImages;
+
+    void showImage(int);
 };
 
 #endif // WIDGET_H
