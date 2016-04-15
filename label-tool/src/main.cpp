@@ -3,8 +3,6 @@
 
 #include "widget.h"
 
-#include "rtabmap/gui/DatabaseViewer.h"
-
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -12,6 +10,14 @@ int main(int argc, char *argv[])
 
     if (argc < 2) {
         std::cout << "Need at least 1 argument" << std::endl;
+        return -1;
+    }
+
+    // open database
+    w.setDbPath(argv[1]);
+    if (!w.openDatabase())
+    {
+        std::cout << "Couldn't open database " << argv[1] << std::endl;
         return -1;
     }
 

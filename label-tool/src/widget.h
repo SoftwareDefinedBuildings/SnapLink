@@ -1,7 +1,9 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
+#include <iostream>
 #include <QWidget>
+#include "rtabmap/core/DBDriver.h"
 
 namespace Ui {
 class Widget;
@@ -15,6 +17,9 @@ public:
     explicit Widget(QWidget *parent = 0);
     ~Widget();
 
+    void setDbPath(char *);
+    bool openDatabase(void);
+
     void setLabel(const QString &name);
     QString getLabel() const;
 
@@ -22,6 +27,9 @@ public:
 
 private:
     Ui::Widget *ui;
+
+    rtabmap::DBDriver *dbDriver;
+    QString dbPath;
 };
 
 #endif // WIDGET_H
