@@ -9,6 +9,9 @@ Widget::Widget(QWidget *parent) :
 
     // setup DBDriver
     dbDriver = rtabmap::DBDriver::create();
+
+    // connect signals and slots
+    connect(ui->slider, SIGNAL (valueChanged(int)), this, SLOT (setSliderValue(int)));
 }
 
 Widget::~Widget()
@@ -19,7 +22,6 @@ Widget::~Widget()
 void Widget::setDbPath(char *name)
 {
     dbPath = QString::fromUtf8(name);
-    std::cout << "set db path to " << dbPath.toStdString() << std::endl;
 }
 
 bool Widget::openDatabase()
@@ -32,6 +34,31 @@ bool Widget::openDatabase()
     return true;
 }
 
+bool Widget::setSliderRange()
+{
+    // get number of images in database
+    std::set<int> ids;
+    dbDriver->getAllNodeIds(ids);
+    numImages = ids.size();
+
+    if (numImages <= 0)
+    {
+        return false;
+    }
+
+    ui->slider->setRange(1, numImages); // image ID is 1-indexed
+
+    return true;
+}
+
+void Widget::setSliderValue(int value)
+{
+    std::stringstream stream;
+    stream << value << " out of " << numImages;
+
+    ui->label_id->setText(QString::fromStdString(stream.str()));
+}
+
 void Widget::setLabel(const QString &name)
 {
     ui->lineEdit->setText(name);
@@ -40,10 +67,4 @@ void Widget::setLabel(const QString &name)
 QString Widget::getLabel() const
 {
     return ui->lineEdit->text();
-}
-
-
-void Widget::setSliderInterval(int interval)
-{
-    ui->horizontalSlider->setTickInterval(interval);
 }

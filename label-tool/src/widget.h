@@ -19,17 +19,20 @@ public:
 
     void setDbPath(char *);
     bool openDatabase(void);
+    bool setSliderRange(void);
 
     void setLabel(const QString &name);
     QString getLabel() const;
 
-    void setSliderInterval(int);
+private slots:
+    void setSliderValue(int);
 
 private:
     Ui::Widget *ui;
 
     rtabmap::DBDriver *dbDriver;
     QString dbPath;
+    int numImages;
 };
 
 #endif // WIDGET_H

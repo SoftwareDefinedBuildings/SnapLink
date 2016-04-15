@@ -84,16 +84,16 @@
     </widget>
    </item>
    <item row="1" column="2">
-    <widget class="QLabel" name="label_4">
+    <widget class="QLabel" name="label_id">
      <property name="minimumSize">
       <size>
-       <width>40</width>
+       <width>100</width>
        <height>0</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
-       <width>40</width>
+       <width>200</width>
        <height>16777215</height>
       </size>
      </property>
@@ -113,7 +113,7 @@
     <widget class="QLineEdit" name="lineEdit"/>
    </item>
    <item row="1" column="3">
-    <widget class="QSlider" name="horizontalSlider">
+    <widget class="QSlider" name="slider">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>

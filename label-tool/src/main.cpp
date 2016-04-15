@@ -20,11 +20,13 @@ int main(int argc, char *argv[])
         std::cout << "Couldn't open database " << argv[1] << std::endl;
         return -1;
     }
+    if (!w.setSliderRange())
+    {
+        std::cout << "Database does not have any images" << std::endl;
+        return -1;
+    }
 
-    //w.setLabel("enter label name");
-    w.setLabel(argv[1]);
-
-    w.setSliderInterval(5);
+    w.setLabel("enter label name");
 
     w.show();
 
