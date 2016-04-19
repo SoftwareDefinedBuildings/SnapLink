@@ -11,8 +11,8 @@ fi
 mkdir -p ../app/src/main/3rdparty
 rsync -avz ./OpenCV-android-sdk/sdk/native/3rdparty/ ../app/src/main/3rdparty
 
-mkdir -p ../app/src/main/jni
-rsync -avz ./OpenCV-android-sdk/sdk/native/jni/ ../app/src/main/jni
+mkdir -p ../app/src/main/jni/include
+rsync -avz ./OpenCV-android-sdk/sdk/native/jni/include/ ../app/src/main/jni/include
 
 mkdir -p ../app/src/main/jniLibs
 rsync -avz ./OpenCV-android-sdk/sdk/native/libs/ ../app/src/main/jniLibs
@@ -26,7 +26,7 @@ rsync -avz ./OpenCV-android-sdk/sdk/java/src/ ../openCVLibrary2411/src/main/java
 mkdir -p ../openCVLibrary2411/src/main/aidl/org/opencv
 mv ../openCVLibrary2411/src/main/java/org/opencv/engine/ ../openCVLibrary2411/src/main/aidl/org/opencv/
 
-mkdir -p ../openCVLibrary2411/src/main/java/res
-rsync -avz ./OpenCV-android-sdk/sdk/java/res/ ../openCVLibrary2411/src/main/java/res
+mkdir -p ../openCVLibrary2411/src/main/res
+rsync -avz ./OpenCV-android-sdk/sdk/java/res/ ../openCVLibrary2411/src/main/res
 
 cd ..
