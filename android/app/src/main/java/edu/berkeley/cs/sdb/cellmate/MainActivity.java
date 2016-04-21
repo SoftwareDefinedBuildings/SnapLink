@@ -65,6 +65,7 @@ public class MainActivity extends ActionBarActivity {
     private Button mOnButton;
     private Button mOffButton;
     private Button mCaptureButton;
+    private Toast mToast;
 
     // ID of the current CameraDevice
     private String mCameraId;
@@ -357,6 +358,8 @@ public class MainActivity extends ActionBarActivity {
         mOffButton.setOnClickListener(mOffButtonOnClickListener);
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListener);
+
+        mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
 
         setButtonsEnabled(false, false, true);
 
@@ -768,7 +771,9 @@ public class MainActivity extends ActionBarActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(MainActivity.this, text, duration).show();
+                mToast.setText(text);
+                mToast.setDuration(duration);
+                mToast.show();
             }
         });
     }
