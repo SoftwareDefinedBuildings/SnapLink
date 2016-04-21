@@ -1,10 +1,14 @@
 #include <iostream>
 #include <QApplication>
+#include <rtabmap/utilite/UEventsManager.h>
 
 #include "widget.h"
 
 int main(int argc, char *argv[])
 {
+    ULogger::setType(ULogger::kTypeConsole);
+    ULogger::setLevel(ULogger::kInfo);
+
     QApplication a(argc, argv);
     Widget w;
 
