@@ -6,6 +6,7 @@
 #include <pcl/point_types.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Memory.h>
+#include <sqlite3.h>
 
 namespace Ui {
 class Widget;
@@ -21,6 +22,7 @@ public:
 
     void setDbPath(char *);
     bool openDatabase(void);
+    void createLabelTable(void);
     bool setSliderRange(void);
 
     void setLabel(const QString &name);
@@ -33,6 +35,7 @@ private slots:
 private:
     Ui::Widget *ui;
 
+    sqlite3 *db;
     rtabmap::DBDriver *dbDriver;
     rtabmap::Memory memory;
     QString dbPath;

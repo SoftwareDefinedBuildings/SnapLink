@@ -41,18 +41,42 @@ void Widget::setDbPath(char *name)
 
 bool Widget::openDatabase()
 {
-    if (!dbDriver->openConnection(dbPath.toStdString()))
+    std::string path = dbPath.toStdString();
+    if (sqlite3_open(path.c_str(), &db) != SQLITE_OK)
     {
         UERROR("Could not open database");
         return false;
     }
-    if (!memory.init(dbPath.toStdString(), false))
+    if (!dbDriver->openConnection(path))
+    {
+        UERROR("Could not open database");
+        return false;
+    }
+    createLabelTable();
+
+    if (!memory.init(path, false))
     {
         UERROR("Error init memory");
         return false;
     }
 
     return true;
+}
+
+void Widget::createLabelTable()
+{
+    std::string query;
+    query = "CREATE TABLE IF NOT EXISTS Labels ( " \
+        "labelID INT PRIMARY KEY, " \
+        "labelName VARCHAR(255), " \
+        "imgId INT, " \
+        "x INT, " \
+        "y INT); ";
+    int rc = sqlite3_exec(db, query.c_str(), NULL, NULL, NULL);
+    if (rc != SQLITE_OK)
+    {
+        UWARN("Could not create label table");
+    }
 }
 
 bool Widget::setSliderRange()
