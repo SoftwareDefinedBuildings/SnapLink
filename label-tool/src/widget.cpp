@@ -119,7 +119,7 @@ void Widget::showImage(int index)
     QImage image = QImage(raw.data, raw.cols, raw.rows, raw.step, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.rgbSwapped()); // need to change BGR -> RGBz
 
-    ui->imgLabel->setPixmap(pixmap);
+    ui->label_img->setPixmap(pixmap);
 }
 
 void Widget::mousePressEvent(QMouseEvent *event)
@@ -196,10 +196,10 @@ std::map<int, rtabmap::Transform> Widget::optimizeGraph(rtabmap::Memory &memory)
 
 void Widget::setLabel(const QString &name)
 {
-    ui->lineEdit->setText(name);
+    ui->lineEdit_label->setText(name);
 }
 
 QString Widget::getLabel() const
 {
-    return ui->lineEdit->text();
+    return ui->lineEdit_label->text();
 }
