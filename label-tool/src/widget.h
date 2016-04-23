@@ -30,6 +30,7 @@ public:
 
 private slots:
     void setSliderValue(int);
+    void saveLabel();
     void mousePressEvent(QMouseEvent*);
 
 private:

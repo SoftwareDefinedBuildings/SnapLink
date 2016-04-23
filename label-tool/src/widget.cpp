@@ -8,13 +8,13 @@
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/RtabmapThread.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/utilite/UEventsManager.h>
-
-#include <rtabmap/core/RtabmapThread.h>
-#include <rtabmap/core/Parameters.h>
+#include <string>
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
@@ -27,6 +27,7 @@ Widget::Widget(QWidget *parent) :
 
     // connect signals and slots
     connect(ui->slider, SIGNAL (valueChanged(int)), this, SLOT (setSliderValue(int)));
+    connect(ui->pushButton, SIGNAL (released()), this, SLOT (saveLabel()));
 }
 
 Widget::~Widget()
@@ -101,11 +102,46 @@ bool Widget::setSliderRange()
 
 void Widget::setSliderValue(int value)
 {
-    std::stringstream stream;
-    stream << value << " out of " << numImages;
-
-    ui->label_id->setText(QString::fromStdString(stream.str()));
+    ui->label_id->setText(QString::number(value));
     showImage(value);
+}
+
+void Widget::saveLabel()
+{
+    std::string label_name = ui->lineEdit_label->text().toStdString();
+    std::string label_id = ui->label_id->text().toStdString();
+    std::string label_x = ui->label_x->text().toStdString();
+    std::string label_y = ui->label_y->text().toStdString();
+
+    if (label_name.length() == 0)
+    {
+        UWARN("Label name empty");
+        return;
+    }
+
+    int imageId, x, y;
+    imageId = std::stoi(label_id);
+    x = std::stoi(label_x);
+    y = std::stoi(label_y);
+
+    // convert again to verify label has depth
+    if (convertTo3D(imageId, x, y))
+    {
+        std::stringstream saveQuery;
+        saveQuery << "INSERT INTO Labels VALUES ('" \
+                    << label_name << "', '" << label_id << "', '" << label_x << "', '" << label_y << "');";
+
+        std::cout << saveQuery.str() << std::endl;
+        int rc = sqlite3_exec(db, saveQuery.str().c_str(), NULL, NULL, NULL);
+        if (rc != SQLITE_OK)
+        {
+            UWARN("Could not save label to label table");
+        }
+    }
+    else
+    {
+        UWARN("Could not convert label");
+    }
 }
 
 void Widget::showImage(int index)
@@ -137,11 +173,13 @@ bool Widget::convertTo3D(int imageId, int x, int y)
     if (convert(imageId, x, y, memory, optimizedPoses, pWorld))
     {
         ui->label_status->setText("3D conversion success!");
+        return true;
     }
     else
     {
         ui->label_status->setText("Failed to convert");
     }
+    return false;
 }
 
 /* convert() and optimizeGraph() taken from label_tool/src/main.cpp */
