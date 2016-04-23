@@ -66,12 +66,11 @@ bool Widget::openDatabase()
 void Widget::createLabelTable()
 {
     std::string query;
-    query = "CREATE TABLE IF NOT EXISTS Labels ( " \
-        "labelID INT PRIMARY KEY, " \
-        "labelName VARCHAR(255), " \
-        "imgId INT, " \
-        "x INT, " \
-        "y INT); ";
+    query = "CREATE TABLE IF NOT EXISTS Labels (\n\t" \
+        "labelName VARCHAR(255),\n\t" \
+        "imgId INT,\n\t" \
+        "x INT,\n\t" \
+        "y INT\n); ";
     int rc = sqlite3_exec(db, query.c_str(), NULL, NULL, NULL);
     if (rc != SQLITE_OK)
     {
