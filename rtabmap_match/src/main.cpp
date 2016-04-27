@@ -16,7 +16,7 @@
 void showUsage()
 {
     printf("\nUsage:\n"
-           "rtabmap-rgbd_mapping database_file image_folder label_folder\n");
+           "rtabmap-rgbd_mapping database_file\n");
     exit(1);
 }
 
@@ -27,15 +27,13 @@ int main(int argc, char *argv[])
     //ULogger::setLevel(ULogger::kDebug);
 
     std::string dbfile;
-    std::string labelpath;
-    if (argc != 3)
+    if (argc != 2)
     {
         showUsage();
     }
     else
     {
-        dbfile = std::string(argv[argc - 2]);
-        labelpath = std::string(argv[argc - 1]);
+        dbfile = std::string(argv[argc - 1]);
     }
 
     QCoreApplication app(argc, argv);
@@ -49,8 +47,8 @@ int main(int argc, char *argv[])
 
     // Hardcoded for CameraRGBImages for Android LG G2 Mini
     CameraNetwork camera;
-    httpServer.setCamera(&camera);
     camera.setHTTPServer(&httpServer);
+    httpServer.setCamera(&camera);
 
     rtabmap::ParametersMap memoryParams;
     // Setup memory
@@ -80,17 +78,18 @@ int main(int argc, char *argv[])
 
     Localization loc;
     loc.setMemory(&memory);
-    camera.setLocalizer(&loc);
     loc.setHTTPServer(&httpServer);
+    camera.setLocalizer(&loc);
 
     Visibility vis;
-    if (!vis.init(labelpath, &memory))
+    vis.setMemory(&memory);
+    vis.setHTTPServer(&httpServer);
+    if (!vis.init(dbfile))
     {
         UERROR("Initializing visibility failed");
         return 1;
     }
     loc.setVisibility(&vis);
-    vis.setHTTPServer(&httpServer);
 
     QThread visThread;
     vis.moveToThread(&visThread);

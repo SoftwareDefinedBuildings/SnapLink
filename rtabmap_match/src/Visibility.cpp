@@ -10,6 +10,7 @@
 #include <QTextStream>
 #include <fstream>
 #include <iostream>
+#include <sqlite3.h>
 #include "Utility.h"
 #include "Visibility.h"
 #include "LocationEvent.h"
@@ -26,9 +27,14 @@ Visibility::~Visibility()
     _httpServer = NULL;
 }
 
-bool Visibility::init(const std::string &dir, const MemoryLoc *memory)
+bool Visibility::init(const std::string &dbfile)
 {
-    return processLabels(dir, memory);
+    return processLabels(dbfile);
+}
+
+void Visibility::setMemory(const MemoryLoc *memory)
+{
+    _memory = memory;
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -56,76 +62,79 @@ bool Visibility::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool Visibility::processLabels(const std::string &dir, const MemoryLoc *memory)
+bool Visibility::processLabels(const std::string &dbfile)
 {
-    QString filter = QString::fromStdString("*.txt");
-    QDirIterator it(QString::fromStdString(dir), QStringList() << filter, QDir::Files, QDirIterator::NoIteratorFlags);
-    while (it.hasNext())
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int rc;
+
+    rc = sqlite3_open(dbfile.c_str(), &db);
+    if (rc != SQLITE_OK)
     {
-        QString fileName = it.next();
+        UERROR("Could not open database %s", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return false;
+    }
 
-        // read labels from file
-        QFile file(fileName);
-        if (!file.open(QFile::ReadOnly | QFile::Text))
-        {
-            UWARN("Open file %s failed", fileName.toStdString().c_str());
-            return false;
-        }
+    std::string sql = "SELECT * from Labels";
+    rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        UERROR("Could not read database: %s", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return false;
+    }
 
-        std::string label = QFileInfo(fileName).baseName().toStdString();
-        QTextStream in(&file);
-        while (!in.atEnd())
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+        int imageId = sqlite3_column_int(stmt, 1);
+        int x = sqlite3_column_int(stmt, 2);
+        int y = sqlite3_column_int(stmt, 3);
+        pcl::PointXYZ pWorld;
+        if (getPoint3World(imageId, x, y, _memory, pWorld))
         {
-            QString line = in.readLine();
-            QStringList list = line.split(",");
-            if (list.size() != 3)
-            {
-                UWARN("File %s has a wrong format", fileName.toStdString().c_str());
-                return false;
-            }
-            int imageId = list.at(0).toInt();
-            double x = list.at(1).toDouble();
-            double y = list.at(2).toDouble();
-            pcl::PointXYZ pWorld;
-            if (getPoint3World(imageId, x, y, memory, pWorld))
-            {
-                _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-                _labels.push_back(label);
-                UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
-            }
+            _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
+            _labels.push_back(label);
+            UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
         }
     }
+
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
 
     return true;
 }
 
-bool Visibility::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld) const
-{
-    const rtabmap::Signature *s = memory->getSignature(imageId);
-    if (s == NULL)
-    {
-        UWARN("Signature %d does not exist", imageId);
-        return false;
-    }
-    const rtabmap::SensorData &data = s->sensorData();
-    const rtabmap::CameraModel &cm = data.cameraModels()[0];
-    bool smoothing = false;
-    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
-    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
-    {
-        UWARN("Depth value not valid");
-        return false;
-    }
-    rtabmap::Transform poseWorld = memory->getOptimizedPose(imageId);
-    if (poseWorld.isNull())
-    {
-        UWARN("Image pose is Null");
-        return false;
-    }
-    poseWorld = poseWorld * cm.localTransform();
-    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
-    return true;
-}
+// int Visibility::sqliteCallBack(int argc, char **argv, char **azColName)
+// {
+//     if (argc != 4 || argv == NULL)
+//     {
+//         return 1;
+//     }
+//     for (int i = 0; i < argc; i++)
+//     {
+//         if (argv[i] == NULL)
+//         {
+//             return 1;
+//         }
+//     }
+//
+//     std::string label(argv[0]);
+//     int imageId = std::atoi(argv[1]);
+//     int x = std::atoi(argv[2]);
+//     int y = std::atoi(argv[3]);
+//     pcl::PointXYZ pWorld;
+//     if (getPoint3World(imageId, x, y, _memory, pWorld))
+//     {
+//         _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
+//         _labels.push_back(label);
+//         UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
+//     }
+//
+//     return 0;
+// }
 
 std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
 {
@@ -205,6 +214,40 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
         UINFO("No label is qualified");
     }
     return names;
+}
+
+// int Visibility::sqliteCallBack(void *param, int argc, char **argv, char **azColName)
+// {
+//     Visibility *vis = reinterpret_cast<Visibility *>(param);
+//     return vis->sqliteCallback(argc, argv, azColName);
+// }
+
+bool Visibility::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld)
+{
+    const rtabmap::Signature *s = memory->getSignature(imageId);
+    if (s == NULL)
+    {
+        UWARN("Signature %d does not exist", imageId);
+        return false;
+    }
+    const rtabmap::SensorData &data = s->sensorData();
+    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    bool smoothing = false;
+    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
+    {
+        UWARN("Depth value not valid");
+        return false;
+    }
+    rtabmap::Transform poseWorld = memory->getOptimizedPose(imageId);
+    if (poseWorld.isNull())
+    {
+        UWARN("Image pose is Null");
+        return false;
+    }
+    poseWorld = poseWorld * cm.localTransform();
+    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    return true;
 }
 
 double CompareMeanDist::meanDist(const std::vector<double> &vec)
