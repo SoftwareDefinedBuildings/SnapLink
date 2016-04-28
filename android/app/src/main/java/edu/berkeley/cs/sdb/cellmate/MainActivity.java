@@ -287,17 +287,22 @@ public class MainActivity extends ActionBarActivity {
 
     private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
-        public void onResponse(String response) {
-            if (response != null && !response.trim().equals("None")) {
-                showToast(response + " recognized", Toast.LENGTH_SHORT);
-                mTarget = response.trim();
-                mTextView.setText(response);
-                setButtonsEnabled(true, true, true);
-            } else {
+        public void onResponse(String result) { // null means network error
+            if (result == null) {
+                showToast("Network error", Toast.LENGTH_SHORT);
+                mTarget = null;
+                mTextView.setText(getString(R.string.none));
+                setButtonsEnabled(false, false, true);
+            } else if (result.trim().equals("None")) {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
                 setButtonsEnabled(false, false, true);
+            } else {
+                showToast(result + " recognized", Toast.LENGTH_SHORT);
+                mTarget = result.trim();
+                mTextView.setText(result);
+                setButtonsEnabled(true, true, true);
             }
         }
     };

@@ -29,7 +29,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private Listener mListener;
 
     public interface Listener {
-        void onResponse(String response);
+        void onResponse(String result); // null means network error
     }
 
     public HttpPostImageTask(OkHttpClient httpClient, String url, byte[] imageData, int width, int height, double fx, double fy, double cx, double cy, Listener listener) {
@@ -75,15 +75,11 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
             e.printStackTrace();
         }
 
-        if (result != null && !result.trim().equals("")) {
-            return result.trim();
-        }
-
-        return null;
+        return result; // null means network error
     }
 
     @Override
-    protected void onPostExecute(String response) {
-        mListener.onResponse(response);
+    protected void onPostExecute(String result) {
+        mListener.onResponse(result);
     }
 }
