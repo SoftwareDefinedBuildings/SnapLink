@@ -15,7 +15,7 @@ public:
     CameraNetwork();
     virtual ~CameraNetwork();
 
-    void setLocalizer(Localization *loc);
+    void setLocalization(Localization *loc);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:

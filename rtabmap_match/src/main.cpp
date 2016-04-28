@@ -38,23 +38,19 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
+    MemoryLoc memory;
     HTTPServer httpServer;
-    if (!httpServer.start())
-    {
-        UERROR("Starting HTTP Server failed");
-        return 1;
-    }
-
-    // Hardcoded for CameraRGBImages for Android LG G2 Mini
     CameraNetwork camera;
-    camera.setHTTPServer(&httpServer);
-    httpServer.setCamera(&camera);
+    Localization loc;
+    Visibility vis;
 
+    QThread cameraThread;
+    QThread locThread;
+    QThread visThread;
+
+    // Memory
     rtabmap::ParametersMap memoryParams;
-    // Setup memory
-    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImageKept(), "true"));
     memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
-    // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), "1")); // Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)
     memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
     // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
     // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false"));
@@ -68,20 +64,13 @@ int main(int argc, char *argv[])
     // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
     // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
-
-    MemoryLoc memory;
     if (!memory.init(dbfile, memoryParams))
     {
         UERROR("Initializing memory failed");
         return 1;
     }
 
-    Localization loc;
-    loc.setMemory(&memory);
-    loc.setHTTPServer(&httpServer);
-    camera.setLocalizer(&loc);
-
-    Visibility vis;
+    // Visibility
     vis.setMemory(&memory);
     vis.setHTTPServer(&httpServer);
     if (!vis.init(dbfile))
@@ -89,19 +78,29 @@ int main(int argc, char *argv[])
         UERROR("Initializing visibility failed");
         return 1;
     }
-    loc.setVisibility(&vis);
-
-    QThread visThread;
     vis.moveToThread(&visThread);
     visThread.start();
 
-    QThread locThread;
+    // Localization
+    loc.setMemory(&memory);
+    loc.setHTTPServer(&httpServer);
+    loc.setVisibility(&vis);
     loc.moveToThread(&locThread);
     locThread.start();
 
-    QThread cameraThread;
+    // CameraNetwork
+    camera.setHTTPServer(&httpServer);
+    camera.setLocalization(&loc);
     camera.moveToThread(&cameraThread);
     cameraThread.start();
+
+    // HTTPServer
+    httpServer.setCamera(&camera);
+    if (!httpServer.start())
+    {
+        UERROR("Starting HTTP Server failed");
+        return 1;
+    }
 
     return app.exec();
 }

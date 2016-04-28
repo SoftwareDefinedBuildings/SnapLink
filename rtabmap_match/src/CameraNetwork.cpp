@@ -21,7 +21,7 @@ CameraNetwork::~CameraNetwork()
     _httpServer = NULL;
 }
 
-void CameraNetwork::setLocalizer(Localization *loc)
+void CameraNetwork::setLocalization(Localization *loc)
 {
     _loc = loc;
 }
