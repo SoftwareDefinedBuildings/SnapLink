@@ -8,7 +8,7 @@ import cv2
 import requests
 import time
 
-SERVER_ADDR = "http://castle.cs.berkeley.edu:50021"
+SERVER_ADDR = "http://kaifei.cs.berkeley.edu:50002"
 
 def test_file(filename):
     print filename
@@ -33,12 +33,12 @@ def test_file(filename):
     t0 = time.time()
     r = requests.post(SERVER_ADDR, files=files)
     t1 = time.time()
-    elapsed_time = round(t1 - t0, 2)
+    elapsed_time = round((t1 - t0)*1000, 2)
     if r.text != obj_name:
-        print "test failed. response = {0}, obj = {1}, elapsed time = {2} second".format(r.text, obj_name, elapsed_time)
+        print "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         return False, elapsed_time
     else:
-        print "test passed. response = {0}, obj = {1}, elapsed time = {2} second".format(r.text, obj_name, elapsed_time)
+        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         return True, elapsed_time
 
 
