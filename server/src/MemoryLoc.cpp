@@ -522,31 +522,24 @@ std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *sign
     return likelihood;
 }
 
-rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(int oldId, int newId) const
 {
-    std::vector<const rtabmap::Signature *> oldSigs;
-    for (std::vector<int>::const_iterator it = oldIds.begin() ; it != oldIds.end(); it++)
+    const rtabmap::Signature *oldSig = getSignature(oldId);
+    if (oldSig == NULL)
     {
-        const rtabmap::Signature *oldSig = getSignature(*it);
-        if (oldSig == NULL)
-        {
-            return rtabmap::Transform();
-        }
-        oldSigs.push_back(oldSig);
+        return rtabmap::Transform();
     }
-
     const rtabmap::Signature *newSig = getSignature(newId);
     if (newSig == NULL)
     {
         return rtabmap::Transform();
     }
-
-    return computeGlobalVisualTransform(oldSigs, newSig);
+    return computeGlobalVisualTransform(oldSig, newSig);
 }
 
-rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const
+rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const
 {
-    if (oldSigs.size() == 0 || newSig == NULL)
+    if (oldSig == NULL || newSig == NULL)
     {
         return rtabmap::Transform();
     }
@@ -559,19 +552,14 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<con
 
     std::multimap<int, cv::Point3f> words3;
 
-    const std::vector<const rtabmap::Signature *>::const_iterator firstSig = oldSigs.begin();
-    const rtabmap::Transform &guessPose = getOptimizedPose((*firstSig)->id());
+    const rtabmap::Transform &oldSigPose = getOptimizedPose(oldSig->id());
 
-    for (std::vector<const rtabmap::Signature *>::const_iterator sigIter = oldSigs.begin(); sigIter != oldSigs.end(); sigIter++)
+    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
+    std::multimap<int, cv::Point3f>::const_iterator word3Iter;
+    for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
     {
-        rtabmap::Transform pose = getOptimizedPose((*sigIter)->id());
-        const std::multimap<int, cv::Point3f> &sigWords3 = (*sigIter)->getWords3();
-        std::multimap<int, cv::Point3f>::const_iterator word3Iter;
-        for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
-        {
-            cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, pose);
-            words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
-        }
+        cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, oldSigPose);
+        words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
     }
 
     // 3D to 2D (PnP)
@@ -590,7 +578,7 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const std::vector<con
                         _pnpReprojError,
                         _pnpFlags,
                         _pnpRefineIterations,
-                        guessPose, // use the first signature's pose as a guess
+                        oldSigPose, // use the old signature's pose as a guess
                         uMultimapToMapUnique(newSig->getWords3()),
                         &variance,
                         &matches,

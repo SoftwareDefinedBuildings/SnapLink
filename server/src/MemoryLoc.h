@@ -44,7 +44,7 @@ public:
     const rtabmap::Signature *getSignature(int id) const;
     const std::map<int, rtabmap::Signature *> &getSignatures() const;
 
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
+    rtabmap::Transform computeGlobalVisualTransform(int oldId, int newId) const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
@@ -76,7 +76,7 @@ private:
     void disableWordsRef(int signatureId);
     void cleanUnusedWords();
 
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
+    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const;
 
 protected:
     rtabmap::DBDriver *_dbDriver;

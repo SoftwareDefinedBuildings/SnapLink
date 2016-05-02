@@ -106,7 +106,8 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
         sensorData->setId(newS->id());
 
-        output = _memory->computeGlobalVisualTransform(topIds, sensorData->id());
+        // TODO: compare interatively until success
+        output = _memory->computeGlobalVisualTransform(topIds[0], sensorData->id());
 
         if (!output.isNull())
         {
