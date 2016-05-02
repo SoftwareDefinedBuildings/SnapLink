@@ -65,6 +65,7 @@ public class MainActivity extends ActionBarActivity {
     private Button mOnButton;
     private Button mOffButton;
     private Button mCaptureButton;
+    private Toast mToast;
 
     // ID of the current CameraDevice
     private String mCameraId;
@@ -286,17 +287,22 @@ public class MainActivity extends ActionBarActivity {
 
     private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
-        public void onResponse(String response) {
-            if (response != null && !response.trim().equals("None")) {
-                showToast(response + " recognized", Toast.LENGTH_SHORT);
-                mTarget = response.trim();
-                mTextView.setText(response);
-                setButtonsEnabled(true, true, true);
-            } else {
+        public void onResponse(String result) { // null means network error
+            if (result == null) {
+                showToast("Network error", Toast.LENGTH_SHORT);
+                mTarget = null;
+                mTextView.setText(getString(R.string.none));
+                setButtonsEnabled(false, false, true);
+            } else if (result.trim().equals("None")) {
                 showToast("Nothing recognized", Toast.LENGTH_SHORT);
                 mTarget = null;
                 mTextView.setText(getString(R.string.none));
                 setButtonsEnabled(false, false, true);
+            } else {
+                showToast(result + " recognized", Toast.LENGTH_SHORT);
+                mTarget = result.trim();
+                mTextView.setText(result);
+                setButtonsEnabled(true, true, true);
             }
         }
     };
@@ -355,6 +361,8 @@ public class MainActivity extends ActionBarActivity {
         mOffButton.setOnClickListener(mOffButtonOnClickListener);
         mCaptureButton = (Button) findViewById(R.id.capture);
         mCaptureButton.setOnClickListener(mCaptureButtonOnClickListener);
+
+        mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
 
         setButtonsEnabled(false, false, true);
 
@@ -766,7 +774,9 @@ public class MainActivity extends ActionBarActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(MainActivity.this, text, duration).show();
+                mToast.setText(text);
+                mToast.setDuration(duration);
+                mToast.show();
             }
         });
     }
