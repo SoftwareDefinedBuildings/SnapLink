@@ -29,7 +29,7 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    bool update(const rtabmap::SensorData &data);
+    bool update(const rtabmap::SensorData &data, void *context);
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
@@ -44,7 +44,7 @@ public:
     const rtabmap::Signature *getSignature(int id) const;
     const std::map<int, rtabmap::Signature *> &getSignatures() const;
 
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<int> &oldIds, int newId) const;
+    rtabmap::Transform computeGlobalVisualTransform(int oldId, int newId) const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
@@ -70,13 +70,13 @@ private:
     int getNextId();
     void clear();
 
-    rtabmap::Signature *createSignature(const rtabmap::SensorData &data);
+    rtabmap::Signature *createSignature(const rtabmap::SensorData &data, void *context);
 
     //keypoint stuff
     void disableWordsRef(int signatureId);
     void cleanUnusedWords();
 
-    rtabmap::Transform computeGlobalVisualTransform(const std::vector<const rtabmap::Signature *> &oldSigs, const rtabmap::Signature *newSig) const;
+    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const;
 
 protected:
     rtabmap::DBDriver *_dbDriver;

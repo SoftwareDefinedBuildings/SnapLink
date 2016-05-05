@@ -9,6 +9,7 @@
 #include "MemoryLoc.h"
 #include "Visibility.h"
 #include "HTTPServer.h"
+#include "Time.h"
 
 #define TOP_K 1
 
@@ -30,7 +31,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    rtabmap::Transform localize(rtabmap::SensorData *sensorData);
+    rtabmap::Transform localize(rtabmap::SensorData *sensorData, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
     rtabmap::Transform getPose(const rtabmap::Signature *sig) const;
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);

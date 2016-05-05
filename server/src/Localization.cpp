@@ -50,7 +50,7 @@ bool Localization::event(QEvent *event)
     if (event->type() == ImageEvent::type())
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        rtabmap::Transform pose = localize(imageEvent->sensorData());
+        rtabmap::Transform pose = localize(imageEvent->sensorData(), imageEvent->conInfo());
         // a null pose notify that loc could not be computed
         if (!pose.isNull())
         {
@@ -65,8 +65,10 @@ bool Localization::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
+rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData, void *context)
 {
+    ConnectionInfo *con_info = (ConnectionInfo *) context;
+
     UASSERT(!sensorData->imageRaw().empty());
 
     rtabmap::Transform output;
@@ -74,7 +76,8 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
     // generate kpts
-    if (_memory->update(*sensorData))
+    con_info->time_surf_start = getTime(); // start of SURF extraction
+    if (_memory->update(*sensorData, con_info))
     {
         UDEBUG("");
         const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
@@ -103,10 +106,13 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
             topId = topIds[0];
             UDEBUG("topId: %d", topId);
         }
+        con_info->time_closest_end = getTime(); // end of find closest match
+        con_info->time_pnp_start = getTime(); // start of Perspective N Points
 
         sensorData->setId(newS->id());
 
-        output = _memory->computeGlobalVisualTransform(topIds, sensorData->id());
+        // TODO: compare interatively until success
+        output = _memory->computeGlobalVisualTransform(topIds[0], sensorData->id());
 
         if (!output.isNull())
         {
@@ -117,6 +123,7 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
             UWARN("transform is null, using pose of the closest image");
             //output = _memory->getOptimizedPose(topId);
         }
+        con_info->time_pnp_end = getTime(); // end of Perspective N Points
 
         // remove new words from dictionary
         _memory->deleteLocation(newS->id());
