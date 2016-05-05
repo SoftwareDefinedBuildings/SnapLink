@@ -2,3 +2,9 @@ To compile successfully, look in src/:
  - for any *.ui files, make sure there is a corresonding ui_*.h header.
  - if the ui_*.h does not exist, run uic. Example:
   - uic widget.ui -o ui_widget.h
+
+Commands to run:
+ - in res/:
+  - rcc -binary label_dot.qrc -o ../build/label_dot.rcc
+ - in src/:
+  - uic widget.ui -o ui_widget.h

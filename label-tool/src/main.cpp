@@ -1,5 +1,6 @@
 #include <iostream>
 #include <QApplication>
+#include <QResource>
 #include <rtabmap/utilite/UEventsManager.h>
 
 #include "widget.h"
@@ -8,6 +9,8 @@ int main(int argc, char *argv[])
 {
     ULogger::setType(ULogger::kTypeConsole);
     ULogger::setLevel(ULogger::kInfo);
+
+    QResource::registerResource("label_dot.rcc");
 
     QApplication a(argc, argv);
     Widget w;

@@ -43,6 +43,7 @@ private:
     int numImages;
 
     void showImage(int);
+    void addDot(int, int);
 
     bool convertTo3D(int, int, int);
     bool convert(int imageId, int x, int y, rtabmap::Memory &memory, std::map<int, rtabmap::Transform> &poses, pcl::PointXYZ &pWorld);

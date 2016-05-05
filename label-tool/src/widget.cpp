@@ -3,6 +3,7 @@
 #include <iostream>
 #include <QImage>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QPixmap>
 #include <QPoint>
 #include <rtabmap/core/CameraRGBD.h>
@@ -155,6 +156,21 @@ void Widget::showImage(int index)
     QPixmap pixmap = QPixmap::fromImage(image.rgbSwapped()); // need to change BGR -> RGBz
 
     ui->label_img->setPixmap(pixmap);
+}
+
+void Widget::addDot(int x, int y)
+{
+    // get Pixmap drawn on UI
+    QPixmap *imagePixmap = (QPixmap*) ui->label_img->pixmap();
+    QPainter painter(imagePixmap);
+
+    // superimpose label dot on image
+    QImage dot(":/square.jpg");
+    QPixmap dotmap = QPixmap::fromImage(dot);
+    painter.drawPixmap(x, y, dotmap);
+
+    // update image displayed on UI
+    ui->label_img->setPixmap(*imagePixmap);
 }
 
 void Widget::mousePressEvent(QMouseEvent *event)
