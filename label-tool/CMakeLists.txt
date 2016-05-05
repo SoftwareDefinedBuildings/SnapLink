@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 2.8)
-PROJECT( MyProject )
+PROJECT( label-tool )
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON) # somehow this isn't working
+set(CMAKE_AUTORCC ON) # not working too :(
 
 FIND_PACKAGE(RTABMap REQUIRED)
 FIND_PACKAGE(OpenCV REQUIRED)
@@ -25,6 +26,7 @@ SET(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
+    "../server/src"
 )
 
 SET(LIBRARIES
@@ -41,6 +43,9 @@ INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
 file(GLOB_RECURSE MATCH_SOURCES "src/*.cpp")
 
-ADD_EXECUTABLE(label-tool ${MATCH_SOURCES})
+ADD_EXECUTABLE(label-tool
+    ${MATCH_SOURCES}
+    "../server/src/MemoryLoc.cpp"
+)
 
 TARGET_LINK_LIBRARIES(label-tool ${LIBRARIES})

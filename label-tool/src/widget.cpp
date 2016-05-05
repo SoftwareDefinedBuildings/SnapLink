@@ -14,6 +14,7 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <string>
 
@@ -34,6 +35,10 @@ Widget::Widget(QWidget *parent) :
 Widget::~Widget()
 {
     delete ui;
+    if (db)
+    {
+        sqlite3_close(db);
+    }
 }
 
 void Widget::setDbPath(char *name)
@@ -59,6 +64,19 @@ bool Widget::openDatabase()
     if (!memory.init(path, false))
     {
         UERROR("Error init memory");
+        return false;
+    }
+
+    // optimize memory
+    optimizeGraph(memory);
+
+    rtabmap::ParametersMap memoryParams;
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
+    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
+    if (!memoryLoc.init(path, memoryParams))
+    {
+        UERROR("Initializing memory failed");
         return false;
     }
 
@@ -156,6 +174,9 @@ void Widget::showImage(int index)
     QPixmap pixmap = QPixmap::fromImage(image.rgbSwapped()); // need to change BGR -> RGBz
 
     ui->label_img->setPixmap(pixmap);
+
+    // display saved labels
+    projectPoints();
 }
 
 void Widget::addDot(int x, int y)
@@ -180,11 +201,13 @@ void Widget::mousePressEvent(QMouseEvent *event)
     ui->label_y->setText(QString::number(p.y()));
 
     convertTo3D(ui->slider->value(), p.x(), p.y());
+
+    // display saved labels
+    projectPoints();
 }
 
 bool Widget::convertTo3D(int imageId, int x, int y)
 {
-    std::map<int, rtabmap::Transform> optimizedPoses = optimizeGraph(memory);
     pcl::PointXYZ pWorld;
     if (convert(imageId, x, y, memory, optimizedPoses, pWorld))
     {
@@ -255,4 +278,186 @@ void Widget::setLabel(const QString &name)
 QString Widget::getLabel() const
 {
     return ui->lineEdit_label->text();
+}
+
+/* Project points on image */
+void Widget::projectPoints()
+{
+    // get list of points
+    std::vector<cv::Point3f> points = getPoints();
+    if (points.size() == 0)
+    {
+        UINFO("No points found");
+        return;
+    }
+
+    // get sensorData for image
+    int sliderVal = ui->slider->value();
+    rtabmap::SensorData data;
+    dbDriver->getNodeData(sliderVal, data);
+    data.uncompressData();
+
+    // get pose
+    rtabmap::Transform pose = localize(&data);
+
+    std::vector<cv::Point2f> planePoints;
+    const rtabmap::CameraModel &model = data.cameraModels()[0];
+    cv::Mat K = model.K();
+    rtabmap::Transform P = (pose * model.localTransform()).inverse();
+    cv::Mat R = (cv::Mat_<double>(3, 3) <<
+            (double)P.r11(), (double)P.r12(), (double)P.r13(),
+            (double)P.r21(), (double)P.r22(), (double)P.r23(),
+            (double)P.r31(), (double)P.r32(), (double)P.r33());
+    cv::Mat rvec(1, 3, CV_64FC1);
+    cv::Rodrigues(R, rvec);
+    cv::Mat tvec = (cv::Mat_<double>(1, 3) <<
+                    (double)P.x(), (double)P.y(), (double)P.z());
+
+    // do the projection
+    cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);
+
+    for (int i = 0; i < planePoints.size(); i++)
+    {
+        cv::Point2f point = planePoints[i];
+        if (point.x < 0 || point.x > data.imageRaw().rows ||
+            point.y < 0 || point.y > data.imageRaw().cols)
+        {
+            continue;
+        }
+
+        // draw label on UI
+        addDot((int) point.x, (int) point.y);
+    }
+}
+
+/* Get all points in Labels table */
+std::vector<cv::Point3f> Widget::getPoints()
+{
+    std::vector<cv::Point3f> points;
+
+    sqlite3_stmt *stmt = NULL;
+    int rc;
+
+    std::string sql = "SELECT * from Labels";
+    rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
+    if (rc != SQLITE_OK)
+    {
+        UERROR("Could not read database: %s", sqlite3_errmsg(db));
+        return points;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+        int imageId = sqlite3_column_int(stmt, 1);
+        int x = sqlite3_column_int(stmt, 2);
+        int y = sqlite3_column_int(stmt, 3);
+        pcl::PointXYZ pWorld;
+        if (getPoint3World(imageId, x, y, &memoryLoc, pWorld))
+        {
+            points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
+            UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return points;
+}
+
+/* TODO functions below are copied from server branch, should make functions accessible and stop copying code */
+bool Widget::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld)
+{
+    const rtabmap::Signature *s = memory->getSignature(imageId);
+    if (s == NULL)
+    {
+        UWARN("Signature %d does not exist", imageId);
+        return false;
+    }
+    const rtabmap::SensorData &data = s->sensorData();
+    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    bool smoothing = false;
+    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
+    {
+        UWARN("Depth value not valid");
+        return false;
+    }
+    rtabmap::Transform poseWorld = memory->getOptimizedPose(imageId);
+    if (poseWorld.isNull())
+    {
+        UWARN("Image pose is Null");
+        return false;
+    }
+    poseWorld = poseWorld * cm.localTransform();
+    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    return true;
+}
+
+rtabmap::Transform Widget::localize(rtabmap::SensorData *sensorData)
+{
+    UASSERT(!sensorData->imageRaw().empty());
+
+    rtabmap::Transform output;
+
+    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
+
+    // generate kpts
+    if (memoryLoc.update(*sensorData))
+    {
+        UDEBUG("");
+        const rtabmap::Signature *newS = memoryLoc.getLastWorkingSignature();
+        UDEBUG("newWords=%d", (int)newS->getWords().size());
+        std::map<int, float> likelihood;
+        std::list<int> signaturesToCompare = uKeysList(memoryLoc.getSignatures());
+        signaturesToCompare.remove(newS->id());
+        UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
+        likelihood = memoryLoc.computeLikelihood(newS, signaturesToCompare);
+
+        std::vector<int> topIds;
+        likelihood.erase(-1);
+        int topId;
+        if (likelihood.size())
+        {
+            std::vector< std::pair<int, float> > top(TOP_K);
+            std::partial_sort_copy(likelihood.begin(),
+                                   likelihood.end(),
+                                   top.begin(),
+                                   top.end(),
+                                   compareLikelihood);
+            for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
+            {
+                topIds.push_back(it->first);
+            }
+            topId = topIds[0];
+            UDEBUG("topId: %d", topId);
+        }
+
+        sensorData->setId(newS->id());
+
+        // TODO: compare interatively until success
+        output = memoryLoc.computeGlobalVisualTransform(topIds[0], sensorData->id());
+
+        if (!output.isNull())
+        {
+            UDEBUG("global transform = %s", output.prettyPrint().c_str());
+        }
+        else
+        {
+            UWARN("transform is null, using pose of the closest image");
+            //output = memoryLoc.getOptimizedPose(topId);
+        }
+
+        // remove new words from dictionary
+        memoryLoc.deleteLocation(newS->id());
+        memoryLoc.emptyTrash();
+    }
+
+    UINFO("output transform = %s", output.prettyPrint().c_str());
+
+    return output;
+}
+
+bool Widget::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
+{
+        return l.second > r.second;
 }
