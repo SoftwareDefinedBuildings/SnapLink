@@ -214,7 +214,14 @@ void Widget::mousePressEvent(QMouseEvent *event)
     ui->label_x->setText(QString::number(p.x()));
     ui->label_y->setText(QString::number(p.y()));
 
-    convertTo3D(ui->slider->value(), p.x(), p.y());
+    if (!convertTo3D(ui->slider->value(), p.x(), p.y()))
+    {
+        ui->pushButton->setEnabled(false);
+    }
+    else
+    {
+        ui->pushButton->setEnabled(true);
+    }
 
     // display saved labels
     projectPoints();
