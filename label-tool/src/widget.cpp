@@ -153,6 +153,9 @@ void Widget::saveLabel()
         {
             UWARN("Could not save label to label table");
         }
+
+        // display saved label on UI
+        projectPoints();
     }
     else
     {
