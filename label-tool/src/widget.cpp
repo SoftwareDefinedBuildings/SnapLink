@@ -131,7 +131,9 @@ void Widget::saveLabel()
 
     if (label_name.length() == 0)
     {
-        UWARN("Label name empty");
+        std::string msg = "Label name empty";
+        UWARN(msg.c_str());
+        ui->label_status->setText(msg.c_str());
         return;
     }
 
@@ -147,19 +149,27 @@ void Widget::saveLabel()
         saveQuery << "INSERT INTO Labels VALUES ('" \
                     << label_name << "', '" << label_id << "', '" << label_x << "', '" << label_y << "');";
 
-        std::cout << saveQuery.str() << std::endl;
         int rc = sqlite3_exec(db, saveQuery.str().c_str(), NULL, NULL, NULL);
         if (rc != SQLITE_OK)
         {
-            UWARN("Could not save label to label table");
+            std::string msg = "Could not save label to label table";
+            UWARN(msg.c_str());
+            ui->label_status->setText(msg.c_str());
+        }
+        else
+        {
+            ui->label_status->setText("Saved label to database");
+
+            // display saved label on UI
+            projectPoints();
         }
 
-        // display saved label on UI
-        projectPoints();
     }
     else
     {
-        UWARN("Could not convert label");
+        std::string msg = "Could not convert label";
+        UWARN(msg.c_str());
+        ui->label_status->setText(msg.c_str());
     }
 }
 
