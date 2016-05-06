@@ -67,9 +67,6 @@ bool Widget::openDatabase()
         return false;
     }
 
-    // optimize memory
-    optimizeGraph(memory);
-
     rtabmap::ParametersMap memoryParams;
     memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
@@ -208,6 +205,7 @@ void Widget::mousePressEvent(QMouseEvent *event)
 
 bool Widget::convertTo3D(int imageId, int x, int y)
 {
+    std::map<int, rtabmap::Transform> optimizedPoses = optimizeGraph(memory);
     pcl::PointXYZ pWorld;
     if (convert(imageId, x, y, memory, optimizedPoses, pWorld))
     {

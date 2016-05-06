@@ -44,7 +44,6 @@ private:
     rtabmap::DBDriver *dbDriver;
     rtabmap::Memory memory;
     MemoryLoc memoryLoc;
-    std::map<int, rtabmap::Transform> optimizedPoses;
 
     int numImages;
 
