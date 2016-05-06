@@ -185,7 +185,11 @@ void Widget::addDot(int x, int y)
     // superimpose label dot on image
     QImage dot(":/square.jpg");
     QPixmap dotmap = QPixmap::fromImage(dot);
-    painter.drawPixmap(x, y, dotmap);
+
+    // draw dot at center of label point
+    int drawX = x - (dot.width() / 2);
+    int drawY = y - (dot.height() / 2);
+    painter.drawPixmap(drawX, drawY, dotmap);
 
     // update image displayed on UI
     ui->label_img->setPixmap(*imagePixmap);
