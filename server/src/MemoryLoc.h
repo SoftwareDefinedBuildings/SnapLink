@@ -78,6 +78,26 @@ private:
 
     rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const;
 
+protected:
+    rtabmap::DBDriver *_dbDriver;
+
 private:
-    std::vector<Database *> _databases;
+    // parameters
+    rtabmap::ParametersMap parameters_;
+    bool _badSignaturesIgnored;
+
+    int _idCount;
+
+    std::map<int, rtabmap::Transform> _optimizedPoses;
+    std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
+
+    //Keypoint stuff
+    rtabmap::VWDictionary *_vwd;
+    rtabmap::Feature2D *_feature2D;
+
+    int _minInliers;
+    int _iterations;
+    int _pnpRefineIterations;
+    double _pnpReprojError;
+    int _pnpFlags;
 };
