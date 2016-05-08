@@ -630,50 +630,6 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
     UDEBUG("id=%d", s ? s->id() : 0);
     if (s)
     {
-        // If not saved to database or it is a bad signature (not saved), remove links!
-        if (!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
-        {
-            UDEBUG("remove links");
-            const std::map<int, rtabmap::Link> &links = s->getLinks();
-            for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-            {
-                UDEBUG("remove link");
-                rtabmap::Signature *sTo = this->_getSignature(iter->first);
-                // neighbor to s
-                UASSERT_MSG(sTo != 0,
-                            uFormat("A neighbor (%d) of the deleted location %d is "
-                                    "not found in WM/STM! Are you deleting a location "
-                                    "outside the STM?", iter->first, s->id()).c_str());
-
-                if (iter->first > s->id() && links.size() > 1 && sTo->hasLink(s->id()))
-                {
-                    UWARN("Link %d of %d is newer, removing neighbor link "
-                          "may split the map!",
-                          iter->first, s->id());
-                }
-
-                // child
-                if (iter->second.type() == rtabmap::Link::kGlobalClosure && s->id() > sTo->id())
-                {
-                    sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
-                }
-
-                sTo->removeLink(s->id());
-
-            }
-            s->removeLinks(); // remove all links
-            s->setWeight(0);
-            s->setLabel(""); // reset label
-        }
-        else
-        {
-            UDEBUG("remove virtual links");
-            // Make sure that virtual links are removed.
-            // It should be called before the signature is
-            // removed from _signatures below.
-            removeVirtualLinks(s->id());
-        }
-
         this->disableWordsRef(s->id());
         if (!keepLinkedToGraph)
         {
@@ -711,36 +667,6 @@ void MemoryLoc::deleteLocation(int locationId)
     if (location)
     {
         this->moveToTrash(location, false);
-    }
-}
-
-void MemoryLoc::removeVirtualLinks(int signatureId)
-{
-    UDEBUG("");
-    rtabmap::Signature *s = this->_getSignature(signatureId);
-    if (s)
-    {
-        const std::map<int, rtabmap::Link> &links = s->getLinks();
-        for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-        {
-            if (iter->second.type() == rtabmap::Link::kVirtualClosure)
-            {
-                rtabmap::Signature *sTo = this->_getSignature(iter->first);
-                if (sTo)
-                {
-                    sTo->removeLink(s->id());
-                }
-                else
-                {
-                    UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
-                }
-            }
-        }
-        s->removeVirtualLinks();
-    }
-    else
-    {
-        UERROR("Signature %d not in WM/STM?!?", signatureId);
     }
 }
 
