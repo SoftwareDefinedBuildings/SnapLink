@@ -14,7 +14,7 @@
 #include "FailureEvent.h"
 
 Localization::Localization() :
-    _memory(NULL),
+    _memories(NULL),
     _vis(NULL),
     _httpServer(NULL)
 {
@@ -30,9 +30,9 @@ Localization::~Localization()
     _httpServer = NULL;
 }
 
-void Localization::setMemory(MemoryLoc *memory)
+void Localization::setMemories(std::vector<MemoryLoc *> *memories)
 {
-    _memory = memory;
+    _memories = memories;
 }
 
 void Localization::setVisibility(Visibility *vis)
@@ -73,63 +73,73 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
 
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
-    // generate kpts
-    if (_memory->update(*sensorData))
+    std::map<std::pair<int, int>, float> similarities; // {{db id: sig id}: similarity}
+
+    for (int dbId = 0; dbId < _memories->size(); ++dbId)
     {
-        UDEBUG("");
-        const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
-        UDEBUG("newWords=%d", (int)newS->getWords().size());
-        std::map<int, float> likelihood;
-        std::list<int> signaturesToCompare = uKeysList(_memory->getSignatures());
-        signaturesToCompare.remove(newS->id());
-        UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-        likelihood = _memory->computeLikelihood(newS, signaturesToCompare);
-
-        std::vector<int> topIds;
-        likelihood.erase(-1);
-        int topId;
-        if (likelihood.size())
+        MemoryLoc *memory = _memories.at(dbId);
+        // generate kpts
+        if (memory->update(*sensorData))
         {
-            std::vector< std::pair<int, float> > top(TOP_K);
-            std::partial_sort_copy(likelihood.begin(),
-                                   likelihood.end(),
-                                   top.begin(),
-                                   top.end(),
-                                   compareLikelihood);
-            for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
+            UDEBUG("");
+            const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
+            UDEBUG("newWords=%d", (int)newS->getWords().size());
+            std::list<int> signaturesToCompare = uKeysList(memory->getSignatures());
+            signaturesToCompare.remove(newS->id());
+            UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
+            std::map<int, float> similarity = memory->computeSimilarity(newS, signaturesToCompare);
+            similarity.erase(-1);
+            for (std::map<int, float>::const_iterator i = similarity.begin(); i != similarity.end(); ++i)
             {
-                topIds.push_back(it->first);
+                similarities.insert(std::make_pair(std::make_pair(dbId, i->first), i->second));
             }
-            topId = topIds[0];
-            UDEBUG("topId: %d", topId);
         }
-
-        sensorData->setId(newS->id());
-
-        // TODO: compare interatively until success
-        output = _memory->computeGlobalVisualTransform(topIds[0], sensorData->id());
-
-        if (!output.isNull())
-        {
-            UDEBUG("global transform = %s", output.prettyPrint().c_str());
-        }
-        else
-        {
-            UWARN("transform is null, using pose of the closest image");
-            //output = _memory->getOptimizedPose(topId);
-        }
-
-        // remove new words from dictionary
-        _memory->deleteLocation(newS->id());
-        _memory->emptyTrash();
     }
+
+    std::vector<std::pair<int, int>> topIds;
+    std::pair<int, int> topId;
+    if (similarities.size())
+    {
+        std::vector< std::pair<std::pair<int, int>, float> > top(TOP_K);
+        std::partial_sort_copy(similarities.begin(),
+                               similarities.end(),
+                               top.begin(),
+                               top.end(),
+                               compareLikelihood);
+        for (std::vector< std::pair<std::pair<int, int>, float> >::iterator it = top.begin(); it != top.end(); ++it)
+        {
+            topIds.push_back(it->first);
+        }
+        topId = topIds[0];
+        UDEBUG("topId: %d", topId);
+    }
+
+    // TODO: compare interatively until success
+    int topDbId = topId.first;
+    int topSigId = topId.second;
+    const rtabmap::Signature *newS = _memories.at[topDbId]->getLastWorkingSignature();
+    output = _memories.at(topDbId)->computeGlobalVisualTransform(topSigId, newS->id());
+
+    if (!output.isNull())
+    {
+        UDEBUG("global transform = %s", output.prettyPrint().c_str());
+    }
+    else
+    {
+        UWARN("transform is null, using pose of the closest image");
+        //output = _memory->getOptimizedPose(topId);
+    }
+
+    // remove new words from dictionary
+    _memory->deleteLocation(newS->id());
+    _memory->emptyTrash();
 
     UINFO("output transform = %s", output.prettyPrint().c_str());
 
     return output;
 }
 
-bool Localization::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
+bool Localization::compareLikelihood(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r)
 {
     return l.second > r.second;
 }

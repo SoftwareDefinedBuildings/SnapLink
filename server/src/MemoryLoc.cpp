@@ -235,7 +235,7 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
 }
 
-bool MemoryLoc::update(const rtabmap::SensorData &data)
+bool MemoryLoc::update(rtabmap::SensorData &data)
 {
     UDEBUG("");
 
@@ -484,23 +484,23 @@ void MemoryLoc::clear()
 }
 
 /**
- * Compute the likelihood of the signature with some others in the memory.
+ * Compute the similarity of the signature with some others in the memory.
  * Important: Assuming that all other ids are under 'signature' id.
  * If an error occurs, the result is empty.
  */
-std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *signature, const std::list<int> &ids)
+std::map<int, float> MemoryLoc::computeSimilarity(const rtabmap::Signature *signature, const std::list<int> &ids)
 {
-    std::map<int, float> likelihood;
+    std::map<int, float> similarity;
 
     if (!signature)
     {
         ULOGGER_ERROR("The signature is null");
-        return likelihood;
+        return similarity;
     }
     else if (ids.empty())
     {
         UWARN("ids list is empty");
-        return likelihood;
+        return similarity;
     }
 
     for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
@@ -516,10 +516,10 @@ std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *sign
             sim = signature->compareTo(*sB);
         }
 
-        likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
+        similarity.insert(similarity.end(), std::pair<int, float>(*iter, sim));
     }
 
-    return likelihood;
+    return similarity;
 }
 
 rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(int oldId, int newId) const
@@ -689,33 +689,38 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
             data.imageRaw().type() == CV_8UC1 ||
             data.imageRaw().type() == CV_8UC3);
 
-    std::vector<cv::KeyPoint> keypoints;
-    cv::Mat descriptors;
+    std::vector<cv::KeyPoint> keypoints = data.keypoints();
+    cv::Mat descriptors = data.descriptors();
     int id = this->getNextId();
 
-    if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
+    if (descriptors.rows == 0)
     {
-        UDEBUG("Extract features");
-        cv::Mat imageMono;
-        if (data.imageRaw().channels() == 3)
+        if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
         {
-            cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
-        }
-        else
-        {
-            imageMono = data.imageRaw();
-        }
+            UDEBUG("Extract features");
+            cv::Mat imageMono;
+            if (data.imageRaw().channels() == 3)
+            {
+                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+            }
+            else
+            {
+                imageMono = data.imageRaw();
+            }
 
-        keypoints = _feature2D->generateKeypoints(imageMono);
-        descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-    }
-    else if (data.imageRaw().empty())
-    {
-        UDEBUG("Empty image, cannot extract features...");
-    }
-    else if (_feature2D->getMaxFeatures() < 0)
-    {
-        UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+            keypoints = _feature2D->generateKeypoints(imageMono);
+            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+
+            data.setFeatures(keypoints, descriptors);
+        }
+        else if (data.imageRaw().empty())
+        {
+            UDEBUG("Empty image, cannot extract features...");
+        }
+        else if (_feature2D->getMaxFeatures() < 0)
+        {
+            UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+        }
     }
 
     std::list<int> wordIds;

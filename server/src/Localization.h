@@ -33,10 +33,10 @@ private:
     rtabmap::Transform localize(rtabmap::SensorData *sensorData);
     // get pose from optimizedPoses if available, otherwise get from sig itself
     rtabmap::Transform getPose(const rtabmap::Signature *sig) const;
-    static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
+    static bool compareLikelihood(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r);
 
 private:
-    MemoryLoc *_memory;
+    std::vector<MemoryLoc *> *_memories;
     Visibility *_vis;
     HTTPServer *_httpServer;
 };

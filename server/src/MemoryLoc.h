@@ -29,7 +29,7 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    bool update(const rtabmap::SensorData &data);
+    bool update(rtabmap::SensorData &data);
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
