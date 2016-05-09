@@ -27,14 +27,14 @@ Visibility::~Visibility()
     _httpServer = NULL;
 }
 
-bool Visibility::init(const std::string &dbfile)
+bool Visibility::init(std::vector<std::string> &dbfiles)
 {
-    return processLabels(dbfile);
+    return processLabels(dbfiles);
 }
 
-void Visibility::setMemory(const MemoryLoc *memory)
+void Visibility::setMemories(std::vector<MemoryLoc *> *memories)
 {
-    _memory = memory;
+    _memories = memories;
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -47,7 +47,7 @@ bool Visibility::event(QEvent *event)
     if (event->type() == LocationEvent::type())
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
-        std::vector<std::string> *names = process(locEvent->sensorData(), locEvent->pose());
+        std::vector<std::string> *names = process(locEvent->dbId(), locEvent->sensorData(), locEvent->pose());
         if (names != NULL)
         {
             QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
@@ -62,84 +62,68 @@ bool Visibility::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool Visibility::processLabels(const std::string &dbfile)
+bool Visibility::processLabels(std::vector<std::string> &dbfiles)
 {
-    sqlite3 *db = NULL;
-    sqlite3_stmt *stmt = NULL;
-    int rc;
-
-    rc = sqlite3_open(dbfile.c_str(), &db);
-    if (rc != SQLITE_OK)
+    for (int i = 0; i < dbfiles.size(); ++i)
     {
-        UERROR("Could not open database %s", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return false;
-    }
+        const std::string &dbfile = dbfiles.at(i);
+        MemoryLoc *memory = _memories->at(i);
+        std::vector<cv::Point3f> points;
+        std::vector<std::string> labels;
+        sqlite3 *db = NULL;
+        sqlite3_stmt *stmt = NULL;
+        int rc;
 
-    std::string sql = "SELECT * from Labels";
-    rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
-    if (rc != SQLITE_OK)
-    {
-        UERROR("Could not read database: %s", sqlite3_errmsg(db));
-        sqlite3_close(db);
-        return false;
-    }
-
-    while (sqlite3_step(stmt) == SQLITE_ROW)
-    {
-        std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
-        int imageId = sqlite3_column_int(stmt, 1);
-        int x = sqlite3_column_int(stmt, 2);
-        int y = sqlite3_column_int(stmt, 3);
-        pcl::PointXYZ pWorld;
-        if (getPoint3World(imageId, x, y, _memory, pWorld))
+        rc = sqlite3_open(dbfile.c_str(), &db);
+        if (rc != SQLITE_OK)
         {
-            _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-            _labels.push_back(label);
-            UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
+            UERROR("Could not open database %s", sqlite3_errmsg(db));
+            sqlite3_close(db);
+            return false;
         }
+
+        std::string sql = "SELECT * from Labels";
+        rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
+        if (rc != SQLITE_OK)
+        {
+            UERROR("Could not read database: %s", sqlite3_errmsg(db));
+            sqlite3_close(db);
+            return false;
+        }
+
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+            int imageId = sqlite3_column_int(stmt, 1);
+            int x = sqlite3_column_int(stmt, 2);
+            int y = sqlite3_column_int(stmt, 3);
+            pcl::PointXYZ pWorld;
+            if (getPoint3World(imageId, x, y, memory, pWorld))
+            {
+                points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
+                labels.push_back(label);
+                UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
+            }
+        }
+
+        _points.push_back(points);
+        _labels.push_back(labels);
+
+        sqlite3_finalize(stmt);
+
+        sqlite3_close(db);
     }
-
-    sqlite3_finalize(stmt);
-
-    sqlite3_close(db);
 
     return true;
 }
 
-// int Visibility::sqliteCallBack(int argc, char **argv, char **azColName)
-// {
-//     if (argc != 4 || argv == NULL)
-//     {
-//         return 1;
-//     }
-//     for (int i = 0; i < argc; i++)
-//     {
-//         if (argv[i] == NULL)
-//         {
-//             return 1;
-//         }
-//     }
-//
-//     std::string label(argv[0]);
-//     int imageId = std::atoi(argv[1]);
-//     int x = std::atoi(argv[2]);
-//     int y = std::atoi(argv[3]);
-//     pcl::PointXYZ pWorld;
-//     if (getPoint3World(imageId, x, y, _memory, pWorld))
-//     {
-//         _points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-//         _labels.push_back(label);
-//         UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
-//     }
-//
-//     return 0;
-// }
-
-std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
+std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
 {
+    const std::vector<cv::Point3f> &points = _points.at(dbId);
+    const std::vector<std::string> &labels = _labels.at(dbId);
+
     std::vector<std::string> *names = new std::vector<std::string>();
-    if (_points.size() == 0)
+    if (points.size() == 0)
     {
         return names;
     }
@@ -162,7 +146,7 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
                     (double)P.x(), (double)P.y(), (double)P.z());
 
     // do the projection
-    cv::projectPoints(_points, rvec, tvec, K, cv::Mat(), planePoints);
+    cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);
 
     // find points in the image
     int cols = data->imageRaw().cols;
@@ -171,33 +155,33 @@ std::vector<std::string> *Visibility::process(const rtabmap::SensorData *data, c
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
     cv::Point2f center(cols / 2, rows / 2);
 
-    for (unsigned int i = 0; i < _points.size(); ++i)
+    for (unsigned int i = 0; i < points.size(); ++i)
     {
         //if (uIsInBounds(int(planePoints[i].x), 0, cols) &&
         //        uIsInBounds(int(planePoints[i].y), 0, rows))
         if (true)
         {
-            if (Utility::isInFrontOfCamera(_points[i], P))
+            if (Utility::isInFrontOfCamera(points[i], P))
             {
-                std::string label = _labels[i];
+                std::string label = labels[i];
                 visibleLabels.push_back(label);
                 float x, y, z, roll, pitch, yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 cv::Point3f cameraLoc(x, y, z);
-                //double dist = cv::norm(_points[i] - cameraLoc);
+                //double dist = cv::norm(points[i] - cameraLoc);
                 double dist = cv::norm(planePoints[i] - center);
                 distances[label].push_back(dist);
                 labelPoints[label].push_back(planePoints[i]);
-                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
             else
             {
-                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
         }
         else
         {
-            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", _labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }
 

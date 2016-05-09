@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     // Visibility
     vis.setMemories(&memories);
     vis.setHTTPServer(&httpServer);
-    if (!vis.init(dbfile))
+    if (!vis.init(dbfiles))
     {
         UERROR("Initializing visibility failed");
         return 1;

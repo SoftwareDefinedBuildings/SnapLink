@@ -33,7 +33,7 @@ public:
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
-    std::map<int, float> computeLikelihood(const rtabmap::Signature *signature,
+    std::map<int, float> computeSimilarity(const rtabmap::Signature *signature,
                                            const std::list<int> &ids);
 
     void emptyTrash();
@@ -70,7 +70,7 @@ private:
     int getNextId();
     void clear();
 
-    rtabmap::Signature *createSignature(const rtabmap::SensorData &data);
+    rtabmap::Signature *createSignature(rtabmap::SensorData &data);
 
     //keypoint stuff
     void disableWordsRef(int signatureId);

@@ -682,7 +682,7 @@ rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
     return pose;
 }
 
-rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data)
+rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data)
 {
     UDEBUG("");
     UASSERT(data.imageRaw().empty() ||

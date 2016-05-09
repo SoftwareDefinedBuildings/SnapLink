@@ -22,10 +22,8 @@ Localization::Localization() :
 
 Localization::~Localization()
 {
-    if (_memory != NULL)
-    {
-        delete _memory;
-    }
+    _memories->clear();
+    _memories = NULL;
     _vis = NULL;
     _httpServer = NULL;
 }
@@ -50,11 +48,13 @@ bool Localization::event(QEvent *event)
     if (event->type() == ImageEvent::type())
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        rtabmap::Transform pose = localize(imageEvent->sensorData());
+        rtabmap::Transform pose;
+        int dbId;
+        bool success = localize(imageEvent->sensorData(), &pose, &dbId);
         // a null pose notify that loc could not be computed
-        if (!pose.isNull())
+        if (success)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(imageEvent->sensorData(), pose, imageEvent->conInfo()));
+            QCoreApplication::postEvent(_vis, new LocationEvent(dbId, imageEvent->sensorData(), pose, imageEvent->conInfo()));
         }
         else
         {
@@ -65,38 +65,36 @@ bool Localization::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
+bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId)
 {
     UASSERT(!sensorData->imageRaw().empty());
-
-    rtabmap::Transform output;
 
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
     std::map<std::pair<int, int>, float> similarities; // {{db id: sig id}: similarity}
 
-    for (int dbId = 0; dbId < _memories->size(); ++dbId)
+    for (int i = 0; i < _memories->size(); ++i)
     {
-        MemoryLoc *memory = _memories.at(dbId);
+        MemoryLoc *memory = _memories->at(i);
         // generate kpts
         if (memory->update(*sensorData))
         {
             UDEBUG("");
-            const rtabmap::Signature *newS = _memory->getLastWorkingSignature();
+            const rtabmap::Signature *newS = memory->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
             std::list<int> signaturesToCompare = uKeysList(memory->getSignatures());
             signaturesToCompare.remove(newS->id());
             UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
             std::map<int, float> similarity = memory->computeSimilarity(newS, signaturesToCompare);
             similarity.erase(-1);
-            for (std::map<int, float>::const_iterator i = similarity.begin(); i != similarity.end(); ++i)
+            for (std::map<int, float>::const_iterator j = similarity.begin(); j != similarity.end(); ++j)
             {
-                similarities.insert(std::make_pair(std::make_pair(dbId, i->first), i->second));
+                similarities.insert(std::make_pair(std::make_pair(i, j->first), j->second));
             }
         }
     }
 
-    std::vector<std::pair<int, int>> topIds;
+    std::vector< std::pair<int, int> > topIds;
     std::pair<int, int> topId;
     if (similarities.size())
     {
@@ -117,26 +115,32 @@ rtabmap::Transform Localization::localize(rtabmap::SensorData *sensorData)
     // TODO: compare interatively until success
     int topDbId = topId.first;
     int topSigId = topId.second;
-    const rtabmap::Signature *newS = _memories.at[topDbId]->getLastWorkingSignature();
-    output = _memories.at(topDbId)->computeGlobalVisualTransform(topSigId, newS->id());
+    const rtabmap::Signature *newS = _memories->at(topDbId)->getLastWorkingSignature();
+    *pose = _memories->at(topDbId)->computeGlobalVisualTransform(topSigId, newS->id());
+    *dbId = topDbId;
 
-    if (!output.isNull())
+    if (!pose->isNull())
     {
-        UDEBUG("global transform = %s", output.prettyPrint().c_str());
+        UDEBUG("global transform = %s", pose->prettyPrint().c_str());
     }
     else
     {
         UWARN("transform is null, using pose of the closest image");
-        //output = _memory->getOptimizedPose(topId);
+        //*pose = _memories->at(topDbId)->getOptimizedPose(topSigId);
     }
 
     // remove new words from dictionary
-    _memory->deleteLocation(newS->id());
-    _memory->emptyTrash();
+    for (int i = 0; i < _memories->size(); ++i)
+    {
+        MemoryLoc *memory = _memories->at(i);
+        const rtabmap::Signature *newS = memory->getLastWorkingSignature();
+        memory->deleteLocation(newS->id());
+        memory->emptyTrash();
+    }
 
-    UINFO("output transform = %s", output.prettyPrint().c_str());
+    UINFO("output transform = %s", pose->prettyPrint().c_str());
 
-    return output;
+    return !pose->isNull();
 }
 
 bool Localization::compareLikelihood(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r)

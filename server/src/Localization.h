@@ -22,7 +22,7 @@ public:
     Localization();
     virtual ~Localization();
 
-    void setMemory(MemoryLoc *memory);
+    void setMemories(std::vector<MemoryLoc *> *memories);
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -30,7 +30,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    rtabmap::Transform localize(rtabmap::SensorData *sensorData);
+    bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId);
     // get pose from optimizedPoses if available, otherwise get from sig itself
     rtabmap::Transform getPose(const rtabmap::Signature *sig) const;
     static bool compareLikelihood(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r);
