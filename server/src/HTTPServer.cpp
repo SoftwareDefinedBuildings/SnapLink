@@ -115,7 +115,11 @@ int HTTPServer::answer_to_connection(void *cls,
 
         ConnectionInfo *con_info = new ConnectionInfo();
 
-        con_info->time_start = getTime(); // log start of processing
+        con_info->time.overall_start = getTime(); // log start of processing
+        con_info->time.keypoints = 0;
+        con_info->time.descriptors = 0;
+        con_info->time.search = 0;
+        con_info->time.pnp = 0;
 
         // reserve enough space for an image
         con_info->data.reserve(IMAGE_INIT_SIZE);
@@ -286,22 +290,13 @@ void HTTPServer::request_completed(void *cls,
 
     if (con_info->connectiontype == POST)
     {
-        con_info->time_end = getTime(); // log processing end time
+        con_info->time.overall = getTime() - con_info->time.overall_start; // log processing end time
 
-        // output timing data to log
-        long time_overall = con_info->time_end - con_info->time_start;
-        long time_surf = con_info->time_surf_end - con_info->time_surf_start;
-        long time_closest = con_info->time_closest_end - con_info->time_closest_start;
-        long time_pnp = con_info->time_pnp_end - con_info->time_pnp_start;
-        long time_keypoints = con_info->time_keypoints_end - con_info->time_keypoints_start;
-        long time_descriptors = con_info->time_descriptors_end - con_info->time_descriptors_start;
-
-        UINFO("TAG_TIME overall %ld", time_overall);
-        UINFO("TAG_TIME surf %ld", time_surf);
-        UINFO("TAG_TIME closest_match %ld", time_closest);
-        UINFO("TAG_TIME pnp %ld", time_pnp);
-        UINFO("TAG_TIME generateKeypoints %ld", time_keypoints);
-        UINFO("TAG_TIME generateDescriptors %ld", time_descriptors);
+        UINFO("TAG_TIME overall %ld", con_info->time.overall);
+        UINFO("TAG_TIME keypoints %ld", con_info->time.keypoints);
+        UINFO("TAG_TIME descriptors %ld", con_info->time.descriptors);
+        UINFO("TAG_TIME search %ld", con_info->time.search);
+        UINFO("TAG_TIME pnp %ld", con_info->time.pnp);
 
         if (con_info->postprocessor != NULL)
         {

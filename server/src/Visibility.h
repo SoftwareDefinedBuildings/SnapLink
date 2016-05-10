@@ -15,26 +15,26 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    bool init(const std::string &dbfile);
+    bool init(std::vector<std::string> &dbfiles);
 
-    void setMemory(const MemoryLoc *memory);
+    void setMemories(std::vector<MemoryLoc *> *memories);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool processLabels(const std::string &dbfile);
-    std::vector<std::string> *process(const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
+    bool processLabels(std::vector<std::string> &dbfiles);
+    std::vector<std::string> *process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
 
     static bool getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld);
 
 private:
     // labels
-    std::vector<cv::Point3f> _points;
-    std::vector<std::string> _labels;
+    std::vector< std::vector<cv::Point3f> > _points;
+    std::vector< std::vector<std::string> > _labels;
     HTTPServer *_httpServer;
-    const MemoryLoc *_memory;
+    std::vector<MemoryLoc *> *_memories;
 };
 
 struct CompareMeanDist

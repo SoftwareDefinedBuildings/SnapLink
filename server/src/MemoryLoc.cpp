@@ -237,7 +237,7 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
 }
 
-bool MemoryLoc::update(const rtabmap::SensorData &data, void *context)
+bool MemoryLoc::update(rtabmap::SensorData &data, void *context)
 {
     UDEBUG("");
 
@@ -486,23 +486,23 @@ void MemoryLoc::clear()
 }
 
 /**
- * Compute the likelihood of the signature with some others in the memory.
+ * Compute the similarity of the signature with some others in the memory.
  * Important: Assuming that all other ids are under 'signature' id.
  * If an error occurs, the result is empty.
  */
-std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *signature, const std::list<int> &ids)
+std::map<int, float> MemoryLoc::computeSimilarity(const rtabmap::Signature *signature, const std::list<int> &ids)
 {
-    std::map<int, float> likelihood;
+    std::map<int, float> similarity;
 
     if (!signature)
     {
         ULOGGER_ERROR("The signature is null");
-        return likelihood;
+        return similarity;
     }
     else if (ids.empty())
     {
         UWARN("ids list is empty");
-        return likelihood;
+        return similarity;
     }
 
     for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
@@ -518,10 +518,10 @@ std::map<int, float> MemoryLoc::computeLikelihood(const rtabmap::Signature *sign
             sim = signature->compareTo(*sB);
         }
 
-        likelihood.insert(likelihood.end(), std::pair<int, float>(*iter, sim));
+        similarity.insert(similarity.end(), std::pair<int, float>(*iter, sim));
     }
 
-    return likelihood;
+    return similarity;
 }
 
 rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(int oldId, int newId) const
@@ -632,50 +632,6 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
     UDEBUG("id=%d", s ? s->id() : 0);
     if (s)
     {
-        // If not saved to database or it is a bad signature (not saved), remove links!
-        if (!keepLinkedToGraph || (!s->isSaved() && s->isBadSignature() && _badSignaturesIgnored))
-        {
-            UDEBUG("remove links");
-            const std::map<int, rtabmap::Link> &links = s->getLinks();
-            for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-            {
-                UDEBUG("remove link");
-                rtabmap::Signature *sTo = this->_getSignature(iter->first);
-                // neighbor to s
-                UASSERT_MSG(sTo != 0,
-                            uFormat("A neighbor (%d) of the deleted location %d is "
-                                    "not found in WM/STM! Are you deleting a location "
-                                    "outside the STM?", iter->first, s->id()).c_str());
-
-                if (iter->first > s->id() && links.size() > 1 && sTo->hasLink(s->id()))
-                {
-                    UWARN("Link %d of %d is newer, removing neighbor link "
-                          "may split the map!",
-                          iter->first, s->id());
-                }
-
-                // child
-                if (iter->second.type() == rtabmap::Link::kGlobalClosure && s->id() > sTo->id())
-                {
-                    sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
-                }
-
-                sTo->removeLink(s->id());
-
-            }
-            s->removeLinks(); // remove all links
-            s->setWeight(0);
-            s->setLabel(""); // reset label
-        }
-        else
-        {
-            UDEBUG("remove virtual links");
-            // Make sure that virtual links are removed.
-            // It should be called before the signature is
-            // removed from _signatures below.
-            removeVirtualLinks(s->id());
-        }
-
         this->disableWordsRef(s->id());
         if (!keepLinkedToGraph)
         {
@@ -716,36 +672,6 @@ void MemoryLoc::deleteLocation(int locationId)
     }
 }
 
-void MemoryLoc::removeVirtualLinks(int signatureId)
-{
-    UDEBUG("");
-    rtabmap::Signature *s = this->_getSignature(signatureId);
-    if (s)
-    {
-        const std::map<int, rtabmap::Link> &links = s->getLinks();
-        for (std::map<int, rtabmap::Link>::const_iterator iter = links.begin(); iter != links.end(); ++iter)
-        {
-            if (iter->second.type() == rtabmap::Link::kVirtualClosure)
-            {
-                rtabmap::Signature *sTo = this->_getSignature(iter->first);
-                if (sTo)
-                {
-                    sTo->removeLink(s->id());
-                }
-                else
-                {
-                    UERROR("Link %d of %d not in WM/STM?!?", iter->first, s->id());
-                }
-            }
-        }
-        s->removeVirtualLinks();
-    }
-    else
-    {
-        UERROR("Signature %d not in WM/STM?!?", signatureId);
-    }
-}
-
 rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
 {
     rtabmap::Transform pose;
@@ -758,7 +684,7 @@ rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
     return pose;
 }
 
-rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, void *context)
+rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *context)
 {
     UDEBUG("");
     UASSERT(data.imageRaw().empty() ||
@@ -766,45 +692,49 @@ rtabmap::Signature *MemoryLoc::createSignature(const rtabmap::SensorData &data, 
             data.imageRaw().type() == CV_8UC3);
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
-    std::vector<cv::KeyPoint> keypoints;
-    cv::Mat descriptors;
+    std::vector<cv::KeyPoint> keypoints = data.keypoints();
+    cv::Mat descriptors = data.descriptors();
     int id = this->getNextId();
 
-    if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
+    if (descriptors.rows == 0)
     {
-        UDEBUG("Extract features");
-        cv::Mat imageMono;
-        if (data.imageRaw().channels() == 3)
+        if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
         {
-            cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+            UDEBUG("Extract features");
+            cv::Mat imageMono;
+            if (data.imageRaw().channels() == 3)
+            {
+                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+            }
+            else
+            {
+                imageMono = data.imageRaw();
+            }
+
+            con_info->time.keypoints_start = getTime(); // start of generateKeypoints
+            keypoints = _feature2D->generateKeypoints(imageMono);
+            con_info->time.keypoints += getTime() - con_info->time.keypoints_start; // end of generateKeypoints
+
+            con_info->time.descriptors_start = getTime(); // start of generateDescriptors
+            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+            con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
+
+            data.setFeatures(keypoints, descriptors);
         }
-        else
+        else if (data.imageRaw().empty())
         {
-            imageMono = data.imageRaw();
+            UDEBUG("Empty image, cannot extract features...");
         }
-
-        con_info->time_keypoints_start = getTime(); // start of generateKeypoints
-        keypoints = _feature2D->generateKeypoints(imageMono);
-        con_info->time_keypoints_end = getTime(); // end of generateKeypoints
-        con_info->time_descriptors_start = getTime(); // start of generateDescriptors
-        descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-        con_info->time_descriptors_end = getTime(); // end of generateDescriptors
-
-        con_info->time_surf_end = getTime(); // end of SURF extraction
-        con_info->time_closest_start = getTime(); // start of find closest match
-    }
-    else if (data.imageRaw().empty())
-    {
-        UDEBUG("Empty image, cannot extract features...");
-    }
-    else if (_feature2D->getMaxFeatures() < 0)
-    {
-        UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+        else if (_feature2D->getMaxFeatures() < 0)
+        {
+            UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+        }
     }
 
     std::list<int> wordIds;
     if (descriptors.rows)
     {
+        con_info->time.search_start = getTime();
         wordIds = _vwd->addNewWords(descriptors, id);
     }
     else if (id > 0)

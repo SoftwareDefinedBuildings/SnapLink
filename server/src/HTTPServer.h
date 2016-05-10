@@ -74,6 +74,20 @@ enum ConnectionType
 
 typedef struct
 {
+    long overall;
+    long overall_start;
+    long keypoints;
+    long keypoints_start;
+    long descriptors;
+    long descriptors_start;
+    long search;
+    long search_start;
+    long pnp;
+    long pnp_start;
+} TimeInfo;
+
+typedef struct
+{
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
     std::vector<unsigned char> data;
@@ -87,17 +101,5 @@ typedef struct
     int answercode;
     const std::vector<std::string> *names;
     QSemaphore detected;
-
-    long time_start;
-    long time_end;
-    long time_surf_start;
-    long time_surf_end;
-    long time_closest_start;
-    long time_closest_end;
-    long time_pnp_start;
-    long time_pnp_end;
-    long time_keypoints_start;
-    long time_keypoints_end;
-    long time_descriptors_start;
-    long time_descriptors_end;
+    TimeInfo time;
 } ConnectionInfo;
