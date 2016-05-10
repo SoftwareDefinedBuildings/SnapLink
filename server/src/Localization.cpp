@@ -80,6 +80,7 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
         // generate kpts
         if (memory->update(*sensorData, con_info))
         {
+            con_info->time.search_start = getTime();
             UDEBUG("");
             const rtabmap::Signature *newS = memory->getLastWorkingSignature();
             UDEBUG("newWords=%d", (int)newS->getWords().size());
@@ -92,8 +93,8 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
             {
                 similarities.insert(std::make_pair(std::make_pair(i, j->first), j->second));
             }
+            con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
         }
-        con_info->time.search = getTime() - con_info->time.search_start; // end of find closest match
     }
 
     std::vector< std::pair<int, int> > topIds;

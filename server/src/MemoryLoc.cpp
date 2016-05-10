@@ -734,8 +734,9 @@ rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *
     std::list<int> wordIds;
     if (descriptors.rows)
     {
-        con_info->time.search_start = getTime();
+        con_info->time.vwd_start = getTime();
         wordIds = _vwd->addNewWords(descriptors, id);
+        con_info->time.vwd += getTime() - con_info->time.vwd_start;
     }
     else if (id > 0)
     {

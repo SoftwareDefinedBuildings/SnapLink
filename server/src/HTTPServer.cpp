@@ -118,6 +118,7 @@ int HTTPServer::answer_to_connection(void *cls,
         con_info->time.overall_start = getTime(); // log start of processing
         con_info->time.keypoints = 0;
         con_info->time.descriptors = 0;
+        con_info->time.vwd = 0;
         con_info->time.search = 0;
         con_info->time.pnp = 0;
 
@@ -295,6 +296,7 @@ void HTTPServer::request_completed(void *cls,
         UINFO("TAG_TIME overall %ld", con_info->time.overall);
         UINFO("TAG_TIME keypoints %ld", con_info->time.keypoints);
         UINFO("TAG_TIME descriptors %ld", con_info->time.descriptors);
+        UINFO("TAG_TIME vwd %ld", con_info->time.vwd);
         UINFO("TAG_TIME search %ld", con_info->time.search);
         UINFO("TAG_TIME pnp %ld", con_info->time.pnp);
 
