@@ -84,26 +84,24 @@ bool Visibility::processLabels(std::vector<std::string> &dbfiles)
 
         std::string sql = "SELECT * from Labels";
         rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
-        if (rc != SQLITE_OK)
+        if (rc == SQLITE_OK)
         {
-            UERROR("Could not read database: %s", sqlite3_errmsg(db));
-            sqlite3_close(db);
-            return false;
-        }
-
-        while (sqlite3_step(stmt) == SQLITE_ROW)
-        {
-            std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
-            int imageId = sqlite3_column_int(stmt, 1);
-            int x = sqlite3_column_int(stmt, 2);
-            int y = sqlite3_column_int(stmt, 3);
-            pcl::PointXYZ pWorld;
-            if (getPoint3World(imageId, x, y, memory, pWorld))
-            {
-                points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-                labels.push_back(label);
-                UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
-            }
+           while (sqlite3_step(stmt) == SQLITE_ROW)
+           {
+               std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+               int imageId = sqlite3_column_int(stmt, 1);
+               int x = sqlite3_column_int(stmt, 2);
+               int y = sqlite3_column_int(stmt, 3);
+               pcl::PointXYZ pWorld;
+               if (getPoint3World(imageId, x, y, memory, pWorld))
+               {
+                   points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
+                   labels.push_back(label);
+                   UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, label.c_str(), dbfiles.at(i).c_str());
+               }
+           }
+        } else {
+            UWARN("Could not read database %s: %s", dbfiles.at(i).c_str(), sqlite3_errmsg(db));
         }
 
         _points.push_back(points);
