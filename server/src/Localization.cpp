@@ -143,7 +143,7 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
         memory->emptyTrash();
     }
 
-    UINFO("output transform = %s", pose->prettyPrint().c_str());
+    UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topDbId);
 
     return !pose->isNull();
 }
