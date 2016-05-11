@@ -28,8 +28,8 @@ Widget::Widget(QWidget *parent) :
     dbDriver = rtabmap::DBDriver::create();
 
     // connect signals and slots
-    connect(ui->slider, SIGNAL (valueChanged(int)), this, SLOT (setSliderValue(int)));
-    connect(ui->pushButton, SIGNAL (released()), this, SLOT (saveLabel()));
+    connect(ui->slider, SIGNAL(valueChanged(int)), this, SLOT(setSliderValue(int)));
+    connect(ui->pushButton, SIGNAL(released()), this, SLOT(saveLabel()));
 }
 
 Widget::~Widget()
@@ -77,6 +77,7 @@ bool Widget::openDatabase()
         return false;
     }
 
+    optimizedPoses = optimizeGraph(memory);
     return true;
 }
 
@@ -84,10 +85,10 @@ void Widget::createLabelTable()
 {
     std::string query;
     query = "CREATE TABLE IF NOT EXISTS Labels (\n\t" \
-        "labelName VARCHAR(255),\n\t" \
-        "imgId INT,\n\t" \
-        "x INT,\n\t" \
-        "y INT\n); ";
+            "labelName VARCHAR(255),\n\t" \
+            "imgId INT,\n\t" \
+            "x INT,\n\t" \
+            "y INT\n); ";
     int rc = sqlite3_exec(db, query.c_str(), NULL, NULL, NULL);
     if (rc != SQLITE_OK)
     {
@@ -147,7 +148,7 @@ void Widget::saveLabel()
     {
         std::stringstream saveQuery;
         saveQuery << "INSERT INTO Labels VALUES ('" \
-                    << label_name << "', '" << label_id << "', '" << label_x << "', '" << label_y << "');";
+                  << label_name << "', '" << label_id << "', '" << label_x << "', '" << label_y << "');";
 
         int rc = sqlite3_exec(db, saveQuery.str().c_str(), NULL, NULL, NULL);
         if (rc != SQLITE_OK)
@@ -163,7 +164,6 @@ void Widget::saveLabel()
             // display saved label on UI
             projectPoints();
         }
-
     }
     else
     {
@@ -192,7 +192,7 @@ void Widget::showImage(int index)
 void Widget::addDot(int x, int y)
 {
     // get Pixmap drawn on UI
-    QPixmap *imagePixmap = (QPixmap*) ui->label_img->pixmap();
+    QPixmap *imagePixmap = (QPixmap *) ui->label_img->pixmap();
     QPainter painter(imagePixmap);
 
     // superimpose label dot on image
@@ -229,7 +229,6 @@ void Widget::mousePressEvent(QMouseEvent *event)
 
 bool Widget::convertTo3D(int imageId, int x, int y)
 {
-    std::map<int, rtabmap::Transform> optimizedPoses = optimizeGraph(memory);
     pcl::PointXYZ pWorld;
     if (convert(imageId, x, y, memory, optimizedPoses, pWorld))
     {
@@ -320,16 +319,16 @@ void Widget::projectPoints()
     data.uncompressData();
 
     // get pose
-    rtabmap::Transform pose = localize(&data);
+    rtabmap::Transform pose = optimizedPoses.at(data.id());
 
     std::vector<cv::Point2f> planePoints;
     const rtabmap::CameraModel &model = data.cameraModels()[0];
     cv::Mat K = model.K();
     rtabmap::Transform P = (pose * model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
-            (double)P.r11(), (double)P.r12(), (double)P.r13(),
-            (double)P.r21(), (double)P.r22(), (double)P.r23(),
-            (double)P.r31(), (double)P.r32(), (double)P.r33());
+                 (double)P.r11(), (double)P.r12(), (double)P.r13(),
+                 (double)P.r21(), (double)P.r22(), (double)P.r23(),
+                 (double)P.r31(), (double)P.r32(), (double)P.r33());
     cv::Mat rvec(1, 3, CV_64FC1);
     cv::Rodrigues(R, rvec);
     cv::Mat tvec = (cv::Mat_<double>(1, 3) <<
@@ -342,7 +341,7 @@ void Widget::projectPoints()
     {
         cv::Point2f point = planePoints[i];
         if (point.x < 0 || point.x > data.imageRaw().rows ||
-            point.y < 0 || point.y > data.imageRaw().cols)
+                point.y < 0 || point.y > data.imageRaw().cols)
         {
             continue;
         }
@@ -415,71 +414,7 @@ bool Widget::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, 
     return true;
 }
 
-rtabmap::Transform Widget::localize(rtabmap::SensorData *sensorData)
-{
-    UASSERT(!sensorData->imageRaw().empty());
-
-    rtabmap::Transform output;
-
-    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
-
-    // generate kpts
-    if (memoryLoc.update(*sensorData))
-    {
-        UDEBUG("");
-        const rtabmap::Signature *newS = memoryLoc.getLastWorkingSignature();
-        UDEBUG("newWords=%d", (int)newS->getWords().size());
-        std::map<int, float> likelihood;
-        std::list<int> signaturesToCompare = uKeysList(memoryLoc.getSignatures());
-        signaturesToCompare.remove(newS->id());
-        UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-        likelihood = memoryLoc.computeLikelihood(newS, signaturesToCompare);
-
-        std::vector<int> topIds;
-        likelihood.erase(-1);
-        int topId;
-        if (likelihood.size())
-        {
-            std::vector< std::pair<int, float> > top(TOP_K);
-            std::partial_sort_copy(likelihood.begin(),
-                                   likelihood.end(),
-                                   top.begin(),
-                                   top.end(),
-                                   compareLikelihood);
-            for (std::vector< std::pair<int, float> >::iterator it = top.begin(); it != top.end(); ++it)
-            {
-                topIds.push_back(it->first);
-            }
-            topId = topIds[0];
-            UDEBUG("topId: %d", topId);
-        }
-
-        sensorData->setId(newS->id());
-
-        // TODO: compare interatively until success
-        output = memoryLoc.computeGlobalVisualTransform(topIds[0], sensorData->id());
-
-        if (!output.isNull())
-        {
-            UDEBUG("global transform = %s", output.prettyPrint().c_str());
-        }
-        else
-        {
-            UWARN("transform is null, using pose of the closest image");
-            //output = memoryLoc.getOptimizedPose(topId);
-        }
-
-        // remove new words from dictionary
-        memoryLoc.deleteLocation(newS->id());
-        memoryLoc.emptyTrash();
-    }
-
-    UINFO("output transform = %s", output.prettyPrint().c_str());
-
-    return output;
-}
-
 bool Widget::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
 {
-        return l.second > r.second;
+    return l.second > r.second;
 }

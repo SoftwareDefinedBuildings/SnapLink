@@ -15,7 +15,8 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     Widget w;
 
-    if (argc < 2) {
+    if (argc < 2)
+    {
         std::cout << "Need at least 1 argument" << std::endl;
         return -1;
     }

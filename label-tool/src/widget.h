@@ -11,7 +11,8 @@
 #include "../../server/src/Localization.h"
 #include "../../server/src/MemoryLoc.h"
 
-namespace Ui {
+namespace Ui
+{
 class Widget;
 }
 
@@ -34,17 +35,9 @@ public:
 private slots:
     void setSliderValue(int);
     void saveLabel();
-    void mousePressEvent(QMouseEvent*);
+    void mousePressEvent(QMouseEvent *);
 
 private:
-    Ui::Widget *ui;
-
-    sqlite3 *db;
-    QString dbPath;
-    rtabmap::DBDriver *dbDriver;
-    rtabmap::Memory memory;
-    MemoryLoc memoryLoc;
-
     int numImages;
 
     void showImage(int);
@@ -59,6 +52,16 @@ private:
     bool getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld);
     rtabmap::Transform localize(rtabmap::SensorData *sensorData);
     static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
+
+private:
+    Ui::Widget *ui;
+
+    sqlite3 *db;
+    QString dbPath;
+    rtabmap::DBDriver *dbDriver;
+    rtabmap::Memory memory;
+    MemoryLoc memoryLoc;
+    std::map<int, rtabmap::Transform> optimizedPoses;
 };
 
 #endif // WIDGET_H
