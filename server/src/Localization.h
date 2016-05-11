@@ -9,6 +9,7 @@
 #include "MemoryLoc.h"
 #include "Visibility.h"
 #include "HTTPServer.h"
+#include "Time.h"
 
 #define TOP_K 1
 
@@ -22,7 +23,7 @@ public:
     Localization();
     virtual ~Localization();
 
-    void setMemory(MemoryLoc *memory);
+    void setMemories(std::vector<MemoryLoc *> *memories);
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -30,13 +31,13 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    rtabmap::Transform localize(rtabmap::SensorData *sensorData);
+    bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
     rtabmap::Transform getPose(const rtabmap::Signature *sig) const;
-    static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
+    static bool compareLikelihood(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r);
 
 private:
-    MemoryLoc *_memory;
+    std::vector<MemoryLoc *> *_memories;
     Visibility *_vis;
     HTTPServer *_httpServer;
 };

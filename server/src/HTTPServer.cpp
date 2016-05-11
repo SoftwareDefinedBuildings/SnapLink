@@ -9,6 +9,8 @@
 #include "DetectionEvent.h"
 #include "FailureEvent.h"
 
+#include "Time.h"
+
 const std::string HTTPServer::busypage = "This server is busy, please try again later.";
 const std::string HTTPServer::completepage = "The upload has been completed.";
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
@@ -112,6 +114,13 @@ int HTTPServer::answer_to_connection(void *cls,
         }
 
         ConnectionInfo *con_info = new ConnectionInfo();
+
+        con_info->time.overall_start = getTime(); // log start of processing
+        con_info->time.keypoints = 0;
+        con_info->time.descriptors = 0;
+        con_info->time.vwd = 0;
+        con_info->time.search = 0;
+        con_info->time.pnp = 0;
 
         // reserve enough space for an image
         con_info->data.reserve(IMAGE_INIT_SIZE);
@@ -282,6 +291,15 @@ void HTTPServer::request_completed(void *cls,
 
     if (con_info->connectiontype == POST)
     {
+        con_info->time.overall = getTime() - con_info->time.overall_start; // log processing end time
+
+        UINFO("TAG_TIME overall %ld", con_info->time.overall);
+        UINFO("TAG_TIME keypoints %ld", con_info->time.keypoints);
+        UINFO("TAG_TIME descriptors %ld", con_info->time.descriptors);
+        UINFO("TAG_TIME vwd %ld", con_info->time.vwd);
+        UINFO("TAG_TIME search %ld", con_info->time.search);
+        UINFO("TAG_TIME pnp %ld", con_info->time.pnp);
+
         if (con_info->postprocessor != NULL)
         {
             MHD_destroy_post_processor(con_info->postprocessor);

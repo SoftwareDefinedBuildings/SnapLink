@@ -277,6 +277,7 @@ public class MainActivity extends ActionBarActivity {
 
     private final View.OnClickListener mCaptureButtonOnClickListener = new View.OnClickListener() {
         public void onClick(View v) {
+            Log.d(LOG_TAG, "TAG_TIME capture " + System.currentTimeMillis()); // start timing
             if (mImageReader.requestCapture()) {
                 setButtonsEnabled(false, false, false);
             } else {
@@ -288,6 +289,7 @@ public class MainActivity extends ActionBarActivity {
     private HttpPostImageTask.Listener mRecognitionListener = new HttpPostImageTask.Listener() {
         @Override
         public void onResponse(String result) { // null means network error
+            Log.d(LOG_TAG, "TAG_TIME response " + System.currentTimeMillis()); // got response from server
             if (result == null) {
                 showToast("Network error", Toast.LENGTH_SHORT);
                 mTarget = null;

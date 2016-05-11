@@ -16,7 +16,7 @@
 void showUsage()
 {
     printf("\nUsage:\n"
-           "rtabmap-rgbd_mapping database_file\n");
+           "rtabmap-rgbd_mapping database_file1 [database_file2 ...]\n");
     exit(1);
 }
 
@@ -26,19 +26,15 @@ int main(int argc, char *argv[])
     ULogger::setLevel(ULogger::kInfo);
     //ULogger::setLevel(ULogger::kDebug);
 
-    std::string dbfile;
-    if (argc != 2)
+    std::vector<std::string> dbfiles;
+    for (int i = 1; i < argc; i++)
     {
-        showUsage();
-    }
-    else
-    {
-        dbfile = std::string(argv[argc - 1]);
+        dbfiles.push_back(std::string(argv[i]));
     }
 
     QCoreApplication app(argc, argv);
 
-    MemoryLoc memory;
+    std::vector<MemoryLoc *> memories;
     HTTPServer httpServer;
     CameraNetwork camera;
     Localization loc;
@@ -64,16 +60,24 @@ int main(int argc, char *argv[])
     // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
     // memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
-    if (!memory.init(dbfile, memoryParams))
+
+    for (std::vector<std::string>::const_iterator i = dbfiles.begin(); i != dbfiles.end(); ++i)
     {
-        UERROR("Initializing memory failed");
-        return 1;
+        // TODO free them later
+        MemoryLoc *memory = new MemoryLoc();
+        if (!memory->init(*i, memoryParams))
+        {
+            UERROR("Initializing memory failed");
+            showUsage();
+            return 1;
+        }
+        memories.push_back(memory);
     }
 
     // Visibility
-    vis.setMemory(&memory);
+    vis.setMemories(&memories);
     vis.setHTTPServer(&httpServer);
-    if (!vis.init(dbfile))
+    if (!vis.init(dbfiles))
     {
         UERROR("Initializing visibility failed");
         return 1;
@@ -82,7 +86,7 @@ int main(int argc, char *argv[])
     visThread.start();
 
     // Localization
-    loc.setMemory(&memory);
+    loc.setMemories(&memories);
     loc.setHTTPServer(&httpServer);
     loc.setVisibility(&vis);
     loc.moveToThread(&locThread);
