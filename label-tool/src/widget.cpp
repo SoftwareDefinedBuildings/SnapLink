@@ -20,64 +20,52 @@
 
 Widget::Widget(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::Widget)
+    _ui(new Ui::Widget)
 {
-    ui->setupUi(this);
+    _ui->setupUi(this);
 
     // setup DBDriver
-    dbDriver = rtabmap::DBDriver::create();
+    _dbDriver = rtabmap::DBDriver::create();
 
     // connect signals and slots
-    connect(ui->slider, SIGNAL(valueChanged(int)), this, SLOT(setSliderValue(int)));
-    connect(ui->pushButton, SIGNAL(released()), this, SLOT(saveLabel()));
+    connect(_ui->slider, SIGNAL(valueChanged(int)), this, SLOT(setSliderValue(int)));
+    connect(_ui->pushButton, SIGNAL(released()), this, SLOT(saveLabel()));
 }
 
 Widget::~Widget()
 {
-    delete ui;
-    if (db)
+    delete _ui;
+    if (_db)
     {
-        sqlite3_close(db);
+        sqlite3_close(_db);
     }
 }
 
-void Widget::setDbPath(char *name)
+void Widget::setDbPath(std::string path)
 {
-    dbPath = QString::fromUtf8(name);
+    _dbPath = path;
 }
 
 bool Widget::openDatabase()
 {
-    std::string path = dbPath.toStdString();
-    if (sqlite3_open(path.c_str(), &db) != SQLITE_OK)
+    if (sqlite3_open(_dbPath.c_str(), &_db) != SQLITE_OK)
     {
         UERROR("Could not open database");
         return false;
     }
-    if (!dbDriver->openConnection(path))
+    if (!_dbDriver->openConnection(_dbPath))
     {
         UERROR("Could not open database");
         return false;
     }
     createLabelTable();
 
-    if (!memory.init(path, false))
+    if (!_memory.init(_dbPath))
     {
         UERROR("Error init memory");
         return false;
     }
 
-    rtabmap::ParametersMap memoryParams;
-    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
-    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "4"));
-    memoryParams.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
-    if (!memoryLoc.init(path, memoryParams))
-    {
-        UERROR("Initializing memory failed");
-        return false;
-    }
-
-    optimizedPoses = optimizeGraph(memory);
     return true;
 }
 
@@ -89,7 +77,7 @@ void Widget::createLabelTable()
             "imgId INT,\n\t" \
             "x INT,\n\t" \
             "y INT\n); ";
-    int rc = sqlite3_exec(db, query.c_str(), NULL, NULL, NULL);
+    int rc = sqlite3_exec(_db, query.c_str(), NULL, NULL, NULL);
     if (rc != SQLITE_OK)
     {
         UWARN("Could not create label table");
@@ -100,7 +88,7 @@ bool Widget::setSliderRange()
 {
     // get number of images in database
     std::set<int> ids;
-    dbDriver->getAllNodeIds(ids);
+    _dbDriver->getAllNodeIds(ids);
     numImages = ids.size();
 
     if (numImages <= 0)
@@ -109,7 +97,7 @@ bool Widget::setSliderRange()
     }
 
     // image ID is 1-indexed
-    ui->slider->setRange(1, numImages);
+    _ui->slider->setRange(1, numImages);
 
     // display first image
     showImage(1);
@@ -119,22 +107,22 @@ bool Widget::setSliderRange()
 
 void Widget::setSliderValue(int value)
 {
-    ui->label_id->setText(QString::number(value));
+    _ui->label_id->setText(QString::number(value));
     showImage(value);
 }
 
 void Widget::saveLabel()
 {
-    std::string label_name = ui->lineEdit_label->text().toStdString();
-    std::string label_id = ui->label_id->text().toStdString();
-    std::string label_x = ui->label_x->text().toStdString();
-    std::string label_y = ui->label_y->text().toStdString();
+    std::string label_name = _ui->lineEdit_label->text().toStdString();
+    std::string label_id = _ui->label_id->text().toStdString();
+    std::string label_x = _ui->label_x->text().toStdString();
+    std::string label_y = _ui->label_y->text().toStdString();
 
     if (label_name.length() == 0)
     {
         std::string msg = "Label name empty";
         UWARN(msg.c_str());
-        ui->label_status->setText(msg.c_str());
+        _ui->label_status->setText(msg.c_str());
         return;
     }
 
@@ -144,22 +132,23 @@ void Widget::saveLabel()
     y = std::stoi(label_y);
 
     // convert again to verify label has depth
-    if (convertTo3D(imageId, x, y))
+    pcl::PointXYZ pWorld;
+    if (getPoint3World(imageId, x, y, pWorld))
     {
         std::stringstream saveQuery;
         saveQuery << "INSERT INTO Labels VALUES ('" \
                   << label_name << "', '" << label_id << "', '" << label_x << "', '" << label_y << "');";
 
-        int rc = sqlite3_exec(db, saveQuery.str().c_str(), NULL, NULL, NULL);
+        int rc = sqlite3_exec(_db, saveQuery.str().c_str(), NULL, NULL, NULL);
         if (rc != SQLITE_OK)
         {
             std::string msg = "Could not save label to label table";
             UWARN(msg.c_str());
-            ui->label_status->setText(msg.c_str());
+            _ui->label_status->setText(msg.c_str());
         }
         else
         {
-            ui->label_status->setText("Saved label to database");
+            _ui->label_status->setText("Saved label to database");
 
             // display saved label on UI
             projectPoints();
@@ -169,21 +158,21 @@ void Widget::saveLabel()
     {
         std::string msg = "Could not convert label";
         UWARN(msg.c_str());
-        ui->label_status->setText(msg.c_str());
+        _ui->label_status->setText(msg.c_str());
     }
 }
 
 void Widget::showImage(int index)
 {
     rtabmap::SensorData data;
-    dbDriver->getNodeData(index, data);
+    _dbDriver->getNodeData(index, data);
     data.uncompressData();
     cv::Mat raw = data.imageRaw();
 
     QImage image = QImage(raw.data, raw.cols, raw.rows, raw.step, QImage::Format_RGB888);
     QPixmap pixmap = QPixmap::fromImage(image.rgbSwapped()); // need to change BGR -> RGBz
 
-    ui->label_img->setPixmap(pixmap);
+    _ui->label_img->setPixmap(pixmap);
 
     // display saved labels
     projectPoints();
@@ -192,7 +181,7 @@ void Widget::showImage(int index)
 void Widget::addDot(int x, int y)
 {
     // get Pixmap drawn on UI
-    QPixmap *imagePixmap = (QPixmap *) ui->label_img->pixmap();
+    QPixmap *imagePixmap = (QPixmap *) _ui->label_img->pixmap();
     QPainter painter(imagePixmap);
 
     // superimpose label dot on image
@@ -205,100 +194,40 @@ void Widget::addDot(int x, int y)
     painter.drawPixmap(drawX, drawY, dotmap);
 
     // update image displayed on UI
-    ui->label_img->setPixmap(*imagePixmap);
+    _ui->label_img->setPixmap(*imagePixmap);
 }
 
 void Widget::mousePressEvent(QMouseEvent *event)
 {
     const QPoint p = event->pos();
-    ui->label_x->setText(QString::number(p.x()));
-    ui->label_y->setText(QString::number(p.y()));
+    _ui->label_x->setText(QString::number(p.x()));
+    _ui->label_y->setText(QString::number(p.y()));
 
-    if (!convertTo3D(ui->slider->value(), p.x(), p.y()))
+    int imageId = _ui->slider->value();
+    pcl::PointXYZ pWorld;
+    if (getPoint3World(imageId, p.x(), p.y(), pWorld))
     {
-        ui->pushButton->setEnabled(false);
+        _ui->label_status->setText("3D conversion success!");
+        _ui->pushButton->setEnabled(true);
     }
     else
     {
-        ui->pushButton->setEnabled(true);
+        _ui->label_status->setText("Failed to convert");
+        _ui->pushButton->setEnabled(false);
     }
 
     // display saved labels
     projectPoints();
 }
 
-bool Widget::convertTo3D(int imageId, int x, int y)
-{
-    pcl::PointXYZ pWorld;
-    if (convert(imageId, x, y, memory, optimizedPoses, pWorld))
-    {
-        ui->label_status->setText("3D conversion success!");
-        return true;
-    }
-    else
-    {
-        ui->label_status->setText("Failed to convert");
-    }
-    return false;
-}
-
-/* convert() and optimizeGraph() taken from label_tool/src/main.cpp */
-bool Widget::convert(int imageId, int x, int y, rtabmap::Memory &memory, std::map<int, rtabmap::Transform> &poses, pcl::PointXYZ &pWorld)
-{
-    const rtabmap::SensorData &data = memory.getNodeData(imageId, true);
-    const rtabmap::CameraModel &cm = data.cameraModels()[0];
-    bool smoothing = false;
-
-    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
-    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
-    {
-        UWARN("Depth value not valid");
-        return false;
-    }
-    std::map<int, rtabmap::Transform>::const_iterator iter = poses.find(imageId);
-    if (iter == poses.end() || iter->second.isNull())
-    {
-        UWARN("Image pose not found or is Null");
-        return false;
-    }
-    rtabmap::Transform poseWorld = iter->second;
-    poseWorld = poseWorld * cm.localTransform();
-    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
-    return true;
-}
-
-std::map<int, rtabmap::Transform> Widget::optimizeGraph(rtabmap::Memory &memory)
-{
-    if (memory.getLastWorkingSignature())
-    {
-        // Get all IDs linked to last signature (including those in Long-Term Memory)
-        std::map<int, int> ids = memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0);
-
-        UINFO("Optimize poses, ids.size() = %d", ids.size());
-
-        // Get all metric constraints (the graph)
-        std::map<int, rtabmap::Transform> poses;
-        std::multimap<int, rtabmap::Link> links;
-        memory.getMetricConstraints(uKeysSet(ids), poses, links);
-
-        // Optimize the graph
-        rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
-        std::map<int, rtabmap::Transform> optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
-        delete graphOptimizer;
-
-        return optimizedPoses;
-    }
-}
-
 void Widget::setLabel(const QString &name)
 {
-    ui->lineEdit_label->setText(name);
+    _ui->lineEdit_label->setText(name);
 }
 
 QString Widget::getLabel() const
 {
-    return ui->lineEdit_label->text();
+    return _ui->lineEdit_label->text();
 }
 
 /* Project points on image */
@@ -313,13 +242,13 @@ void Widget::projectPoints()
     }
 
     // get sensorData for image
-    int sliderVal = ui->slider->value();
+    int sliderVal = _ui->slider->value();
     rtabmap::SensorData data;
-    dbDriver->getNodeData(sliderVal, data);
+    _dbDriver->getNodeData(sliderVal, data);
     data.uncompressData();
 
     // get pose
-    rtabmap::Transform pose = optimizedPoses.at(data.id());
+    rtabmap::Transform pose = _memory.getOptimizedPose(data.id());
 
     std::vector<cv::Point2f> planePoints;
     const rtabmap::CameraModel &model = data.cameraModels()[0];
@@ -360,10 +289,10 @@ std::vector<cv::Point3f> Widget::getPoints()
     int rc;
 
     std::string sql = "SELECT * from Labels";
-    rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
+    rc = sqlite3_prepare(_db, sql.c_str(), -1, &stmt, NULL);
     if (rc != SQLITE_OK)
     {
-        UERROR("Could not read database: %s", sqlite3_errmsg(db));
+        UERROR("Could not read database: %s", sqlite3_errmsg(_db));
         return points;
     }
 
@@ -374,7 +303,7 @@ std::vector<cv::Point3f> Widget::getPoints()
         int x = sqlite3_column_int(stmt, 2);
         int y = sqlite3_column_int(stmt, 3);
         pcl::PointXYZ pWorld;
-        if (getPoint3World(imageId, x, y, &memoryLoc, pWorld))
+        if (getPoint3World(imageId, x, y, pWorld))
         {
             points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
             UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
@@ -386,9 +315,9 @@ std::vector<cv::Point3f> Widget::getPoints()
 }
 
 /* TODO functions below are copied from server branch, should make functions accessible and stop copying code */
-bool Widget::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld)
+bool Widget::getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld)
 {
-    const rtabmap::Signature *s = memory->getSignature(imageId);
+    const rtabmap::Signature *s = _memory.getSignature(imageId);
     if (s == NULL)
     {
         UWARN("Signature %d does not exist", imageId);
@@ -403,7 +332,7 @@ bool Widget::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, 
         UWARN("Depth value not valid");
         return false;
     }
-    rtabmap::Transform poseWorld = memory->getOptimizedPose(imageId);
+    rtabmap::Transform poseWorld = _memory.getOptimizedPose(imageId);
     if (poseWorld.isNull())
     {
         UWARN("Image pose is Null");
@@ -412,9 +341,4 @@ bool Widget::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, 
     poseWorld = poseWorld * cm.localTransform();
     pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
     return true;
-}
-
-bool Widget::compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r)
-{
-    return l.second > r.second;
 }

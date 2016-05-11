@@ -24,7 +24,7 @@ public:
     explicit Widget(QWidget *parent = 0);
     ~Widget();
 
-    void setDbPath(char *);
+    void setDbPath(std::string path);
     bool openDatabase(void);
     void createLabelTable(void);
     bool setSliderRange(void);
@@ -40,28 +40,19 @@ private slots:
 private:
     int numImages;
 
-    void showImage(int);
-    void addDot(int, int);
+    void showImage(int index);
+    void addDot(int x, int y);
     void projectPoints(void);
     std::vector<cv::Point3f> getPoints(void);
-
-    bool convertTo3D(int, int, int);
-    bool convert(int imageId, int x, int y, rtabmap::Memory &memory, std::map<int, rtabmap::Transform> &poses, pcl::PointXYZ &pWorld);
-    std::map<int, rtabmap::Transform> optimizeGraph(rtabmap::Memory &memory);
-
-    bool getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld);
-    rtabmap::Transform localize(rtabmap::SensorData *sensorData);
-    static bool compareLikelihood(std::pair<const int, float> const &l, std::pair<const int, float> const &r);
+    bool getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
 private:
-    Ui::Widget *ui;
+    Ui::Widget *_ui;
 
-    sqlite3 *db;
-    QString dbPath;
-    rtabmap::DBDriver *dbDriver;
-    rtabmap::Memory memory;
-    MemoryLoc memoryLoc;
-    std::map<int, rtabmap::Transform> optimizedPoses;
+    sqlite3 *_db;
+    std::string _dbPath;
+    rtabmap::DBDriver *_dbDriver;
+    MemoryLoc _memory;
 };
 
 #endif // WIDGET_H

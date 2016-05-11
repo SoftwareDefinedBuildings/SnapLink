@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
     }
 
     // open database
-    w.setDbPath(argv[1]);
+    w.setDbPath(std::string(argv[1]));
     if (!w.openDatabase())
     {
         return -1;
