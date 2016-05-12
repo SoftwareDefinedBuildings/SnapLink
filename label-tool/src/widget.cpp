@@ -1,5 +1,6 @@
 #include "widget.h"
 #include "ui_widget.h"
+#include "Utility.h"
 #include <iostream>
 #include <QImage>
 #include <QMouseEvent>
@@ -277,7 +278,8 @@ void Widget::projectPoints()
         cv::Point2f point = planePoints[i];
         std::string label = labels.at(i);
         if (point.x < 0 || point.x > data.imageRaw().rows ||
-                point.y < 0 || point.y > data.imageRaw().cols)
+                point.y < 0 || point.y > data.imageRaw().cols ||
+                !Utility::isInFrontOfCamera(points[i], P))
         {
             continue;
         }

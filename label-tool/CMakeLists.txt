@@ -47,6 +47,7 @@ ADD_EXECUTABLE(label-tool
     ${MATCH_SOURCES}
     "../server/src/MemoryLoc.cpp"
     "../server/src/Time.cpp"
+    "../server/src/Utility.cpp"
 )
 
 TARGET_LINK_LIBRARIES(label-tool ${LIBRARIES})
