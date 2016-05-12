@@ -41,9 +41,9 @@ private:
     int numImages;
 
     void showImage(int index);
-    void addDot(int x, int y);
+    void showLabel(int x, int y, std::string label);
     void projectPoints(void);
-    std::vector<cv::Point3f> getPoints(void);
+    bool getLabels(std::vector<cv::Point3f> &points, std::vector<std::string> &labels);
     bool getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
 private:

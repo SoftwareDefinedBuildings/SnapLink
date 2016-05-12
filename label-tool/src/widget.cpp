@@ -178,7 +178,7 @@ void Widget::showImage(int index)
     projectPoints();
 }
 
-void Widget::addDot(int x, int y)
+void Widget::showLabel(int x, int y, std::string label)
 {
     // get Pixmap drawn on UI
     QPixmap *imagePixmap = (QPixmap *) _ui->label_img->pixmap();
@@ -192,6 +192,11 @@ void Widget::addDot(int x, int y)
     int drawX = x - (dot.width() / 2);
     int drawY = y - (dot.height() / 2);
     painter.drawPixmap(drawX, drawY, dotmap);
+
+    painter.setFont(QFont("Arial", 8, QFont::Bold));
+    QPen penHText(QColor(0, 255, 0)); // green
+    painter.setPen(penHText);
+    painter.drawText(QPoint(drawX, drawY), label.c_str());
 
     // update image displayed on UI
     _ui->label_img->setPixmap(*imagePixmap);
@@ -234,10 +239,11 @@ QString Widget::getLabel() const
 void Widget::projectPoints()
 {
     // get list of points
-    std::vector<cv::Point3f> points = getPoints();
-    if (points.size() == 0)
+    std::vector<cv::Point3f> points;
+    std::vector<std::string> labels;
+    if (!getLabels(points, labels))
     {
-        UINFO("No points found");
+        UINFO("Get labels failed");
         return;
     }
 
@@ -269,6 +275,7 @@ void Widget::projectPoints()
     for (int i = 0; i < planePoints.size(); i++)
     {
         cv::Point2f point = planePoints[i];
+        std::string label = labels.at(i);
         if (point.x < 0 || point.x > data.imageRaw().rows ||
                 point.y < 0 || point.y > data.imageRaw().cols)
         {
@@ -276,15 +283,13 @@ void Widget::projectPoints()
         }
 
         // draw label on UI
-        addDot((int) point.x, (int) point.y);
+        showLabel((int) point.x, (int) point.y, label);
     }
 }
 
 /* Get all points in Labels table */
-std::vector<cv::Point3f> Widget::getPoints()
+bool Widget::getLabels(std::vector<cv::Point3f> &points, std::vector<std::string> &labels)
 {
-    std::vector<cv::Point3f> points;
-
     sqlite3_stmt *stmt = NULL;
     int rc;
 
@@ -293,7 +298,7 @@ std::vector<cv::Point3f> Widget::getPoints()
     if (rc != SQLITE_OK)
     {
         UERROR("Could not read database: %s", sqlite3_errmsg(_db));
-        return points;
+        return false;
     }
 
     while (sqlite3_step(stmt) == SQLITE_ROW)
@@ -306,12 +311,13 @@ std::vector<cv::Point3f> Widget::getPoints()
         if (getPoint3World(imageId, x, y, pWorld))
         {
             points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-            UINFO("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
+            labels.push_back(label);
+            UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y, pWorld.z, label.c_str());
         }
     }
 
     sqlite3_finalize(stmt);
-    return points;
+    return true;
 }
 
 /* TODO functions below are copied from server branch, should make functions accessible and stop copying code */
