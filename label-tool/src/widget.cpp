@@ -81,7 +81,7 @@ void Widget::createLabelTable()
     int rc = sqlite3_exec(_db, query.c_str(), NULL, NULL, NULL);
     if (rc != SQLITE_OK)
     {
-        UWARN("Could not create label table");
+        UFATAL("Could not create label table");
     }
 }
 
@@ -242,9 +242,8 @@ void Widget::projectPoints()
     // get list of points
     std::vector<cv::Point3f> points;
     std::vector<std::string> labels;
-    if (!getLabels(points, labels))
+    if (!getLabels(points, labels) || points.size() == 0 || points.size() != labels.size())
     {
-        UINFO("Get labels failed");
         return;
     }
 
