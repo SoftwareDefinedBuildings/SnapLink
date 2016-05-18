@@ -51,3 +51,6 @@ ADD_EXECUTABLE(label-tool
 )
 
 TARGET_LINK_LIBRARIES(label-tool ${LIBRARIES})
+
+EXECUTE_PROCESS(COMMAND rcc -binary ../res/label_dot.qrc -o label_dot.rcc)
+EXECUTE_PROCESS(COMMAND uic ../src/widget.ui -o ../src/ui_widget.h)
