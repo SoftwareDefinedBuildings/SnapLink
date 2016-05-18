@@ -115,7 +115,7 @@ int HTTPServer::answer_to_connection(void *cls,
 
         ConnectionInfo *con_info = new ConnectionInfo();
 
-        con_info->time.overall_start = getTime(); // log start of processing
+        con_info->time.overall_start = 0;
         con_info->time.keypoints = 0;
         con_info->time.descriptors = 0;
         con_info->time.vwd = 0;
@@ -173,6 +173,8 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             if (!con_info->data.empty())
             {
+                // all data are received
+                con_info->time.overall_start = getTime(); // log start of processing
                 // seperate ownership of data from con_info
                 QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(con_info));
             }
