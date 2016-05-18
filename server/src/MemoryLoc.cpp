@@ -598,19 +598,7 @@ rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const rtabmap::Signat
         UINFO(msg.c_str());
     }
 
-    // TODO check RegistrationVis.cpp to see whether this is necessary
-    if (!transform.isNull())
-    {
-        // verify if it is a 180 degree transform, well verify > 90
-        float x, y, z, roll, pitch, yaw;
-        transform.inverse().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-        if (fabs(roll) > CV_PI / 2 || fabs(pitch) > CV_PI / 2 || fabs(yaw) > CV_PI / 2)
-        {
-            transform.setNull();
-            msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)", roll, pitch, yaw);
-            UWARN(msg.c_str());
-        }
-    }
+    // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
     return transform;
@@ -734,8 +722,9 @@ rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *
     std::list<int> wordIds;
     if (descriptors.rows)
     {
-        con_info->time.search_start = getTime();
+        con_info->time.vwd_start = getTime();
         wordIds = _vwd->addNewWords(descriptors, id);
+        con_info->time.vwd += getTime() - con_info->time.vwd_start;
     }
     else if (id > 0)
     {

@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     std::vector<std::string> dbfiles;
     for (int i = 1; i < argc; i++)
     {
-        dbfiles.push_back(std::string(argv[argc - i]));
+        dbfiles.push_back(std::string(argv[i]));
     }
 
     QCoreApplication app(argc, argv);
