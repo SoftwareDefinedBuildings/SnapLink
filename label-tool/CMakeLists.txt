@@ -19,10 +19,6 @@ SET(INCLUDE_DIRS
     ${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
-    "/root/workspace/rtabmap/corelib/include/rtabmap/core"
-    "/root/workspace/rtabmap/corelib/src"
-    "/root/workspace/rtabmap/guilib/include/rtabmap/gui"
-    "/root/workspace/rtabmap/guilib/src"
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
