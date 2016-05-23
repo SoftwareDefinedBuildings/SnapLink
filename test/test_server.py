@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 import requests
 import time
+from termcolor import colored
 from PIL import Image, ExifTags
 
 SERVER_ADDR = "http://kaifei.cs.berkeley.edu:50002"
@@ -40,8 +41,6 @@ def test_file(filename):
     rows, cols = img.shape
     width = 480
     height = 640
-    print rows, cols
-    print rows/cols, width/height
     if rows/cols == width/height:
         width, height = height, width
     elif cols/rows == width/height:
@@ -59,7 +58,8 @@ def test_file(filename):
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
     if r.text != obj_name:
-        print "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
+        text = colored("test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time), 'red')
+        print text
         return RESULT_FAIL, elapsed_time
     else:
         print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
