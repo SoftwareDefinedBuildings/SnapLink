@@ -33,8 +33,6 @@ public:
     bool init(const std::string &dbUrl,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     void close();
-    std::map<int, float> computeSimilarity(const rtabmap::Signature *signature,
-                                           const std::list<int> &ids);
 
     void emptyTrash();
     void deleteLocation(int locationId);
@@ -43,8 +41,6 @@ public:
     rtabmap::Transform getOptimizedPose(int signatureId) const;
     const rtabmap::Signature *getSignature(int id) const;
     const std::map<int, rtabmap::Signature *> &getSignatures() const;
-
-    rtabmap::Transform computeGlobalVisualTransform(int oldId, int newId) const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
@@ -76,8 +72,6 @@ private:
     void disableWordsRef(int signatureId);
     void cleanUnusedWords();
 
-    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const;
-
 protected:
     rtabmap::DBDriver *_dbDriver;
 
@@ -94,10 +88,4 @@ private:
     //Keypoint stuff
     rtabmap::VWDictionary *_vwd;
     rtabmap::Feature2D *_feature2D;
-
-    int _minInliers;
-    int _iterations;
-    int _pnpRefineIterations;
-    double _pnpReprojError;
-    int _pnpFlags;
 };

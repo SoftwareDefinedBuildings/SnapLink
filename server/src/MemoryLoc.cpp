@@ -5,7 +5,6 @@
 #include <rtabmap/utilite/UMath.h>
 
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/EpipolarGeometry.h>
 #include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Features2d.h>
 #include <rtabmap/core/DBDriver.h>
@@ -14,8 +13,6 @@
 #include <rtabmap/core/util3d_correspondences.h>
 #include <rtabmap/core/util3d_registration.h>
 #include <rtabmap/core/util3d_surface.h>
-#include <rtabmap/core/util3d_transforms.h>
-#include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Compression.h>
@@ -36,13 +33,7 @@ MemoryLoc::MemoryLoc() :
     _idCount(kIdStart),
     _feature2D(NULL),
     _vwd(NULL),
-    _dbDriver(NULL),
-
-    _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
-    _iterations(rtabmap::Parameters::defaultVisIterations()),
-    _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
-    _pnpReprojError(rtabmap::Parameters::defaultVisPnPReprojError()),
-    _pnpFlags(rtabmap::Parameters::defaultVisPnPFlags())
+    _dbDriver(NULL)
 {
 }
 
@@ -229,12 +220,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     {
         _feature2D->parseParameters(parameters);
     }
-
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPReprojError(), _pnpReprojError);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
 }
 
 bool MemoryLoc::update(rtabmap::SensorData &data, void *context)
@@ -483,125 +468,6 @@ void MemoryLoc::clear()
         _vwd->clear();
     }
     UDEBUG("");
-}
-
-/**
- * Compute the similarity of the signature with some others in the memory.
- * Important: Assuming that all other ids are under 'signature' id.
- * If an error occurs, the result is empty.
- */
-std::map<int, float> MemoryLoc::computeSimilarity(const rtabmap::Signature *signature, const std::list<int> &ids)
-{
-    std::map<int, float> similarity;
-
-    if (!signature)
-    {
-        ULOGGER_ERROR("The signature is null");
-        return similarity;
-    }
-    else if (ids.empty())
-    {
-        UWARN("ids list is empty");
-        return similarity;
-    }
-
-    for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
-    {
-        float sim = 0.0f;
-        if (*iter > 0)
-        {
-            const rtabmap::Signature *sB = this->getSignature(*iter);
-            if (sB == NULL)
-            {
-                UFATAL("Signature %d not found ?!?", *iter);
-            }
-            sim = signature->compareTo(*sB);
-        }
-
-        similarity.insert(similarity.end(), std::pair<int, float>(*iter, sim));
-    }
-
-    return similarity;
-}
-
-rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(int oldId, int newId) const
-{
-    const rtabmap::Signature *oldSig = getSignature(oldId);
-    if (oldSig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-    const rtabmap::Signature *newSig = getSignature(newId);
-    if (newSig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-    return computeGlobalVisualTransform(oldSig, newSig);
-}
-
-rtabmap::Transform MemoryLoc::computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const
-{
-    if (oldSig == NULL || newSig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-
-    rtabmap::Transform transform;
-    std::string msg;
-
-    int inliersCount = 0;
-    double variance = 1.0;
-
-    std::multimap<int, cv::Point3f> words3;
-
-    const rtabmap::Transform &oldSigPose = getOptimizedPose(oldSig->id());
-
-    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
-    std::multimap<int, cv::Point3f>::const_iterator word3Iter;
-    for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
-    {
-        cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, oldSigPose);
-        words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
-    }
-
-    // 3D to 2D (PnP)
-    if ((int)words3.size() >= _minInliers && (int)newSig->getWords().size() >= _minInliers)
-    {
-        const rtabmap::CameraModel &cameraModel = newSig->sensorData().cameraModels()[0];
-
-        std::vector<int> matches;
-        std::vector<int> inliers;
-        transform = rtabmap::util3d::estimateMotion3DTo2D(
-                        uMultimapToMapUnique(words3),
-                        uMultimapToMapUnique(newSig->getWords()),
-                        cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
-                        _minInliers,
-                        _iterations,
-                        _pnpReprojError,
-                        _pnpFlags,
-                        _pnpRefineIterations,
-                        oldSigPose, // use the old signature's pose as a guess
-                        uMultimapToMapUnique(newSig->getWords3()),
-                        &variance,
-                        &matches,
-                        &inliers);
-        inliersCount = (int)inliers.size();
-        if (transform.isNull())
-        {
-            msg = uFormat("Not enough inliers %d/%d between the old signatures and %d", inliersCount, _minInliers, newSig->id());
-            UINFO(msg.c_str());
-        }
-    }
-    else
-    {
-        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig->getWords().size(), _minInliers);
-        UINFO(msg.c_str());
-    }
-
-    // TODO check RegistrationVis.cpp to see whether rotation check is necessary
-
-    UDEBUG("transform=%s", transform.prettyPrint().c_str());
-    return transform;
 }
 
 void MemoryLoc::emptyTrash()

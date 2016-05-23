@@ -64,10 +64,11 @@ rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> 
     UDEBUG("");
     if (data != NULL)
     {
+        UDEBUG("Received image width %d, height %d", width, height);
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
 
-        //imwrite("image.jpg", img);
+        imwrite("image.jpg", img);
 
         if (!img.empty())
         {
