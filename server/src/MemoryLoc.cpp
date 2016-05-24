@@ -32,136 +32,8 @@ MemoryLoc::MemoryLoc() :
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
     _idCount(kIdStart),
     _feature2D(NULL),
-    _vwd(NULL),
-    _dbDriver(NULL)
+    _vwd(NULL)
 {
-}
-
-bool MemoryLoc::init(const std::string &dbUrl, const rtabmap::ParametersMap &parameters)
-{
-    UDEBUG("");
-
-    _feature2D = rtabmap::Feature2D::create(parameters);
-    _vwd = new rtabmap::VWDictionary(parameters);
-    this->parseParameters(parameters);
-
-    if (dbUrl.empty()) // so this Memory will be empty
-    {
-        return true;
-    }
-
-    _dbDriver = rtabmap::DBDriver::create(parameters);
-
-    _dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
-    if (!_dbDriver->openConnection(dbUrl))
-    {
-        UDEBUG("Connecting to database %s, path is invalid!", dbUrl.c_str());
-        return false;
-    }
-    UDEBUG("Connecting to database %s done!", dbUrl.c_str());
-
-    // Load the last working memory...
-    std::list<rtabmap::Signature *> dbSignatures;
-    UDEBUG("Loading all nodes to WM...");
-    std::set<int> ids;
-    _dbDriver->getAllNodeIds(ids, true);
-    _dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
-    _dbDriver->loadNodeData(dbSignatures);
-
-    for (std::list<rtabmap::Signature *>::reverse_iterator iter = dbSignatures.rbegin(); iter != dbSignatures.rend(); ++iter)
-    {
-        // ignore bad signatures
-        if (!((*iter)->isBadSignature() && _badSignaturesIgnored))
-        {
-            _signatures.insert(std::pair<int, rtabmap::Signature *>((*iter)->id(), *iter));
-            if (!(*iter)->sensorData().imageCompressed().empty())
-            {
-                (*iter)->sensorData().uncompressData();
-            }
-        }
-        else
-        {
-            delete *iter;
-        }
-    }
-    UDEBUG("Loading signatures done! (%d loaded)", int(_signatures.size()));
-
-    // Last id
-    _dbDriver->getLastNodeId(_idCount);
-
-    UDEBUG("ids start with %d", _idCount + 1);
-
-    // Now load the dictionary if we have a connection
-    UDEBUG("Loading dictionary...");
-    // load all referenced words in working memory
-    std::set<int> wordIds;
-    const std::map<int, rtabmap::Signature *> &signatures = this->getSignatures();
-    for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
-    {
-        const std::multimap<int, cv::KeyPoint> &words = i->second->getWords();
-        std::list<int> keys = uUniqueKeys(words);
-        wordIds.insert(keys.begin(), keys.end());
-    }
-    if (wordIds.size())
-    {
-        std::list<rtabmap::VisualWord *> words;
-        _dbDriver->loadWords(wordIds, words);
-        for (std::list<rtabmap::VisualWord *>::iterator iter = words.begin(); iter != words.end(); ++iter)
-        {
-            _vwd->addWord(*iter);
-        }
-        // Get Last word id
-        int id = 0;
-        _dbDriver->getLastWordId(id);
-        _vwd->setLastWordId(id);
-    }
-    UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
-    _vwd->update();
-
-    UDEBUG("Adding word references...");
-    // Enable loaded signatures
-    for (std::map<int, rtabmap::Signature *>::const_iterator i = signatures.begin(); i != signatures.end(); ++i)
-    {
-        rtabmap::Signature *s = this->_getSignature(i->first);
-        UASSERT(s != 0);
-
-        const std::multimap<int, cv::KeyPoint> &words = s->getWords();
-        if (words.size())
-        {
-            UDEBUG("node=%d, word references=%d", s->id(), words.size());
-            for (std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter != words.end(); ++iter)
-            {
-                _vwd->addWordRef(iter->first, i->first);
-            }
-            s->setEnabled(true);
-        }
-    }
-    UDEBUG("Adding word references, done! (%d)", _vwd->getTotalActiveReferences());
-
-    if (_vwd->getUnusedWordsSize())
-    {
-        UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
-    }
-    UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
-
-    optimizeGraph();
-
-    return true;
-}
-
-void MemoryLoc::close()
-{
-    if (_dbDriver)
-    {
-        UDEBUG("Closing database \"%s\"...", _dbDriver->getUrl().c_str());
-        _dbDriver->closeConnection();
-        delete _dbDriver;
-        _dbDriver = NULL;
-        UDEBUG("Closing database, done!");
-    }
-    UDEBUG("Clearing memory...");
-    this->clear();
-    UDEBUG("Clearing memory, done!");
 }
 
 MemoryLoc::~MemoryLoc()
@@ -178,6 +50,132 @@ MemoryLoc::~MemoryLoc()
     }
 }
 
+bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::ParametersMap &parameters)
+{
+    UDEBUG("");
+
+    _feature2D = rtabmap::Feature2D::create(parameters);
+    _vwd = new rtabmap::VWDictionary(parameters);
+    this->parseParameters(parameters);
+
+    for (int dbId = 0; dbId != dbUrls.size(); dbId++)
+    {
+        std::string &dbUrl = dbUrls.at(dbId);
+        rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create(parameters);
+        if (!dbDriver->openConnection(dbUrl))
+        {
+            UDEBUG("Connecting to database %s, path is invalid!", dbUrl.c_str());
+            return false;
+        }
+        UDEBUG("Connecting to database %s done!", dbUrl.c_str());
+
+        // Load the last working memory...
+        std::list<rtabmap::Signature *> signatures;
+        UDEBUG("Loading all nodes to WM...");
+        std::set<int> ids;
+        dbDriver->getAllNodeIds(ids, true);
+        dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), signatures);
+        dbDriver->loadNodeData(signatures);
+
+        std::map<int, rtabmap::Signature *> signatureMap;
+        for (std::list<rtabmap::Signature *>::reverse_iterator iter = signatures.rbegin(); iter != signatures.rend(); ++iter)
+        {
+            rtabmap::Signature *sig = *iter;
+            // ignore bad signatures
+            if (!(sig->isBadSignature() && _badSignaturesIgnored))
+            {
+                signatureMap.insert(std::pair<int, rtabmap::Signature *>(sig->id(), sig));
+                if (!sig->sensorData().imageCompressed().empty())
+                {
+                    sig->sensorData().uncompressData();
+                }
+            }
+            else
+            {
+                delete *iter;
+            }
+        }
+        UDEBUG("Loading signatures done! (%d loaded)", int(signaturesMap.size()));
+
+        // Last node id
+        int idCount;
+        dbDriver->getLastNodeId(idCount);
+        UDEBUG("ids start with %d", _idCount + 1);
+
+        // Now load the dictionary if we have a connection
+        UDEBUG("Loading dictionary...");
+        // load all referenced words in working memory
+        std::set<int> wordIds;
+        for (std::map<int, rtabmap::Signature *>::const_iterator iter = signatureMap.begin(); iter != signatureMap.end(); ++iter)
+        {
+            const std::multimap<int, cv::KeyPoint> &words = iter->second->getWords();
+            std::list<int> keys = uUniqueKeys(words);
+            wordIds.insert(keys.begin(), keys.end());
+        }
+        if (wordIds.size())
+        {
+            std::list<rtabmap::VisualWord *> words;
+            dbDriver->loadWords(wordIds, words);
+            for (std::list<rtabmap::VisualWord *>::iterator iter = words.begin(); iter != words.end(); ++iter)
+            {
+                _vwd->addWord(*iter);
+            }
+            // Get Last word id
+            int id = 0;
+            dbDriver->getLastWordId(id);
+            _vwd->setLastWordId(id);
+        }
+        UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+        _vwd->update();
+
+        UDEBUG("Adding word references...");
+        // Enable loaded signatures
+        for (std::map<int, rtabmap::Signature *>::const_iterator iter = signatureMap.begin(); iter != signatureMap.end(); ++iter)
+        {
+            rtabmap::Signature *sig = iter->second;
+            const std::multimap<int, cv::KeyPoint> &words = sig->getWords();
+            if (words.size())
+            {
+                UDEBUG("node=%d, word references=%d", s->id(), words.size());
+                for (std::multimap<int, cv::KeyPoint>::const_iterator jter = words.begin(); jter != words.end(); ++jter)
+                {
+                    _vwd->addWordRef(jter->first, iter->first);
+                }
+                sig->setEnabled(true);
+            }
+        }
+        UDEBUG("Adding word references, done! (%d)", _vwd->getTotalActiveReferences());
+
+        if (_vwd->getUnusedWordsSize())
+        {
+            UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
+        }
+        UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+
+        std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId);
+
+        _idCounts.push_back(idCount);
+        _signatures.push_back(std::map<int, rtabmap::Signature *>());
+        _optimizedPoseMaps.push_back(optimizedPoseMap);
+
+        UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
+        dbDriver->join(true);
+        dbDriver->closeConnection();
+        delete dbDriver;
+        dbDriver = NULL;
+        UDEBUG("Closing database, done!");
+    }
+
+    return true;
+}
+
+void MemoryLoc::close()
+{
+    UDEBUG("Clearing memory...");
+    this->clear();
+    UDEBUG("Clearing memory, done!");
+}
+
 void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
 {
     uInsert(parameters_, parameters);
@@ -186,11 +184,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::ParametersMap::const_iterator iter;
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
-
-    if (_dbDriver)
-    {
-        _dbDriver->parseParameters(parameters);
-    }
 
     // Keypoint stuff
     if (_vwd)
@@ -222,7 +215,7 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     }
 }
 
-bool MemoryLoc::update(rtabmap::SensorData &data, void *context)
+int MemoryLoc::add(rtabmap::SensorData &data, void *context)
 {
     UDEBUG("");
 
@@ -233,65 +226,70 @@ bool MemoryLoc::update(rtabmap::SensorData &data, void *context)
     }
 
     rtabmap::Signature *signature = this->createSignature(data, context);
-    if (signature == NULL)
+    if (sig == NULL)
     {
         UERROR("Failed to create a signature...");
         return false;
     }
 
-    UDEBUG("adding %d", signature->id());
+    UDEBUG("adding %d", sig->id());
     _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
 
-    if (signature->getWords().size())
+    if (sig->getWords().size())
     {
-        signature->setEnabled(true);
+        sig->setEnabled(true);
     }
 
-    return true;
+    return sig->id();
 }
 
-void MemoryLoc::optimizeGraph()
+void MemoryLoc::remove(int locationId)
 {
-    if (getLastWorkingSignature())
+    UDEBUG("Deleting location %d", locationId);
+    rtabmap::Signature *location = getSignature(locationId);
+    if (location)
     {
-        // Get all IDs linked to last signature (including those in Long-Term Memory)
-        std::map<int, int> ids = getNeighborsId(getLastWorkingSignature()->id(), 0);
-
-        UINFO("Optimize poses, ids.size() = %d", ids.size());
-
-        // Get all metric constraints (the graph)
-        std::map<int, rtabmap::Transform> poses;
-        std::multimap<int, rtabmap::Link> links;
-        getMetricConstraints(uKeysSet(ids), poses, links);
-
-        // Optimize the graph
-        rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
-        _optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
-        delete graphOptimizer;
+        this->moveToTrash(location, false);
     }
 }
 
-const rtabmap::Signature *MemoryLoc::getSignature(int id) const
+void MemoryLoc::optimizeGraph(int dbId)
 {
-    return _getSignature(id);
+    // Get all IDs linked to last signature
+    // TODO: why rbegin is guaranteed to have neighbors?
+    std::map<int, int> ids = getNeighborsId(dbId, _signatureMaps.at(dbId).rbegin()->id(), 0);
+
+    UINFO("Optimize poses, ids.size() = %d", ids.size());
+
+    // Get all metric constraints (the graph)
+    std::map<int, rtabmap::Transform> poses;
+    std::multimap<int, rtabmap::Link> links;
+    getMetricConstraints(dbId, uKeysSet(ids), poses, links);
+
+    // Optimize the graph
+    rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
+    rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
+    std::map<int, rtabmap::Transform> optimizedPoseMap = graphOptimizer->optimize(poses.begin()->first, poses, links);
+    delete graphOptimizer;
+
+    return optimizedPoseMap;
 }
 
-const std::map<int, rtabmap::Signature *> &MemoryLoc::getSignatures() const
+const rtabmap::Signature *MemoryLoc::getSignature(int dbId, int sigId) const
 {
-    return _signatures;
+    return uValue(_signatureMaps.at(dbId), sigId, (rtabmap::Signature *)0);
 }
 
-rtabmap::Signature *MemoryLoc::_getSignature(int id) const
+const std::map<int, rtabmap::Signature *> &MemoryLoc::getSignatureMap(int dbId) const
 {
-    return uValue(_signatures, id, (rtabmap::Signature *)0);
+    return _signatureMaps.at(dbId);
 }
 
-std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int signatureId) const
+std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) const
 {
     std::map<int, rtabmap::Link> links;
-    rtabmap::Signature *s = uValue(_signatures, signatureId, (rtabmap::Signature *)0);
-    if (s)
+    rtabmap::Signature *sig = getSignature(dbId, sigId);
+    if (sig)
     {
         const std::map<int, rtabmap::Link> &allLinks = s->getLinks();
         for (std::map<int, rtabmap::Link>::const_iterator iter = allLinks.begin(); iter != allLinks.end(); ++iter)
@@ -312,14 +310,13 @@ std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int signatureId) const
 
 // return map<Id,Margin>, including signatureId
 std::map<int, int> MemoryLoc::getNeighborsId(
+    int dbId,
     int signatureId,
-    int maxGraphDepth, // 0 means infinite margin
     bool incrementMarginOnLoop, // default false
     bool ignoreLoopIds, // default false
     bool ignoreIntermediateNodes // default false
 ) const
 {
-    UASSERT(maxGraphDepth >= 0);
     //UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
     std::map<int, int> ids;
     if (signatureId <= 0)
@@ -333,7 +330,7 @@ std::map<int, int> MemoryLoc::getNeighborsId(
     nextMargin.insert(signatureId);
     int m = 0;
     std::set<int> ignoredIds;
-    while ((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
+    while (nextMargin.size())
     {
         // insert more recent first (priority to be loaded first from the database below if set)
         curentMarginList = std::list<int>(nextMargin.rbegin(), nextMargin.rend());
@@ -345,7 +342,7 @@ std::map<int, int> MemoryLoc::getNeighborsId(
             {
                 //UDEBUG("Added %d with margin %d", *jter, m);
                 // Look up in STM/WM if all ids are here, if not... load them from the database
-                const rtabmap::Signature *s = this->getSignature(*jter);
+                const rtabmap::Signature *s = getSignature(dbId, *jter);
                 std::map<int, rtabmap::Link> tmpLinks;
                 const std::map<int, rtabmap::Link> *links = &tmpLinks;
                 UASSERT(s != NULL);
@@ -415,18 +412,6 @@ void MemoryLoc::clear()
 
     this->cleanUnusedWords();
 
-    if (_dbDriver)
-    {
-        _dbDriver->emptyTrashes();
-        _dbDriver->join();
-    }
-    if (_dbDriver)
-    {
-        // make sure time_enter in database is at least 1 second
-        // after for the next stuf added to database
-        uSleep(1500);
-    }
-
     //Get the tree root (parents)
     std::map<int, rtabmap::Signature *> mem = _signatures;
     for (std::map<int, rtabmap::Signature *>::iterator i = mem.begin(); i != mem.end(); ++i)
@@ -444,38 +429,14 @@ void MemoryLoc::clear()
     }
     _signatures.clear();
 
-    UDEBUG("");
-    // Wait until the db trash has finished cleaning the memory
-    if (_dbDriver)
-    {
-        _dbDriver->emptyTrashes();
-    }
-    UDEBUG("");
     _idCount = kIdStart;
 
-    if (_dbDriver)
-    {
-        _dbDriver->join(true);
-        cleanUnusedWords();
-        _dbDriver->emptyTrashes();
-    }
-    else
-    {
-        cleanUnusedWords();
-    }
+    cleanUnusedWords();
     if (_vwd)
     {
         _vwd->clear();
     }
     UDEBUG("");
-}
-
-void MemoryLoc::emptyTrash()
-{
-    if (_dbDriver)
-    {
-        _dbDriver->emptyTrashes(true);
-    }
 }
 
 /**
@@ -507,22 +468,6 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
         _signatures.erase(s->id());
 
         delete s;
-    }
-}
-
-const rtabmap::Signature *MemoryLoc::getLastWorkingSignature() const
-{
-    UDEBUG("");
-    return this->_getSignature(_signatures.rbegin()->first);
-}
-
-void MemoryLoc::deleteLocation(int locationId)
-{
-    UDEBUG("Deleting location %d", locationId);
-    rtabmap::Signature *location = _getSignature(locationId);
-    if (location)
-    {
-        this->moveToTrash(location, false);
     }
 }
 
@@ -633,7 +578,7 @@ void MemoryLoc::disableWordsRef(int signatureId)
 {
     UDEBUG("id=%d", signatureId);
 
-    rtabmap::Signature *ss = this->_getSignature(signatureId);
+    rtabmap::Signature *ss = getSignature(signatureId);
     if (ss && ss->isEnabled())
     {
         const std::multimap<int, cv::KeyPoint> &words = ss->getWords();
@@ -673,6 +618,7 @@ void MemoryLoc::cleanUnusedWords()
 // return all non-null poses
 // return unique links between nodes (for neighbors: old->new, for loops: parent->child)
 void MemoryLoc::getMetricConstraints(
+    int dbId,
     const std::set<int> &ids,
     std::map<int, rtabmap::Transform> &poses,
     std::multimap<int, rtabmap::Link> &links)
@@ -680,7 +626,7 @@ void MemoryLoc::getMetricConstraints(
     UDEBUG("");
     for (std::set<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
     {
-        const rtabmap::Signature *s = getSignature(*iter);
+        const rtabmap::Signature *s = getSignature(dbId, *iter);
         rtabmap::Transform pose = s->getPose();
         if (!pose.isNull())
         {
@@ -692,7 +638,7 @@ void MemoryLoc::getMetricConstraints(
     {
         if (uContains(poses, *iter))
         {
-            const rtabmap::Signature *s = getSignature(*iter);
+            const rtabmap::Signature *s = getSignature(dbId, *iter);
             UASSERT(s != NULL);
             std::map<int, rtabmap::Link> tmpLinks = s->getLinks();
             for (std::map<int, rtabmap::Link>::iterator jter = tmpLinks.begin(); jter != tmpLinks.end(); ++jter)
@@ -705,7 +651,7 @@ void MemoryLoc::getMetricConstraints(
                             jter->second.type() == rtabmap::Link::kNeighborMerged))
                     {
                         rtabmap::Link link = jter->second;
-                        const rtabmap::Signature *s = this->getSignature(jter->first);
+                        const rtabmap::Signature *s = getSignature(dbId, jter->first);
                         UASSERT(s != NULL);
                         while (s && s->getWeight() == -1)
                         {
@@ -716,14 +662,13 @@ void MemoryLoc::getMetricConstraints(
                             std::map<int, rtabmap::Link>::iterator uter = n.upper_bound(s->id());
                             if (uter != n.end())
                             {
-                                const rtabmap::Signature *s2 = this->getSignature(uter->first);
+                                const rtabmap::Signature *s2 = getSignature(dbId, uter->first);
                                 if (s2)
                                 {
                                     link = link.merge(uter->second, uter->second.type());
                                     poses.erase(s->id());
                                     s = s2;
                                 }
-
                             }
                             else
                             {

@@ -36,7 +36,6 @@ Localization::~Localization()
     _httpServer = NULL;
 }
 
-
 bool Localization::init(const rtabmap::ParametersMap &parameters)
 {
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
@@ -99,7 +98,7 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     {
         MemoryLoc *memory = _memories->at(i);
         // generate kpts
-        if (memory->update(*sensorData, con_info))
+        if (memory->add(*sensorData, con_info))
         {
             con_info->time.search_start = getTime();
             UDEBUG("");
@@ -163,8 +162,7 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     {
         MemoryLoc *memory = _memories->at(i);
         const rtabmap::Signature *newS = memory->getLastWorkingSignature();
-        memory->deleteLocation(newS->id());
-        memory->emptyTrash();
+        memory->remove(newS->id());
     }
 
     UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topDbId);
@@ -211,7 +209,7 @@ float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabma
     float similarity = 0.0f;
     const std::multimap<int, cv::KeyPoint> &words1 = s1.getWords();
     const std::multimap<int, cv::KeyPoint> &words2 = s2.getWords();
-    if(words1.size() != 0 && words2.size() != 0)
+    if (words1.size() != 0 && words2.size() != 0)
     {
         std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
         rtabmap::EpipolarGeometry::findPairs(words1, words2, pairs);

@@ -29,31 +29,29 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    bool update(rtabmap::SensorData &data, void *context);
-    bool init(const std::string &dbUrl,
+    bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    int add(rtabmap::SensorData &data, void *context);
+    void remove(int locationId);
     void close();
 
-    void emptyTrash();
-    void deleteLocation(int locationId);
-
-    const rtabmap::Signature *getLastWorkingSignature() const;
     rtabmap::Transform getOptimizedPose(int signatureId) const;
-    const rtabmap::Signature *getSignature(int id) const;
-    const std::map<int, rtabmap::Signature *> &getSignatures() const;
+    const rtabmap::Signature *getSignature(int dbId, int sigId) const;
+    const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    void optimizeGraph();  // optimize poses using TORO graph
+    void optimizeGraph(int dbId);  // optimize poses using TORO graph
 
     std::map<int, int> getNeighborsId(
+        int dbId,
         int signatureId,
-        int maxGraphDepth,
         bool incrementMarginOnLoop = false,
         bool ignoreLoopIds = false,
         bool ignoreIntermediateNodes = false) const;
-    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
+    std::map<int, rtabmap::Link> getNeighborLinks(int dbId, int sigId) const;
     void getMetricConstraints(
+        int dbId,
         const std::set<int> &ids,
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links);
@@ -62,7 +60,6 @@ private:
     void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 
-    rtabmap::Signature *_getSignature(int id) const;
     int getNextId();
     void clear();
 
@@ -72,18 +69,15 @@ private:
     void disableWordsRef(int signatureId);
     void cleanUnusedWords();
 
-protected:
-    rtabmap::DBDriver *_dbDriver;
-
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
     bool _badSignaturesIgnored;
 
-    int _idCount;
+    std::vector<int> _idCounts;
 
-    std::map<int, rtabmap::Transform> _optimizedPoses;
-    std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
+    std::vector<std::map<int, rtabmap::Signature *> > _signatureMaps;
+    std::vector<std::map<int, rtabmap::Transform> > _optimizedPoseMaps;
 
     //Keypoint stuff
     rtabmap::VWDictionary *_vwd;
