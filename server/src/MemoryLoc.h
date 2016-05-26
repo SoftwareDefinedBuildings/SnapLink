@@ -5,7 +5,6 @@
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Features2d.h>
-#include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/utilite/UStl.h>
 #include <typeinfo>
 #include <list>
@@ -13,10 +12,11 @@
 #include <set>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include "VWDictFixed.h"
 
 class Signature;
 class DBDriver;
-class VWDictionary;
+class VWDictFixed;
 class VisualWord;
 class Feature2D;
 
@@ -80,6 +80,6 @@ private:
     std::vector<std::map<int, rtabmap::Transform> > _optimizedPoseMaps;
 
     //Keypoint stuff
-    rtabmap::VWDictionary *_vwd;
+    VWDictFixed *_vwd;
     rtabmap::Feature2D *_feature2D;
 };

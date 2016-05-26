@@ -55,7 +55,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
     UDEBUG("");
 
     _feature2D = rtabmap::Feature2D::create(parameters);
-    _vwd = new rtabmap::VWDictionary(parameters);
+    _vwd = new VWDictFixed(parameters);
     this->parseParameters(parameters);
 
     for (int dbId = 0; dbId != dbUrls.size(); dbId++)
@@ -120,10 +120,6 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             {
                 _vwd->addWord(*iter);
             }
-            // Get Last word id
-            int id = 0;
-            dbDriver->getLastWordId(id);
-            _vwd->setLastWordId(id);
         }
         UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
         _vwd->update();
@@ -159,8 +155,8 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         _optimizedPoseMaps.push_back(optimizedPoseMap);
 
         UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
-        dbDriver->join(true);
         dbDriver->closeConnection();
+        dbDriver->join();
         delete dbDriver;
         dbDriver = NULL;
         UDEBUG("Closing database, done!");
@@ -530,11 +526,11 @@ rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *
         }
     }
 
-    std::list<int> wordIds;
+    std::vector<int> wordIds;
     if (descriptors.rows)
     {
         con_info->time.vwd_start = getTime();
-        wordIds = _vwd->addNewWords(descriptors, id);
+        wordIds = _vwd->findNN(descriptors);
         con_info->time.vwd += getTime() - con_info->time.vwd_start;
     }
     else if (id > 0)
