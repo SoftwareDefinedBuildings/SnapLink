@@ -140,7 +140,7 @@ std::vector< std::pair<int, int> > Localization::findKNearestSignatures(const rt
         for (std::map<int, rtabmap::Signature *>::const_iterator sigIter = signatureMap.begin(); sigIter != signatureMap.end(); sigIter++)
         {
             const rtabmap::Signature *s2 = sigIter->second;
-            float sim = computeSimilarity(signature, *s2);
+            float sim = signature.compareTo(*s2);
             similarities.insert(std::make_pair(std::make_pair(dbId, sigIter->first), sim));
             UDEBUG("dbId: %d, sigId: %d, similarity: %f", dbId, sigIter->first, sim);
         }
@@ -165,19 +165,19 @@ std::vector< std::pair<int, int> > Localization::findKNearestSignatures(const rt
     return topIds;
 }
 
-float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2)
-{
-    float similarity = 0.0f;
-    const std::multimap<int, cv::KeyPoint> &words1 = s1.getWords();
-    const std::multimap<int, cv::KeyPoint> &words2 = s2.getWords();
-    if (words1.size() != 0 && words2.size() != 0)
-    {
-        std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-        rtabmap::EpipolarGeometry::findPairs(words1, words2, pairs);
-        similarity = float(pairs.size());
-    }
-    return similarity;
-}
+// float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2)
+// {
+//     float similarity = 0.0f;
+//     const std::multimap<int, cv::KeyPoint> &words1 = s1.getWords();
+//     const std::multimap<int, cv::KeyPoint> &words2 = s2.getWords();
+//     if (words1.size() != 0 && words2.size() != 0)
+//     {
+//         std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+//         rtabmap::EpipolarGeometry::findPairs(words1, words2, pairs);
+//         similarity = float(pairs.size());
+//     }
+//     return similarity;
+// }
 
 bool Localization::compareSimilarity(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r)
 {

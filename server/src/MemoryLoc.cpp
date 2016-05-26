@@ -57,7 +57,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
     _vwd = new VWDictFixed(parameters);
     this->parseParameters(parameters);
 
-    for (int dbId = 0; dbId != dbUrls.size(); dbId++)
+    for (int dbId = 0; dbId < dbUrls.size(); dbId++)
     {
         std::string &dbUrl = dbUrls.at(dbId);
         rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create(parameters);
@@ -142,9 +142,9 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         }
         UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
-        std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId);
-
         _signatureMaps.push_back(signatureMap);
+        
+        std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId);
         _optimizedPoseMaps.push_back(optimizedPoseMap);
 
         UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
@@ -173,12 +173,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     rtabmap::ParametersMap::const_iterator iter;
 
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
-
-    // Keypoint stuff
-    if (_vwd)
-    {
-        _vwd->parseParameters(parameters);
-    }
 
     //Keypoint detector
     UASSERT(_feature2D != 0);

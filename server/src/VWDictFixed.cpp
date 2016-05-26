@@ -313,120 +313,16 @@ const int VWDictFixed::ID_INVALID = 0;
 
 VWDictFixed::VWDictFixed(const rtabmap::ParametersMap &parameters) :
     _totalActiveReferences(0),
-    _dictionaryPath(rtabmap::Parameters::defaultKpDictionaryPath()),
     useDistanceL1_(false),
     _flannIndex(new FlannIndex()),
     _strategy(kNNFlannKdTree)
 {
-    this->parseParameters(parameters);
 }
 
 VWDictFixed::~VWDictFixed()
 {
     this->clear();
     delete _flannIndex;
-}
-
-void VWDictFixed::parseParameters(const rtabmap::ParametersMap &parameters)
-{
-    rtabmap::ParametersMap::const_iterator iter;
-
-    std::string dictionaryPath = _dictionaryPath;
-    if ((iter = parameters.find(rtabmap::Parameters::kKpDictionaryPath())) != parameters.end())
-    {
-        dictionaryPath = (*iter).second.c_str();
-    }
-
-    this->setFixedDictionary(dictionaryPath);
-}
-
-void VWDictFixed::setFixedDictionary(const std::string &dictionaryPath)
-{
-    if (dictionaryPath.empty())
-    {
-        UFATAL("");
-    }
-
-    if (_dictionaryPath.compare(dictionaryPath) != 0 || _visualWords.size() == 0)
-    {
-        std::ifstream file;
-        file.open(dictionaryPath.c_str(), std::ifstream::in);
-        if (file.good())
-        {
-            UDEBUG("Deleting old dictionary and loading the new one from \"%s\"", dictionaryPath.c_str());
-            UTimer timer;
-
-            // first line is the header
-            std::string str;
-            std::list<std::string> strList;
-            std::getline(file, str);
-            strList = uSplitNumChar(str);
-            unsigned int dimension  = 0;
-            for (std::list<std::string>::iterator iter = strList.begin(); iter != strList.end(); ++iter)
-            {
-                if (uIsDigit(iter->at(0)))
-                {
-                    dimension = std::atoi(iter->c_str());
-                    break;
-                }
-            }
-
-            if (dimension == 0 || dimension > 1000)
-            {
-                UERROR("Invalid dictionary file, visual word dimension (%d) is not valid, \"%s\"", dimension, dictionaryPath.c_str());
-            }
-            else
-            {
-                // Process all words
-                while (file.good())
-                {
-                    std::getline(file, str);
-                    strList = uSplit(str);
-                    if (strList.size() == dimension + 1)
-                    {
-                        //first one is the visual word id
-                        std::list<std::string>::iterator iter = strList.begin();
-                        int id = std::atoi(iter->c_str());
-                        cv::Mat descriptor(1, dimension, CV_32F);
-                        ++iter;
-                        unsigned int i = 0;
-
-                        //get descriptor
-                        for (; i < dimension && iter != strList.end(); ++i, ++iter)
-                        {
-                            descriptor.at<float>(i) = uStr2Float(*iter);
-                        }
-                        if (i != dimension)
-                        {
-                            UERROR("");
-                        }
-
-                        rtabmap::VisualWord *vw = new rtabmap::VisualWord(id, descriptor, 0);
-                        _visualWords.insert(_visualWords.end(), std::pair<int, rtabmap::VisualWord *>(id, vw));
-                        _notIndexedWords.insert(_notIndexedWords.end(), id);
-                    }
-                    else
-                    {
-                        UWARN("Cannot parse line \"%s\"", str.c_str());
-                    }
-                }
-                this->update();
-            }
-
-
-            UDEBUG("Time changing dictionary = %fs", timer.ticks());
-        }
-        else
-        {
-            UERROR("Cannot open dictionary file \"%s\"", dictionaryPath.c_str());
-        }
-        file.close();
-    }
-    else
-    {
-        UDEBUG("Dictionary \"%s\" already loaded...", dictionaryPath.c_str());
-    }
-    _dictionaryPath = dictionaryPath;
 }
 
 void VWDictFixed::update()

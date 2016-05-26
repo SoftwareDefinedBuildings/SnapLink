@@ -17,6 +17,7 @@ SET(INCLUDE_DIRS
     ${PCL_INCLUDE_DIRS}
     ${Qt5Core_INCLUDE_DIRS}
     ${MHD_INCLUDE_DIRS}
+    "/root/workspace/rtabmap/corelib/src"
 )
 
 SET(LIBRARIES

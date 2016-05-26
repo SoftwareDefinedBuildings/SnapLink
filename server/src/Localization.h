@@ -36,7 +36,7 @@ private:
     bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
     std::vector< std::pair<int, int> > findKNearestSignatures(const rtabmap::Signature &signature, int k);
-    static float computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2);
+    //static float computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2);
     static bool compareSimilarity(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r);
     rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const;
 

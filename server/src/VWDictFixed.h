@@ -29,8 +29,6 @@ public:
     VWDictFixed(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~VWDictFixed();
 
-    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-
     virtual void update();
 
     virtual void addWord(rtabmap::VisualWord *vw);
@@ -50,7 +48,6 @@ public:
     {
         return _totalActiveReferences;
     }
-    void setFixedDictionary(const std::string &dictionaryPath);
 
     void clear(bool printWarningsIfNotEmpty = true);
     std::vector<rtabmap::VisualWord *> getUnusedWords() const;
@@ -66,7 +63,6 @@ protected:
     int _totalActiveReferences; // keep track of all references for updating the common signature
 
 private:
-    std::string _dictionaryPath; // a pre-computed dictionary (.txt)
     bool useDistanceL1_;
     FlannIndex *_flannIndex;
     cv::Mat _dataTree;
