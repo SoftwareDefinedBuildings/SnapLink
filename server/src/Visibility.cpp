@@ -32,9 +32,9 @@ bool Visibility::init(std::vector<std::string> &dbfiles)
     return processLabels(dbfiles);
 }
 
-void Visibility::setMemories(std::vector<MemoryLoc *> *memories)
+void Visibility::setMemory(MemoryLoc *memory)
 {
-    _memories = memories;
+    _memory = memory;
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -64,10 +64,9 @@ bool Visibility::event(QEvent *event)
 
 bool Visibility::processLabels(std::vector<std::string> &dbfiles)
 {
-    for (int i = 0; i < dbfiles.size(); ++i)
+    for (int dbId = 0; dbId < dbfiles.size(); dbId++)
     {
-        const std::string &dbfile = dbfiles.at(i);
-        MemoryLoc *memory = _memories->at(i);
+        const std::string &dbfile = dbfiles.at(dbId);
         std::vector<cv::Point3f> points;
         std::vector<std::string> labels;
         sqlite3 *db = NULL;
@@ -93,17 +92,17 @@ bool Visibility::processLabels(std::vector<std::string> &dbfiles)
                 int x = sqlite3_column_int(stmt, 2);
                 int y = sqlite3_column_int(stmt, 3);
                 pcl::PointXYZ pWorld;
-                if (getPoint3World(imageId, x, y, memory, pWorld))
+                if (getPoint3World(dbId, imageId, x, y, pWorld))
                 {
                     points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
                     labels.push_back(label);
-                    UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, label.c_str(), dbfiles.at(i).c_str());
+                    UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, label.c_str(), dbfiles.at(dbId).c_str());
                 }
             }
         }
         else
         {
-            UWARN("Could not read database %s: %s", dbfiles.at(i).c_str(), sqlite3_errmsg(db));
+            UWARN("Could not read database %s: %s", dbfiles.at(dbId).c_str(), sqlite3_errmsg(db));
         }
 
         _points.push_back(points);
@@ -200,9 +199,9 @@ std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorDat
     return names;
 }
 
-bool Visibility::getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld)
+bool Visibility::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
 {
-    const rtabmap::Signature *s = memory->getSignature(imageId);
+    const rtabmap::Signature *s = _memory->getSignature(dbId, imageId);
     if (s == NULL)
     {
         UWARN("Signature %d does not exist", imageId);
@@ -217,7 +216,7 @@ bool Visibility::getPoint3World(int imageId, int x, int y, const MemoryLoc *memo
         UWARN("Depth value not valid");
         return false;
     }
-    rtabmap::Transform poseWorld = memory->getOptimizedPose(imageId);
+    rtabmap::Transform poseWorld = _memory->getOptimizedPose(dbId, imageId);
     if (poseWorld.isNull())
     {
         UWARN("Image pose is Null");

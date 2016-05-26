@@ -17,7 +17,7 @@ public:
 
     bool init(std::vector<std::string> &dbfiles);
 
-    void setMemories(std::vector<MemoryLoc *> *memories);
+    void setMemory(MemoryLoc *memory);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:
@@ -26,15 +26,14 @@ protected:
 private:
     bool processLabels(std::vector<std::string> &dbfiles);
     std::vector<std::string> *process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
-
-    static bool getPoint3World(int imageId, int x, int y, const MemoryLoc *memory, pcl::PointXYZ &pWorld);
+    bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
 private:
     // labels
     std::vector< std::vector<cv::Point3f> > _points;
     std::vector< std::vector<std::string> > _labels;
     HTTPServer *_httpServer;
-    std::vector<MemoryLoc *> *_memories;
+    MemoryLoc *_memory;
 };
 
 struct CompareMeanDist

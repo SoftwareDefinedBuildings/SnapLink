@@ -16,7 +16,7 @@
 #include "FailureEvent.h"
 
 Localization::Localization() :
-    _memories(NULL),
+    _memory(NULL),
     _vis(NULL),
     _httpServer(NULL),
 
@@ -30,8 +30,7 @@ Localization::Localization() :
 
 Localization::~Localization()
 {
-    _memories->clear();
-    _memories = NULL;
+    _memory = NULL;
     _vis = NULL;
     _httpServer = NULL;
 }
@@ -47,9 +46,9 @@ bool Localization::init(const rtabmap::ParametersMap &parameters)
     return true;
 }
 
-void Localization::setMemories(std::vector<MemoryLoc *> *memories)
+void Localization::setMemory(MemoryLoc *memory)
 {
-    _memories = memories;
+    _memory = memory;
 }
 
 void Localization::setVisibility(Visibility *vis)
@@ -92,58 +91,25 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
 
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
-    std::map<std::pair<int, int>, float> similarities; // {{db id: sig id}: similarity}
-
-    for (int i = 0; i < _memories->size(); ++i)
+    // generate kpts
+    const rtabmap::Signature *newSig = _memory->createSignature(*sensorData, con_info); // create a new signature, not added to DB
+    if (newSig == NULL)
     {
-        MemoryLoc *memory = _memories->at(i);
-        // generate kpts
-        if (memory->add(*sensorData, con_info))
-        {
-            con_info->time.search_start = getTime();
-            UDEBUG("");
-            const rtabmap::Signature *newS = memory->getLastWorkingSignature();
-            UDEBUG("newWords=%d", (int)newS->getWords().size());
-            std::list<int> signaturesToCompare = uKeysList(memory->getSignatures());
-            signaturesToCompare.remove(newS->id());
-            UDEBUG("signaturesToCompare.size() = %d", signaturesToCompare.size());
-            std::map<int, float> _similarities = computeSimilarities(*newS, signaturesToCompare, memory);
-            _similarities.erase(-1);
-            for (std::map<int, float>::const_iterator j = _similarities.begin(); j != _similarities.end(); ++j)
-            {
-                similarities.insert(std::make_pair(std::make_pair(i, j->first), j->second));
-                UDEBUG("dbId: %d, sigId: %d, similarity: %f", i, j->first, j->second);
-            }
-            con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
-        }
+        return false;
     }
+    UDEBUG("newWords=%d", (int)newSig->getWords().size());
 
-    std::vector< std::pair<int, int> > topIds;
-    std::pair<int, int> topId;
-    if (similarities.size())
-    {
-        std::vector< std::pair<std::pair<int, int>, float> > top(TOP_K);
-        std::partial_sort_copy(similarities.begin(),
-                               similarities.end(),
-                               top.begin(),
-                               top.end(),
-                               compareSimilarity);
-        for (std::vector< std::pair<std::pair<int, int>, float> >::iterator it = top.begin(); it != top.end(); ++it)
-        {
-            topIds.push_back(it->first);
-            //UDEBUG("dbId: %d, sigId: %d", it->first.first, it->first.second);
-        }
-        topId = topIds[0];
-    }
+    con_info->time.search_start = getTime();
+    std::vector< std::pair<int, int> > topIds = findKNearestSignatures(*newSig, TOP_K);
+    con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
+    std::pair<int, int> topId = topIds[0];
 
     // TODO: compare interatively until success
     int topDbId = topId.first;
     int topSigId = topId.second;
     UDEBUG("topDbId: %d, topSigId: %d", topDbId, topSigId);
-    const rtabmap::Signature *newS = _memories->at(topDbId)->getLastWorkingSignature();
     con_info->time.pnp_start = getTime();
-    MemoryLoc *memory = _memories->at(topDbId);
-    *pose = computeGlobalVisualTransform(topSigId, newS->id(), memory);
+    *pose = computeGlobalVisualTransform(newSig, topDbId, topSigId);
     con_info->time.pnp += getTime() - con_info->time.pnp_start;
     *dbId = topDbId;
 
@@ -154,54 +120,49 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     else
     {
         UWARN("transform is null, using pose of the closest image");
-        *pose = _memories->at(topDbId)->getOptimizedPose(topSigId);
-    }
-
-    // remove new words from dictionary
-    for (int i = 0; i < _memories->size(); ++i)
-    {
-        MemoryLoc *memory = _memories->at(i);
-        const rtabmap::Signature *newS = memory->getLastWorkingSignature();
-        memory->remove(newS->id());
+        *pose = _memory->getOptimizedPose(topDbId, topSigId);
     }
 
     UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topDbId);
 
+    delete newSig;
+
     return !pose->isNull();
 }
 
-/**
- * Compute the similarity of the signature with some others in the memory.
- * Important: Assuming that all other ids are under 'signature' id.
- * If an error occurs, the result is empty.
- */
-std::map<int, float> Localization::computeSimilarities(const rtabmap::Signature &signature, const std::list<int> &ids, const MemoryLoc *memory)
+std::vector< std::pair<int, int> > Localization::findKNearestSignatures(const rtabmap::Signature &signature, int k)
 {
-    std::map<int, float> similarity;
-
-    if (ids.empty())
+    std::map<std::pair<int, int>, float> similarities; // {(db id, sig id): similarity}
+    const std::vector<std::map<int, rtabmap::Signature *> > &signatureMaps = _memory->getSignatureMaps();
+    for (int dbId = 0; dbId < signatureMaps.size(); dbId++)
     {
-        UWARN("ids list is empty");
-        return similarity;
-    }
-
-    for (std::list<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
-    {
-        float sim = 0.0f;
-        if (*iter > 0)
+        const std::map<int, rtabmap::Signature *> &signatureMap = signatureMaps.at(dbId);
+        for (std::map<int, rtabmap::Signature *>::const_iterator sigIter = signatureMap.begin(); sigIter != signatureMap.end(); sigIter++)
         {
-            const rtabmap::Signature *s2 = memory->getSignature(*iter);
-            if (s2 == NULL)
-            {
-                UFATAL("Signature %d not found ?!?", *iter);
-            }
-            sim = computeSimilarity(signature, *s2);
+            const rtabmap::Signature *s2 = sigIter->second;
+            float sim = computeSimilarity(signature, *s2);
+            similarities.insert(std::make_pair(std::make_pair(dbId, sigIter->first), sim));
+            UDEBUG("dbId: %d, sigId: %d, similarity: %f", dbId, sigIter->first, sim);
         }
-
-        similarity.insert(similarity.end(), std::pair<int, float>(*iter, sim));
     }
 
-    return similarity;
+    std::vector< std::pair<int, int> > topIds; // [(db id, sig id)]
+    if (similarities.size())
+    {
+        std::vector< std::pair<std::pair<int, int>, float> > top(k);
+        std::partial_sort_copy(similarities.begin(),
+                               similarities.end(),
+                               top.begin(),
+                               top.end(),
+                               compareSimilarity);
+        for (std::vector< std::pair<std::pair<int, int>, float> >::iterator it = top.begin(); it != top.end(); ++it)
+        {
+            topIds.push_back(it->first);
+            //UDEBUG("dbId: %d, sigId: %d", it->first.first, it->first.second);
+        }
+    }
+
+    return topIds;
 }
 
 float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2)
@@ -223,28 +184,8 @@ bool Localization::compareSimilarity(std::pair<std::pair<int, int>, float> const
     return l.second > r.second;
 }
 
-rtabmap::Transform Localization::computeGlobalVisualTransform(int oldId, int newId, const MemoryLoc *memory) const
+rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const
 {
-    const rtabmap::Signature *oldSig = memory->getSignature(oldId);
-    if (oldSig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-    const rtabmap::Signature *newSig = memory->getSignature(newId);
-    if (newSig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-    return computeGlobalVisualTransform(oldSig, newSig, memory);
-}
-
-rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig, const MemoryLoc *memory) const
-{
-    if (oldSig == NULL || newSig == NULL)
-    {
-        return rtabmap::Transform();
-    }
-
     rtabmap::Transform transform;
     std::string msg;
 
@@ -253,7 +194,8 @@ rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Sig
 
     std::multimap<int, cv::Point3f> words3;
 
-    const rtabmap::Transform &oldSigPose = memory->getOptimizedPose(oldSig->id());
+    const rtabmap::Signature *oldSig = _memory->getSignature(oldDbId, oldSigId);
+    const rtabmap::Transform &oldSigPose = _memory->getOptimizedPose(oldDbId, oldSigId);
 
     const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;

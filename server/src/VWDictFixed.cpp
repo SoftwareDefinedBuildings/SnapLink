@@ -1,4 +1,3 @@
-#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Parameters.h>
@@ -312,9 +311,9 @@ private:
 const int VWDictFixed::ID_START = 1;
 const int VWDictFixed::ID_INVALID = 0;
 
-VWDictFixed::VWDictFixed(const ParametersMap &parameters) :
+VWDictFixed::VWDictFixed(const rtabmap::ParametersMap &parameters) :
     _totalActiveReferences(0),
-    _dictionaryPath(Parameters::defaultKpDictionaryPath()),
+    _dictionaryPath(rtabmap::Parameters::defaultKpDictionaryPath()),
     useDistanceL1_(false),
     _flannIndex(new FlannIndex()),
     _strategy(kNNFlannKdTree)
@@ -328,12 +327,12 @@ VWDictFixed::~VWDictFixed()
     delete _flannIndex;
 }
 
-void VWDictFixed::parseParameters(const ParametersMap &parameters)
+void VWDictFixed::parseParameters(const rtabmap::ParametersMap &parameters)
 {
-    ParametersMap::const_iterator iter;
+    rtabmap::ParametersMap::const_iterator iter;
 
     std::string dictionaryPath = _dictionaryPath;
-    if ((iter = parameters.find(Parameters::kKpDictionaryPath())) != parameters.end())
+    if ((iter = parameters.find(rtabmap::Parameters::kKpDictionaryPath())) != parameters.end())
     {
         dictionaryPath = (*iter).second.c_str();
     }
@@ -343,101 +342,89 @@ void VWDictFixed::parseParameters(const ParametersMap &parameters)
 
 void VWDictFixed::setFixedDictionary(const std::string &dictionaryPath)
 {
-    if (!dictionaryPath.empty())
+    if (dictionaryPath.empty())
     {
-        if ((!_incrementalDictionary && _dictionaryPath.compare(dictionaryPath) != 0) ||
-                _visualWords.size() == 0)
+        UFATAL("");
+    }
+
+    if (_dictionaryPath.compare(dictionaryPath) != 0 || _visualWords.size() == 0)
+    {
+        std::ifstream file;
+        file.open(dictionaryPath.c_str(), std::ifstream::in);
+        if (file.good())
         {
-            std::ifstream file;
-            file.open(dictionaryPath.c_str(), std::ifstream::in);
-            if (file.good())
+            UDEBUG("Deleting old dictionary and loading the new one from \"%s\"", dictionaryPath.c_str());
+            UTimer timer;
+
+            // first line is the header
+            std::string str;
+            std::list<std::string> strList;
+            std::getline(file, str);
+            strList = uSplitNumChar(str);
+            unsigned int dimension  = 0;
+            for (std::list<std::string>::iterator iter = strList.begin(); iter != strList.end(); ++iter)
             {
-                UDEBUG("Deleting old dictionary and loading the new one from \"%s\"", dictionaryPath.c_str());
-                UTimer timer;
-
-                // first line is the header
-                std::string str;
-                std::list<std::string> strList;
-                std::getline(file, str);
-                strList = uSplitNumChar(str);
-                unsigned int dimension  = 0;
-                for (std::list<std::string>::iterator iter = strList.begin(); iter != strList.end(); ++iter)
+                if (uIsDigit(iter->at(0)))
                 {
-                    if (uIsDigit(iter->at(0)))
-                    {
-                        dimension = std::atoi(iter->c_str());
-                        break;
-                    }
+                    dimension = std::atoi(iter->c_str());
+                    break;
                 }
+            }
 
-                if (dimension == 0 || dimension > 1000)
-                {
-                    UERROR("Invalid dictionary file, visual word dimension (%d) is not valid, \"%s\"", dimension, dictionaryPath.c_str());
-                }
-                else
-                {
-                    // Process all words
-                    while (file.good())
-                    {
-                        std::getline(file, str);
-                        strList = uSplit(str);
-                        if (strList.size() == dimension + 1)
-                        {
-                            //first one is the visual word id
-                            std::list<std::string>::iterator iter = strList.begin();
-                            int id = std::atoi(iter->c_str());
-                            cv::Mat descriptor(1, dimension, CV_32F);
-                            ++iter;
-                            unsigned int i = 0;
-
-                            //get descriptor
-                            for (; i < dimension && iter != strList.end(); ++i, ++iter)
-                            {
-                                descriptor.at<float>(i) = uStr2Float(*iter);
-                            }
-                            if (i != dimension)
-                            {
-                                UERROR("");
-                            }
-
-                            VisualWord *vw = new VisualWord(id, descriptor, 0);
-                            _visualWords.insert(_visualWords.end(), std::pair<int, VisualWord *>(id, vw));
-                            _notIndexedWords.insert(_notIndexedWords.end(), id);
-                        }
-                        else
-                        {
-                            UWARN("Cannot parse line \"%s\"", str.c_str());
-                        }
-                    }
-                    this->update();
-                    _incrementalDictionary = false;
-                }
-
-
-                UDEBUG("Time changing dictionary = %fs", timer.ticks());
+            if (dimension == 0 || dimension > 1000)
+            {
+                UERROR("Invalid dictionary file, visual word dimension (%d) is not valid, \"%s\"", dimension, dictionaryPath.c_str());
             }
             else
             {
-                UERROR("Cannot open dictionary file \"%s\"", dictionaryPath.c_str());
+                // Process all words
+                while (file.good())
+                {
+                    std::getline(file, str);
+                    strList = uSplit(str);
+                    if (strList.size() == dimension + 1)
+                    {
+                        //first one is the visual word id
+                        std::list<std::string>::iterator iter = strList.begin();
+                        int id = std::atoi(iter->c_str());
+                        cv::Mat descriptor(1, dimension, CV_32F);
+                        ++iter;
+                        unsigned int i = 0;
+
+                        //get descriptor
+                        for (; i < dimension && iter != strList.end(); ++i, ++iter)
+                        {
+                            descriptor.at<float>(i) = uStr2Float(*iter);
+                        }
+                        if (i != dimension)
+                        {
+                            UERROR("");
+                        }
+
+                        rtabmap::VisualWord *vw = new rtabmap::VisualWord(id, descriptor, 0);
+                        _visualWords.insert(_visualWords.end(), std::pair<int, rtabmap::VisualWord *>(id, vw));
+                        _notIndexedWords.insert(_notIndexedWords.end(), id);
+                    }
+                    else
+                    {
+                        UWARN("Cannot parse line \"%s\"", str.c_str());
+                    }
+                }
+                this->update();
             }
-            file.close();
-        }
-        else if (!_incrementalDictionary)
-        {
-            UDEBUG("Dictionary \"%s\" already loaded...", dictionaryPath.c_str());
+
+
+            UDEBUG("Time changing dictionary = %fs", timer.ticks());
         }
         else
         {
-            UERROR("Cannot change to a fixed dictionary if there are already words (%d) in the incremental one.", _visualWords.size());
+            UERROR("Cannot open dictionary file \"%s\"", dictionaryPath.c_str());
         }
+        file.close();
     }
-    else if (_visualWords.size() == 0)
+    else
     {
-        _incrementalDictionary = false;
-    }
-    else if (_incrementalDictionary)
-    {
-        UWARN("Cannot change to fixed dictionary, %d words already loaded as incremental", (int)_visualWords.size());
+        UDEBUG("Dictionary \"%s\" already loaded...", dictionaryPath.c_str());
     }
     _dictionaryPath = dictionaryPath;
 }
@@ -445,7 +432,7 @@ void VWDictFixed::setFixedDictionary(const std::string &dictionaryPath)
 void VWDictFixed::update()
 {
     ULOGGER_DEBUG("");
-    if (!_incrementalDictionary && !_notIndexedWords.size())
+    if (!_notIndexedWords.size())
     {
         // No need to update the search index if we
         // use a fixed dictionary and the index is
@@ -489,7 +476,7 @@ void VWDictFixed::update()
 
             // Create the data matrix
             _dataTree = cv::Mat(_visualWords.size(), dim, type); // SURF descriptors are CV_32F
-            std::map<int, VisualWord *>::const_iterator iter = _visualWords.begin();
+            std::map<int, rtabmap::VisualWord *>::const_iterator iter = _visualWords.begin();
             for (unsigned int i = 0; i < _visualWords.size(); ++i, ++iter)
             {
                 cv::Mat descriptor;
@@ -526,7 +513,7 @@ void VWDictFixed::update()
                 _flannIndex->build(_dataTree, rtflann::KDTreeIndexParams(), useDistanceL1_);
             }
             else
-            {   
+            {
                 UFATAL("");
             }
 
@@ -558,7 +545,7 @@ void VWDictFixed::clear(bool printWarningsIfNotEmpty)
             UWARN("Not indexed words should be empty here (%d words still not indexed)", (int)_notIndexedWords.size());
         }
     }
-    for (std::map<int, VisualWord *>::iterator i = _visualWords.begin(); i != _visualWords.end(); ++i)
+    for (std::map<int, rtabmap::VisualWord *>::iterator i = _visualWords.begin(); i != _visualWords.end(); ++i)
     {
         delete(*i).second;
     }
@@ -578,7 +565,7 @@ void VWDictFixed::addWordRef(int wordId, int signatureId)
 {
     if (signatureId > 0 && wordId > 0)
     {
-        VisualWord *vw = 0;
+        rtabmap::VisualWord *vw = 0;
         vw = uValue(_visualWords, wordId, vw);
         if (vw)
         {
@@ -596,19 +583,19 @@ void VWDictFixed::addWordRef(int wordId, int signatureId)
 
 void VWDictFixed::removeAllWordRef(int wordId, int signatureId)
 {
-    VisualWord *vw = 0;
+    rtabmap::VisualWord *vw = 0;
     vw = uValue(_visualWords, wordId, vw);
     if (vw)
     {
         _totalActiveReferences -= vw->removeAllRef(signatureId);
         if (vw->getReferences().size() == 0)
         {
-            _unusedWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+            _unusedWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
         }
     }
 }
 
-std::vector<int> VWDictFixed::findNN(const std::list<VisualWord *> &vws) const
+std::vector<int> VWDictFixed::findNN(const std::list<rtabmap::VisualWord *> &vws) const
 {
     UTimer timer;
     timer.start();
@@ -632,9 +619,9 @@ std::vector<int> VWDictFixed::findNN(const std::list<VisualWord *> &vws) const
 
         // fill the request matrix
         int index = 0;
-        VisualWord *vw;
+        rtabmap::VisualWord *vw;
         cv::Mat query(vws.size(), dim, type);
-        for (std::list<VisualWord *>::const_iterator iter = vws.begin(); iter != vws.end(); ++iter, ++index)
+        for (std::list<rtabmap::VisualWord *>::const_iterator iter = vws.begin(); iter != vws.end(); ++iter, ++index)
         {
             vw = *iter;
             UASSERT(vw);
@@ -749,7 +736,7 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
         {
             cv::Mat dataNotIndexed = cv::Mat::zeros(_notIndexedWords.size(), query.cols, query.type());
             unsigned int index = 0;
-            VisualWord *vw;
+            rtabmap::VisualWord *vw;
             for (std::set<int>::iterator iter = _notIndexedWords.begin(); iter != _notIndexedWords.end(); ++iter, ++index)
             {
                 vw = _visualWords.at(*iter);
@@ -840,11 +827,11 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
     return resultIds;
 }
 
-void VWDictFixed::addWord(VisualWord *vw)
+void VWDictFixed::addWord(rtabmap::VisualWord *vw)
 {
     if (vw)
     {
-        _visualWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+        _visualWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
         _notIndexedWords.insert(vw->id());
         if (vw->getReferences().size())
         {
@@ -852,32 +839,32 @@ void VWDictFixed::addWord(VisualWord *vw)
         }
         else
         {
-            _unusedWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
+            _unusedWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
         }
     }
 }
 
-const VisualWord *VWDictFixed::getWord(int id) const
+const rtabmap::VisualWord *VWDictFixed::getWord(int id) const
 {
-    return uValue(_visualWords, id, (VisualWord *)0);
+    return uValue(_visualWords, id, (rtabmap::VisualWord *)0);
 }
 
-VisualWord *VWDictFixed::getUnusedWord(int id) const
+rtabmap::VisualWord *VWDictFixed::getUnusedWord(int id) const
 {
-    return uValue(_unusedWords, id, (VisualWord *)0);
+    return uValue(_unusedWords, id, (rtabmap::VisualWord *)0);
 }
 
-std::vector<VisualWord *> VWDictFixed::getUnusedWords() const
+std::vector<rtabmap::VisualWord *> VWDictFixed::getUnusedWords() const
 {
-    if (!_incrementalDictionary)
-    {
-        ULOGGER_WARN("This method does nothing on a fixed dictionary");
-        return std::vector<VisualWord *>();
-    }
+    // if (!_incrementalDictionary)
+    // {
+    //     ULOGGER_WARN("This method does nothing on a fixed dictionary");
+    //     return std::vector<rtabmap::VisualWord *>();
+    // }
     return uValues(_unusedWords);
 }
 
-void VWDictFixed::removeWords(const std::vector<VisualWord *> &words)
+void VWDictFixed::removeWords(const std::vector<rtabmap::VisualWord *> &words)
 {
     for (unsigned int i = 0; i < words.size(); ++i)
     {
@@ -892,7 +879,7 @@ void VWDictFixed::removeWords(const std::vector<VisualWord *> &words)
 
 void VWDictFixed::deleteUnusedWords()
 {
-    std::vector<VisualWord *> unusedWords = uValues(_unusedWords);
+    std::vector<rtabmap::VisualWord *> unusedWords = uValues(_unusedWords);
     removeWords(unusedWords);
     for (unsigned int i = 0; i < unusedWords.size(); ++i)
     {

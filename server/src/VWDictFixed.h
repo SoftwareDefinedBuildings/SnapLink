@@ -1,14 +1,13 @@
 #pragma once
 
+#include <rtabmap/core/VisualWord.h>
+#include <rtabmap/core/Parameters.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <set>
-#include <rtabmap/core/Parameters.h>
 
-class DBDriver;
-class VisualWord;
 class FlannIndex;
 
 class VWDictFixed
@@ -27,23 +26,23 @@ public:
     static const int ID_INVALID;
 
 public:
-    VWDictFixed(const ParametersMap &parameters = ParametersMap());
+    VWDictFixed(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     virtual ~VWDictFixed();
 
-    virtual void parseParameters(const ParametersMap &parameters);
+    virtual void parseParameters(const rtabmap::ParametersMap &parameters);
 
     virtual void update();
 
-    virtual void addWord(VisualWord *vw);
+    virtual void addWord(rtabmap::VisualWord *vw);
 
-    std::vector<int> findNN(const std::list<VisualWord *> &vws) const;
+    std::vector<int> findNN(const std::list<rtabmap::VisualWord *> &vws) const;
     std::vector<int> findNN(const cv::Mat &descriptors) const;
 
     void addWordRef(int wordId, int signatureId);
     void removeAllWordRef(int wordId, int signatureId);
-    const VisualWord *getWord(int id) const;
-    VisualWord *getUnusedWord(int id) const;
-    const std::map<int, VisualWord *> &getVisualWords() const
+    const rtabmap::VisualWord *getWord(int id) const;
+    rtabmap::VisualWord *getUnusedWord(int id) const;
+    const std::map<int, rtabmap::VisualWord *> &getVisualWords() const
     {
         return _visualWords;
     }
@@ -54,16 +53,16 @@ public:
     void setFixedDictionary(const std::string &dictionaryPath);
 
     void clear(bool printWarningsIfNotEmpty = true);
-    std::vector<VisualWord *> getUnusedWords() const;
+    std::vector<rtabmap::VisualWord *> getUnusedWords() const;
     unsigned int getUnusedWordsSize() const
     {
         return (int)_unusedWords.size();
     }
-    void removeWords(const std::vector<VisualWord *> &words); // caller must delete the words
+    void removeWords(const std::vector<rtabmap::VisualWord *> &words); // caller must delete the words
     void deleteUnusedWords();
 
 protected:
-    std::map<int, VisualWord *> _visualWords; //<id,VisualWord*>
+    std::map<int, rtabmap::VisualWord *> _visualWords; //<id,rtabmap::VisualWord*>
     int _totalActiveReferences; // keep track of all references for updating the common signature
 
 private:
@@ -74,6 +73,7 @@ private:
     NNStrategy _strategy;
     std::map<int , int> _mapIndexId;
     std::map<int , int> _mapIdIndex;
-    std::map<int, VisualWord *> _unusedWords; //<id,VisualWord*>, note that these words stay in _visualWords
+    std::map<int, rtabmap::VisualWord *> _unusedWords; //<id,rtabmap::VisualWord*>, note that these words stay in _visualWords
+    std::set<int> _notIndexedWords; // Words that are not indexed in the dictionary
     std::set<int> _removedIndexedWords; // Words not anymore in the dictionary but still indexed in the dictionary
 };

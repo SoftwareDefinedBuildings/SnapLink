@@ -30,7 +30,6 @@ const int MemoryLoc::kIdStart = 0;
 
 MemoryLoc::MemoryLoc() :
     _badSignaturesIgnored(rtabmap::Parameters::defaultMemBadSignaturesIgnored()),
-    _idCount(kIdStart),
     _feature2D(NULL),
     _vwd(NULL)
 {
@@ -95,12 +94,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
                 delete *iter;
             }
         }
-        UDEBUG("Loading signatures done! (%d loaded)", int(signaturesMap.size()));
-
-        // Last node id
-        int idCount;
-        dbDriver->getLastNodeId(idCount);
-        UDEBUG("ids start with %d", _idCount + 1);
+        UDEBUG("Loading signatures done! (%d loaded)", int(signatureMap.size()));
 
         // Now load the dictionary if we have a connection
         UDEBUG("Loading dictionary...");
@@ -132,7 +126,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             const std::multimap<int, cv::KeyPoint> &words = sig->getWords();
             if (words.size())
             {
-                UDEBUG("node=%d, word references=%d", s->id(), words.size());
+                UDEBUG("node=%d, word references=%d", sig->id(), words.size());
                 for (std::multimap<int, cv::KeyPoint>::const_iterator jter = words.begin(); jter != words.end(); ++jter)
                 {
                     _vwd->addWordRef(jter->first, iter->first);
@@ -150,8 +144,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
         std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId);
 
-        _idCounts.push_back(idCount);
-        _signatures.push_back(std::map<int, rtabmap::Signature *>());
+        _signatureMaps.push_back(signatureMap);
         _optimizedPoseMaps.push_back(optimizedPoseMap);
 
         UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
@@ -211,49 +204,102 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     }
 }
 
-int MemoryLoc::add(rtabmap::SensorData &data, void *context)
+const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *context)
 {
     UDEBUG("");
+    UASSERT(data.imageRaw().empty() ||
+            data.imageRaw().type() == CV_8UC1 ||
+            data.imageRaw().type() == CV_8UC3);
+    ConnectionInfo *con_info = (ConnectionInfo *) context;
 
-    cleanUnusedWords();
-    if (_vwd)
+    std::vector<cv::KeyPoint> keypoints = data.keypoints();
+    cv::Mat descriptors = data.descriptors();
+    int id = INT_MAX;
+
+    if (descriptors.rows == 0)
     {
-        _vwd->update();
+        if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
+        {
+            UDEBUG("Extract features");
+            cv::Mat imageMono;
+            if (data.imageRaw().channels() == 3)
+            {
+                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+            }
+            else
+            {
+                imageMono = data.imageRaw();
+            }
+
+            con_info->time.keypoints_start = getTime(); // start of generateKeypoints
+            keypoints = _feature2D->generateKeypoints(imageMono);
+            con_info->time.keypoints += getTime() - con_info->time.keypoints_start; // end of generateKeypoints
+
+            con_info->time.descriptors_start = getTime(); // start of generateDescriptors
+            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+            con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
+
+            data.setFeatures(keypoints, descriptors);
+        }
+        else if (data.imageRaw().empty())
+        {
+            UDEBUG("Empty image, cannot extract features...");
+        }
+        else if (_feature2D->getMaxFeatures() < 0)
+        {
+            UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
+        }
     }
 
-    rtabmap::Signature *signature = this->createSignature(data, context);
-    if (sig == NULL)
+    std::vector<int> wordIds;
+    if (descriptors.rows)
     {
-        UERROR("Failed to create a signature...");
-        return false;
+        con_info->time.vwd_start = getTime();
+        wordIds = _vwd->findNN(descriptors);
+        con_info->time.vwd += getTime() - con_info->time.vwd_start;
+    }
+    else if (id > 0)
+    {
+        UDEBUG("id %d is a bad signature", id);
     }
 
-    UDEBUG("adding %d", sig->id());
-    _signatures.insert(_signatures.end(), std::pair<int, rtabmap::Signature *>(signature->id(), signature));
-
-    if (sig->getWords().size())
+    std::multimap<int, cv::KeyPoint> words;
+    if (wordIds.size() > 0)
     {
-        sig->setEnabled(true);
+        UASSERT(wordIds.size() == keypoints.size());
+        unsigned int i = 0;
+        for (std::vector<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
+        {
+            words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+        }
     }
 
-    return sig->id();
+    cv::Mat image = data.imageRaw();
+    std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
+
+    UDEBUG("bin data not kept");
+    rtabmap::Signature *s = new rtabmap::Signature(id);
+
+    s->sensorData().setId(id);
+    s->sensorData().setCameraModels(cameraModels);
+
+    s->setWords(words);
+
+    // set raw data
+    s->sensorData().setImageRaw(image);
+
+    if (words.size())
+    {
+        s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
+    }
+    return s;
 }
 
-void MemoryLoc::remove(int locationId)
-{
-    UDEBUG("Deleting location %d", locationId);
-    rtabmap::Signature *location = getSignature(locationId);
-    if (location)
-    {
-        this->moveToTrash(location, false);
-    }
-}
-
-void MemoryLoc::optimizeGraph(int dbId)
+std::map<int, rtabmap::Transform> MemoryLoc::optimizeGraph(int dbId)
 {
     // Get all IDs linked to last signature
     // TODO: why rbegin is guaranteed to have neighbors?
-    std::map<int, int> ids = getNeighborsId(dbId, _signatureMaps.at(dbId).rbegin()->id(), 0);
+    std::map<int, int> ids = getNeighborsId(dbId, _signatureMaps.at(dbId).rbegin()->second->id(), 0);
 
     UINFO("Optimize poses, ids.size() = %d", ids.size());
 
@@ -271,7 +317,7 @@ void MemoryLoc::optimizeGraph(int dbId)
     return optimizedPoseMap;
 }
 
-const rtabmap::Signature *MemoryLoc::getSignature(int dbId, int sigId) const
+rtabmap::Signature *MemoryLoc::getSignature(int dbId, int sigId) const
 {
     return uValue(_signatureMaps.at(dbId), sigId, (rtabmap::Signature *)0);
 }
@@ -281,13 +327,18 @@ const std::map<int, rtabmap::Signature *> &MemoryLoc::getSignatureMap(int dbId) 
     return _signatureMaps.at(dbId);
 }
 
+const std::vector<std::map<int, rtabmap::Signature *> > &MemoryLoc::getSignatureMaps() const
+{
+    return _signatureMaps;
+}
+
 std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) const
 {
     std::map<int, rtabmap::Link> links;
-    rtabmap::Signature *sig = getSignature(dbId, sigId);
+    const rtabmap::Signature *sig = getSignature(dbId, sigId);
     if (sig)
     {
-        const std::map<int, rtabmap::Link> &allLinks = s->getLinks();
+        const std::map<int, rtabmap::Link> &allLinks = sig->getLinks();
         for (std::map<int, rtabmap::Link>::const_iterator iter = allLinks.begin(); iter != allLinks.end(); ++iter)
         {
             if (iter->second.type() == rtabmap::Link::kNeighbor ||
@@ -299,7 +350,7 @@ std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) co
     }
     else
     {
-        UWARN("Cannot find signature %d in memory", signatureId);
+        UWARN("Cannot find signature %d in memory", sigId);
     }
     return links;
 }
@@ -397,11 +448,6 @@ std::map<int, int> MemoryLoc::getNeighborsId(
     return ids;
 }
 
-int MemoryLoc::getNextId()
-{
-    return ++_idCount;
-}
-
 void MemoryLoc::clear()
 {
     UDEBUG("");
@@ -409,23 +455,24 @@ void MemoryLoc::clear()
     this->cleanUnusedWords();
 
     //Get the tree root (parents)
-    std::map<int, rtabmap::Signature *> mem = _signatures;
-    for (std::map<int, rtabmap::Signature *>::iterator i = mem.begin(); i != mem.end(); ++i)
+    for (int dbId = 0; dbId < _signatureMaps.size(); dbId++)
     {
-        if (i->second)
+        std::map<int, rtabmap::Signature *> &mem = _signatureMaps.at(dbId);
+        for (std::map<int, rtabmap::Signature *>::iterator i = mem.begin(); i != mem.end(); ++i)
         {
-            UDEBUG("deleting from the memory: %d", i->first);
-            this->moveToTrash(i->second);
+            if (i->second)
+            {
+                UDEBUG("deleting from the memory: %d", i->first);
+                this->moveToTrash(dbId, i->second);
+            }
         }
-    }
 
-    if (_signatures.size() != 0)
-    {
-        ULOGGER_ERROR("_signatures must be empty here, size=%d", _signatures.size());
+        if (mem.size() != 0)
+        {
+            ULOGGER_ERROR("_signatures must be empty here, size=%d", mem.size());
+        }
+        mem.clear();
     }
-    _signatures.clear();
-
-    _idCount = kIdStart;
 
     cleanUnusedWords();
     if (_vwd)
@@ -438,12 +485,12 @@ void MemoryLoc::clear()
 /**
  * If saveToDatabase=false, deleted words are filled in deletedWords.
  */
-void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
+void MemoryLoc::moveToTrash(int dbId, rtabmap::Signature *s, bool keepLinkedToGraph)
 {
     UDEBUG("id=%d", s ? s->id() : 0);
     if (s)
     {
-        this->disableWordsRef(s->id());
+        this->disableWordsRef(dbId, s->id());
         if (!keepLinkedToGraph)
         {
             std::list<int> keys = uUniqueKeys(s->getWords());
@@ -461,17 +508,18 @@ void MemoryLoc::moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph)
             }
         }
 
-        _signatures.erase(s->id());
+        _signatureMaps.at(dbId).erase(s->id());
 
         delete s;
     }
 }
 
-rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
+rtabmap::Transform MemoryLoc::getOptimizedPose(int dbId, int sigId) const
 {
     rtabmap::Transform pose;
-    const std::map<int, rtabmap::Transform>::const_iterator poseIter = _optimizedPoses.find(signatureId);
-    if (poseIter != _optimizedPoses.end())
+    const std::map<int, rtabmap::Transform> &optimizedPoseMap = _optimizedPoseMaps.at(dbId);
+    const std::map<int, rtabmap::Transform>::const_iterator poseIter = optimizedPoseMap.find(sigId);
+    if (poseIter != optimizedPoseMap.end())
     {
         pose = poseIter->second;
     }
@@ -479,102 +527,11 @@ rtabmap::Transform MemoryLoc::getOptimizedPose(int signatureId) const
     return pose;
 }
 
-rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *context)
-{
-    UDEBUG("");
-    UASSERT(data.imageRaw().empty() ||
-            data.imageRaw().type() == CV_8UC1 ||
-            data.imageRaw().type() == CV_8UC3);
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
-
-    std::vector<cv::KeyPoint> keypoints = data.keypoints();
-    cv::Mat descriptors = data.descriptors();
-    int id = this->getNextId();
-
-    if (descriptors.rows == 0)
-    {
-        if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
-        {
-            UDEBUG("Extract features");
-            cv::Mat imageMono;
-            if (data.imageRaw().channels() == 3)
-            {
-                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
-            }
-            else
-            {
-                imageMono = data.imageRaw();
-            }
-
-            con_info->time.keypoints_start = getTime(); // start of generateKeypoints
-            keypoints = _feature2D->generateKeypoints(imageMono);
-            con_info->time.keypoints += getTime() - con_info->time.keypoints_start; // end of generateKeypoints
-
-            con_info->time.descriptors_start = getTime(); // start of generateDescriptors
-            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-            con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
-
-            data.setFeatures(keypoints, descriptors);
-        }
-        else if (data.imageRaw().empty())
-        {
-            UDEBUG("Empty image, cannot extract features...");
-        }
-        else if (_feature2D->getMaxFeatures() < 0)
-        {
-            UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
-        }
-    }
-
-    std::vector<int> wordIds;
-    if (descriptors.rows)
-    {
-        con_info->time.vwd_start = getTime();
-        wordIds = _vwd->findNN(descriptors);
-        con_info->time.vwd += getTime() - con_info->time.vwd_start;
-    }
-    else if (id > 0)
-    {
-        UDEBUG("id %d is a bad signature", id);
-    }
-
-    std::multimap<int, cv::KeyPoint> words;
-    if (wordIds.size() > 0)
-    {
-        UASSERT(wordIds.size() == keypoints.size());
-        unsigned int i = 0;
-        for (std::list<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
-        {
-            words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-        }
-    }
-
-    cv::Mat image = data.imageRaw();
-    std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
-
-    UDEBUG("bin data not kept");
-    rtabmap::Signature *s = new rtabmap::Signature(id);
-
-    s->sensorData().setId(id);
-    s->sensorData().setCameraModels(cameraModels);
-
-    s->setWords(words);
-
-    // set raw data
-    s->sensorData().setImageRaw(image);
-
-    if (words.size())
-    {
-        s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
-    }
-    return s;
-}
-
-void MemoryLoc::disableWordsRef(int signatureId)
+void MemoryLoc::disableWordsRef(int dbId, int signatureId)
 {
     UDEBUG("id=%d", signatureId);
 
-    rtabmap::Signature *ss = getSignature(signatureId);
+    rtabmap::Signature *ss = getSignature(dbId, signatureId);
     if (ss && ss->isEnabled())
     {
         const std::multimap<int, cv::KeyPoint> &words = ss->getWords();
@@ -594,21 +551,21 @@ void MemoryLoc::disableWordsRef(int signatureId)
 
 void MemoryLoc::cleanUnusedWords()
 {
-    if (_vwd->isIncremental())
-    {
-        std::vector<rtabmap::VisualWord *> removedWords = _vwd->getUnusedWords();
-        UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
-        if (removedWords.size())
-        {
-            // remove them from the dictionary
-            _vwd->removeWords(removedWords);
+    // if (_vwd->isIncremental())
+    // {
+    //     std::vector<rtabmap::VisualWord *> removedWords = _vwd->getUnusedWords();
+    //     UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
+    //     if (removedWords.size())
+    //     {
+    //         // remove them from the dictionary
+    //         _vwd->removeWords(removedWords);
 
-            for (unsigned int i = 0; i < removedWords.size(); ++i)
-            {
-                delete removedWords[i];
-            }
-        }
-    }
+    //         for (unsigned int i = 0; i < removedWords.size(); ++i)
+    //         {
+    //             delete removedWords[i];
+    //         }
+    //     }
+    // }
 }
 
 // return all non-null poses
@@ -653,7 +610,7 @@ void MemoryLoc::getMetricConstraints(
                         {
                             // skip to next neighbor, well we assume that bad signatures
                             // are only linked by max 2 neighbor links.
-                            std::map<int, rtabmap::Link> n = this->getNeighborLinks(s->id());
+                            std::map<int, rtabmap::Link> n = this->getNeighborLinks(dbId, s->id());
                             UASSERT(n.size() <= 2);
                             std::map<int, rtabmap::Link>::iterator uter = n.upper_bound(s->id());
                             if (uter != n.end())

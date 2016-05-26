@@ -11,7 +11,7 @@
 #include "HTTPServer.h"
 #include "Time.h"
 
-#define TOP_K 50
+#define TOP_K 5
 
 class Visibility;
 class HTTPServer;
@@ -25,7 +25,7 @@ public:
 
     bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
-    void setMemories(std::vector<MemoryLoc *> *memories);
+    void setMemory(MemoryLoc *memory);
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -35,14 +35,13 @@ protected:
 private:
     bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    std::map<int, float> computeSimilarities(const rtabmap::Signature &signature, const std::list<int> &ids, const MemoryLoc *memory);
+    std::vector< std::pair<int, int> > findKNearestSignatures(const rtabmap::Signature &signature, int k);
     static float computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2);
     static bool compareSimilarity(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r);
-    rtabmap::Transform computeGlobalVisualTransform(int oldId, int newId, const MemoryLoc *memory) const;
-    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig, const MemoryLoc *memory) const;
+    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const;
 
 private:
-    std::vector<MemoryLoc *> *_memories;
+    MemoryLoc *_memory;
     Visibility *_vis;
     HTTPServer *_httpServer;
 

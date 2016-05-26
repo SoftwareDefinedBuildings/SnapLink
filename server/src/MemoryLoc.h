@@ -14,11 +14,7 @@
 #include <opencv2/features2d/features2d.hpp>
 #include "VWDictFixed.h"
 
-class Signature;
-class DBDriver;
 class VWDictFixed;
-class VisualWord;
-class Feature2D;
 
 class MemoryLoc
 {
@@ -31,17 +27,17 @@ public:
 
     bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-    int add(rtabmap::SensorData &data, void *context);
-    void remove(int locationId);
+    const rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
     void close();
 
-    rtabmap::Transform getOptimizedPose(int signatureId) const;
-    const rtabmap::Signature *getSignature(int dbId, int sigId) const;
+    rtabmap::Transform getOptimizedPose(int dbId, int sigId) const;
+    rtabmap::Signature *getSignature(int dbId, int sigId) const;
     const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
+    const std::vector<std::map<int, rtabmap::Signature *> > &getSignatureMaps() const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    void optimizeGraph(int dbId);  // optimize poses using TORO graph
+    std::map<int, rtabmap::Transform> optimizeGraph(int dbId);  // optimize poses using TORO graph
 
     std::map<int, int> getNeighborsId(
         int dbId,
@@ -56,25 +52,21 @@ private:
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links);
 
-
-    void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
+    void moveToTrash(int dbId, rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 
     int getNextId();
     void clear();
 
-    rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
 
     //keypoint stuff
-    void disableWordsRef(int signatureId);
+    void disableWordsRef(int dbId, int signatureId);
     void cleanUnusedWords();
 
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
     bool _badSignaturesIgnored;
-
-    std::vector<int> _idCounts;
 
     std::vector<std::map<int, rtabmap::Signature *> > _signatureMaps;
     std::vector<std::map<int, rtabmap::Transform> > _optimizedPoseMaps;

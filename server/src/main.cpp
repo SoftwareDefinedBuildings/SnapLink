@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    std::vector<MemoryLoc *> memories;
+    MemoryLoc memory;
     HTTPServer httpServer;
     CameraNetwork camera;
     Localization loc;
@@ -61,21 +61,15 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
-    for (std::vector<std::string>::const_iterator i = dbfiles.begin(); i != dbfiles.end(); ++i)
+    if (!memory.init(dbfiles, params))
     {
-        // TODO free them later
-        MemoryLoc *memory = new MemoryLoc();
-        if (!memory->init(*i, params))
-        {
-            UERROR("Initializing memory failed");
-            showUsage();
-            return 1;
-        }
-        memories.push_back(memory);
+        UERROR("Initializing memory failed");
+        showUsage();
+        return 1;
     }
 
     // Visibility
-    vis.setMemories(&memories);
+    vis.setMemory(&memory);
     vis.setHTTPServer(&httpServer);
     if (!vis.init(dbfiles))
     {
@@ -86,7 +80,7 @@ int main(int argc, char *argv[])
     visThread.start();
 
     // Localization
-    loc.setMemories(&memories);
+    loc.setMemory(&memory);
     loc.setHTTPServer(&httpServer);
     loc.setVisibility(&vis);
     if (!loc.init(params))
