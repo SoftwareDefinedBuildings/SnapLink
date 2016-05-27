@@ -40,6 +40,8 @@ public:
     void removeAllWordRef(int wordId, int signatureId);
     const rtabmap::VisualWord *getWord(int id) const;
     rtabmap::VisualWord *getUnusedWord(int id) const;
+    int getLastWordId() {return _lastWordId;}
+    void setLastWordId(int id) {_lastWordId = id;}
     const std::map<int, rtabmap::VisualWord *> &getVisualWords() const
     {
         return _visualWords;
@@ -63,6 +65,7 @@ protected:
     int _totalActiveReferences; // keep track of all references for updating the common signature
 
 private:
+    int _lastWordId;
     bool useDistanceL1_;
     FlannIndex *_flannIndex;
     cv::Mat _dataTree;

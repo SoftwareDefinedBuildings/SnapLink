@@ -30,14 +30,13 @@ public:
     const rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
     void close();
 
-    rtabmap::Transform getOptimizedPose(int dbId, int sigId) const;
     rtabmap::Signature *getSignature(int dbId, int sigId) const;
     const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
     const std::vector<std::map<int, rtabmap::Signature *> > &getSignatureMaps() const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    std::map<int, rtabmap::Transform> optimizeGraph(int dbId);  // optimize poses using TORO graph
+    std::map<int, rtabmap::Transform> optimizeGraph(int dbId, int rootSigId);  // optimize poses using TORO graph
 
     std::map<int, int> getNeighborsId(
         int dbId,
@@ -66,10 +65,8 @@ private:
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
-    bool _badSignaturesIgnored;
 
     std::vector<std::map<int, rtabmap::Signature *> > _signatureMaps;
-    std::vector<std::map<int, rtabmap::Transform> > _optimizedPoseMaps;
 
     //Keypoint stuff
     VWDictFixed *_vwd;

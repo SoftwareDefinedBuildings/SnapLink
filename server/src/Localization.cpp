@@ -120,7 +120,8 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     else
     {
         UWARN("transform is null, using pose of the closest image");
-        *pose = _memory->getOptimizedPose(topDbId, topSigId);
+        const rtabmap::Signature *topSig = _memory->getSignature(topDbId, topSigId);
+        *pose = topSig->getPose();
     }
 
     UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topDbId);
@@ -140,7 +141,7 @@ std::vector< std::pair<int, int> > Localization::findKNearestSignatures(const rt
         for (std::map<int, rtabmap::Signature *>::const_iterator sigIter = signatureMap.begin(); sigIter != signatureMap.end(); sigIter++)
         {
             const rtabmap::Signature *s2 = sigIter->second;
-            float sim = signature.compareTo(*s2);
+            float sim = computeSimilarity(signature, *s2);
             similarities.insert(std::make_pair(std::make_pair(dbId, sigIter->first), sim));
             UDEBUG("dbId: %d, sigId: %d, similarity: %f", dbId, sigIter->first, sim);
         }
@@ -165,19 +166,19 @@ std::vector< std::pair<int, int> > Localization::findKNearestSignatures(const rt
     return topIds;
 }
 
-// float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2)
-// {
-//     float similarity = 0.0f;
-//     const std::multimap<int, cv::KeyPoint> &words1 = s1.getWords();
-//     const std::multimap<int, cv::KeyPoint> &words2 = s2.getWords();
-//     if (words1.size() != 0 && words2.size() != 0)
-//     {
-//         std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-//         rtabmap::EpipolarGeometry::findPairs(words1, words2, pairs);
-//         similarity = float(pairs.size());
-//     }
-//     return similarity;
-// }
+float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2)
+{
+    float similarity = 0.0f;
+    const std::multimap<int, cv::KeyPoint> &words1 = s1.getWords();
+    const std::multimap<int, cv::KeyPoint> &words2 = s2.getWords();
+    if (words1.size() != 0 && words2.size() != 0)
+    {
+        std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
+        rtabmap::EpipolarGeometry::findPairs(words1, words2, pairs);
+        similarity = float(pairs.size());
+    }
+    return similarity;
+}
 
 bool Localization::compareSimilarity(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r)
 {
@@ -195,7 +196,7 @@ rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Sig
     std::multimap<int, cv::Point3f> words3;
 
     const rtabmap::Signature *oldSig = _memory->getSignature(oldDbId, oldSigId);
-    const rtabmap::Transform &oldSigPose = _memory->getOptimizedPose(oldDbId, oldSigId);
+    const rtabmap::Transform &oldSigPose = oldSig->getPose();
 
     const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;
