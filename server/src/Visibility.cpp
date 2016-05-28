@@ -216,8 +216,7 @@ bool Visibility::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointX
         UWARN("Depth value not valid");
         return false;
     }
-    const rtabmap::Signature *sig = _memory->getSignature(dbId, imageId);
-    rtabmap::Transform poseWorld = sig->getPose();
+    rtabmap::Transform poseWorld = s->getPose();
     if (poseWorld.isNull())
     {
         UWARN("Image pose is Null");

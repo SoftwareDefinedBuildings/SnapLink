@@ -101,17 +101,31 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             nextMemWordId++;
         }
 
-        // Optimize poses of signatures
-        UDEBUG("Optimize poses of signatures...");
-        int rootSigId = (*signatures.rbegin())->id();
-        std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId, rootSigId);
-
         // Add signatures to memory
         UDEBUG("Add signatures to memory...");
-        std::map<int, rtabmap::Signature *> signatureMap;
+        std::map<int, rtabmap::Signature *> dbSignatureMap;
         for (std::list<rtabmap::Signature *>::iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
         {
             rtabmap::Signature *dbSig = *iter;
+            dbSignatureMap.insert(std::pair<int, rtabmap::Signature *>(dbSig->id(), dbSig));
+        }
+        UDEBUG("Loading signatures done! (%d loaded)", int(dbSignatureMap.size()));
+        _signatureMaps.push_back(dbSignatureMap); // temp push for optimzation, will pop later
+        signatures.clear();
+
+        // Optimize poses of signatures
+        UDEBUG("Optimize poses of signatures...");
+        // TODO: why rbegin is guaranteed to have neighbors?
+        int rootSigId = dbSignatureMap.rbegin()->first;
+        std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId, rootSigId);
+
+        // Update signatures in memory
+        UDEBUG("Add signatures to memory...");
+        _signatureMaps.pop_back();
+        std::map<int, rtabmap::Signature *> memSignatureMap; // mem sig map with updated pose and ids
+        for (std::map<int, rtabmap::Signature *>::const_iterator iter = dbSignatureMap.begin(); iter != dbSignatureMap.end(); ++iter)
+        {
+            const rtabmap::Signature *dbSig = iter->second;
             std::map<int, int>::const_iterator idIter = sigIdMap.find(dbSig->id());
             if (idIter == sigIdMap.end())
             {
@@ -122,8 +136,10 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             {
                 UFATAL("");
             }
+            rtabmap::SensorData sensorData = dbSig->sensorData();
+            sensorData.setId(idIter->second);
             // TODO use our own memory signature definition
-            rtabmap::Signature *memSig = new rtabmap::Signature(idIter->second, dbSig->mapId(), dbSig->getWeight(), dbSig->getStamp(), dbSig->getLabel(), poseIter->second, dbSig->getGroundTruthPose(), dbSig->sensorData());
+            rtabmap::Signature *memSig = new rtabmap::Signature(idIter->second, dbSig->mapId(), dbSig->getWeight(), dbSig->getStamp(), dbSig->getLabel(), poseIter->second, dbSig->getGroundTruthPose(), sensorData);
             
             // Update signatures' words
             const std::multimap<int, cv::KeyPoint> &dbSigWords = dbSig->getWords();
@@ -139,7 +155,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             }
             memSig->setWords(memSigWords); // it's pass by value internally
 
-            signatureMap.insert(std::pair<int, rtabmap::Signature *>(memSig->id(), memSig));
+            memSignatureMap.insert(std::pair<int, rtabmap::Signature *>(memSig->id(), memSig));
             if (!memSig->sensorData().imageCompressed().empty())
             {
                 memSig->sensorData().uncompressData();
@@ -147,8 +163,8 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
             delete dbSig;
         }
-        UDEBUG("Loading signatures done! (%d loaded)", int(signatureMap.size()));
-        signatures.clear();
+        _signatureMaps.push_back(memSignatureMap);
+        UDEBUG("Loading signatures done! (%d loaded)", int(memSignatureMap.size()));
 
         // Add words to memory
         UDEBUG("Add words to memory...");
@@ -191,8 +207,6 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
         }
         UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
-
-        _signatureMaps.push_back(signatureMap);
 
         UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
         dbDriver->closeConnection();
@@ -337,7 +351,6 @@ const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, 
 std::map<int, rtabmap::Transform> MemoryLoc::optimizeGraph(int dbId, int rootSigId)
 {
     // Get all IDs linked to last signature
-    // TODO: why rbegin is guaranteed to have neighbors?
     std::map<int, int> ids = getNeighborsId(dbId, rootSigId, 0);
 
     UINFO("Optimize poses, ids.size() = %d", ids.size());

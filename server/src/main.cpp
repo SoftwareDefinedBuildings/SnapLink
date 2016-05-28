@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
+    UDEBUG("Initializing Memory");
     if (!memory.init(dbfiles, params))
     {
         UERROR("Initializing memory failed");
@@ -69,6 +70,7 @@ int main(int argc, char *argv[])
     }
 
     // Visibility
+    UDEBUG("Initializing Visibility");
     vis.setMemory(&memory);
     vis.setHTTPServer(&httpServer);
     if (!vis.init(dbfiles))
@@ -80,6 +82,7 @@ int main(int argc, char *argv[])
     visThread.start();
 
     // Localization
+    UDEBUG("Initializing Localization");
     loc.setMemory(&memory);
     loc.setHTTPServer(&httpServer);
     loc.setVisibility(&vis);
@@ -92,12 +95,14 @@ int main(int argc, char *argv[])
     locThread.start();
 
     // CameraNetwork
+    UDEBUG("Initializing camera");
     camera.setHTTPServer(&httpServer);
     camera.setLocalization(&loc);
     camera.moveToThread(&cameraThread);
     cameraThread.start();
 
     // HTTPServer
+    UDEBUG("Initializing HTTP server");
     httpServer.setCamera(&camera);
     if (!httpServer.start())
     {
