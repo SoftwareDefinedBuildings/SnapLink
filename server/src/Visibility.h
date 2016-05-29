@@ -15,8 +15,6 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    bool init(std::vector<std::string> &dbfiles);
-
     void setMemory(MemoryLoc *memory);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -24,14 +22,11 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool processLabels(std::vector<std::string> &dbfiles);
     std::vector<std::string> *process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
-    bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
 private:
     // labels
-    std::vector< std::vector<cv::Point3f> > _points;
-    std::vector< std::vector<std::string> > _labels;
+    std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
     HTTPServer *_httpServer;
     MemoryLoc *_memory;
 };

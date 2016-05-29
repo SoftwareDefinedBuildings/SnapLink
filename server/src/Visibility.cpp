@@ -2,7 +2,6 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d.h>
-#include <rtabmap/core/util3d_transforms.h>
 #include <pcl/point_types.h>
 #include <opencv/cv.h>
 #include <QCoreApplication>
@@ -10,7 +9,6 @@
 #include <QTextStream>
 #include <fstream>
 #include <iostream>
-#include <sqlite3.h>
 #include "Utility.h"
 #include "Visibility.h"
 #include "LocationEvent.h"
@@ -25,11 +23,6 @@ Visibility::Visibility() :
 Visibility::~Visibility()
 {
     _httpServer = NULL;
-}
-
-bool Visibility::init(std::vector<std::string> &dbfiles)
-{
-    return processLabels(dbfiles);
 }
 
 void Visibility::setMemory(MemoryLoc *memory)
@@ -62,69 +55,21 @@ bool Visibility::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool Visibility::processLabels(std::vector<std::string> &dbfiles)
-{
-    for (int dbId = 0; dbId < dbfiles.size(); dbId++)
-    {
-        const std::string &dbfile = dbfiles.at(dbId);
-        std::vector<cv::Point3f> points;
-        std::vector<std::string> labels;
-        sqlite3 *db = NULL;
-        sqlite3_stmt *stmt = NULL;
-        int rc;
-
-        rc = sqlite3_open(dbfile.c_str(), &db);
-        if (rc != SQLITE_OK)
-        {
-            UERROR("Could not open database %s", sqlite3_errmsg(db));
-            sqlite3_close(db);
-            return false;
-        }
-
-        std::string sql = "SELECT * from Labels";
-        rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
-        if (rc == SQLITE_OK)
-        {
-            while (sqlite3_step(stmt) == SQLITE_ROW)
-            {
-                std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
-                int imageId = sqlite3_column_int(stmt, 1);
-                int x = sqlite3_column_int(stmt, 2);
-                int y = sqlite3_column_int(stmt, 3);
-                pcl::PointXYZ pWorld;
-                if (getPoint3World(dbId, imageId, x, y, pWorld))
-                {
-                    points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-                    labels.push_back(label);
-                    UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, label.c_str(), dbfiles.at(dbId).c_str());
-                }
-            }
-        }
-        else
-        {
-            UWARN("Could not read database %s: %s", dbfiles.at(dbId).c_str(), sqlite3_errmsg(db));
-        }
-
-        _points.push_back(points);
-        _labels.push_back(labels);
-
-        sqlite3_finalize(stmt);
-
-        sqlite3_close(db);
-    }
-
-    return true;
-}
-
 std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
 {
-    const std::vector<cv::Point3f> &points = _points.at(dbId);
-    const std::vector<std::string> &labels = _labels.at(dbId);
+    const std::vector< std::pair<cv::Point3f, std::string> > &labels = _memory->getLabels(dbId);
+    std::vector<cv::Point3f> points;
+    std::vector<std::string> names;
+    for (std::vector< std::pair<cv::Point3f, std::string> >::const_iterator i = labels.begin(); i != labels.end(); i++)
+    {
+        points.push_back(i->first);
+        names.push_back(i->second);
+    }
 
-    std::vector<std::string> *names = new std::vector<std::string>();
+    std::vector<std::string> *results = new std::vector<std::string>();
     if (points.size() == 0)
     {
-        return names;
+        return results;
     }
 
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
@@ -162,25 +107,25 @@ std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorDat
         {
             if (Utility::isInFrontOfCamera(points[i], P))
             {
-                std::string label = labels[i];
-                visibleLabels.push_back(label);
+                std::string name = names[i];
+                visibleLabels.push_back(name);
                 float x, y, z, roll, pitch, yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 cv::Point3f cameraLoc(x, y, z);
                 //double dist = cv::norm(points[i] - cameraLoc);
                 double dist = cv::norm(planePoints[i] - center);
-                distances[label].push_back(dist);
-                labelPoints[label].push_back(planePoints[i]);
-                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+                distances[name].push_back(dist);
+                labelPoints[name].push_back(planePoints[i]);
+                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
             else
             {
-                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
         }
         else
         {
-            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", labels[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
         }
     }
 
@@ -190,41 +135,13 @@ std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorDat
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
         std::string minlabel = minDist.first;
         UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-        names->push_back(minlabel);
+        results->push_back(minlabel);
     }
     else
     {
         UINFO("No label is qualified");
     }
-    return names;
-}
-
-bool Visibility::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
-{
-    const rtabmap::Signature *s = _memory->getSignature(dbId, imageId);
-    if (s == NULL)
-    {
-        UWARN("Signature %d does not exist", imageId);
-        return false;
-    }
-    const rtabmap::SensorData &data = s->sensorData();
-    const rtabmap::CameraModel &cm = data.cameraModels()[0];
-    bool smoothing = false;
-    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
-    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
-    {
-        UWARN("Depth value not valid");
-        return false;
-    }
-    rtabmap::Transform poseWorld = s->getPose();
-    if (poseWorld.isNull())
-    {
-        UWARN("Image pose is Null");
-        return false;
-    }
-    poseWorld = poseWorld * cm.localTransform();
-    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
-    return true;
+    return results;
 }
 
 double CompareMeanDist::meanDist(const std::vector<double> &vec)

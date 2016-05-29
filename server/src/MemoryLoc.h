@@ -31,12 +31,15 @@ public:
     void close();
 
     rtabmap::Signature *getSignature(int dbId, int sigId) const;
+    const std::vector< std::pair<cv::Point3f, std::string> > &getLabels(int dbId) const;
     const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
     const std::vector<std::map<int, rtabmap::Signature *> > &getSignatureMaps() const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    std::map<int, rtabmap::Transform> optimizeGraph(int dbId, int rootSigId);  // optimize poses using TORO graph
+    void optimizePoses(int dbId);  // optimize poses using TORO graph
+    std::vector< std::pair<cv::Point3f, std::string> > readLabels(int dbId, std::string dbUrl) const;
+    bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const;
 
     std::map<int, int> getNeighborsId(
         int dbId,
@@ -57,7 +60,6 @@ private:
     int getNextId();
     void clear();
 
-
     //keypoint stuff
     void disableWordsRef(int dbId, int signatureId);
     void cleanUnusedWords();
@@ -66,7 +68,11 @@ private:
     // parameters
     rtabmap::ParametersMap parameters_;
 
-    std::vector<std::map<int, rtabmap::Signature *> > _signatureMaps;
+    std::vector< std::map<int, int> > _sigIdMaps; // maps of ids of DB signatures and mem signatures
+    std::vector< std::map<int, int> > _wordIdMaps; // maps of ids of DB words and mem words
+    std::vector< std::map<int, rtabmap::Signature *> > _signatureMaps;
+
+    std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
 
     //Keypoint stuff
     VWDictFixed *_vwd;

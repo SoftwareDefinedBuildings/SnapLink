@@ -13,6 +13,7 @@
 #include <rtabmap/core/util3d_correspondences.h>
 #include <rtabmap/core/util3d_registration.h>
 #include <rtabmap/core/util3d_surface.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Compression.h>
@@ -21,6 +22,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
+#include <sqlite3.h>
 
 #include "MemoryLoc.h"
 #include "HTTPServer.h"
@@ -82,6 +84,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             sigIdMap.insert(std::pair<int, int>(*iter, nextMemSigId));
             nextMemSigId++;
         }
+        _sigIdMaps.push_back(sigIdMap);
     
         // Read words from database
         UDEBUG("Read words from database...");
@@ -100,6 +103,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             wordIdMap.insert(std::pair<int, int>(*iter, nextMemWordId));
             nextMemWordId++;
         }
+        _wordIdMaps.push_back(wordIdMap);
 
         // Add signatures to memory
         UDEBUG("Add signatures to memory...");
@@ -108,6 +112,10 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         {
             rtabmap::Signature *dbSig = *iter;
             dbSignatureMap.insert(std::pair<int, rtabmap::Signature *>(dbSig->id(), dbSig));
+            if (!dbSig->sensorData().imageCompressed().empty())
+            {
+                dbSig->sensorData().uncompressData();
+            }
         }
         UDEBUG("Loading signatures done! (%d loaded)", int(dbSignatureMap.size()));
         _signatureMaps.push_back(dbSignatureMap); // temp push for optimzation, will pop later
@@ -115,13 +123,16 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
         // Optimize poses of signatures
         UDEBUG("Optimize poses of signatures...");
-        // TODO: why rbegin is guaranteed to have neighbors?
-        int rootSigId = dbSignatureMap.rbegin()->first;
-        std::map<int, rtabmap::Transform> optimizedPoseMap = optimizeGraph(dbId, rootSigId);
+        optimizePoses(dbId);
 
-        // Update signatures in memory
-        UDEBUG("Add signatures to memory...");
-        _signatureMaps.pop_back();
+        // Read labels from database before updating signature ids
+        UDEBUG("Read labels from database...");
+        std::vector< std::pair<cv::Point3f, std::string> > labels = readLabels(dbId, dbUrl);
+        _labels.push_back(labels);
+
+        // Update signature ids and words in memory
+        UDEBUG("Update signatures ids and words in memory...");
+        dbSignatureMap = _signatureMaps.at(dbId);
         std::map<int, rtabmap::Signature *> memSignatureMap; // mem sig map with updated pose and ids
         for (std::map<int, rtabmap::Signature *>::const_iterator iter = dbSignatureMap.begin(); iter != dbSignatureMap.end(); ++iter)
         {
@@ -131,17 +142,12 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             {
                 UFATAL("");
             }
-            const std::map<int, rtabmap::Transform>::const_iterator poseIter = optimizedPoseMap.find(dbSig->id());
-            if (poseIter == optimizedPoseMap.end())
-            {
-                UFATAL("");
-            }
             rtabmap::SensorData sensorData = dbSig->sensorData();
             sensorData.setId(idIter->second);
             // TODO use our own memory signature definition
-            rtabmap::Signature *memSig = new rtabmap::Signature(idIter->second, dbSig->mapId(), dbSig->getWeight(), dbSig->getStamp(), dbSig->getLabel(), poseIter->second, dbSig->getGroundTruthPose(), sensorData);
+            rtabmap::Signature *memSig = new rtabmap::Signature(idIter->second, dbSig->mapId(), dbSig->getWeight(), dbSig->getStamp(), dbSig->getLabel(), dbSig->getPose(), dbSig->getGroundTruthPose(), sensorData);
             
-            // Update signatures' words
+            // Update signatures words
             const std::multimap<int, cv::KeyPoint> &dbSigWords = dbSig->getWords();
             std::multimap<int, cv::KeyPoint> memSigWords;
             for (std::multimap<int, cv::KeyPoint>::const_iterator jter = dbSigWords.begin(); jter != dbSigWords.end(); jter++)
@@ -156,14 +162,10 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             memSig->setWords(memSigWords); // it's pass by value internally
 
             memSignatureMap.insert(std::pair<int, rtabmap::Signature *>(memSig->id(), memSig));
-            if (!memSig->sensorData().imageCompressed().empty())
-            {
-                memSig->sensorData().uncompressData();
-            }
 
             delete dbSig;
         }
-        _signatureMaps.push_back(memSignatureMap);
+        _signatureMaps.at(dbId) = memSignatureMap;
         UDEBUG("Loading signatures done! (%d loaded)", int(memSignatureMap.size()));
 
         // Add words to memory
@@ -348,8 +350,11 @@ const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, 
     return s;
 }
 
-std::map<int, rtabmap::Transform> MemoryLoc::optimizeGraph(int dbId, int rootSigId)
+void MemoryLoc::optimizePoses(int dbId)
 {
+    // TODO: why rbegin is guaranteed to have neighbors?
+    int rootSigId = _signatureMaps.at(dbId).rbegin()->first;
+
     // Get all IDs linked to last signature
     std::map<int, int> ids = getNeighborsId(dbId, rootSigId, 0);
 
@@ -366,12 +371,30 @@ std::map<int, rtabmap::Transform> MemoryLoc::optimizeGraph(int dbId, int rootSig
     std::map<int, rtabmap::Transform> optimizedPoseMap = graphOptimizer->optimize(poses.begin()->first, poses, links);
     delete graphOptimizer;
 
-    return optimizedPoseMap;
+    // Update signatures poses in memory
+    UDEBUG("Update signatures poses memory...");
+    std::map<int, rtabmap::Signature *> signatureMap = _signatureMaps.at(dbId);
+    for (std::map<int, rtabmap::Signature *>::const_iterator iter = signatureMap.begin(); iter != signatureMap.end(); ++iter)
+    {
+        rtabmap::Signature *sig = iter->second;
+        const std::map<int, rtabmap::Transform>::const_iterator poseIter = optimizedPoseMap.find(sig->id());
+        if (poseIter == optimizedPoseMap.end())
+        {
+            UFATAL("");
+        }
+
+        sig->setPose(poseIter->second);    
+    }
 }
 
 rtabmap::Signature *MemoryLoc::getSignature(int dbId, int sigId) const
 {
     return uValue(_signatureMaps.at(dbId), sigId, (rtabmap::Signature *)0);
+}
+
+const std::vector< std::pair<cv::Point3f, std::string> > &MemoryLoc::getLabels(int dbId) const
+{
+    return _labels.at(dbId);
 }
 
 const std::map<int, rtabmap::Signature *> &MemoryLoc::getSignatureMap(int dbId) const
@@ -405,6 +428,79 @@ std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) co
         UWARN("Cannot find signature %d in memory", sigId);
     }
     return links;
+}
+
+std::vector< std::pair<cv::Point3f, std::string> > MemoryLoc::readLabels(int dbId, std::string dbUrl) const
+{
+    std::vector< std::pair<cv::Point3f, std::string> > labels;
+    sqlite3 *db = NULL;
+    sqlite3_stmt *stmt = NULL;
+    int rc;
+
+    rc = sqlite3_open(dbUrl.c_str(), &db);
+    if (rc != SQLITE_OK)
+    {
+        UERROR("Could not open database %s", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return labels;
+    }
+
+    std::string sql = "SELECT * from Labels";
+    rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, NULL);
+    if (rc == SQLITE_OK)
+    {
+        while (sqlite3_step(stmt) == SQLITE_ROW)
+        {
+            std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+            int imageId = sqlite3_column_int(stmt, 1);
+            int x = sqlite3_column_int(stmt, 2);
+            int y = sqlite3_column_int(stmt, 3);
+            pcl::PointXYZ pWorld;
+            if (getPoint3World(dbId, imageId, x, y, pWorld))
+            {
+                labels.push_back(std::pair<cv::Point3f, std::string>(cv::Point3f(pWorld.x, pWorld.y, pWorld.z), label));
+                UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, label.c_str(), dbUrl.c_str());
+            }
+        }
+    }
+    else
+    {
+        UWARN("Could not read database %s: %s", dbUrl.c_str(), sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return labels;
+}
+
+bool MemoryLoc::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const
+{
+    UDEBUG("");
+    const rtabmap::Signature *s = getSignature(dbId, imageId);
+    if (s == NULL)
+    {
+        UWARN("Signature %d does not exist", imageId);
+        return false;
+    }
+    const rtabmap::SensorData &data = s->sensorData();
+    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    bool smoothing = false;
+    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
+    {
+        UWARN("Depth value not valid");
+        return false;
+    }
+    rtabmap::Transform poseWorld = s->getPose();
+    if (poseWorld.isNull())
+    {
+        UWARN("Image pose is Null");
+        return false;
+    }
+    poseWorld = poseWorld * cm.localTransform();
+    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    return true;
 }
 
 // return map<Id,Margin>, including signatureId

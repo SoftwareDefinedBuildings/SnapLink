@@ -73,11 +73,6 @@ int main(int argc, char *argv[])
     UDEBUG("Initializing Visibility");
     vis.setMemory(&memory);
     vis.setHTTPServer(&httpServer);
-    if (!vis.init(dbfiles))
-    {
-        UERROR("Initializing visibility failed");
-        return 1;
-    }
     vis.moveToThread(&visThread);
     visThread.start();
 
