@@ -160,6 +160,18 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
                 memSigWords.insert(std::pair<int, cv::KeyPoint>(kter->second, jter->second));
             }
             memSig->setWords(memSigWords); // it's pass by value internally
+            const std::multimap<int, cv::Point3f> &dbSigWords3 = dbSig->getWords3();
+            std::multimap<int, cv::Point3f> memSigWords3;
+            for (std::multimap<int, cv::Point3f>::const_iterator jter = dbSigWords3.begin(); jter != dbSigWords3.end(); jter++)
+            {
+                std::map<int, int>::iterator kter = wordIdMap.find(jter->first);
+                if (kter == wordIdMap.end())
+                {
+                    UFATAL("");
+                }
+                memSigWords3.insert(std::pair<int, cv::Point3f>(kter->second, jter->second));
+            }
+            memSig->setWords3(memSigWords3); // it's pass by value internally
 
             memSignatureMap.insert(std::pair<int, rtabmap::Signature *>(memSig->id(), memSig));
 
