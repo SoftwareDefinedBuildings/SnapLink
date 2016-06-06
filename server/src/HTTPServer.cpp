@@ -180,11 +180,9 @@ int HTTPServer::answer_to_connection(void *cls,
             }
 
             // wait for the result to come
-            int n = 1;
-            int time = 5000; // time to wait (ms)
-            bool acquired = con_info->detected.tryAcquire(n, time);
+            con_info->detected.acquire();
 
-            if (acquired && con_info->names != NULL && !con_info->names->empty())
+            if (con_info->names != NULL && !con_info->names->empty())
             {
                 con_info->answerstring = con_info->names->at(0);
             }

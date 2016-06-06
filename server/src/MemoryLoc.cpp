@@ -215,11 +215,11 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         //     }
         // }
         // UDEBUG("Adding word references, done! (%d)", _vwd->getTotalActiveReferences());
-
-        if (_vwd->getUnusedWordsSize())
-        {
-            UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
-        }
+        //
+        // if (_vwd->getUnusedWordsSize())
+        // {
+        //     UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
+        // }
         UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
         UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());

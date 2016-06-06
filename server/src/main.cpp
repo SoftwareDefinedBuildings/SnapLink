@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false")); // do not compare with last signature's words
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "50000"));
+    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "50000"));
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "true"));
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
-    UDEBUG("Initializing Memory");
+    UINFO("Initializing Memory");
     if (!memory.init(dbfiles, params))
     {
         UERROR("Initializing memory failed");
@@ -70,14 +70,14 @@ int main(int argc, char *argv[])
     }
 
     // Visibility
-    UDEBUG("Initializing Visibility");
+    UINFO("Initializing Visibility");
     vis.setMemory(&memory);
     vis.setHTTPServer(&httpServer);
     vis.moveToThread(&visThread);
     visThread.start();
 
     // Localization
-    UDEBUG("Initializing Localization");
+    UINFO("Initializing Localization");
     loc.setMemory(&memory);
     loc.setHTTPServer(&httpServer);
     loc.setVisibility(&vis);
@@ -90,14 +90,14 @@ int main(int argc, char *argv[])
     locThread.start();
 
     // CameraNetwork
-    UDEBUG("Initializing camera");
+    UINFO("Initializing camera");
     camera.setHTTPServer(&httpServer);
     camera.setLocalization(&loc);
     camera.moveToThread(&cameraThread);
     cameraThread.start();
 
     // HTTPServer
-    UDEBUG("Initializing HTTP server");
+    UINFO("Initializing HTTP server");
     httpServer.setCamera(&camera);
     if (!httpServer.start())
     {
