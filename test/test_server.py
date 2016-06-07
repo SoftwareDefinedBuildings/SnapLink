@@ -71,7 +71,9 @@ def test_dir(directory):
     bad_format_count = 0
     fail_count = 0
     elapsed_times = []
-    for filename in glob.glob(os.path.join(directory, "*.jpg")):
+    for filename in glob.glob(os.path.join(directory, "*")):
+        if not filename.endswith(".jpg") and not filename.endswith(".JPG"):
+            continue
         result, elapsed_time = test_file(filename)
         if result == RESULT_PASS:
             pass_count += 1
@@ -80,8 +82,11 @@ def test_dir(directory):
         elif result == RESULT_FAIL:
             fail_count += 1
         elapsed_times.append(elapsed_time)
-    elapsed_times = np.array(elapsed_times)
-    print "{0}/{1} tests passed, {2} bad format, mean time {3} +/- {4}".format(pass_count, pass_count+fail_count, bad_format_count, round(np.mean(elapsed_times), 2), round(np.std(elapsed_times), 2))
+    if elapsed_times:
+        elapsed_times = np.array(elapsed_times)
+        print "{0}/{1} tests passed, {2} bad format, mean time {3} +/- {4}".format(pass_count, pass_count+fail_count, bad_format_count, round(np.mean(elapsed_times), 2), round(np.std(elapsed_times), 2))
+    else:
+        print "No image found"
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
