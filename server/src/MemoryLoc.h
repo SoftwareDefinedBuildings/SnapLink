@@ -5,7 +5,6 @@
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Features2d.h>
-#include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/utilite/UStl.h>
 #include <typeinfo>
 #include <list>
@@ -13,12 +12,9 @@
 #include <set>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include "VWDictFixed.h"
 
-class Signature;
-class DBDriver;
-class VWDictionary;
-class VisualWord;
-class Feature2D;
+class VWDictFixed;
 
 class MemoryLoc
 {
@@ -29,75 +25,56 @@ public:
     MemoryLoc();
     virtual ~MemoryLoc();
 
-    bool update(rtabmap::SensorData &data, void *context);
-    bool init(const std::string &dbUrl,
+    bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    const rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
     void close();
-    std::map<int, float> computeSimilarity(const rtabmap::Signature *signature,
-                                           const std::list<int> &ids);
 
-    void emptyTrash();
-    void deleteLocation(int locationId);
-
-    const rtabmap::Signature *getLastWorkingSignature() const;
-    rtabmap::Transform getOptimizedPose(int signatureId) const;
-    const rtabmap::Signature *getSignature(int id) const;
-    const std::map<int, rtabmap::Signature *> &getSignatures() const;
-
-    rtabmap::Transform computeGlobalVisualTransform(int oldId, int newId) const;
+    rtabmap::Signature *getSignature(int dbId, int sigId) const;
+    const std::vector< std::pair<cv::Point3f, std::string> > &getLabels(int dbId) const;
+    const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
+    const std::vector<std::map<int, rtabmap::Signature *> > &getSignatureMaps() const;
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    void optimizeGraph();  // optimize poses using TORO graph
+    void optimizePoses(int dbId);  // optimize poses using TORO graph
+    std::vector< std::pair<cv::Point3f, std::string> > readLabels(int dbId, std::string dbUrl) const;
+    bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const;
 
     std::map<int, int> getNeighborsId(
+        int dbId,
         int signatureId,
-        int maxGraphDepth,
         bool incrementMarginOnLoop = false,
         bool ignoreLoopIds = false,
         bool ignoreIntermediateNodes = false) const;
-    std::map<int, rtabmap::Link> getNeighborLinks(int signatureId) const;
+    std::map<int, rtabmap::Link> getNeighborLinks(int dbId, int sigId) const;
     void getMetricConstraints(
+        int dbId,
         const std::set<int> &ids,
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links);
 
-
-    void moveToTrash(rtabmap::Signature *s, bool keepLinkedToGraph = true);
+    void moveToTrash(int dbId, rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 
-    rtabmap::Signature *_getSignature(int id) const;
     int getNextId();
     void clear();
 
-    rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
-
     //keypoint stuff
-    void disableWordsRef(int signatureId);
+    void disableWordsRef(int dbId, int signatureId);
     void cleanUnusedWords();
-
-    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *oldSig, const rtabmap::Signature *newSig) const;
-
-protected:
-    rtabmap::DBDriver *_dbDriver;
 
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
-    bool _badSignaturesIgnored;
 
-    int _idCount;
+    std::vector< std::map<int, int> > _sigIdMaps; // maps of ids of DB signatures and mem signatures
+    std::vector< std::map<int, int> > _wordIdMaps; // maps of ids of DB words and mem words
+    std::vector< std::map<int, rtabmap::Signature *> > _signatureMaps;
 
-    std::map<int, rtabmap::Transform> _optimizedPoses;
-    std::map<int, rtabmap::Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
+    std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
 
     //Keypoint stuff
-    rtabmap::VWDictionary *_vwd;
+    VWDictFixed *_vwd;
     rtabmap::Feature2D *_feature2D;
-
-    int _minInliers;
-    int _iterations;
-    int _pnpRefineIterations;
-    double _pnpReprojError;
-    int _pnpFlags;
 };
