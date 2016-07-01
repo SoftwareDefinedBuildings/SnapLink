@@ -3,8 +3,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UtiLite.h>
 #include <opencv2/opencv_modules.hpp>
-#include <opencv2/gpu/gpu.hpp>
-#include <rtflann/flann.hpp>
+#include <flann/flann.hpp>
 #include <fstream>
 #include <string>
 #include "VWDictFixed.h"
@@ -15,12 +14,10 @@ public:
     FlannIndex():
         index_(0),
         nextIndex_(0),
-        featuresType_(0),
-        featuresDim_(0),
-        isLSH_(false),
-        useDistanceL1_(false)
+        featuresDim_(0)
     {
     }
+
     virtual ~FlannIndex()
     {
         this->release();
@@ -30,109 +27,24 @@ public:
     {
         if (index_)
         {
-            if (featuresType_ == CV_8UC1)
-            {
-                delete(rtflann::Index<rtflann::Hamming<unsigned char> > *)index_;
-            }
-            else
-            {
-                if (useDistanceL1_)
-                {
-                    delete(rtflann::Index<rtflann::L1<float> > *)index_;
-                }
-                else
-                {
-                    delete(rtflann::Index<rtflann::L2<float> > *)index_;
-                }
-            }
+            delete(flann::Index<flann::L2<float> > *)index_;
             index_ = 0;
         }
         nextIndex_ = 0;
-        isLSH_ = false;
         addedDescriptors_.clear();
-        removedIndexes_.clear();
     }
 
-    unsigned int indexedFeatures() const
-    {
-        if (!index_)
-        {
-            return 0;
-        }
-        if (featuresType_ == CV_8UC1)
-        {
-            return ((const rtflann::Index<rtflann::Hamming<unsigned char> > *)index_)->size();
-        }
-        else
-        {
-            if (useDistanceL1_)
-            {
-                return ((const rtflann::Index<rtflann::L1<float> > *)index_)->size();
-            }
-            else
-            {
-                return ((const rtflann::Index<rtflann::L2<float> > *)index_)->size();
-            }
-        }
-    }
-
-    // return KB
-    unsigned int memoryUsed() const
-    {
-        if (!index_)
-        {
-            return 0;
-        }
-        if (featuresType_ == CV_8UC1)
-        {
-            return ((const rtflann::Index<rtflann::Hamming<unsigned char> > *)index_)->usedMemory() / 1000;
-        }
-        else
-        {
-            if (useDistanceL1_)
-            {
-                return ((const rtflann::Index<rtflann::L1<float> > *)index_)->usedMemory() / 1000;
-            }
-            else
-            {
-                return ((const rtflann::Index<rtflann::L2<float> > *)index_)->usedMemory() / 1000;
-            }
-        }
-    }
-
-    // Note that useDistanceL1 doesn't have any effect if LSH is used
     void build(
         const cv::Mat &features,
-        const rtflann::IndexParams &params,
-        bool useDistanceL1)
+        const flann::IndexParams &params)
     {
         this->release();
         UASSERT(index_ == 0);
         UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
-        featuresType_ = features.type();
         featuresDim_ = features.cols;
-        useDistanceL1_ = useDistanceL1;
 
-        if (featuresType_ == CV_8UC1)
-        {
-            rtflann::Matrix<unsigned char> dataset(features.data, features.rows, features.cols);
-            index_ = new rtflann::Index<rtflann::Hamming<unsigned char> >(dataset, params);
-            ((rtflann::Index<rtflann::Hamming<unsigned char> > *)index_)->buildIndex();
-        }
-        else
-        {
-            rtflann::Matrix<float> dataset((float *)features.data, features.rows, features.cols);
-            if (useDistanceL1_)
-            {
-                index_ = new rtflann::Index<rtflann::L1<float> >(dataset, params);
-                ((rtflann::Index<rtflann::L1<float> > *)index_)->buildIndex();
-            }
-            else
-            {
-                index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
-                ((rtflann::Index<rtflann::L2<float> > *)index_)->buildIndex();
-            }
-        }
+        index_ = new flann::Index<flann::L2<float> >(dataset, params);
+        ((flann::Index<flann::L2<float> > *)index_)->buildIndex();
 
         if (features.rows == 1)
         {
@@ -149,111 +61,9 @@ public:
         return index_ != 0;
     }
 
-    int featuresType() const
-    {
-        return featuresType_;
-    }
     int featuresDim() const
     {
         return featuresDim_;
-    }
-
-    unsigned int addPoint(const cv::Mat &feature)
-    {
-        if (!index_)
-        {
-            UERROR("Flann index not yet created!");
-            return 0;
-        }
-        UASSERT(feature.type() == featuresType_);
-        UASSERT(feature.cols == featuresDim_);
-        UASSERT(feature.rows == 1);
-        if (featuresType_ == CV_8UC1)
-        {
-            rtflann::Matrix<unsigned char> point(feature.data, feature.rows, feature.cols);
-            rtflann::Index<rtflann::Hamming<unsigned char> > *index = (rtflann::Index<rtflann::Hamming<unsigned char> > *)index_;
-            index->addPoints(point, 0);
-            // Rebuild index if it doubles in size
-            if (index->sizeAtBuild() * 2 < index->size() + index->removedCount())
-            {
-                // clean not used features
-                for (std::list<int>::iterator iter = removedIndexes_.begin(); iter != removedIndexes_.end(); ++iter)
-                {
-                    addedDescriptors_.erase(*iter);
-                }
-                removedIndexes_.clear();
-                index->buildIndex();
-            }
-        }
-        else
-        {
-            rtflann::Matrix<float> point((float *)feature.data, feature.rows, feature.cols);
-            if (useDistanceL1_)
-            {
-                rtflann::Index<rtflann::L1<float> > *index = (rtflann::Index<rtflann::L1<float> > *)index_;
-                index->addPoints(point, 0);
-                // Rebuild index if it doubles in size
-                if (index->sizeAtBuild() * 2 < index->size() + index->removedCount())
-                {
-                    // clean not used features
-                    for (std::list<int>::iterator iter = removedIndexes_.begin(); iter != removedIndexes_.end(); ++iter)
-                    {
-                        addedDescriptors_.erase(*iter);
-                    }
-                    removedIndexes_.clear();
-                    index->buildIndex();
-                }
-            }
-            else
-            {
-                rtflann::Index<rtflann::L2<float> > *index = (rtflann::Index<rtflann::L2<float> > *)index_;
-                index->addPoints(point, 0);
-                // Rebuild index if it doubles in size
-                if (index->sizeAtBuild() * 2 < index->size() + index->removedCount())
-                {
-                    // clean not used features
-                    for (std::list<int>::iterator iter = removedIndexes_.begin(); iter != removedIndexes_.end(); ++iter)
-                    {
-                        addedDescriptors_.erase(*iter);
-                    }
-                    removedIndexes_.clear();
-                    index->buildIndex();
-                }
-            }
-        }
-
-        addedDescriptors_.insert(std::make_pair(nextIndex_, feature));
-
-        return nextIndex_++;
-    }
-
-    void removePoint(unsigned int index)
-    {
-        if (!index_)
-        {
-            UERROR("Flann index not yet created!");
-            return;
-        }
-
-        // If a Segmentation fault occurs in removePoint(), verify that you have this fix in your installed "flann/algorithms/nn_index.h":
-        // 707 - if (ids_[id]==id) {
-        // 707 + if (id < ids_.size() && ids_[id]==id) {
-        // ref: https://github.com/mariusmuja/flann/commit/23051820b2314f07cf40ba633a4067782a982ff3#diff-33762b7383f957c2df17301639af5151
-
-        if (featuresType_ == CV_8UC1)
-        {
-            ((rtflann::Index<rtflann::Hamming<unsigned char> > *)index_)->removePoint(index);
-        }
-        else if (useDistanceL1_)
-        {
-            ((rtflann::Index<rtflann::L1<float> > *)index_)->removePoint(index);
-        }
-        else
-        {
-            ((rtflann::Index<rtflann::L2<float> > *)index_)->removePoint(index);
-        }
-
-        removedIndexes_.push_back(index);
     }
 
     void knnSearch(
@@ -261,7 +71,7 @@ public:
         cv::Mat &indices,
         cv::Mat &dists,
         int knn,
-        const rtflann::SearchParams &params = rtflann::SearchParams())
+        const flann::SearchParams &params = flann::SearchParams())
     {
         if (!index_)
         {
@@ -269,43 +79,23 @@ public:
             return;
         }
         indices.create(query.rows, knn, CV_32S);
-        dists.create(query.rows, knn, featuresType_ == CV_8UC1 ? CV_32S : CV_32F);
+        dists.create(query.rows, knn, CV_32F);
 
-        rtflann::Matrix<int> indicesF((int *)indices.data, indices.rows, indices.cols);
+        flann::Matrix<int> indicesF((int *)indices.data, indices.rows, indices.cols);
 
-        if (featuresType_ == CV_8UC1)
-        {
-            rtflann::Matrix<unsigned int> distsF((unsigned int *)dists.data, dists.rows, dists.cols);
-            rtflann::Matrix<unsigned char> queryF(query.data, query.rows, query.cols);
-            ((rtflann::Index<rtflann::Hamming<unsigned char> > *)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-        }
-        else
-        {
-            rtflann::Matrix<float> distsF((float *)dists.data, dists.rows, dists.cols);
-            rtflann::Matrix<float> queryF((float *)query.data, query.rows, query.cols);
-            if (useDistanceL1_)
-            {
-                ((rtflann::Index<rtflann::L1<float> > *)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-            }
-            else
-            {
-                ((rtflann::Index<rtflann::L2<float> > *)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-            }
-        }
+        flann::Matrix<float> distsF((float *)dists.data, dists.rows, dists.cols);
+        flann::Matrix<float> queryF((float *)query.data, query.rows, query.cols);
+        ((flann::Index<flann::L2<float> > *)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
     }
 
 private:
     void *index_;
     unsigned int nextIndex_;
-    int featuresType_;
     int featuresDim_;
-    bool isLSH_;
-    bool useDistanceL1_; // true=EUCLEDIAN_L2 false=MANHATTAN_L1
 
     // keep feature in memory until the tree is rebuilt
     // (in case the word is deleted when removed from the VWDictFixed)
     std::map<int, cv::Mat> addedDescriptors_;
-    std::list<int> removedIndexes_;
 };
 
 const int VWDictFixed::ID_START = 1;
@@ -313,7 +103,6 @@ const int VWDictFixed::ID_INVALID = 0;
 
 VWDictFixed::VWDictFixed(const rtabmap::ParametersMap &parameters) :
     _totalActiveReferences(0),
-    useDistanceL1_(false),
     _flannIndex(new FlannIndex()),
     _strategy(kNNFlannKdTree)
 {
@@ -351,7 +140,6 @@ void VWDictFixed::update()
             int type;
             if (_visualWords.begin()->second->getDescriptor().type() == CV_8U)
             {
-                useDistanceL1_ = true;
                 if (_strategy == kNNFlannKdTree)
                 {
                     type = CV_32F;
@@ -406,7 +194,7 @@ void VWDictFixed::update()
             if (_strategy ==  kNNFlannKdTree)
             {
                 UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-                _flannIndex->build(_dataTree, rtflann::KDTreeIndexParams(), useDistanceL1_);
+                _flannIndex->build(_dataTree, flann::KDTreeIndexParams());
             }
             else
             {
@@ -454,7 +242,6 @@ void VWDictFixed::clear(bool printWarningsIfNotEmpty)
     _mapIdIndex.clear();
     _unusedWords.clear();
     _flannIndex->release();
-    useDistanceL1_ = false;
 }
 
 void VWDictFixed::addWordRef(int wordId, int signatureId)
@@ -661,7 +448,7 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
 
             // Find nearest neighbor
             ULOGGER_DEBUG("Searching in words not indexed...");
-            cv::BFMatcher matcher(query.type() == CV_8U ? cv::NORM_HAMMING : useDistanceL1_ ? cv::NORM_L1 : cv::NORM_L2SQR);
+            cv::BFMatcher matcher(query.type() == CV_8U ? cv::NORM_HAMMING : cv::NORM_L2SQR);
             matcher.knnMatch(query, dataNotIndexed, matchesNotIndexed, dataNotIndexed.rows > 1 ? 2 : 1);
         }
         ULOGGER_DEBUG("Search not yet indexed words time = %fs", timer.ticks());

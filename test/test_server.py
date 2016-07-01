@@ -8,10 +8,9 @@ import numpy as np
 import cv2
 import requests
 import time
-from termcolor import colored
 from PIL import Image, ExifTags
 
-SERVER_ADDR = "http://kaifei.cs.berkeley.edu:50002"
+SERVER_ADDR = "http://kaifei.cs.berkeley.edu:50001"
 
 RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1
@@ -58,7 +57,7 @@ def test_file(filename):
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
     if r.text != obj_name:
-        text = colored("test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time), 'red')
+        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         print text
         return RESULT_FAIL, elapsed_time
     else:
