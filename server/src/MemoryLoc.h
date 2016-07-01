@@ -54,7 +54,6 @@ private:
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links);
 
-    void moveToTrash(int dbId, rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 
     int getNextId();
@@ -62,7 +61,6 @@ private:
 
     //keypoint stuff
     void disableWordsRef(int dbId, int signatureId);
-    void cleanUnusedWords();
 
 private:
     // parameters

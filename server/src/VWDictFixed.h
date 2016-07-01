@@ -40,8 +40,14 @@ public:
     void removeAllWordRef(int wordId, int signatureId);
     const rtabmap::VisualWord *getWord(int id) const;
     rtabmap::VisualWord *getUnusedWord(int id) const;
-    int getLastWordId() {return _lastWordId;}
-    void setLastWordId(int id) {_lastWordId = id;}
+    int getLastWordId()
+    {
+        return _lastWordId;
+    }
+    void setLastWordId(int id)
+    {
+        _lastWordId = id;
+    }
     const std::map<int, rtabmap::VisualWord *> &getVisualWords() const
     {
         return _visualWords;
@@ -57,8 +63,6 @@ public:
     {
         return (int)_unusedWords.size();
     }
-    void removeWords(const std::vector<rtabmap::VisualWord *> &words); // caller must delete the words
-    void deleteUnusedWords();
 
 protected:
     std::map<int, rtabmap::VisualWord *> _visualWords; //<id,rtabmap::VisualWord*>
@@ -66,13 +70,10 @@ protected:
 
 private:
     int _lastWordId;
-    bool useDistanceL1_;
     FlannIndex *_flannIndex;
     cv::Mat _dataTree;
     NNStrategy _strategy;
     std::map<int , int> _mapIndexId;
     std::map<int , int> _mapIdIndex;
     std::map<int, rtabmap::VisualWord *> _unusedWords; //<id,rtabmap::VisualWord*>, note that these words stay in _visualWords
-    std::set<int> _notIndexedWords; // Words that are not indexed in the dictionary
-    std::set<int> _removedIndexedWords; // Words not anymore in the dictionary but still indexed in the dictionary
 };

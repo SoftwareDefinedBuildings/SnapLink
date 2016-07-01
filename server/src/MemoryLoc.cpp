@@ -85,7 +85,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             nextMemSigId++;
         }
         _sigIdMaps.push_back(sigIdMap);
-    
+
         // Read words from database
         UDEBUG("Read words from database...");
         std::set<int> wordIds;
@@ -146,7 +146,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             sensorData.setId(idIter->second);
             // TODO use our own memory signature definition
             rtabmap::Signature *memSig = new rtabmap::Signature(idIter->second, dbSig->mapId(), dbSig->getWeight(), dbSig->getStamp(), dbSig->getLabel(), dbSig->getPose(), dbSig->getGroundTruthPose(), sensorData);
-            
+
             // Update signatures words
             const std::multimap<int, cv::KeyPoint> &dbSigWords = dbSig->getWords();
             std::multimap<int, cv::KeyPoint> memSigWords;
@@ -196,7 +196,6 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             delete dbVW;
         }
         UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
-        _vwd->update();
 
         // UDEBUG("Adding word references...");
         // // Enable loaded signatures
@@ -229,6 +228,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         dbDriver = NULL;
         UDEBUG("Closing database, done!");
     }
+    _vwd->update();
 
     return true;
 }
@@ -395,7 +395,7 @@ void MemoryLoc::optimizePoses(int dbId)
             UFATAL("");
         }
 
-        sig->setPose(poseIter->second);    
+        sig->setPose(poseIter->second);
     }
 }
 
@@ -612,66 +612,18 @@ void MemoryLoc::clear()
 {
     UDEBUG("");
 
-    this->cleanUnusedWords();
-
     //Get the tree root (parents)
     for (int dbId = 0; dbId < _signatureMaps.size(); dbId++)
     {
         std::map<int, rtabmap::Signature *> &mem = _signatureMaps.at(dbId);
-        for (std::map<int, rtabmap::Signature *>::iterator i = mem.begin(); i != mem.end(); ++i)
-        {
-            if (i->second)
-            {
-                UDEBUG("deleting from the memory: %d", i->first);
-                this->moveToTrash(dbId, i->second);
-            }
-        }
-
-        if (mem.size() != 0)
-        {
-            ULOGGER_ERROR("_signatures must be empty here, size=%d", mem.size());
-        }
         mem.clear();
     }
 
-    cleanUnusedWords();
     if (_vwd)
     {
         _vwd->clear();
     }
     UDEBUG("");
-}
-
-/**
- * If saveToDatabase=false, deleted words are filled in deletedWords.
- */
-void MemoryLoc::moveToTrash(int dbId, rtabmap::Signature *s, bool keepLinkedToGraph)
-{
-    UDEBUG("id=%d", s ? s->id() : 0);
-    if (s)
-    {
-        this->disableWordsRef(dbId, s->id());
-        if (!keepLinkedToGraph)
-        {
-            std::list<int> keys = uUniqueKeys(s->getWords());
-            for (std::list<int>::const_iterator i = keys.begin(); i != keys.end(); ++i)
-            {
-                // assume just removed word doesn't have any other references
-                rtabmap::VisualWord *w = _vwd->getUnusedWord(*i);
-                if (w)
-                {
-                    std::vector<rtabmap::VisualWord *> wordToDelete;
-                    wordToDelete.push_back(w);
-                    _vwd->removeWords(wordToDelete);
-                    delete w;
-                }
-            }
-        }
-
-        _signatureMaps.at(dbId).erase(s->id());
-
-        delete s;
-    }
 }
 
 void MemoryLoc::disableWordsRef(int dbId, int signatureId)
@@ -694,25 +646,6 @@ void MemoryLoc::disableWordsRef(int dbId, int signatureId)
         ss->setEnabled(false);
         UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
     }
-}
-
-void MemoryLoc::cleanUnusedWords()
-{
-    // if (_vwd->isIncremental())
-    // {
-    //     std::vector<rtabmap::VisualWord *> removedWords = _vwd->getUnusedWords();
-    //     UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
-    //     if (removedWords.size())
-    //     {
-    //         // remove them from the dictionary
-    //         _vwd->removeWords(removedWords);
-
-    //         for (unsigned int i = 0; i < removedWords.size(); ++i)
-    //         {
-    //             delete removedWords[i];
-    //         }
-    //     }
-    // }
 }
 
 // return all non-null poses

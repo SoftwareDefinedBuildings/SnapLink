@@ -13,7 +13,6 @@ class FlannIndex
 public:
     FlannIndex():
         index_(0),
-        nextIndex_(0),
         featuresDim_(0)
     {
     }
@@ -30,8 +29,6 @@ public:
             delete(flann::Index<flann::L2<float> > *)index_;
             index_ = 0;
         }
-        nextIndex_ = 0;
-        addedDescriptors_.clear();
     }
 
     void build(
@@ -41,24 +38,22 @@ public:
         this->release();
         UASSERT(index_ == 0);
         UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
+        featuresType_ = features.type();
         featuresDim_ = features.cols;
 
+        flann::Matrix<float> dataset((float *)features.data, features.rows, features.cols);
         index_ = new flann::Index<flann::L2<float> >(dataset, params);
         ((flann::Index<flann::L2<float> > *)index_)->buildIndex();
-
-        if (features.rows == 1)
-        {
-            // incremental FLANN
-            addedDescriptors_.insert(std::make_pair(nextIndex_, features));
-        }
-        // else assume that the features are kept in memory outside this class (e.g., dataTree_)
-
-        nextIndex_ = features.rows;
     }
 
     bool isBuilt()
     {
         return index_ != 0;
+    }
+
+    int featuresType() const
+    {
+        return featuresType_;
     }
 
     int featuresDim() const
@@ -90,12 +85,8 @@ public:
 
 private:
     void *index_;
-    unsigned int nextIndex_;
+    int featuresType_;
     int featuresDim_;
-
-    // keep feature in memory until the tree is rebuilt
-    // (in case the word is deleted when removed from the VWDictFixed)
-    std::map<int, cv::Mat> addedDescriptors_;
 };
 
 const int VWDictFixed::ID_START = 1;
@@ -117,32 +108,49 @@ VWDictFixed::~VWDictFixed()
 void VWDictFixed::update()
 {
     ULOGGER_DEBUG("");
-    if (!_notIndexedWords.size())
-    {
-        // No need to update the search index if we
-        // use a fixed dictionary and the index is
-        // already built
-        return;
-    }
 
-    if (_notIndexedWords.size() || _visualWords.size() == 0 || _removedIndexedWords.size())
-    {
-        _mapIndexId.clear();
-        _mapIdIndex.clear();
-        _dataTree = cv::Mat();
-        _flannIndex->release();
+    _mapIndexId.clear();
+    _mapIdIndex.clear();
+    _dataTree = cv::Mat();
+    _flannIndex->release();
 
-        if (_visualWords.size())
+    if (_visualWords.size())
+    {
+        UTimer timer;
+        timer.start();
+
+        int type;
+        if (_visualWords.begin()->second->getDescriptor().type() == CV_8U)
         {
-            UTimer timer;
-            timer.start();
+            if (_strategy == kNNFlannKdTree)
+            {
+                type = CV_32F;
+            }
+            else
+            {
+                UFATAL("");
+            }
+        }
+        else
+        {
+            type = _visualWords.begin()->second->getDescriptor().type();
+        }
+        int dim = _visualWords.begin()->second->getDescriptor().cols;
 
-            int type;
-            if (_visualWords.begin()->second->getDescriptor().type() == CV_8U)
+        UASSERT(type == CV_32F || type == CV_8U);
+        UASSERT(dim > 0);
+
+        // Create the data matrix
+        _dataTree = cv::Mat(_visualWords.size(), dim, type); // SURF descriptors are CV_32F
+        std::map<int, rtabmap::VisualWord *>::const_iterator iter = _visualWords.begin();
+        for (unsigned int i = 0; i < _visualWords.size(); ++i, ++iter)
+        {
+            cv::Mat descriptor;
+            if (iter->second->getDescriptor().type() == CV_8U)
             {
                 if (_strategy == kNNFlannKdTree)
                 {
-                    type = CV_32F;
+                    iter->second->getDescriptor().convertTo(descriptor, CV_32F);
                 }
                 else
                 {
@@ -151,67 +159,34 @@ void VWDictFixed::update()
             }
             else
             {
-                type = _visualWords.begin()->second->getDescriptor().type();
-            }
-            int dim = _visualWords.begin()->second->getDescriptor().cols;
-
-            UASSERT(type == CV_32F || type == CV_8U);
-            UASSERT(dim > 0);
-
-            // Create the data matrix
-            _dataTree = cv::Mat(_visualWords.size(), dim, type); // SURF descriptors are CV_32F
-            std::map<int, rtabmap::VisualWord *>::const_iterator iter = _visualWords.begin();
-            for (unsigned int i = 0; i < _visualWords.size(); ++i, ++iter)
-            {
-                cv::Mat descriptor;
-                if (iter->second->getDescriptor().type() == CV_8U)
-                {
-                    if (_strategy == kNNFlannKdTree)
-                    {
-                        iter->second->getDescriptor().convertTo(descriptor, CV_32F);
-                    }
-                    else
-                    {
-                        UFATAL("");
-                    }
-                }
-                else
-                {
-                    descriptor = iter->second->getDescriptor();
-                }
-
-                UASSERT(descriptor.cols == dim);
-                UASSERT(descriptor.type() == type);
-
-                descriptor.copyTo(_dataTree.row(i));
-                _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
-                _mapIdIndex.insert(_mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
+                descriptor = iter->second->getDescriptor();
             }
 
-            ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d", _mapIndexId.size(), _visualWords.size(), dim);
-            ULOGGER_DEBUG("copying data = %f s", timer.ticks());
+            UASSERT(descriptor.cols == dim);
+            UASSERT(descriptor.type() == type);
 
-            if (_strategy ==  kNNFlannKdTree)
-            {
-                UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-                _flannIndex->build(_dataTree, flann::KDTreeIndexParams());
-            }
-            else
-            {
-                UFATAL("");
-            }
-
-            ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
+            descriptor.copyTo(_dataTree.row(i));
+            _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
+            _mapIdIndex.insert(_mapIdIndex.end(), std::pair<int, int>(iter->second->id(), i));
         }
-        UDEBUG("Dictionary updated! (size=%d added=%d removed=%d)",
-               _dataTree.rows, _notIndexedWords.size(), _removedIndexedWords.size());
+
+        ULOGGER_DEBUG("_mapIndexId.size() = %d, words.size()=%d, _dim=%d", _mapIndexId.size(), _visualWords.size(), dim);
+        ULOGGER_DEBUG("copying data = %f s", timer.ticks());
+
+        if (_strategy ==  kNNFlannKdTree)
+        {
+            UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
+            _flannIndex->build(_dataTree, flann::KDTreeIndexParams());
+        }
+        else
+        {
+            UFATAL("");
+        }
+
+        ULOGGER_DEBUG("Time to create kd tree = %f s", timer.ticks());
     }
-    else
-    {
-        UDEBUG("Dictionary has not changed, so no need to update it! (size=%d)", _dataTree.rows);
-    }
-    _notIndexedWords.clear();
-    _removedIndexedWords.clear();
+    UDEBUG("Dictionary updated! (size=%d)", _dataTree.rows);
+
     UDEBUG("");
 }
 
@@ -224,18 +199,12 @@ void VWDictFixed::clear(bool printWarningsIfNotEmpty)
         {
             UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", (int)_visualWords.size());
         }
-        if (_notIndexedWords.size())
-        {
-            UWARN("Not indexed words should be empty here (%d words still not indexed)", (int)_notIndexedWords.size());
-        }
     }
     for (std::map<int, rtabmap::VisualWord *>::iterator i = _visualWords.begin(); i != _visualWords.end(); ++i)
     {
         delete(*i).second;
     }
     _visualWords.clear();
-    _notIndexedWords.clear();
-    _removedIndexedWords.clear();
     _totalActiveReferences = 0;
     _dataTree = cv::Mat();
     _mapIndexId.clear();
@@ -326,7 +295,6 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
     UTimer timer;
     timer.start();
     std::vector<int> resultIds(queryIn.rows, 0);
-    unsigned int k = 2; // k nearest neighbor
 
     if (_visualWords.size() && queryIn.rows)
     {
@@ -389,14 +357,14 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
         cv::Mat results;
         cv::Mat dists;
 
-        if (_flannIndex->isBuilt() || (!_dataTree.empty() && _dataTree.rows >= (int)k))
+        if (_flannIndex->isBuilt() || !_dataTree.empty())
         {
             //Find nearest neighbors
             UDEBUG("query.rows=%d ", query.rows);
 
             if (_strategy == kNNFlannKdTree)
             {
-                _flannIndex->knnSearch(query, results, dists, k);
+                _flannIndex->knnSearch(query, results, dists, 1);
             }
             else
             {
@@ -412,46 +380,6 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
             }
         }
         ULOGGER_DEBUG("Search dictionary time = %fs", timer.ticks());
-
-        std::map<int, int> mapIndexIdNotIndexed;
-        std::vector<std::vector<cv::DMatch> > matchesNotIndexed;
-        if (_notIndexedWords.size())
-        {
-            cv::Mat dataNotIndexed = cv::Mat::zeros(_notIndexedWords.size(), query.cols, query.type());
-            unsigned int index = 0;
-            rtabmap::VisualWord *vw;
-            for (std::set<int>::iterator iter = _notIndexedWords.begin(); iter != _notIndexedWords.end(); ++iter, ++index)
-            {
-                vw = _visualWords.at(*iter);
-
-                cv::Mat descriptor;
-                if (vw->getDescriptor().type() == CV_8U)
-                {
-                    if (_strategy == kNNFlannKdTree)
-                    {
-                        vw->getDescriptor().convertTo(descriptor, CV_32F);
-                    }
-                    else
-                    {
-                        UFATAL("");
-                    }
-                }
-                else
-                {
-                    descriptor = vw->getDescriptor();
-                }
-
-                UASSERT(vw != 0 && descriptor.cols == query.cols && descriptor.type() == query.type());
-                vw->getDescriptor().copyTo(dataNotIndexed.row(index));
-                mapIndexIdNotIndexed.insert(mapIndexIdNotIndexed.end(), std::pair<int, int>(index, vw->id()));
-            }
-
-            // Find nearest neighbor
-            ULOGGER_DEBUG("Searching in words not indexed...");
-            cv::BFMatcher matcher(query.type() == CV_8U ? cv::NORM_HAMMING : cv::NORM_L2SQR);
-            matcher.knnMatch(query, dataNotIndexed, matchesNotIndexed, dataNotIndexed.rows > 1 ? 2 : 1);
-        }
-        ULOGGER_DEBUG("Search not yet indexed words time = %fs", timer.ticks());
 
         for (int i = 0; i < query.rows; ++i)
         {
@@ -481,24 +409,6 @@ std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
                 }
             }
 
-            // not indexed..
-            if (matchesNotIndexed.size())
-            {
-                for (unsigned int j = 0; j < matchesNotIndexed.at(i).size(); ++j)
-                {
-                    float d = matchesNotIndexed.at(i).at(j).distance;
-                    int id = uValue(mapIndexIdNotIndexed, matchesNotIndexed.at(i).at(j).trainIdx);
-                    if (d >= 0.0f && id > 0)
-                    {
-                        fullResults.insert(std::pair<float, int>(d, id));
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
-
             if (fullResults.size())
             {
                 //Just take the nearest if the dictionary is not incremental
@@ -515,7 +425,6 @@ void VWDictFixed::addWord(rtabmap::VisualWord *vw)
     if (vw)
     {
         _visualWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
-        _notIndexedWords.insert(vw->id());
         if (vw->getReferences().size())
         {
             _totalActiveReferences += uSum(uValues(vw->getReferences()));
@@ -539,33 +448,5 @@ rtabmap::VisualWord *VWDictFixed::getUnusedWord(int id) const
 
 std::vector<rtabmap::VisualWord *> VWDictFixed::getUnusedWords() const
 {
-    // if (!_incrementalDictionary)
-    // {
-    //     ULOGGER_WARN("This method does nothing on a fixed dictionary");
-    //     return std::vector<rtabmap::VisualWord *>();
-    // }
     return uValues(_unusedWords);
-}
-
-void VWDictFixed::removeWords(const std::vector<rtabmap::VisualWord *> &words)
-{
-    for (unsigned int i = 0; i < words.size(); ++i)
-    {
-        _visualWords.erase(words[i]->id());
-        _unusedWords.erase(words[i]->id());
-        if (_notIndexedWords.erase(words[i]->id()) == 0)
-        {
-            _removedIndexedWords.insert(words[i]->id());
-        }
-    }
-}
-
-void VWDictFixed::deleteUnusedWords()
-{
-    std::vector<rtabmap::VisualWord *> unusedWords = uValues(_unusedWords);
-    removeWords(unusedWords);
-    for (unsigned int i = 0; i < unusedWords.size(); ++i)
-    {
-        delete unusedWords[i];
-    }
 }
