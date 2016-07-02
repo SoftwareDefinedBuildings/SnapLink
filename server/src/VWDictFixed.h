@@ -33,13 +33,9 @@ public:
 
     virtual void addWord(rtabmap::VisualWord *vw);
 
-    std::vector<int> findNN(const std::list<rtabmap::VisualWord *> &vws) const;
     std::vector<int> findNN(const cv::Mat &descriptors) const;
 
-    void addWordRef(int wordId, int signatureId);
-    void removeAllWordRef(int wordId, int signatureId);
     const rtabmap::VisualWord *getWord(int id) const;
-    rtabmap::VisualWord *getUnusedWord(int id) const;
     int getLastWordId()
     {
         return _lastWordId;
@@ -58,11 +54,6 @@ public:
     }
 
     void clear(bool printWarningsIfNotEmpty = true);
-    std::vector<rtabmap::VisualWord *> getUnusedWords() const;
-    unsigned int getUnusedWordsSize() const
-    {
-        return (int)_unusedWords.size();
-    }
 
 protected:
     std::map<int, rtabmap::VisualWord *> _visualWords; //<id,rtabmap::VisualWord*>
@@ -75,5 +66,4 @@ private:
     NNStrategy _strategy;
     std::map<int , int> _mapIndexId;
     std::map<int , int> _mapIdIndex;
-    std::map<int, rtabmap::VisualWord *> _unusedWords; //<id,rtabmap::VisualWord*>, note that these words stay in _visualWords
 };

@@ -195,7 +195,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             _vwd->addWord(memVW);
             delete dbVW;
         }
-        UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
+        UDEBUG("%d words loaded!", words.size());
 
         // UDEBUG("Adding word references...");
         // // Enable loaded signatures
@@ -624,28 +624,6 @@ void MemoryLoc::clear()
         _vwd->clear();
     }
     UDEBUG("");
-}
-
-void MemoryLoc::disableWordsRef(int dbId, int signatureId)
-{
-    UDEBUG("id=%d", signatureId);
-
-    rtabmap::Signature *ss = getSignature(dbId, signatureId);
-    if (ss && ss->isEnabled())
-    {
-        const std::multimap<int, cv::KeyPoint> &words = ss->getWords();
-        const std::list<int> &keys = uUniqueKeys(words);
-        int count = _vwd->getTotalActiveReferences();
-        // First remove all references
-        for (std::list<int>::const_iterator i = keys.begin(); i != keys.end(); ++i)
-        {
-            _vwd->removeAllWordRef(*i, signatureId);
-        }
-
-        count -= _vwd->getTotalActiveReferences();
-        ss->setEnabled(false);
-        UDEBUG("%d words total ref removed from signature %d... (total active ref = %d)", count, ss->id(), _vwd->getTotalActiveReferences());
-    }
 }
 
 // return all non-null poses

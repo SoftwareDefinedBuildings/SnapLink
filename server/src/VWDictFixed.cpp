@@ -209,85 +209,7 @@ void VWDictFixed::clear(bool printWarningsIfNotEmpty)
     _dataTree = cv::Mat();
     _mapIndexId.clear();
     _mapIdIndex.clear();
-    _unusedWords.clear();
     _flannIndex->release();
-}
-
-void VWDictFixed::addWordRef(int wordId, int signatureId)
-{
-    if (signatureId > 0 && wordId > 0)
-    {
-        rtabmap::VisualWord *vw = 0;
-        vw = uValue(_visualWords, wordId, vw);
-        if (vw)
-        {
-            vw->addRef(signatureId);
-            _totalActiveReferences += 1;
-
-            _unusedWords.erase(vw->id());
-        }
-        else
-        {
-            UERROR("Not found word %d", wordId);
-        }
-    }
-}
-
-void VWDictFixed::removeAllWordRef(int wordId, int signatureId)
-{
-    rtabmap::VisualWord *vw = 0;
-    vw = uValue(_visualWords, wordId, vw);
-    if (vw)
-    {
-        _totalActiveReferences -= vw->removeAllRef(signatureId);
-        if (vw->getReferences().size() == 0)
-        {
-            _unusedWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
-        }
-    }
-}
-
-std::vector<int> VWDictFixed::findNN(const std::list<rtabmap::VisualWord *> &vws) const
-{
-    UTimer timer;
-    timer.start();
-
-    if (_visualWords.size() && vws.size())
-    {
-        int type = (*vws.begin())->getDescriptor().type();
-        int dim = (*vws.begin())->getDescriptor().cols;
-
-        if (dim != _visualWords.begin()->second->getDescriptor().cols)
-        {
-            UERROR("Descriptors (size=%d) are not the same size as already added words in dictionary(size=%d)", (*vws.begin())->getDescriptor().cols, dim);
-            return std::vector<int>(vws.size(), 0);
-        }
-
-        if (type != _visualWords.begin()->second->getDescriptor().type())
-        {
-            UERROR("Descriptors (type=%d) are not the same type as already added words in dictionary(type=%d)", (*vws.begin())->getDescriptor().type(), type);
-            return std::vector<int>(vws.size(), 0);
-        }
-
-        // fill the request matrix
-        int index = 0;
-        rtabmap::VisualWord *vw;
-        cv::Mat query(vws.size(), dim, type);
-        for (std::list<rtabmap::VisualWord *>::const_iterator iter = vws.begin(); iter != vws.end(); ++iter, ++index)
-        {
-            vw = *iter;
-            UASSERT(vw);
-
-            UASSERT(vw->getDescriptor().cols == dim);
-            UASSERT(vw->getDescriptor().type() == type);
-
-            vw->getDescriptor().copyTo(query.row(index));
-        }
-        ULOGGER_DEBUG("Preparation time = %fs", timer.ticks());
-
-        return findNN(query);
-    }
-    return std::vector<int>(vws.size(), 0);
 }
 
 std::vector<int> VWDictFixed::findNN(const cv::Mat &queryIn) const
@@ -425,28 +347,11 @@ void VWDictFixed::addWord(rtabmap::VisualWord *vw)
     if (vw)
     {
         _visualWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
-        if (vw->getReferences().size())
-        {
-            _totalActiveReferences += uSum(uValues(vw->getReferences()));
-        }
-        else
-        {
-            _unusedWords.insert(std::pair<int, rtabmap::VisualWord *>(vw->id(), vw));
-        }
+        _totalActiveReferences += uSum(uValues(vw->getReferences()));
     }
 }
 
 const rtabmap::VisualWord *VWDictFixed::getWord(int id) const
 {
     return uValue(_visualWords, id, (rtabmap::VisualWord *)0);
-}
-
-rtabmap::VisualWord *VWDictFixed::getUnusedWord(int id) const
-{
-    return uValue(_unusedWords, id, (rtabmap::VisualWord *)0);
-}
-
-std::vector<rtabmap::VisualWord *> VWDictFixed::getUnusedWords() const
-{
-    return uValues(_unusedWords);
 }

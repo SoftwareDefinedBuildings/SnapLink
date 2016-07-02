@@ -59,9 +59,6 @@ private:
     int getNextId();
     void clear();
 
-    //keypoint stuff
-    void disableWordsRef(int dbId, int signatureId);
-
 private:
     // parameters
     rtabmap::ParametersMap parameters_;
