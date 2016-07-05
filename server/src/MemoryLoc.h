@@ -12,9 +12,9 @@
 #include <set>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include "VWDictFixed.h"
+#include "WordsKdTree.h"
 
-class VWDictFixed;
+class WordsKdTree;
 
 class MemoryLoc
 {
@@ -54,15 +54,10 @@ private:
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links);
 
-    void moveToTrash(int dbId, rtabmap::Signature *s, bool keepLinkedToGraph = true);
     void removeVirtualLinks(int signatureId);
 
     int getNextId();
     void clear();
-
-    //keypoint stuff
-    void disableWordsRef(int dbId, int signatureId);
-    void cleanUnusedWords();
 
 private:
     // parameters
@@ -75,6 +70,6 @@ private:
     std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
 
     //Keypoint stuff
-    VWDictFixed *_vwd;
+    WordsKdTree *_words;
     rtabmap::Feature2D *_feature2D;
 };
