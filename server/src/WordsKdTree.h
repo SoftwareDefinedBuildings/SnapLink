@@ -7,55 +7,44 @@
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include <set>
+#include "Words.h"
 
 class FlannIndex;
 
 class WordsKdTree : public Words
 {
 public:
-    enum NNStrategy
-    {
-        kNNFlannNaive,
-        kNNFlannKdTree,
-        kNNFlannLSH,
-        kNNBruteForce,
-        kNNBruteForceGPU,
-        kNNUndef
-    };
-    static const int ID_START;
-    static const int ID_INVALID;
-
-public:
-    VWDictFixed(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-    virtual ~VWDictFixed();
+    WordsKdTree();
+    ~WordsKdTree();
 
     /**
      * Add words
      */
-    virtual void addWords(std::vector<rtabmap::VisualWord *> vw) = 0;
+    void addWords(const std::vector<rtabmap::VisualWord *> &words);
 
     /**
      * get all words
      */
-    virtual const std::map<int, rtabmap::VisualWord *> &getWords() const = 0;
+    const std::map<int, rtabmap::VisualWord *> &getWords() const;
 
     /**
      * find the indices of the nearst neighbors of descriptors
      */
-    virtual std::vector<int> findNN(const cv::Mat &descriptors) const = 0;
+    std::vector<int> findNN(const cv::Mat &descriptors) const;
 
     /**
      * clear all words 
      */
-    virtual void clear() = 0;
+    void clear();
 
 private:
-    void update();
+    void build();
 
 private:
-    std::map<int, rtabmap::VisualWord *> _visualWords; //<id,rtabmap::VisualWord*>
+    int _type;
+    int _dim;
+    std::map<int, rtabmap::VisualWord *> _words; //<id,rtabmap::VisualWord*>
     FlannIndex *_flannIndex;
-    cv::Mat _dataTree;
+    cv::Mat _dataMat;
     std::map<int , int> _mapIndexId;
-    std::map<int , int> _mapIdIndex;
 };

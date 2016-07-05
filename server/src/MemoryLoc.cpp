@@ -32,7 +32,7 @@ const int MemoryLoc::kIdStart = 0;
 
 MemoryLoc::MemoryLoc() :
     _feature2D(NULL),
-    _vwd(NULL)
+    _words(NULL)
 {
 }
 
@@ -44,9 +44,9 @@ MemoryLoc::~MemoryLoc()
     {
         delete _feature2D;
     }
-    if (_vwd)
+    if (_words)
     {
-        delete _vwd;
+        delete _words;
     }
 }
 
@@ -55,7 +55,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
     UDEBUG("");
 
     _feature2D = rtabmap::Feature2D::create(parameters);
-    _vwd = new VWDictFixed(parameters);
+    _words = new WordsKdTree();
     this->parseParameters(parameters);
 
     int nextMemSigId = 1; // the ID we assign to next signature we put in memory
@@ -182,6 +182,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
         // Add words to memory
         UDEBUG("Add words to memory...");
+        std::vector<rtabmap::VisualWord *> memWords;
         for (std::list<rtabmap::VisualWord *>::iterator iter = words.begin(); iter != words.end(); ++iter)
         {
             rtabmap::VisualWord *dbVW = *iter;
@@ -192,9 +193,10 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
             }
             rtabmap::VisualWord *memVW = new rtabmap::VisualWord(idIter->second, dbVW->getDescriptor());
             // TODO add signature references to mem word
-            _vwd->addWord(memVW);
+            memWords.push_back(memVW);
             delete dbVW;
         }
+        _words->addWords(memWords);
         UDEBUG("%d words loaded!", words.size());
 
         // UDEBUG("Adding word references...");
@@ -208,18 +210,18 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         //         UDEBUG("node=%d, word references=%d", sig->id(), words.size());
         //         for (std::multimap<int, cv::KeyPoint>::const_iterator jter = words.begin(); jter != words.end(); ++jter)
         //         {
-        //             _vwd->addWordRef(jter->first, iter->first);
+        //             _words->addWordRef(jter->first, iter->first);
         //         }
         //         sig->setEnabled(true);
         //     }
         // }
-        // UDEBUG("Adding word references, done! (%d)", _vwd->getTotalActiveReferences());
+        // UDEBUG("Adding word references, done! (%d)", _words->getTotalActiveReferences());
         //
-        // if (_vwd->getUnusedWordsSize())
+        // if (_words->getUnusedWordsSize())
         // {
-        //     UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
+        //     UWARN("_words->getUnusedWordsSize() must be empty... size=%d", _words->getUnusedWordsSize());
         // }
-        UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+        //UDEBUG("Total word references added = %d", _words->getTotalActiveReferences());
 
         UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
         dbDriver->closeConnection();
@@ -228,7 +230,6 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         dbDriver = NULL;
         UDEBUG("Closing database, done!");
     }
-    _vwd->update();
 
     return true;
 }
@@ -322,7 +323,7 @@ const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, 
     if (descriptors.rows)
     {
         con_info->time.vwd_start = getTime();
-        wordIds = _vwd->findNN(descriptors);
+        wordIds = _words->findNN(descriptors);
         con_info->time.vwd += getTime() - con_info->time.vwd_start;
     }
     else if (id > 0)
@@ -357,7 +358,7 @@ const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, 
 
     if (words.size())
     {
-        s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
+        s->setEnabled(true); // All references are already activated in the dictionary at this point (see _words->addNewWords())
     }
     return s;
 }
@@ -619,9 +620,9 @@ void MemoryLoc::clear()
         mem.clear();
     }
 
-    if (_vwd)
+    if (_words)
     {
-        _vwd->clear();
+        _words->clear();
     }
     UDEBUG("");
 }

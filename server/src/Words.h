@@ -11,9 +11,9 @@ class Words
 {
 public:
     /**
-     * Add words
+     * Add words, ownership transfer
      */
-    virtual void addWords(std::vector<rtabmap::VisualWord *> vw) = 0;
+    virtual void addWords(const std::vector<rtabmap::VisualWord *> &words) = 0;
 
     /**
      * get all words

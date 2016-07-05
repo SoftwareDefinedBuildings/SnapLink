@@ -12,9 +12,9 @@
 #include <set>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include "VWDictFixed.h"
+#include "WordsKdTree.h"
 
-class VWDictFixed;
+class WordsKdTree;
 
 class MemoryLoc
 {
@@ -70,6 +70,6 @@ private:
     std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
 
     //Keypoint stuff
-    VWDictFixed *_vwd;
+    WordsKdTree *_words;
     rtabmap::Feature2D *_feature2D;
 };
