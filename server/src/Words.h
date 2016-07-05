@@ -1,11 +1,8 @@
 #pragma once
 
-#include <rtabmap/core/Parameters.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
-#include <list>
-#include <set>
+#include <rtabmap/core/VisualWord.h>
+#include <vector>
+#include <map>
 
 class Words
 {

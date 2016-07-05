@@ -1,104 +1,16 @@
-#include <rtabmap/core/Signature.h>
-#include <rtabmap/core/DBDriver.h>
-#include <rtabmap/core/Parameters.h>
-#include <opencv2/opencv_modules.hpp>
-#include <flann/flann.hpp>
-#include <fstream>
-#include <string>
 #include <cassert>
 #include "WordsKdTree.h"
-
-class FlannIndex
-{
-public:
-    FlannIndex():
-        index_(0),
-        featuresDim_(0)
-    {
-    }
-
-    virtual ~FlannIndex()
-    {
-        this->release();
-    }
-
-    void release()
-    {
-        if (index_)
-        {
-            delete(flann::Index<flann::L2<float> > *)index_;
-            index_ = 0;
-        }
-    }
-
-    void build(
-        const cv::Mat &features,
-        const flann::IndexParams &params)
-    {
-        this->release();
-        assert(index_ == 0);
-        assert(features.type() == CV_32FC1 || features.type() == CV_8UC1);
-        featuresType_ = features.type();
-        featuresDim_ = features.cols;
-
-        flann::Matrix<float> dataset((float *)features.data, features.rows, features.cols);
-        index_ = new flann::Index<flann::L2<float> >(dataset, params);
-        ((flann::Index<flann::L2<float> > *)index_)->buildIndex();
-    }
-
-    bool isBuilt()
-    {
-        return index_ != 0;
-    }
-
-    int featuresType() const
-    {
-        return featuresType_;
-    }
-
-    int featuresDim() const
-    {
-        return featuresDim_;
-    }
-
-    void knnSearch(
-        const cv::Mat &query,
-        cv::Mat &indices,
-        cv::Mat &dists,
-        int knn,
-        const flann::SearchParams &params = flann::SearchParams())
-    {
-        if (!index_)
-        {
-            return;
-        }
-        indices.create(query.rows, knn, CV_32S);
-        dists.create(query.rows, knn, CV_32F);
-
-        flann::Matrix<int> indicesF((int *)indices.data, indices.rows, indices.cols);
-
-        flann::Matrix<float> distsF((float *)dists.data, dists.rows, dists.cols);
-        flann::Matrix<float> queryF((float *)query.data, query.rows, query.cols);
-        ((flann::Index<flann::L2<float> > *)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
-    }
-
-private:
-    void *index_;
-    int featuresType_;
-    int featuresDim_;
-};
 
 WordsKdTree::WordsKdTree() :
     _type(-1),
     _dim(-1),
-    _flannIndex(new FlannIndex())
+    _index(NULL)
 {
 }
 
 WordsKdTree::~WordsKdTree()
 {
     clear();
-    delete _flannIndex;
 }
 
 void WordsKdTree::addWords(const std::vector<rtabmap::VisualWord *> &words)
@@ -130,20 +42,25 @@ std::vector<int> WordsKdTree::findNN(const cv::Mat &descriptors) const
         assert(_type == descriptors.type());
         assert(_dim == descriptors.cols);
 
-        cv::Mat results;
+        cv::Mat indices;
         cv::Mat dists;
-
-        if (_flannIndex->isBuilt() || !_dataMat.empty())
+        if (_index != NULL && !_dataMat.empty())
         {
             //Find nearest neighbors
-            _flannIndex->knnSearch(descriptors, results, dists, 1);
+            indices.create(descriptors.rows, 1, CV_32S);
+            dists.create(descriptors.rows, 1, CV_32F);
+
+            flann::Matrix<int> indicesF((int *)indices.data, indices.rows, indices.cols);
+            flann::Matrix<float> distsF((float *)dists.data, dists.rows, dists.cols);
+            flann::Matrix<float> queryF((float *)descriptors.data, descriptors.rows, descriptors.cols);
+            _index->knnSearch(queryF, indicesF, distsF, 1, flann::SearchParams(128));
         }
 
         assert(dists.rows == descriptors.rows && dists.cols == 1);
         for (int i = 0; i < descriptors.rows; ++i)
         {
             float d = dists.at<float>(i, 0);
-            int id = _mapIndexId.at(results.at<int>(i, 0));
+            int id = _mapIndexId.at(indices.at<int>(i, 0));
             assert(d >= 0.0f && id > 0);
             resultIds[i] = id;
         }
@@ -160,14 +77,16 @@ void WordsKdTree::clear()
     _words.clear();
     _dataMat = cv::Mat();
     _mapIndexId.clear();
-    _flannIndex->release();
+    delete _index;
+    _index = NULL;
+    _type = -1;
+    _dim = -1;
 }
 
 void WordsKdTree::build()
 {
     _mapIndexId.clear();
     _dataMat = cv::Mat();
-    _flannIndex->release();
 
     if (_words.size())
     {
@@ -193,6 +112,10 @@ void WordsKdTree::build()
             _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
         }
 
-        _flannIndex->build(_dataMat, flann::KDTreeIndexParams());
+        delete _index;
+        _index = NULL;
+        flann::Matrix<float> dataset((float *)_dataMat.data, _dataMat.rows, _dataMat.cols);
+        _index = new flann::Index<flann::L2<float> >(dataset, flann::KDTreeIndexParams(4));
+        _index->buildIndex();
     }
 }

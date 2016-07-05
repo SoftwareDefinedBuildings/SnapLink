@@ -1,15 +1,8 @@
 #pragma once
 
-#include <rtabmap/core/VisualWord.h>
-#include <rtabmap/core/Parameters.h>
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
-#include <opencv2/features2d/features2d.hpp>
-#include <list>
-#include <set>
+#include <flann/flann.hpp>
 #include "Words.h"
-
-class FlannIndex;
 
 class WordsKdTree : public Words
 {
@@ -44,7 +37,7 @@ private:
     int _type;
     int _dim;
     std::map<int, rtabmap::VisualWord *> _words; //<id,rtabmap::VisualWord*>
-    FlannIndex *_flannIndex;
+    flann::Index<flann::L2<float> > *_index;
     cv::Mat _dataMat;
     std::map<int , int> _mapIndexId;
 };
