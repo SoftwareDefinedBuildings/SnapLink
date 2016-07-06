@@ -2,7 +2,7 @@
 
 #include <rtabmap/core/VisualWord.h>
 #include <vector>
-#include <map>
+#include <list>
 
 class Words
 {
@@ -10,12 +10,12 @@ public:
     /**
      * Add words, ownership transfer
      */
-    virtual void addWords(const std::vector<rtabmap::VisualWord *> &words) = 0;
+    virtual void addWords(const std::list<rtabmap::VisualWord *> &words) = 0;
 
     /**
      * get all words
      */
-    virtual const std::map<int, rtabmap::VisualWord *> &getWords() const = 0;
+    virtual const std::list<rtabmap::VisualWord *> &getWords() const = 0;
 
     /**
      * find the indices of the nearst neighbors of descriptors

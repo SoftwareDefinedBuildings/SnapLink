@@ -10,24 +10,34 @@ WordsKdTree::WordsKdTree() :
 
 WordsKdTree::~WordsKdTree()
 {
-    clear();
+    for (std::list<rtabmap::VisualWord *>::iterator iter = _words.begin(); iter != _words.end(); iter++)
+    {
+        delete iter->second;
+    }
+    _words.clear();
+    _dataMat = cv::Mat();
+    _mapIndexId.clear();
+    delete _index;
+    _index = NULL;
+    _type = -1;
+    _dim = -1;
 }
 
-void WordsKdTree::addWords(const std::vector<rtabmap::VisualWord *> &words)
+void WordsKdTree::addWords(const std::list<rtabmap::VisualWord *> &words)
 {
-    std::vector<rtabmap::VisualWord *>::const_iterator iter = words.begin();
+    std::list<rtabmap::VisualWord *>::const_iterator iter = words.begin();
     for (; iter != words.end(); iter++)
     {
         rtabmap::VisualWord *word = *iter;
         if (word != NULL)
         {
-            _words.insert(std::pair<int, rtabmap::VisualWord *>(word->id(), word));
+            _words.push_back(word);
         }
     }
     build();
 }
 
-const std::map<int, rtabmap::VisualWord *> &WordsKdTree::getWords() const
+const std::list<rtabmap::VisualWord *> &WordsKdTree::getWords() const
 {
     return _words;
 }
@@ -78,23 +88,23 @@ void WordsKdTree::build()
         // use the first word to define the type and dim
         if (_type < 0 || _dim < 0)
         {
-            cv::Mat descriptor = _words.begin()->second->getDescriptor();
+            cv::Mat descriptor = _words.begin()->getDescriptor();
             _type = descriptor.type();
             _dim = descriptor.cols;
         }
 
         // Create the data matrix
         _dataMat = cv::Mat(_words.size(), _dim, _type);
-        std::map<int, rtabmap::VisualWord *>::const_iterator iter = _words.begin();
+        std::list<rtabmap::VisualWord *>::const_iterator iter = _words.begin();
         for (unsigned int i = 0; i < _words.size(); i++, iter++)
         {
-            cv::Mat descriptor = iter->second->getDescriptor();
+            cv::Mat descriptor = iter->getDescriptor();
 
             assert(descriptor.type() == _type);
             assert(descriptor.cols == _dim);
 
             descriptor.copyTo(_dataMat.row(i));
-            _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->second->id()));
+            _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->id()));
         }
 
         delete _index;
@@ -104,19 +114,3 @@ void WordsKdTree::build()
         _index->buildIndex();
     }
 }
-
-void WordsKdTree::clear()
-{
-    for (std::map<int, rtabmap::VisualWord *>::iterator i = _words.begin(); i != _words.end(); ++i)
-    {
-        delete(*i).second;
-    }
-    _words.clear();
-    _dataMat = cv::Mat();
-    _mapIndexId.clear();
-    delete _index;
-    _index = NULL;
-    _type = -1;
-    _dim = -1;
-}
-

@@ -8,17 +8,17 @@ class WordsKdTree : public Words
 {
 public:
     WordsKdTree();
-    ~WordsKdTree();
+    virtual ~WordsKdTree();
 
     /**
      * Add words
      */
-    void addWords(const std::vector<rtabmap::VisualWord *> &words);
+    void addWords(const std::list<rtabmap::VisualWord *> &words);
 
     /**
      * get all words
      */
-    const std::map<int, rtabmap::VisualWord *> &getWords() const;
+    const std::list<rtabmap::VisualWord *> &getWords() const;
 
     /**
      * find the indices of the nearst neighbors of descriptors
@@ -27,12 +27,11 @@ public:
 
 private:
     void build();
-    void clear();
 
 private:
     int _type;
     int _dim;
-    std::map<int, rtabmap::VisualWord *> _words; //<id,rtabmap::VisualWord*>
+    std::list<rtabmap::VisualWord *> _words;
     flann::Index<flann::L2<float> > *_index;
     cv::Mat _dataMat;
     std::map<int , int> _mapIndexId;
