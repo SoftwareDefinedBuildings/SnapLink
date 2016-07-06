@@ -68,21 +68,6 @@ std::vector<int> WordsKdTree::findNN(const cv::Mat &descriptors) const
     return resultIds;
 }
 
-void WordsKdTree::clear()
-{
-    for (std::map<int, rtabmap::VisualWord *>::iterator i = _words.begin(); i != _words.end(); ++i)
-    {
-        delete(*i).second;
-    }
-    _words.clear();
-    _dataMat = cv::Mat();
-    _mapIndexId.clear();
-    delete _index;
-    _index = NULL;
-    _type = -1;
-    _dim = -1;
-}
-
 void WordsKdTree::build()
 {
     _mapIndexId.clear();
@@ -119,3 +104,19 @@ void WordsKdTree::build()
         _index->buildIndex();
     }
 }
+
+void WordsKdTree::clear()
+{
+    for (std::map<int, rtabmap::VisualWord *>::iterator i = _words.begin(); i != _words.end(); ++i)
+    {
+        delete(*i).second;
+    }
+    _words.clear();
+    _dataMat = cv::Mat();
+    _mapIndexId.clear();
+    delete _index;
+    _index = NULL;
+    _type = -1;
+    _dim = -1;
+}
+

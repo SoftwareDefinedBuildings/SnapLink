@@ -25,13 +25,9 @@ public:
      */
     std::vector<int> findNN(const cv::Mat &descriptors) const;
 
-    /**
-     * clear all words 
-     */
-    void clear();
-
 private:
     void build();
+    void clear();
 
 private:
     int _type;

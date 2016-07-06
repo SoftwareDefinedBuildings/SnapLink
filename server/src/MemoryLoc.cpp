@@ -619,12 +619,6 @@ void MemoryLoc::clear()
         std::map<int, rtabmap::Signature *> &mem = _signatureMaps.at(dbId);
         mem.clear();
     }
-
-    if (_words)
-    {
-        _words->clear();
-    }
-    UDEBUG("");
 }
 
 // return all non-null poses
