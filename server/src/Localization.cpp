@@ -100,7 +100,7 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     UDEBUG("newWords=%d", (int)newSig->getWords().size());
 
     con_info->time.search_start = getTime();
-    std::vector< std::pair<int, int> > topIds = findKNearestSignatures(*newSig, TOP_K);
+    std::vector< std::pair<int, int> > topIds = _memory->findKNearestSignatures(*newSig, TOP_K);
     con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
     std::pair<int, int> topId = topIds[0];
 
@@ -129,60 +129,6 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     delete newSig;
 
     return !pose->isNull();
-}
-
-std::vector< std::pair<int, int> > Localization::findKNearestSignatures(const rtabmap::Signature &signature, int k)
-{
-    std::map<std::pair<int, int>, float> similarities; // {(db id, sig id): similarity}
-    const std::vector<std::map<int, rtabmap::Signature *> > &signatureMaps = _memory->getSignatureMaps();
-    for (int dbId = 0; dbId < signatureMaps.size(); dbId++)
-    {
-        const std::map<int, rtabmap::Signature *> &signatureMap = signatureMaps.at(dbId);
-        for (std::map<int, rtabmap::Signature *>::const_iterator sigIter = signatureMap.begin(); sigIter != signatureMap.end(); sigIter++)
-        {
-            const rtabmap::Signature *s2 = sigIter->second;
-            float sim = computeSimilarity(signature, *s2);
-            similarities.insert(std::make_pair(std::make_pair(dbId, sigIter->first), sim));
-            UDEBUG("dbId: %d, sigId: %d, similarity: %f", dbId, sigIter->first, sim);
-        }
-    }
-
-    std::vector< std::pair<int, int> > topIds; // [(db id, sig id)]
-    if (similarities.size())
-    {
-        std::vector< std::pair<std::pair<int, int>, float> > top(k);
-        std::partial_sort_copy(similarities.begin(),
-                               similarities.end(),
-                               top.begin(),
-                               top.end(),
-                               compareSimilarity);
-        for (std::vector< std::pair<std::pair<int, int>, float> >::iterator it = top.begin(); it != top.end(); ++it)
-        {
-            topIds.push_back(it->first);
-            //UDEBUG("dbId: %d, sigId: %d", it->first.first, it->first.second);
-        }
-    }
-
-    return topIds;
-}
-
-float Localization::computeSimilarity(const rtabmap::Signature &s1, const rtabmap::Signature &s2)
-{
-    float similarity = 0.0f;
-    const std::multimap<int, cv::KeyPoint> &words1 = s1.getWords();
-    const std::multimap<int, cv::KeyPoint> &words2 = s2.getWords();
-    if (words1.size() != 0 && words2.size() != 0)
-    {
-        std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-        rtabmap::EpipolarGeometry::findPairs(words1, words2, pairs);
-        similarity = float(pairs.size());
-    }
-    return similarity;
-}
-
-bool Localization::compareSimilarity(std::pair<std::pair<int, int>, float> const &l, std::pair<std::pair<int, int>, float> const &r)
-{
-    return l.second > r.second;
 }
 
 rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const

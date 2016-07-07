@@ -20,5 +20,5 @@ public:
     /**
      * find the indices of the nearst neighbors of descriptors
      */
-    virtual std::vector<int> findNN(const cv::Mat &descriptors) const = 0;
+    virtual std::vector<int> findNNs(const cv::Mat &descriptors) const = 0;
 };

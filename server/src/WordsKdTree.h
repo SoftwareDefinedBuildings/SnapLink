@@ -23,7 +23,7 @@ public:
     /**
      * find the indices of the nearst neighbors of descriptors
      */
-    std::vector<int> findNN(const cv::Mat &descriptors) const;
+    std::vector<int> findNNs(const cv::Mat &descriptors) const;
 
 private:
     void build();

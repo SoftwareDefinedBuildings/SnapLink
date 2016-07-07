@@ -12,7 +12,8 @@ WordsKdTree::~WordsKdTree()
 {
     for (std::list<rtabmap::VisualWord *>::iterator iter = _words.begin(); iter != _words.end(); iter++)
     {
-        delete iter->second;
+        delete iter;
+        *iter = NULL;
     }
     _words.clear();
     _dataMat = cv::Mat();
@@ -42,7 +43,7 @@ const std::list<rtabmap::VisualWord *> &WordsKdTree::getWords() const
     return _words;
 }
 
-std::vector<int> WordsKdTree::findNN(const cv::Mat &descriptors) const
+std::vector<int> WordsKdTree::findNNs(const cv::Mat &descriptors) const
 {
     std::vector<int> resultIds(descriptors.rows, 0);
 

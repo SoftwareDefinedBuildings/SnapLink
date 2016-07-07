@@ -32,7 +32,8 @@ const int MemoryLoc::kIdStart = 0;
 
 MemoryLoc::MemoryLoc() :
     _feature2D(NULL),
-    _words(NULL)
+    _words(NULL),
+    _signatures(NULL)
 {
 }
 
@@ -48,6 +49,10 @@ MemoryLoc::~MemoryLoc()
     {
         delete _words;
     }
+    if (_signatures)
+    {
+        delete _signatures;
+    }
 }
 
 bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::ParametersMap &parameters)
@@ -56,6 +61,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
     _feature2D = rtabmap::Feature2D::create(parameters);
     _words = new WordsKdTree();
+    _signatures = new SignaturesSimple();
     this->parseParameters(parameters);
 
     int nextMemSigId = 1; // the ID we assign to next signature we put in memory
@@ -692,4 +698,8 @@ void MemoryLoc::getMetricConstraints(
             }
         }
     }
+}
+
+std::vector<int> MemoryLoc::findKNearestSignatures(const rtabmap::Signature &signature, int k)
+{
 }

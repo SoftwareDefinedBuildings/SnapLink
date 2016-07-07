@@ -35,6 +35,8 @@ public:
     const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
     const std::vector<std::map<int, rtabmap::Signature *> > &getSignatureMaps() const;
 
+    std::vector<int> findKNearestSignatures(const rtabmap::Signature &signature, int k);
+
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     void optimizePoses(int dbId);  // optimize poses using TORO graph
@@ -57,7 +59,6 @@ private:
     void removeVirtualLinks(int signatureId);
 
     int getNextId();
-    void clear();
 
 private:
     // parameters
@@ -65,11 +66,11 @@ private:
 
     std::vector< std::map<int, int> > _sigIdMaps; // maps of ids of DB signatures and mem signatures
     std::vector< std::map<int, int> > _wordIdMaps; // maps of ids of DB words and mem words
-    std::vector< std::map<int, rtabmap::Signature *> > _signatureMaps;
 
     std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
 
     //Keypoint stuff
-    WordsKdTree *_words;
+    Words *_words;
+    Signatures *_signatures;
     rtabmap::Feature2D *_feature2D;
 };
