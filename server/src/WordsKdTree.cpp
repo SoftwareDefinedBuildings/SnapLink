@@ -12,7 +12,7 @@ WordsKdTree::~WordsKdTree()
 {
     for (std::list<rtabmap::VisualWord *>::iterator iter = _words.begin(); iter != _words.end(); iter++)
     {
-        delete iter;
+        delete *iter;
         *iter = NULL;
     }
     _words.clear();
@@ -89,7 +89,7 @@ void WordsKdTree::build()
         // use the first word to define the type and dim
         if (_type < 0 || _dim < 0)
         {
-            cv::Mat descriptor = _words.begin()->getDescriptor();
+            cv::Mat descriptor = (*_words.begin())->getDescriptor();
             _type = descriptor.type();
             _dim = descriptor.cols;
         }
@@ -99,13 +99,13 @@ void WordsKdTree::build()
         std::list<rtabmap::VisualWord *>::const_iterator iter = _words.begin();
         for (unsigned int i = 0; i < _words.size(); i++, iter++)
         {
-            cv::Mat descriptor = iter->getDescriptor();
+            cv::Mat descriptor = (*iter)->getDescriptor();
 
             assert(descriptor.type() == _type);
             assert(descriptor.cols == _dim);
 
             descriptor.copyTo(_dataMat.row(i));
-            _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, iter->id()));
+            _mapIndexId.insert(_mapIndexId.end(), std::pair<int, int>(i, (*iter)->id()));
         }
 
         delete _index;

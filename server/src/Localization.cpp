@@ -14,6 +14,7 @@
 #include "ImageEvent.h"
 #include "LocationEvent.h"
 #include "FailureEvent.h"
+#include "Signature.h"
 
 Localization::Localization() :
     _memory(NULL),
@@ -100,18 +101,17 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     UDEBUG("newWords=%d", (int)newSig->getWords().size());
 
     con_info->time.search_start = getTime();
-    std::vector< std::pair<int, int> > topIds = _memory->findKNearestSignatures(*newSig, TOP_K);
+    std::vector<int> topIds = _memory->findKNearestSignatures(*newSig, TOP_K);
     con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
-    std::pair<int, int> topId = topIds[0];
+    int topSigId = topIds[0];
+    const Signature *topSig = _memory->getSignatures().at(topSigId);
 
     // TODO: compare interatively until success
-    int topDbId = topId.first;
-    int topSigId = topId.second;
-    UDEBUG("topDbId: %d, topSigId: %d", topDbId, topSigId);
+    UDEBUG("topSigId: %d", topSigId);
     con_info->time.pnp_start = getTime();
-    *pose = computeGlobalVisualTransform(newSig, topDbId, topSigId);
+    *pose = computeGlobalVisualTransform(newSig, topSigId);
     con_info->time.pnp += getTime() - con_info->time.pnp_start;
-    *dbId = topDbId;
+    *dbId = topSig->getDbId();
 
     if (!pose->isNull())
     {
@@ -120,18 +120,17 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     else
     {
         UWARN("transform is null, using pose of the closest image");
-        const rtabmap::Signature *topSig = _memory->getSignature(topDbId, topSigId);
         *pose = topSig->getPose();
     }
 
-    UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topDbId);
+    UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topSig->getDbId());
 
     delete newSig;
 
     return !pose->isNull();
 }
 
-rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const
+rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldSigId) const
 {
     rtabmap::Transform transform;
     std::string msg;
@@ -141,10 +140,10 @@ rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Sig
 
     std::multimap<int, cv::Point3f> words3;
 
-    const rtabmap::Signature *oldSig = _memory->getSignature(oldDbId, oldSigId);
+    const Signature *oldSig = _memory->getSignatures().at(oldSigId);
     const rtabmap::Transform &oldSigPose = oldSig->getPose();
 
-    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
+    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3D();
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;
     for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
     {
@@ -176,7 +175,7 @@ rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Sig
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            msg = uFormat("Not enough inliers %d/%d between the old signature %d and %d", inliersCount, _minInliers, oldSig->id(), newSig->id());
+            msg = uFormat("Not enough inliers %d/%d between the old signature %d and %d", inliersCount, _minInliers, oldSig->getId(), newSig->id());
             UINFO(msg.c_str());
         }
     }

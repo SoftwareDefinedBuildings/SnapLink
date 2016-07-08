@@ -35,7 +35,7 @@ protected:
 private:
     bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const;
+    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldSigId) const;
 
 private:
     MemoryLoc *_memory;

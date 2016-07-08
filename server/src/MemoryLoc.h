@@ -12,7 +12,9 @@
 #include <set>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include "WordsKdTree.h"
+#include "Words.h"
+#include "Signature.h"
+#include "Signatures.h"
 
 class WordsKdTree;
 
@@ -28,12 +30,9 @@ public:
     bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
     const rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
-    void close();
 
-    rtabmap::Signature *getSignature(int dbId, int sigId) const;
     const std::vector< std::pair<cv::Point3f, std::string> > &getLabels(int dbId) const;
-    const std::map<int, rtabmap::Signature *> &getSignatureMap(int dbId) const;
-    const std::vector<std::map<int, rtabmap::Signature *> > &getSignatureMaps() const;
+    const std::map<int, Signature *> &getSignatures() const;
 
     std::vector<int> findKNearestSignatures(const rtabmap::Signature &signature, int k);
 
@@ -68,6 +67,7 @@ private:
     std::vector< std::map<int, int> > _wordIdMaps; // maps of ids of DB words and mem words
 
     std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
+    std::vector< std::map<int, rtabmap::Signature *> > _signatureMaps;
 
     //Keypoint stuff
     Words *_words;

@@ -9,8 +9,8 @@ Signature::Signature(
     int id,
     int mapId,
     int dbId,
-    const Transform &pose,
-    const SensorData &sensorData):
+    const rtabmap::Transform &pose,
+    const rtabmap::SensorData &sensorData):
     _id(id),
     _mapId(mapId),
     _dbId(dbId),
@@ -43,12 +43,12 @@ int Signature::getDbId() const
     return _dbId;
 }
 
-const Transform &Signature::getPose() const
+const rtabmap::Transform &Signature::getPose() const
 {
     return _pose;
 }
 
-const SensorData &Signature::GetSensorData() const
+const rtabmap::SensorData &Signature::getSensorData() const
 {
     return _sensorData;
 }
