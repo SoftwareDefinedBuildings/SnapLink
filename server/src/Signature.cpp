@@ -10,12 +10,18 @@ Signature::Signature(
     int mapId,
     int dbId,
     const rtabmap::Transform &pose,
-    const rtabmap::SensorData &sensorData):
+    const rtabmap::SensorData &sensorData,
+    const std::multimap<int, cv::KeyPoint> &words,
+    const std::multimap<int, cv::Point3f> &words3D,
+    const std::multimap<int, cv::Mat> &descriptors):
     _id(id),
     _mapId(mapId),
     _dbId(dbId),
     _pose(pose),
-    _sensorData(sensorData)
+    _sensorData(sensorData),
+    _words(words),
+    _words3D(words3D),
+    _wordsDescriptors(descriptors)
 {
     if (_sensorData.id() == 0)
     {
@@ -67,19 +73,3 @@ const std::multimap<int, cv::Mat> &Signature::getWordsDescriptors() const
 {
     return _wordsDescriptors;
 }
-
-void Signature::setWords(const std::multimap<int, cv::KeyPoint> &words)
-{
-    _words = words;
-}
-
-void Signature::setWords3D(const std::multimap<int, cv::Point3f> &words3D)
-{
-    _words3D = words3D;
-}
-
-void Signature::setWordsDescriptors(const std::multimap<int, cv::Mat> &descriptors)
-{
-    _wordsDescriptors = descriptors;
-}
-

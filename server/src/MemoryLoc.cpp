@@ -187,7 +187,8 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         std::list<Signature *> memSignatures;
         for (std::map<int, rtabmap::Signature *>::iterator iter = memSignatureMap.begin(); iter != memSignatureMap.end(); iter++)
         {
-            Signature *memSig = new Signature(iter->second->id(), iter->second->mapId(), dbId, iter->second->getPose(), iter->second->sensorData());
+            Signature *memSig = new Signature(iter->second->id(), iter->second->mapId(), dbId, iter->second->getPose(), 
+                    iter->second->sensorData(), iter->second->getWords(), iter->second->getWords3(), iter->second->getWordsDescriptors());
             memSignatures.push_back(memSig);
             delete iter->second;
         }
@@ -426,7 +427,7 @@ std::vector<int> MemoryLoc::findKNearestSignatures(const rtabmap::Signature &sig
     {
         wordIds.push_back(iter->first);
     }
-    _signatures->findKNN(wordIds, k);
+    return _signatures->findKNN(wordIds, k);
 }
 
 std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) const

@@ -19,7 +19,10 @@ public:
               int mapId,
               int dbId,
               const rtabmap::Transform &pose,
-              const rtabmap::SensorData &sensorData);
+              const rtabmap::SensorData &sensorData,
+              const std::multimap<int, cv::KeyPoint> &words,
+              const std::multimap<int, cv::Point3f> &words3D,
+              const std::multimap<int, cv::Mat> &descriptors);
     virtual ~Signature();
 
     int getId() const;
@@ -30,13 +33,6 @@ public:
     const std::multimap<int, cv::KeyPoint> &getWords() const;
     const std::multimap<int, cv::Point3f> &getWords3D() const;
     const std::multimap<int, cv::Mat> &getWordsDescriptors() const;
-
-    /**
-     * ownership transfer
-     */
-    void setWords(const std::multimap<int, cv::KeyPoint> &words);
-    void setWords3D(const std::multimap<int, cv::Point3f> &words3D);
-    void setWordsDescriptors(const std::multimap<int, cv::Mat> &descriptors);
 
 private:
     int _id;
