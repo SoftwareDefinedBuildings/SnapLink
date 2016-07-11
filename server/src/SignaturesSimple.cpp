@@ -63,7 +63,7 @@ float SignaturesSimple::computeSimilarity(const std::vector<int> &wordIds, const
     std::set<int> uniqueWordIds(wordIds.begin(), wordIds.end());
     const std::multimap<int, cv::KeyPoint> &sigWords = signature.getWords();
     float numPairs = 0;
-    for(std::set<int>::const_iterator iter = uniqueWordIds.begin(); iter != uniqueWordIds.end(); iter++)
+    for (std::set<int>::const_iterator iter = uniqueWordIds.begin(); iter != uniqueWordIds.end(); iter++)
     {
         std::multimap<int, cv::KeyPoint>::const_iterator jter = sigWords.find(*iter);
         if (jter != sigWords.end())

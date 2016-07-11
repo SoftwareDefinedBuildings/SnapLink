@@ -26,7 +26,7 @@ public:
 private:
     static float computeSimilarity(const std::vector<int> &wordIds, const Signature &signature);
     static bool compareSimilarity(const std::pair<int, float> &l, const std::pair<int, float> &r);
-    
+
 private:
     std::map<int, Signature *> _signatures;
 };

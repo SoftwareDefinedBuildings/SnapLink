@@ -33,7 +33,6 @@
 const int MemoryLoc::kIdStart = 0;
 
 MemoryLoc::MemoryLoc() :
-    _feature2D(NULL),
     _words(NULL),
     _signatures(NULL)
 {
@@ -41,10 +40,6 @@ MemoryLoc::MemoryLoc() :
 
 MemoryLoc::~MemoryLoc()
 {
-    if (_feature2D)
-    {
-        delete _feature2D;
-    }
     if (_words)
     {
         delete _words;
@@ -59,7 +54,6 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 {
     UDEBUG("");
 
-    _feature2D = rtabmap::Feature2D::create(parameters);
     _words = new WordsKdTree();
     _signatures = new SignaturesSimple();
     this->parseParameters(parameters);
@@ -187,8 +181,8 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         std::list<Signature *> memSignatures;
         for (std::map<int, rtabmap::Signature *>::iterator iter = memSignatureMap.begin(); iter != memSignatureMap.end(); iter++)
         {
-            Signature *memSig = new Signature(iter->second->id(), iter->second->mapId(), dbId, iter->second->getPose(), 
-                    iter->second->sensorData(), iter->second->getWords(), iter->second->getWords3(), iter->second->getWordsDescriptors());
+            Signature *memSig = new Signature(iter->second->id(), iter->second->mapId(), dbId, iter->second->getPose(),
+                                              iter->second->sensorData(), iter->second->getWords(), iter->second->getWords3());
             memSignatures.push_back(memSig);
             delete iter->second;
         }
@@ -252,32 +246,6 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
 {
     uInsert(parameters_, parameters);
-
-    UDEBUG("");
-    rtabmap::ParametersMap::const_iterator iter;
-
-    //Keypoint detector
-    UASSERT(_feature2D != 0);
-    rtabmap::Feature2D::Type detectorStrategy = rtabmap::Feature2D::kFeatureUndef;
-    if ((iter = parameters.find(rtabmap::Parameters::kKpDetectorStrategy())) != parameters.end())
-    {
-        detectorStrategy = (rtabmap::Feature2D::Type)std::atoi((*iter).second.c_str());
-    }
-    if (detectorStrategy != rtabmap::Feature2D::kFeatureUndef)
-    {
-        UDEBUG("new detector strategy %d", int(detectorStrategy));
-        if (_feature2D)
-        {
-            delete _feature2D;
-            _feature2D = 0;
-        }
-
-        _feature2D = rtabmap::Feature2D::create(detectorStrategy, parameters_);
-    }
-    else if (_feature2D)
-    {
-        _feature2D->parseParameters(parameters);
-    }
 }
 
 const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *context)
@@ -291,41 +259,6 @@ const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, 
     std::vector<cv::KeyPoint> keypoints = data.keypoints();
     cv::Mat descriptors = data.descriptors();
     int id = INT_MAX;
-
-    if (descriptors.rows == 0)
-    {
-        if (_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty())
-        {
-            UDEBUG("Extract features");
-            cv::Mat imageMono;
-            if (data.imageRaw().channels() == 3)
-            {
-                cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
-            }
-            else
-            {
-                imageMono = data.imageRaw();
-            }
-
-            con_info->time.keypoints_start = getTime(); // start of generateKeypoints
-            keypoints = _feature2D->generateKeypoints(imageMono);
-            con_info->time.keypoints += getTime() - con_info->time.keypoints_start; // end of generateKeypoints
-
-            con_info->time.descriptors_start = getTime(); // start of generateDescriptors
-            descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-            con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
-
-            data.setFeatures(keypoints, descriptors);
-        }
-        else if (data.imageRaw().empty())
-        {
-            UDEBUG("Empty image, cannot extract features...");
-        }
-        else if (_feature2D->getMaxFeatures() < 0)
-        {
-            UDEBUG("_feature2D->getMaxFeatures()(%d<0) so don't extract any features...", _feature2D->getMaxFeatures());
-        }
-    }
 
     std::vector<int> wordIds;
     if (descriptors.rows)

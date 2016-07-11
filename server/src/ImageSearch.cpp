@@ -10,7 +10,7 @@
 #include <rtabmap/core/Rtabmap.h>
 #include <QCoreApplication>
 
-#include "Localization.h"
+#include "ImageSearch.h"
 #include "ImageEvent.h"
 #include "LocationEvent.h"
 #include "FailureEvent.h"
@@ -20,7 +20,6 @@ Localization::Localization() :
     _memory(NULL),
     _vis(NULL),
     _httpServer(NULL),
-
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
     _iterations(rtabmap::Parameters::defaultVisIterations()),
     _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),

@@ -10,20 +10,20 @@
 #include "FailureEvent.h"
 
 CameraNetwork::CameraNetwork() :
-    _loc(NULL),
+    _feature(NULL),
     _httpServer(NULL)
 {
 }
 
 CameraNetwork::~CameraNetwork()
 {
-    _loc = NULL;
+    _feature = NULL;
     _httpServer = NULL;
 }
 
-void CameraNetwork::setLocalization(Localization *loc)
+void CameraNetwork::setFeatureExtraction(FeatureExtraction *feature)
 {
-    _loc = loc;
+    _feature = feature;
 }
 
 void CameraNetwork::setHTTPServer(HTTPServer *httpServer)
@@ -48,7 +48,7 @@ bool CameraNetwork::event(QEvent *event)
         rtabmap::SensorData *sensorData = createSensorData(data, width, height, fx, fy, cx, cy);
         if (sensorData != NULL)
         {
-            QCoreApplication::postEvent(_loc, new ImageEvent(sensorData, networkEvent->conInfo()));
+            QCoreApplication::postEvent(_feature, new ImageEvent(sensorData, networkEvent->conInfo()));
         }
         else
         {

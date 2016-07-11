@@ -4,7 +4,6 @@
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/Features2d.h>
 #include <rtabmap/utilite/UStl.h>
 #include <typeinfo>
 #include <list>
@@ -72,5 +71,4 @@ private:
     //Keypoint stuff
     Words *_words;
     Signatures *_signatures;
-    rtabmap::Feature2D *_feature2D;
 };

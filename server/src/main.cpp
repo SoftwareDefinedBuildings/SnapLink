@@ -7,7 +7,8 @@
 #include <QCoreApplication>
 #include <QThread>
 #include "HTTPServer.h"
-#include "Localization.h"
+#include "FeatureExtraction.h"
+#include "WordSearch.h"
 #include "CameraNetwork.h"
 #include "Visibility.h"
 #include "MemoryLoc.h"
@@ -37,11 +38,13 @@ int main(int argc, char *argv[])
     MemoryLoc memory;
     HTTPServer httpServer;
     CameraNetwork camera;
-    Localization loc;
+    FeatureExtraction feature;
+    WordSearch wordSearch;
     Visibility vis;
 
     QThread cameraThread;
-    QThread locThread;
+    QThread featureThread;
+    QThread wordSearchThread;
     QThread visThread;
 
     // Memory
@@ -77,22 +80,29 @@ int main(int argc, char *argv[])
     visThread.start();
 
     // Localization
-    UINFO("Initializing Localization");
-    loc.setMemory(&memory);
-    loc.setHTTPServer(&httpServer);
-    loc.setVisibility(&vis);
-    if (!loc.init(params))
+    UINFO("Initializing Word Search");
+    wordSearch.setMemory(&memory);
+    wordSearch.setHTTPServer(&httpServer);
+    wordSearch.setVisibility(&vis);
+    if (!wordSearch.init(params))
     {
         UERROR("Initializing localization failed");
         return 1;
     }
-    loc.moveToThread(&locThread);
-    locThread.start();
+    wordSearch.moveToThread(&wordSearchThread);
+    wordSearchThread.start();
+
+    // FeatureExtraction
+    UINFO("Initializing feature extraction");
+    feature.init(params);
+    feature.setWordSearch(&wordSearch);
+    feature.moveToThread(&featureThread);
+    featureThread.start();
 
     // CameraNetwork
     UINFO("Initializing camera");
     camera.setHTTPServer(&httpServer);
-    camera.setLocalization(&loc);
+    camera.setFeatureExtraction(&feature);
     camera.moveToThread(&cameraThread);
     cameraThread.start();
 
