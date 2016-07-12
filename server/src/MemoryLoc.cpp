@@ -272,17 +272,6 @@ const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, 
         UDEBUG("id %d is a bad signature", id);
     }
 
-    std::multimap<int, cv::KeyPoint> words;
-    if (wordIds.size() > 0)
-    {
-        UASSERT(wordIds.size() == keypoints.size());
-        unsigned int i = 0;
-        for (std::vector<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
-        {
-            words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-        }
-    }
-
     cv::Mat image = data.imageRaw();
     std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
 
@@ -346,20 +335,18 @@ const std::vector< std::pair<cv::Point3f, std::string> > &MemoryLoc::getLabels(i
     return _labels.at(dbId);
 }
 
+const Words *getWords() const
+{
+    return _words;
+}
+
 const std::map<int, Signature *> &MemoryLoc::getSignatures() const
 {
     return _signatures->getSignatures();
 }
 
-std::vector<int> MemoryLoc::findKNearestSignatures(const rtabmap::Signature &signature, int k)
+std::vector<int> MemoryLoc::findKNearestSignatures(std::vector<int> wordIds, int k)
 {
-    const std::multimap<int, cv::KeyPoint> &words = signature.getWords();
-    std::vector<int> wordIds;
-    wordIds.reserve(words.size());
-    for (std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter != words.end(); iter++)
-    {
-        wordIds.push_back(iter->first);
-    }
     return _signatures->findKNN(wordIds, k);
 }
 

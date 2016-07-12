@@ -11,12 +11,12 @@
 #include <QCoreApplication>
 
 #include "ImageSearch.h"
-#include "ImageEvent.h"
+#include "WordEvent.h"
 #include "LocationEvent.h"
 #include "FailureEvent.h"
 #include "Signature.h"
 
-Localization::Localization() :
+ImageSearch::ImageSearch() :
     _memory(NULL),
     _vis(NULL),
     _httpServer(NULL),
@@ -28,14 +28,14 @@ Localization::Localization() :
 {
 }
 
-Localization::~Localization()
+ImageSearch::~ImageSearch()
 {
     _memory = NULL;
     _vis = NULL;
     _httpServer = NULL;
 }
 
-bool Localization::init(const rtabmap::ParametersMap &parameters)
+bool ImageSearch::init(const rtabmap::ParametersMap &parameters)
 {
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
@@ -46,44 +46,44 @@ bool Localization::init(const rtabmap::ParametersMap &parameters)
     return true;
 }
 
-void Localization::setMemory(MemoryLoc *memory)
+void ImageSearch::setMemory(MemoryLoc *memory)
 {
     _memory = memory;
 }
 
-void Localization::setVisibility(Visibility *vis)
+void ImageSearch::setVisibility(Visibility *vis)
 {
     _vis = vis;
 }
 
-void Localization::setHTTPServer(HTTPServer *httpServer)
+void ImageSearch::setHTTPServer(HTTPServer *httpServer)
 {
     _httpServer = httpServer;
 }
 
-bool Localization::event(QEvent *event)
+bool ImageSearch::event(QEvent *event)
 {
-    if (event->type() == ImageEvent::type())
+    if (event->type() == WordEvent::type())
     {
-        ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
+        WordEvent *wordEvent = static_cast<WordEvent *>(event);
         rtabmap::Transform pose;
         int dbId;
-        bool success = localize(imageEvent->sensorData(), &pose, &dbId, imageEvent->conInfo());
+        bool success = localize(wordEvent->wordIds(), wordEvent->sensorData(), &pose, &dbId, wordEvent->conInfo());
         // a null pose notify that loc could not be computed
         if (success)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(dbId, imageEvent->sensorData(), pose, imageEvent->conInfo()));
+            QCoreApplication::postEvent(_vis, new LocationEvent(dbId, wordEvent->sensorData(), pose, wordEvent->conInfo()));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(imageEvent->conInfo()));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(wordEvent->conInfo()));
         }
         return true;
     }
     return QObject::event(event);
 }
 
-bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
+bool ImageSearch::localize(std::vector<int> wordIds, rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
@@ -91,16 +91,8 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
 
     const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
 
-    // generate kpts
-    const rtabmap::Signature *newSig = _memory->createSignature(*sensorData, con_info); // create a new signature, not added to DB
-    if (newSig == NULL)
-    {
-        return false;
-    }
-    UDEBUG("newWords=%d", (int)newSig->getWords().size());
-
     con_info->time.search_start = getTime();
-    std::vector<int> topIds = _memory->findKNearestSignatures(*newSig, TOP_K);
+    std::vector<int> topIds = _memory->findKNearestSignatures(wordIds, TOP_K);
     con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
     int topSigId = topIds[0];
     const Signature *topSig = _memory->getSignatures().at(topSigId);
@@ -108,7 +100,7 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
     // TODO: compare interatively until success
     UDEBUG("topSigId: %d", topSigId);
     con_info->time.pnp_start = getTime();
-    *pose = computeGlobalVisualTransform(newSig, topSigId);
+    *pose = computeGlobalVisualTransform(wordIds, sensorData, cameraModel, topSigId);
     con_info->time.pnp += getTime() - con_info->time.pnp_start;
     *dbId = topSig->getDbId();
 
@@ -124,12 +116,10 @@ bool Localization::localize(rtabmap::SensorData *sensorData, rtabmap::Transform 
 
     UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topSig->getDbId());
 
-    delete newSig;
-
     return !pose->isNull();
 }
 
-rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldSigId) const
+rtabmap::Transform ImageSearch::computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const
 {
     rtabmap::Transform transform;
     std::string msg;
@@ -150,16 +140,27 @@ rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Sig
         words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
     }
 
-    // 3D to 2D (PnP)
-    if ((int)words3.size() >= _minInliers && (int)newSig->getWords().size() >= _minInliers)
+    std::multimap<int, cv::KeyPoint> words;
+    const std::vector<cv::KeyPoint> &keypoints = sensorData->keypoints();
+    if (wordIds.size() > 0)
     {
-        const rtabmap::CameraModel &cameraModel = newSig->sensorData().cameraModels()[0];
+        UASSERT(wordIds.size() == keypoints.size());
+        unsigned int i = 0;
+        for (std::vector<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
+        {
+            words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+        }
+    }
 
+    // 3D to 2D (PnP)
+    if ((int)words3.size() >= _minInliers && (int)words().size() >= _minInliers)
+    {
         std::vector<int> matches;
         std::vector<int> inliers;
+    
         transform = rtabmap::util3d::estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
-                        uMultimapToMapUnique(newSig->getWords()),
+                        uMultimapToMapUnique(words),
                         cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
                         _minInliers,
                         _iterations,
@@ -167,20 +168,20 @@ rtabmap::Transform Localization::computeGlobalVisualTransform(const rtabmap::Sig
                         _pnpFlags,
                         _pnpRefineIterations,
                         oldSigPose, // use the old signature's pose as a guess
-                        uMultimapToMapUnique(newSig->getWords3()),
+                        std::map<int, cv::Point3f>(),
                         &variance,
                         &matches,
                         &inliers);
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            msg = uFormat("Not enough inliers %d/%d between the old signature %d and %d", inliersCount, _minInliers, oldSig->getId(), newSig->id());
+            msg = uFormat("Not enough inliers %d/%d between the old signature %d and the new image", inliersCount, _minInliers, oldSig->getId());
             UINFO(msg.c_str());
         }
     }
     else
     {
-        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)newSig->getWords().size(), _minInliers);
+        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)words.size(), _minInliers);
         UINFO(msg.c_str());
     }
 

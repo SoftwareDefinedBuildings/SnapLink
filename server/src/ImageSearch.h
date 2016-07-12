@@ -16,12 +16,12 @@
 class Visibility;
 class HTTPServer;
 
-class Localization :
+class ImageSearch :
     public QObject
 {
 public:
-    Localization();
-    virtual ~Localization();
+    ImageSearch();
+    virtual ~ImageSearch();
 
     bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
@@ -33,9 +33,9 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
+    bool localize(std::vector<int> wordIds, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldSigId) const;
+    rtabmap::Transform computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const;
 
 private:
     MemoryLoc *_memory;

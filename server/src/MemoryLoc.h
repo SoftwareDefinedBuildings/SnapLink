@@ -15,7 +15,7 @@
 #include "Signature.h"
 #include "Signatures.h"
 
-class WordsKdTree;
+class Words;
 
 class MemoryLoc
 {
@@ -31,9 +31,10 @@ public:
     const rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
 
     const std::vector< std::pair<cv::Point3f, std::string> > &getLabels(int dbId) const;
+    const Words *getWords() const;
     const std::map<int, Signature *> &getSignatures() const;
 
-    std::vector<int> findKNearestSignatures(const rtabmap::Signature &signature, int k);
+    std::vector<int> findKNearestSignatures(std::vector<int> wordIds, int k);
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
