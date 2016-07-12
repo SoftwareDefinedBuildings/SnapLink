@@ -83,7 +83,7 @@ bool ImageSearch::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool ImageSearch::localize(std::vector<int> wordIds, rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
+bool ImageSearch::localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
@@ -153,7 +153,7 @@ rtabmap::Transform ImageSearch::computeGlobalVisualTransform(std::vector<int> wo
     }
 
     // 3D to 2D (PnP)
-    if ((int)words3.size() >= _minInliers && (int)words().size() >= _minInliers)
+    if ((int)words3.size() >= _minInliers && words.size() >= _minInliers)
     {
         std::vector<int> matches;
         std::vector<int> inliers;

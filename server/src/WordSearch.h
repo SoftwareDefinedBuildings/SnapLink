@@ -23,7 +23,7 @@ public:
     WordSearch();
     virtual ~WordSearch();
 
-    void setWords(Words *words);
+    void setWords(const Words *words);
     void setImageSearch(ImageSearch *imageSearch);
 
 protected:
@@ -33,6 +33,6 @@ private:
     std::vector<int> searchWords(rtabmap::SensorData *sensorData, void *context);
 
 private:
-    Words *_words;
+    const Words *_words;
     ImageSearch *_imageSearch;
 };

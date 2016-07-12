@@ -9,6 +9,7 @@
 #include "HTTPServer.h"
 #include "FeatureExtraction.h"
 #include "WordSearch.h"
+#include "ImageSearch.h"
 #include "CameraNetwork.h"
 #include "Visibility.h"
 #include "MemoryLoc.h"
@@ -17,7 +18,7 @@
 void showUsage()
 {
     printf("\nUsage:\n"
-           "rtabmap-rgbd_mapping database_file1 [database_file2 ...]\n");
+           "CellMate database_file1 [database_file2 ...]\n");
     exit(1);
 }
 
@@ -40,11 +41,13 @@ int main(int argc, char *argv[])
     CameraNetwork camera;
     FeatureExtraction feature;
     WordSearch wordSearch;
+    ImageSearch imageSearch;
     Visibility vis;
 
     QThread cameraThread;
     QThread featureThread;
     QThread wordSearchThread;
+    QThread imageSearchThread;
     QThread visThread;
 
     // Memory
@@ -79,16 +82,23 @@ int main(int argc, char *argv[])
     vis.moveToThread(&visThread);
     visThread.start();
 
-    // Localization
-    UINFO("Initializing Word Search");
-    wordSearch.setMemory(&memory);
-    wordSearch.setHTTPServer(&httpServer);
-    wordSearch.setVisibility(&vis);
-    if (!wordSearch.init(params))
+    // Image Search
+    UINFO("Initializing Image Search");
+    imageSearch.setMemory(&memory);
+    imageSearch.setHTTPServer(&httpServer);
+    imageSearch.setVisibility(&vis);
+    if (!imageSearch.init(params))
     {
-        UERROR("Initializing localization failed");
+        UERROR("Initializing image search failed");
         return 1;
     }
+    imageSearch.moveToThread(&imageSearchThread);
+    imageSearchThread.start();
+
+    // Word Search
+    UINFO("Initializing Word Search");
+    wordSearch.setWords(memory.getWords());
+    wordSearch.setImageSearch(&imageSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();
 

@@ -33,7 +33,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool localize(std::vector<int> wordIds, void *context);
+    bool localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
     rtabmap::Transform computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const;
 

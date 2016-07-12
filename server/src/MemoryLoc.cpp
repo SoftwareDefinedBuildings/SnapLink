@@ -248,51 +248,6 @@ void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
     uInsert(parameters_, parameters);
 }
 
-const rtabmap::Signature *MemoryLoc::createSignature(rtabmap::SensorData &data, void *context)
-{
-    UDEBUG("");
-    UASSERT(data.imageRaw().empty() ||
-            data.imageRaw().type() == CV_8UC1 ||
-            data.imageRaw().type() == CV_8UC3);
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
-
-    std::vector<cv::KeyPoint> keypoints = data.keypoints();
-    cv::Mat descriptors = data.descriptors();
-    int id = INT_MAX;
-
-    std::vector<int> wordIds;
-    if (descriptors.rows)
-    {
-        con_info->time.vwd_start = getTime();
-        wordIds = _words->findNNs(descriptors);
-        con_info->time.vwd += getTime() - con_info->time.vwd_start;
-    }
-    else if (id > 0)
-    {
-        UDEBUG("id %d is a bad signature", id);
-    }
-
-    cv::Mat image = data.imageRaw();
-    std::vector<rtabmap::CameraModel> cameraModels = data.cameraModels();
-
-    UDEBUG("bin data not kept");
-    rtabmap::Signature *s = new rtabmap::Signature(id);
-
-    s->sensorData().setId(id);
-    s->sensorData().setCameraModels(cameraModels);
-
-    s->setWords(words);
-
-    // set raw data
-    s->sensorData().setImageRaw(image);
-
-    if (words.size())
-    {
-        s->setEnabled(true); // All references are already activated in the dictionary at this point (see _words->addNewWords())
-    }
-    return s;
-}
-
 void MemoryLoc::optimizePoses(int dbId)
 {
     // TODO: why rbegin is guaranteed to have neighbors?
@@ -335,7 +290,7 @@ const std::vector< std::pair<cv::Point3f, std::string> > &MemoryLoc::getLabels(i
     return _labels.at(dbId);
 }
 
-const Words *getWords() const
+const Words *MemoryLoc::getWords() const
 {
     return _words;
 }

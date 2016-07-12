@@ -28,7 +28,6 @@ public:
 
     bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-    const rtabmap::Signature *createSignature(rtabmap::SensorData &data, void *context);
 
     const std::vector< std::pair<cv::Point3f, std::string> > &getLabels(int dbId) const;
     const Words *getWords() const;

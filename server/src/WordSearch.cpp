@@ -28,12 +28,12 @@ WordSearch::~WordSearch()
     _imageSearch = NULL;
 }
 
-void WordSearch::setWords(Words *words)
+void WordSearch::setWords(const Words *words)
 {
     _words = words;
 }
 
-void WordSearch::setImageSearch(ImageSearch *imageSearch);
+void WordSearch::setImageSearch(ImageSearch *imageSearch)
 {
     _imageSearch = imageSearch;
 }
@@ -53,7 +53,7 @@ bool WordSearch::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool WordSearch::searchWords(rtabmap::SensorData *sensorData, void *context)
+std::vector<int> WordSearch::searchWords(rtabmap::SensorData *sensorData, void *context)
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
