@@ -11,8 +11,6 @@
 #include "HTTPServer.h"
 #include "Time.h"
 
-#define TOP_K 5
-
 class SignatureSearch;
 class HTTPServer;
 

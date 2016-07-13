@@ -7,13 +7,13 @@
 #include <QObject>
 #include <QEvent>
 #include "MemoryLoc.h"
-#include "Visibility.h"
+#include "Perspective.h"
 #include "HTTPServer.h"
 #include "Time.h"
 
-#define TOP_K 5
+#define TOP_K 1
 
-class Visibility;
+class Perspective;
 class HTTPServer;
 
 class SignatureSearch :
@@ -23,28 +23,16 @@ public:
     SignatureSearch();
     virtual ~SignatureSearch();
 
-    bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-
     void setMemory(MemoryLoc *memory);
-    void setVisibility(Visibility *vis);
-    void setHTTPServer(HTTPServer *httpServer);
+    void setPerspective(Perspective *vis);
 
 protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
-    // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const;
+    std::vector<Signature *> searchSignatures(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, void *context);
 
 private:
     MemoryLoc *_memory;
-    Visibility *_vis;
-    HTTPServer *_httpServer;
-
-    int _minInliers;
-    int _iterations;
-    int _pnpRefineIterations;
-    double _pnpReprojError;
-    int _pnpFlags;
+    Perspective *_perspective;
 };

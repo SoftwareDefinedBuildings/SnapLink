@@ -10,6 +10,7 @@
 #include "FeatureExtraction.h"
 #include "WordSearch.h"
 #include "SignatureSearch.h"
+#include "Perspective.h"
 #include "CameraNetwork.h"
 #include "Visibility.h"
 #include "MemoryLoc.h"
@@ -41,13 +42,15 @@ int main(int argc, char *argv[])
     CameraNetwork camera;
     FeatureExtraction feature;
     WordSearch wordSearch;
-    SignatureSearch imageSearch;
+    SignatureSearch signatureSearch;
+    Perspective perspective;
     Visibility vis;
 
     QThread cameraThread;
     QThread featureThread;
     QThread wordSearchThread;
-    QThread imageSearchThread;
+    QThread signatureSearchThread;
+    QThread perspectiveThread;
     QThread visThread;
 
     // Memory
@@ -82,23 +85,29 @@ int main(int argc, char *argv[])
     vis.moveToThread(&visThread);
     visThread.start();
 
-    // Image Search
-    UINFO("Initializing Image Search");
-    imageSearch.setMemory(&memory);
-    imageSearch.setHTTPServer(&httpServer);
-    imageSearch.setVisibility(&vis);
-    if (!imageSearch.init(params))
+    // Perspective
+    UINFO("Initializing Perspective");
+    perspective.setHTTPServer(&httpServer);
+    perspective.setVisibility(&vis);
+    if (!perspective.init(params))
     {
-        UERROR("Initializing image search failed");
+        UERROR("Initializing Perspective failed");
         return 1;
     }
-    imageSearch.moveToThread(&imageSearchThread);
-    imageSearchThread.start();
+    perspective.moveToThread(&perspectiveThread);
+    perspectiveThread.start();
+
+    // Signature Search
+    UINFO("Initializing Signature Search");
+    signatureSearch.setMemory(&memory);
+    signatureSearch.setPerspective(&perspective);
+    signatureSearch.moveToThread(&signatureSearchThread);
+    signatureSearchThread.start();
 
     // Word Search
     UINFO("Initializing Word Search");
     wordSearch.setWords(memory.getWords());
-    wordSearch.setSignatureSearch(&imageSearch);
+    wordSearch.setSignatureSearch(&signatureSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();
 

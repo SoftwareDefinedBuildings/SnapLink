@@ -11,13 +11,12 @@
 #include <QCoreApplication>
 
 #include "Perspective.h"
-#include "WordEvent.h"
+#include "SignatureEvent.h"
 #include "LocationEvent.h"
 #include "FailureEvent.h"
-#include "Signature.h"
+#include "Time.h"
 
 Perspective::Perspective() :
-    _memory(NULL),
     _vis(NULL),
     _httpServer(NULL),
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
@@ -30,7 +29,6 @@ Perspective::Perspective() :
 
 Perspective::~Perspective()
 {
-    _memory = NULL;
     _vis = NULL;
     _httpServer = NULL;
 }
@@ -46,11 +44,6 @@ bool Perspective::init(const rtabmap::ParametersMap &parameters)
     return true;
 }
 
-void Perspective::setMemory(MemoryLoc *memory)
-{
-    _memory = memory;
-}
-
 void Perspective::setVisibility(Visibility *vis)
 {
     _vis = vis;
@@ -63,64 +56,35 @@ void Perspective::setHTTPServer(HTTPServer *httpServer)
 
 bool Perspective::event(QEvent *event)
 {
-    if (event->type() == WordEvent::type())
+    if (event->type() == SignatureEvent::type())
     {
-        WordEvent *wordEvent = static_cast<WordEvent *>(event);
-        rtabmap::Transform pose;
-        int dbId;
-        bool success = localize(wordEvent->wordIds(), wordEvent->sensorData(), &pose, &dbId, wordEvent->conInfo());
+        SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
+        std::vector<int> wordIds = signatureEvent->wordIds();
+        rtabmap::SensorData *sensorData = signatureEvent->sensorData();
+        std::vector<Signature *> signatures = signatureEvent->signatures();
+        ConnectionInfo *conInfo = signatureEvent->conInfo();
+        rtabmap::Transform pose = localize(wordIds, sensorData, signatures.at(0), conInfo);
         // a null pose notify that loc could not be computed
-        if (success)
+        if (pose.isNull() == false)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(dbId, wordEvent->sensorData(), pose, wordEvent->conInfo()));
+            QCoreApplication::postEvent(_vis, new LocationEvent(signatures.at(0)->getDbId(), sensorData, pose, conInfo));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(wordEvent->conInfo()));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(signatureEvent->conInfo()));
         }
         return true;
     }
     return QObject::event(event);
 }
 
-bool Perspective::localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
+rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, Signature *oldSig, void *context) const
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
+    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
     UASSERT(!sensorData->imageRaw().empty());
 
-    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
-
-    con_info->time.search_start = getTime();
-    std::vector<int> topIds = _memory->findKNearestSignatures(wordIds, TOP_K);
-    con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
-    int topSigId = topIds[0];
-    const Signature *topSig = _memory->getSignatures().at(topSigId);
-
-    // TODO: compare interatively until success
-    UDEBUG("topSigId: %d", topSigId);
-    con_info->time.pnp_start = getTime();
-    *pose = computeGlobalVisualTransform(wordIds, sensorData, cameraModel, topSigId);
-    con_info->time.pnp += getTime() - con_info->time.pnp_start;
-    *dbId = topSig->getDbId();
-
-    if (!pose->isNull())
-    {
-        UDEBUG("global transform = %s", pose->prettyPrint().c_str());
-    }
-    else
-    {
-        UWARN("transform is null, using pose of the closest image");
-        *pose = topSig->getPose();
-    }
-
-    UINFO("output transform = %s using image %d in database %d", pose->prettyPrint().c_str(), topSigId, topSig->getDbId());
-
-    return !pose->isNull();
-}
-
-rtabmap::Transform Perspective::computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const
-{
     rtabmap::Transform transform;
     std::string msg;
 
@@ -129,7 +93,6 @@ rtabmap::Transform Perspective::computeGlobalVisualTransform(std::vector<int> wo
 
     std::multimap<int, cv::Point3f> words3;
 
-    const Signature *oldSig = _memory->getSignatures().at(oldSigId);
     const rtabmap::Transform &oldSigPose = oldSig->getPose();
 
     const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3D();
@@ -157,7 +120,8 @@ rtabmap::Transform Perspective::computeGlobalVisualTransform(std::vector<int> wo
     {
         std::vector<int> matches;
         std::vector<int> inliers;
-    
+
+        con_info->time.pnp_start = getTime();
         transform = rtabmap::util3d::estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
                         uMultimapToMapUnique(words),
@@ -172,6 +136,7 @@ rtabmap::Transform Perspective::computeGlobalVisualTransform(std::vector<int> wo
                         &variance,
                         &matches,
                         &inliers);
+        con_info->time.pnp += getTime() - con_info->time.pnp_start;
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
