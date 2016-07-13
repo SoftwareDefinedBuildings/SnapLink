@@ -7,13 +7,13 @@
 #include <QObject>
 #include <QEvent>
 #include "MemoryLoc.h"
-#include "ImageSearch.h"
+#include "SignatureSearch.h"
 #include "HTTPServer.h"
 #include "Time.h"
 
 #define TOP_K 5
 
-class ImageSearch;
+class SignatureSearch;
 class HTTPServer;
 
 class WordSearch :
@@ -24,7 +24,7 @@ public:
     virtual ~WordSearch();
 
     void setWords(const Words *words);
-    void setImageSearch(ImageSearch *imageSearch);
+    void setSignatureSearch(SignatureSearch *imageSearch);
 
 protected:
     virtual bool event(QEvent *event);
@@ -34,5 +34,5 @@ private:
 
 private:
     const Words *_words;
-    ImageSearch *_imageSearch;
+    SignatureSearch *_imageSearch;
 };

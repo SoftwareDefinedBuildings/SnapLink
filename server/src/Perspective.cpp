@@ -10,13 +10,13 @@
 #include <rtabmap/core/Rtabmap.h>
 #include <QCoreApplication>
 
-#include "ImageSearch.h"
+#include "Perspective.h"
 #include "WordEvent.h"
 #include "LocationEvent.h"
 #include "FailureEvent.h"
 #include "Signature.h"
 
-ImageSearch::ImageSearch() :
+Perspective::Perspective() :
     _memory(NULL),
     _vis(NULL),
     _httpServer(NULL),
@@ -28,14 +28,14 @@ ImageSearch::ImageSearch() :
 {
 }
 
-ImageSearch::~ImageSearch()
+Perspective::~Perspective()
 {
     _memory = NULL;
     _vis = NULL;
     _httpServer = NULL;
 }
 
-bool ImageSearch::init(const rtabmap::ParametersMap &parameters)
+bool Perspective::init(const rtabmap::ParametersMap &parameters)
 {
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
     rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
@@ -46,22 +46,22 @@ bool ImageSearch::init(const rtabmap::ParametersMap &parameters)
     return true;
 }
 
-void ImageSearch::setMemory(MemoryLoc *memory)
+void Perspective::setMemory(MemoryLoc *memory)
 {
     _memory = memory;
 }
 
-void ImageSearch::setVisibility(Visibility *vis)
+void Perspective::setVisibility(Visibility *vis)
 {
     _vis = vis;
 }
 
-void ImageSearch::setHTTPServer(HTTPServer *httpServer)
+void Perspective::setHTTPServer(HTTPServer *httpServer)
 {
     _httpServer = httpServer;
 }
 
-bool ImageSearch::event(QEvent *event)
+bool Perspective::event(QEvent *event)
 {
     if (event->type() == WordEvent::type())
     {
@@ -83,7 +83,7 @@ bool ImageSearch::event(QEvent *event)
     return QObject::event(event);
 }
 
-bool ImageSearch::localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
+bool Perspective::localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context)
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
@@ -119,7 +119,7 @@ bool ImageSearch::localize(std::vector<int> wordIds, const rtabmap::SensorData *
     return !pose->isNull();
 }
 
-rtabmap::Transform ImageSearch::computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const
+rtabmap::Transform Perspective::computeGlobalVisualTransform(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, const rtabmap::CameraModel &cameraModel, int oldSigId) const
 {
     rtabmap::Transform transform;
     std::string msg;

@@ -33,7 +33,7 @@ void WordSearch::setWords(const Words *words)
     _words = words;
 }
 
-void WordSearch::setImageSearch(ImageSearch *imageSearch)
+void WordSearch::setSignatureSearch(SignatureSearch *imageSearch)
 {
     _imageSearch = imageSearch;
 }

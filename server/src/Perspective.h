@@ -16,12 +16,12 @@
 class Visibility;
 class HTTPServer;
 
-class ImageSearch :
+class Perspective :
     public QObject
 {
 public:
-    ImageSearch();
-    virtual ~ImageSearch();
+    Perspective();
+    virtual ~Perspective();
 
     bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 

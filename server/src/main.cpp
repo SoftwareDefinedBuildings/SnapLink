@@ -9,7 +9,7 @@
 #include "HTTPServer.h"
 #include "FeatureExtraction.h"
 #include "WordSearch.h"
-#include "ImageSearch.h"
+#include "SignatureSearch.h"
 #include "CameraNetwork.h"
 #include "Visibility.h"
 #include "MemoryLoc.h"
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
     CameraNetwork camera;
     FeatureExtraction feature;
     WordSearch wordSearch;
-    ImageSearch imageSearch;
+    SignatureSearch imageSearch;
     Visibility vis;
 
     QThread cameraThread;
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
     // Word Search
     UINFO("Initializing Word Search");
     wordSearch.setWords(memory.getWords());
-    wordSearch.setImageSearch(&imageSearch);
+    wordSearch.setSignatureSearch(&imageSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();
 
