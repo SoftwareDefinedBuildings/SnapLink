@@ -6,14 +6,14 @@
 #include <cstdio>
 #include <QCoreApplication>
 #include <QThread>
-#include "HTTPServer.h"
-#include "FeatureExtraction.h"
-#include "WordSearch.h"
-#include "SignatureSearch.h"
-#include "Perspective.h"
-#include "CameraNetwork.h"
-#include "Visibility.h"
-#include "RTABMapDBAdapter.h"
+#include "stage/HTTPServer.h"
+#include "stage/FeatureExtraction.h"
+#include "stage/WordSearch.h"
+#include "stage/SignatureSearch.h"
+#include "stage/Perspective.h"
+#include "stage/CameraNetwork.h"
+#include "stage/Visibility.h"
+#include "adapter/RTABMapDBAdapter.h"
 
 
 void showUsage()
