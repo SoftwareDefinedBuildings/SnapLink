@@ -57,13 +57,13 @@ bool Visibility::event(QEvent *event)
 
 std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
 {
-    const std::vector< std::pair<cv::Point3f, std::string> > &labels = _memory->getLabels(dbId);
+    const std::list<Label *> &labels = _memory->getLabels().at(dbId);
     std::vector<cv::Point3f> points;
     std::vector<std::string> names;
-    for (std::vector< std::pair<cv::Point3f, std::string> >::const_iterator i = labels.begin(); i != labels.end(); i++)
+    for (std::list<Label *>::const_iterator iter = labels.begin(); iter != labels.end(); iter++)
     {
-        points.push_back(i->first);
-        names.push_back(i->second);
+        points.push_back((*iter)->getPoint3());
+        names.push_back((*iter)->getName());
     }
 
     std::vector<std::string> *results = new std::vector<std::string>();

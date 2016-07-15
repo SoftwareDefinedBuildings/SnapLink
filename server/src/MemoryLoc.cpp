@@ -29,6 +29,7 @@
 #include "Time.h"
 #include "WordsKdTree.h"
 #include "SignaturesSimple.h"
+#include "LabelsSimple.h"
 
 const int MemoryLoc::kIdStart = 0;
 
@@ -56,8 +57,10 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
     _words = new WordsKdTree();
     _signatures = new SignaturesSimple();
+    _labels = new LabelsSimple();
     this->parseParameters(parameters);
 
+    std::list<Label *> allLabels;
     int nextMemSigId = 1; // the ID we assign to next signature we put in memory
     int nextMemWordId = 1; // the ID we assign to next visual word we put in memory
     for (int dbId = 0; dbId < dbUrls.size(); dbId++)
@@ -127,8 +130,8 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
 
         // Read labels from database before updating signature ids
         UDEBUG("Read labels from database...");
-        std::vector< std::pair<cv::Point3f, std::string> > labels = readLabels(dbId, dbUrl);
-        _labels.push_back(labels);
+        std::list<Label *> labels = readLabels(dbId, dbUrl);
+        allLabels.insert(allLabels.end(), labels.begin(), labels.end());
 
         // Update signature ids and words in memory
         UDEBUG("Update signatures ids and words in memory...");
@@ -239,6 +242,7 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
         dbDriver = NULL;
         UDEBUG("Closing database, done!");
     }
+    _labels->addLabels(allLabels);
 
     return true;
 }
@@ -285,9 +289,9 @@ void MemoryLoc::optimizePoses(int dbId)
     }
 }
 
-const std::vector< std::pair<cv::Point3f, std::string> > &MemoryLoc::getLabels(int dbId) const
+const std::map< int, std::list<Label *> > &MemoryLoc::getLabels() const
 {
-    return _labels.at(dbId);
+    return _labels->getLabels();
 }
 
 const Words *MemoryLoc::getWords() const
@@ -328,9 +332,9 @@ std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) co
     return links;
 }
 
-std::vector< std::pair<cv::Point3f, std::string> > MemoryLoc::readLabels(int dbId, std::string dbUrl) const
+std::list<Label *> MemoryLoc::readLabels(int dbId, std::string dbUrl) const
 {
-    std::vector< std::pair<cv::Point3f, std::string> > labels;
+    std::list<Label *> labels;
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int rc;
@@ -349,15 +353,15 @@ std::vector< std::pair<cv::Point3f, std::string> > MemoryLoc::readLabels(int dbI
     {
         while (sqlite3_step(stmt) == SQLITE_ROW)
         {
-            std::string label(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+            std::string name(reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
             int imageId = sqlite3_column_int(stmt, 1);
             int x = sqlite3_column_int(stmt, 2);
             int y = sqlite3_column_int(stmt, 3);
             pcl::PointXYZ pWorld;
             if (getPoint3World(dbId, imageId, x, y, pWorld))
             {
-                labels.push_back(std::pair<cv::Point3f, std::string>(cv::Point3f(pWorld.x, pWorld.y, pWorld.z), label));
-                UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, label.c_str(), dbUrl.c_str());
+                labels.push_back(new Label(dbId, imageId, cv::Point2f(x, y), cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name));
+                UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, name.c_str(), dbUrl.c_str());
             }
         }
     }

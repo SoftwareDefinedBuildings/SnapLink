@@ -12,8 +12,8 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include "Words.h"
-#include "Signature.h"
 #include "Signatures.h"
+#include "Labels.h"
 
 class Words;
 
@@ -29,7 +29,7 @@ public:
     bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
-    const std::vector< std::pair<cv::Point3f, std::string> > &getLabels(int dbId) const;
+    const std::map< int, std::list<Label *> > &getLabels() const;
     const Words *getWords() const;
     const std::map<int, Signature *> &getSignatures() const;
 
@@ -38,7 +38,7 @@ public:
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
     void optimizePoses(int dbId);  // optimize poses using TORO graph
-    std::vector< std::pair<cv::Point3f, std::string> > readLabels(int dbId, std::string dbUrl) const;
+    std::list<Label *> readLabels(int dbId, std::string dbUrl) const;
     bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const;
 
     std::map<int, int> getNeighborsId(
@@ -65,10 +65,10 @@ private:
     std::vector< std::map<int, int> > _sigIdMaps; // maps of ids of DB signatures and mem signatures
     std::vector< std::map<int, int> > _wordIdMaps; // maps of ids of DB words and mem words
 
-    std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
     std::vector< std::map<int, rtabmap::Signature *> > _signatureMaps;
 
     //Keypoint stuff
     Words *_words;
     Signatures *_signatures;
+    Labels *_labels;
 };
