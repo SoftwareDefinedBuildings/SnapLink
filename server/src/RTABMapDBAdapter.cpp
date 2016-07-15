@@ -24,22 +24,22 @@
 #include <pcl/common/common.h>
 #include <sqlite3.h>
 
-#include "MemoryLoc.h"
+#include "RTABMapDBAdapter.h"
 #include "HTTPServer.h"
 #include "Time.h"
 #include "WordsKdTree.h"
 #include "SignaturesSimple.h"
 #include "LabelsSimple.h"
 
-const int MemoryLoc::kIdStart = 0;
+const int RTABMapDBAdapter::kIdStart = 0;
 
-MemoryLoc::MemoryLoc() :
+RTABMapDBAdapter::RTABMapDBAdapter() :
     _words(NULL),
     _signatures(NULL)
 {
 }
 
-MemoryLoc::~MemoryLoc()
+RTABMapDBAdapter::~RTABMapDBAdapter()
 {
     if (_words)
     {
@@ -51,7 +51,7 @@ MemoryLoc::~MemoryLoc()
     }
 }
 
-bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::ParametersMap &parameters)
+bool RTABMapDBAdapter::init(std::vector<std::string> &dbUrls, const rtabmap::ParametersMap &parameters)
 {
     UDEBUG("");
 
@@ -247,12 +247,12 @@ bool MemoryLoc::init(std::vector<std::string> &dbUrls, const rtabmap::Parameters
     return true;
 }
 
-void MemoryLoc::parseParameters(const rtabmap::ParametersMap &parameters)
+void RTABMapDBAdapter::parseParameters(const rtabmap::ParametersMap &parameters)
 {
     uInsert(parameters_, parameters);
 }
 
-void MemoryLoc::optimizePoses(int dbId)
+void RTABMapDBAdapter::optimizePoses(int dbId)
 {
     // TODO: why rbegin is guaranteed to have neighbors?
     int rootSigId = _signatureMaps.at(dbId).rbegin()->first;
@@ -289,27 +289,27 @@ void MemoryLoc::optimizePoses(int dbId)
     }
 }
 
-const std::map< int, std::list<Label *> > &MemoryLoc::getLabels() const
+const std::map< int, std::list<Label *> > &RTABMapDBAdapter::getLabels() const
 {
     return _labels->getLabels();
 }
 
-const Words *MemoryLoc::getWords() const
+const Words *RTABMapDBAdapter::getWords() const
 {
     return _words;
 }
 
-const std::map<int, Signature *> &MemoryLoc::getSignatures() const
+const std::map<int, Signature *> &RTABMapDBAdapter::getSignatures() const
 {
     return _signatures->getSignatures();
 }
 
-std::vector<int> MemoryLoc::findKNearestSignatures(std::vector<int> wordIds, int k)
+std::vector<int> RTABMapDBAdapter::findKNearestSignatures(std::vector<int> wordIds, int k)
 {
     return _signatures->findKNN(wordIds, k);
 }
 
-std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) const
+std::map<int, rtabmap::Link> RTABMapDBAdapter::getNeighborLinks(int dbId, int sigId) const
 {
     std::map<int, rtabmap::Link> links;
     const rtabmap::Signature *sig = _signatureMaps.at(dbId).at(sigId);
@@ -332,7 +332,7 @@ std::map<int, rtabmap::Link> MemoryLoc::getNeighborLinks(int dbId, int sigId) co
     return links;
 }
 
-std::list<Label *> MemoryLoc::readLabels(int dbId, std::string dbUrl) const
+std::list<Label *> RTABMapDBAdapter::readLabels(int dbId, std::string dbUrl) const
 {
     std::list<Label *> labels;
     sqlite3 *db = NULL;
@@ -376,7 +376,7 @@ std::list<Label *> MemoryLoc::readLabels(int dbId, std::string dbUrl) const
     return labels;
 }
 
-bool MemoryLoc::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const
+bool RTABMapDBAdapter::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const
 {
     UDEBUG("");
     const rtabmap::Signature *s = _signatureMaps.at(dbId).at(imageId);
@@ -406,7 +406,7 @@ bool MemoryLoc::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXY
 }
 
 // return map<Id,Margin>, including signatureId
-std::map<int, int> MemoryLoc::getNeighborsId(
+std::map<int, int> RTABMapDBAdapter::getNeighborsId(
     int dbId,
     int signatureId,
     bool incrementMarginOnLoop, // default false
@@ -500,7 +500,7 @@ std::map<int, int> MemoryLoc::getNeighborsId(
 
 // return all non-null poses
 // return unique links between nodes (for neighbors: old->new, for loops: parent->child)
-void MemoryLoc::getMetricConstraints(
+void RTABMapDBAdapter::getMetricConstraints(
     int dbId,
     const std::set<int> &ids,
     std::map<int, rtabmap::Transform> &poses,

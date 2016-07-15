@@ -28,7 +28,7 @@ SignatureSearch::~SignatureSearch()
     _perspective = NULL;
 }
 
-void SignatureSearch::setMemory(MemoryLoc *memory)
+void SignatureSearch::setMemory(RTABMapDBAdapter *memory)
 {
     _memory = memory;
 }

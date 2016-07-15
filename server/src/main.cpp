@@ -13,7 +13,7 @@
 #include "Perspective.h"
 #include "CameraNetwork.h"
 #include "Visibility.h"
-#include "MemoryLoc.h"
+#include "RTABMapDBAdapter.h"
 
 
 void showUsage()
@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    MemoryLoc memory;
+    RTABMapDBAdapter memory;
     HTTPServer httpServer;
     CameraNetwork camera;
     FeatureExtraction feature;

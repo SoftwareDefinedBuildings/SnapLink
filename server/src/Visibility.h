@@ -15,7 +15,7 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    void setMemory(MemoryLoc *memory);
+    void setMemory(RTABMapDBAdapter *memory);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:
@@ -28,7 +28,7 @@ private:
     // labels
     std::vector< std::vector< std::pair<cv::Point3f, std::string> > > _labels;
     HTTPServer *_httpServer;
-    MemoryLoc *_memory;
+    RTABMapDBAdapter *_memory;
 };
 
 struct CompareMeanDist

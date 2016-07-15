@@ -25,7 +25,7 @@ Visibility::~Visibility()
     _httpServer = NULL;
 }
 
-void Visibility::setMemory(MemoryLoc *memory)
+void Visibility::setMemory(RTABMapDBAdapter *memory)
 {
     _memory = memory;
 }

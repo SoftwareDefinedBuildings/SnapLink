@@ -6,7 +6,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <QObject>
 #include <QEvent>
-#include "MemoryLoc.h"
+#include "RTABMapDBAdapter.h"
 #include "Perspective.h"
 #include "HTTPServer.h"
 #include "Time.h"
@@ -23,7 +23,7 @@ public:
     SignatureSearch();
     virtual ~SignatureSearch();
 
-    void setMemory(MemoryLoc *memory);
+    void setMemory(RTABMapDBAdapter *memory);
     void setPerspective(Perspective *vis);
 
 protected:
@@ -33,6 +33,6 @@ private:
     std::vector<Signature *> searchSignatures(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, void *context);
 
 private:
-    MemoryLoc *_memory;
+    RTABMapDBAdapter *_memory;
     Perspective *_perspective;
 };

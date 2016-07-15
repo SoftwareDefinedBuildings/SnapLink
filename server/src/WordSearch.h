@@ -6,7 +6,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <QObject>
 #include <QEvent>
-#include "MemoryLoc.h"
+#include "RTABMapDBAdapter.h"
 #include "SignatureSearch.h"
 #include "HTTPServer.h"
 #include "Time.h"

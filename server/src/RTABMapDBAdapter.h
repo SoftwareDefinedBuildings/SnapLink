@@ -17,14 +17,14 @@
 
 class Words;
 
-class MemoryLoc
+class RTABMapDBAdapter
 {
 public:
     static const int kIdStart;
 
 public:
-    MemoryLoc();
-    virtual ~MemoryLoc();
+    RTABMapDBAdapter();
+    virtual ~RTABMapDBAdapter();
 
     bool init(std::vector<std::string> &dbUrls,
               const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
