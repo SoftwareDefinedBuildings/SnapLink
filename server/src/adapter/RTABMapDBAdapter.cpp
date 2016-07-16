@@ -8,6 +8,7 @@
 #include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/Features2d.h>
 #include <rtabmap/core/DBDriver.h>
+#include <rtabmap/core/Memory.h>
 #include <rtabmap/core/util3d_features.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_correspondences.h>
@@ -25,114 +26,106 @@
 #include <sqlite3.h>
 
 #include "adapter/RTABMapDBAdapter.h"
-#include "stage/HTTPServer.h"
 #include "util/Time.h"
-#include "data/WordsKdTree.h"
-#include "data/SignaturesSimple.h"
-#include "data/LabelsSimple.h"
+#include "data/Words.h"
+#include "data/Signatures.h"
+#include "data/Labels.h"
 
-const int RTABMapDBAdapter::kIdStart = 0;
-
-RTABMapDBAdapter::RTABMapDBAdapter() :
-    _words(NULL),
-    _signatures(NULL)
+RTABMapDBAdapter::RTABMapDBAdapter()
 {
 }
 
 RTABMapDBAdapter::~RTABMapDBAdapter()
 {
-    if (_words)
-    {
-        delete _words;
-    }
-    if (_signatures)
-    {
-        delete _signatures;
-    }
 }
 
-bool RTABMapDBAdapter::init(std::vector<std::string> &dbUrls, const rtabmap::ParametersMap &parameters)
+static bool RTABMapDBAdapter::readData(std::vector<std::string> &dbPaths, Words *words, Signatures *signatures, Labels *labels)
 {
-    UDEBUG("");
-
-    _words = new WordsKdTree();
-    _signatures = new SignaturesSimple();
-    _labels = new LabelsSimple();
-    this->parseParameters(parameters);
-
-    std::list<Label *> allLabels;
     int nextMemSigId = 1; // the ID we assign to next signature we put in memory
     int nextMemWordId = 1; // the ID we assign to next visual word we put in memory
-    for (int dbId = 0; dbId < dbUrls.size(); dbId++)
+
+    // Read data from databases
+    std::map< int, std::map<int, rtabmap::Signature *> > dbSignatureMaps;
+    for (int dbId = 0; dbId < dbPaths.size(); dbId++)
     {
-        std::string &dbUrl = dbUrls.at(dbId);
-        rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create(parameters);
-        if (!dbDriver->openConnection(dbUrl))
-        {
-            UDEBUG("Connecting to database %s, path is invalid!", dbUrl.c_str());
-            return false;
-        }
-        UDEBUG("Connecting to database %s done!", dbUrl.c_str());
+        std::string &dbPath = dbPaths.at(dbId);
 
-        // Read signatures from database
-        UDEBUG("Read signatures from database...");
-        std::list<rtabmap::Signature *> signatures;
-        std::set<int> sigIds;
-        std::map<int, int> sigIdMap; // map of ids of DB signatures and mem signatures
-        dbDriver->getAllNodeIds(sigIds, true);
-        dbDriver->loadSignatures(std::list<int>(sigIds.begin(), sigIds.end()), signatures);
-        dbDriver->loadNodeData(signatures);
-        for (std::set<int>::iterator iter = sigIds.begin(); iter != sigIds.end(); ++iter)
+        if (signatures != NULL)
         {
-            sigIdMap.insert(std::pair<int, int>(*iter, nextMemSigId));
-            nextMemSigId++;
-        }
-        _sigIdMaps.push_back(sigIdMap);
+            // get optimized poses of signatures
+            UDEBUG("Optimize poses of signatures...");
+            std::map<int, Transform> optimizedPoses = getOptimizePoses(dbPath);
 
-        // Read words from database
-        UDEBUG("Read words from database...");
-        std::set<int> wordIds;
-        std::map<int, int> wordIdMap; // map of ids of DB words and mem words
-        for (std::list<rtabmap::Signature *>::const_iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
-        {
-            const std::multimap<int, cv::KeyPoint> &words = (*iter)->getWords();
-            std::list<int> keys = uUniqueKeys(words);
-            wordIds.insert(keys.begin(), keys.end());
-        }
-        std::list<rtabmap::VisualWord *> words;
-        dbDriver->loadWords(wordIds, words);
-        for (std::set<int>::const_iterator iter = wordIds.begin(); iter != wordIds.end(); ++iter)
-        {
-            wordIdMap.insert(std::pair<int, int>(*iter, nextMemWordId));
-            nextMemWordId++;
-        }
-        _wordIdMaps.push_back(wordIdMap);
-
-        // Add signatures to memory
-        UDEBUG("Add signatures to memory...");
-        std::map<int, rtabmap::Signature *> dbSignatureMap;
-        for (std::list<rtabmap::Signature *>::iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
-        {
-            rtabmap::Signature *dbSig = *iter;
-            dbSignatureMap.insert(std::pair<int, rtabmap::Signature *>(dbSig->id(), dbSig));
-            if (!dbSig->sensorData().imageCompressed().empty())
+            // read data from databases
+            rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
+            if (!dbDriver->openConnection(dbPath))
             {
-                dbSig->sensorData().uncompressData();
+                UDEBUG("Connecting to database %s, path is invalid!", dbPath.c_str());
+                return false;
+            }
+            UDEBUG("Connecting to database %s done!", dbPath.c_str());
+
+            // Read signatures from database
+            UDEBUG("Read signatures from database...");
+            std::list<rtabmap::Signature *> signatures;
+            std::set<int> sigIds;
+            dbDriver->getAllNodeIds(sigIds, true);
+            dbDriver->loadSignatures(std::list<int>(sigIds.begin(), sigIds.end()), signatures);
+            dbDriver->loadNodeData(signatures);
+            std::map<int, rtabmap::Signature *> signatureMap;
+            for (std::list<rtabmap::Signature *>::iterator iter = signatures.begin(); iter != signatures.end(); iter++)
+            {
+                rtabmap::Signature *signature = *iter;
+                int signatureId = signature->id();
+                std::map<int, Transform>::const_iterator jter = optimizedPoses.find(signatureId);
+                if (jter != optimizedPoses.end())
+                {
+                    signature->setPose(jter->second);
+                    signatureMap.insert(std::pair<int, rtabmap::Signature *>(signatureId, signature));
+                }
+                else
+                {
+                    UWARN("Cannot find optimized pose for signature %d in database %d", signatureId, dbId);
+                }
             }
         }
-        UDEBUG("Loading signatures done! (%d loaded)", int(dbSignatureMap.size()));
-        _signatureMaps.push_back(dbSignatureMap); // temp push for optimzation, will pop later
-        signatures.clear();
 
-        // Optimize poses of signatures
-        UDEBUG("Optimize poses of signatures...");
-        optimizePoses(dbId);
+        if (signatures != NULL)
+        {
+            // Read words from database
+            UDEBUG("Read words from database...");
+            std::set<int> wordIds;
+            for (std::list<rtabmap::Signature *>::const_iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
+            {
+                const std::multimap<int, cv::KeyPoint> &words = (*iter)->getWords();
+                std::list<int> keys = uUniqueKeys(words);
+                wordIds.insert(keys.begin(), keys.end());
+            }
+            std::list<rtabmap::VisualWord *> words;
+            dbDriver->loadWords(wordIds, words);
+        }
+
+        UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
+        dbDriver->closeConnection();
+        dbDriver->join();
+        delete dbDriver;
+        dbDriver = NULL;
+        UDEBUG("Closing database, done!");
 
         // Read labels from database before updating signature ids
-        UDEBUG("Read labels from database...");
-        std::list<Label *> labels = readLabels(dbId, dbUrl);
-        allLabels.insert(allLabels.end(), labels.begin(), labels.end());
+        if (labels != NULL)
+        {
+            UDEBUG("Read labels from database...");
+            std::list<Label *> memLabels = readLabels(dbId, db);
+            labels->addLabels(memLabels);
+        }
 
+
+        dbSignatureMaps.insert(std::pair< int, std::map<int, rtabmap::Signature *> >(dbId, signatureMap));
+    }
+
+    // Re-assign signature Id and word Id
+    {
         // Update signature ids and words in memory
         UDEBUG("Update signatures ids and words in memory...");
         dbSignatureMap = _signatureMaps.at(dbId);
@@ -234,15 +227,14 @@ bool RTABMapDBAdapter::init(std::vector<std::string> &dbUrls, const rtabmap::Par
         //     UWARN("_words->getUnusedWordsSize() must be empty... size=%d", _words->getUnusedWordsSize());
         // }
         //UDEBUG("Total word references added = %d", _words->getTotalActiveReferences());
-
-        UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
-        dbDriver->closeConnection();
-        dbDriver->join();
-        delete dbDriver;
-        dbDriver = NULL;
-        UDEBUG("Closing database, done!");
     }
-    _labels->addLabels(allLabels);
+}
+
+bool RTABMapDBAdapter::init(const rtabmap::ParametersMap &parameters)
+{
+    UDEBUG("");
+
+    this->parseParameters(parameters);
 
     return true;
 }
@@ -252,94 +244,14 @@ void RTABMapDBAdapter::parseParameters(const rtabmap::ParametersMap &parameters)
     uInsert(parameters_, parameters);
 }
 
-void RTABMapDBAdapter::optimizePoses(int dbId)
-{
-    // TODO: why rbegin is guaranteed to have neighbors?
-    int rootSigId = _signatureMaps.at(dbId).rbegin()->first;
-
-    // Get all IDs linked to last signature
-    std::map<int, int> ids = getNeighborsId(dbId, rootSigId, 0);
-
-    UINFO("Optimize poses, ids.size() = %d", ids.size());
-
-    // Get all metric constraints (the graph)
-    std::map<int, rtabmap::Transform> poses;
-    std::multimap<int, rtabmap::Link> links;
-    getMetricConstraints(dbId, uKeysSet(ids), poses, links);
-
-    // Optimize the graph
-    rtabmap::Optimizer::Type optimizerType = rtabmap::Optimizer::kTypeTORO; // options: kTypeTORO, kTypeG2O, kTypeGTSAM, kTypeCVSBA
-    rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(optimizerType);
-    std::map<int, rtabmap::Transform> optimizedPoseMap = graphOptimizer->optimize(poses.begin()->first, poses, links);
-    delete graphOptimizer;
-
-    // Update signatures poses in memory
-    UDEBUG("Update signatures poses memory...");
-    std::map<int, rtabmap::Signature *> signatureMap = _signatureMaps.at(dbId);
-    for (std::map<int, rtabmap::Signature *>::const_iterator iter = signatureMap.begin(); iter != signatureMap.end(); ++iter)
-    {
-        rtabmap::Signature *sig = iter->second;
-        const std::map<int, rtabmap::Transform>::const_iterator poseIter = optimizedPoseMap.find(sig->id());
-        if (poseIter == optimizedPoseMap.end())
-        {
-            UFATAL("");
-        }
-
-        sig->setPose(poseIter->second);
-    }
-}
-
-const std::map< int, std::list<Label *> > &RTABMapDBAdapter::getLabels() const
-{
-    return _labels->getLabels();
-}
-
-const Words *RTABMapDBAdapter::getWords() const
-{
-    return _words;
-}
-
-const std::map<int, Signature *> &RTABMapDBAdapter::getSignatures() const
-{
-    return _signatures->getSignatures();
-}
-
-std::vector<int> RTABMapDBAdapter::findKNearestSignatures(std::vector<int> wordIds, int k)
-{
-    return _signatures->findKNN(wordIds, k);
-}
-
-std::map<int, rtabmap::Link> RTABMapDBAdapter::getNeighborLinks(int dbId, int sigId) const
-{
-    std::map<int, rtabmap::Link> links;
-    const rtabmap::Signature *sig = _signatureMaps.at(dbId).at(sigId);
-    if (sig)
-    {
-        const std::map<int, rtabmap::Link> &allLinks = sig->getLinks();
-        for (std::map<int, rtabmap::Link>::const_iterator iter = allLinks.begin(); iter != allLinks.end(); ++iter)
-        {
-            if (iter->second.type() == rtabmap::Link::kNeighbor ||
-                    iter->second.type() == rtabmap::Link::kNeighborMerged)
-            {
-                links.insert(*iter);
-            }
-        }
-    }
-    else
-    {
-        UWARN("Cannot find signature %d in memory", sigId);
-    }
-    return links;
-}
-
-std::list<Label *> RTABMapDBAdapter::readLabels(int dbId, std::string dbUrl) const
+std::list<Label *> RTABMapDBAdapter::readLabels(int dbId, std::string dbPath) const
 {
     std::list<Label *> labels;
     sqlite3 *db = NULL;
     sqlite3_stmt *stmt = NULL;
     int rc;
 
-    rc = sqlite3_open(dbUrl.c_str(), &db);
+    rc = sqlite3_open(dbPath.c_str(), &db);
     if (rc != SQLITE_OK)
     {
         UERROR("Could not open database %s", sqlite3_errmsg(db));
@@ -361,13 +273,13 @@ std::list<Label *> RTABMapDBAdapter::readLabels(int dbId, std::string dbUrl) con
             if (getPoint3World(dbId, imageId, x, y, pWorld))
             {
                 labels.push_back(new Label(dbId, imageId, cv::Point2f(x, y), cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name));
-                UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, name.c_str(), dbUrl.c_str());
+                UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, name.c_str(), dbPath.c_str());
             }
         }
     }
     else
     {
-        UWARN("Could not read database %s: %s", dbUrl.c_str(), sqlite3_errmsg(db));
+        UWARN("Could not read database %s: %s", dbPath.c_str(), sqlite3_errmsg(db));
     }
 
     sqlite3_finalize(stmt);
@@ -405,168 +317,27 @@ bool RTABMapDBAdapter::getPoint3World(int dbId, int imageId, int x, int y, pcl::
     return true;
 }
 
-// return map<Id,Margin>, including signatureId
-std::map<int, int> RTABMapDBAdapter::getNeighborsId(
-    int dbId,
-    int signatureId,
-    bool incrementMarginOnLoop, // default false
-    bool ignoreLoopIds, // default false
-    bool ignoreIntermediateNodes // default false
-) const
+static std::map<int, Transform> RTABMapDBAdapter::getOptimizedPoses(std::string dbPath)
 {
-    //UDEBUG("signatureId=%d, neighborsMargin=%d", signatureId, margin);
-    std::map<int, int> ids;
-    if (signatureId <= 0)
-    {
-        return ids;
-    }
-    int nbLoadedFromDb = 0;
-    std::list<int> curentMarginList;
-    std::set<int> currentMargin;
-    std::set<int> nextMargin;
-    nextMargin.insert(signatureId);
-    int m = 0;
-    std::set<int> ignoredIds;
-    while (nextMargin.size())
-    {
-        // insert more recent first (priority to be loaded first from the database below if set)
-        curentMarginList = std::list<int>(nextMargin.rbegin(), nextMargin.rend());
-        nextMargin.clear();
+    rtabmap::Memory memory;
+    memory.init(dbPath);
 
-        for (std::list<int>::iterator jter = curentMarginList.begin(); jter != curentMarginList.end(); ++jter)
-        {
-            if (ids.find(*jter) == ids.end())
-            {
-                //UDEBUG("Added %d with margin %d", *jter, m);
-                // Look up in STM/WM if all ids are here, if not... load them from the database
-                const rtabmap::Signature *s = _signatureMaps.at(dbId).at(*jter);
-                std::map<int, rtabmap::Link> tmpLinks;
-                const std::map<int, rtabmap::Link> *links = &tmpLinks;
-                UASSERT(s != NULL);
-                if (!ignoreIntermediateNodes || s->getWeight() != -1)
-                {
-                    ids.insert(std::pair<int, int>(*jter, m));
-                }
-                else
-                {
-                    ignoredIds.insert(*jter);
-                }
-                links = &s->getLinks();
-
-                // links
-                for (std::map<int, rtabmap::Link>::const_iterator iter = links->begin(); iter != links->end(); ++iter)
-                {
-                    if (!uContains(ids, iter->first) && ignoredIds.find(iter->first) == ignoredIds.end())
-                    {
-                        UASSERT(iter->second.type() != rtabmap::Link::kUndef);
-                        if (iter->second.type() == rtabmap::Link::kNeighbor ||
-                                iter->second.type() == rtabmap::Link::kNeighborMerged)
-                        {
-                            if (ignoreIntermediateNodes && s->getWeight() == -1)
-                            {
-                                // stay on the same margin
-                                if (currentMargin.insert(iter->first).second)
-                                {
-                                    curentMarginList.push_back(iter->first);
-                                }
-                            }
-                            else
-                            {
-                                nextMargin.insert(iter->first);
-                            }
-                        }
-                        else if (!ignoreLoopIds)
-                        {
-                            if (incrementMarginOnLoop)
-                            {
-                                nextMargin.insert(iter->first);
-                            }
-                            else
-                            {
-                                if (currentMargin.insert(iter->first).second)
-                                {
-                                    curentMarginList.push_back(iter->first);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        ++m;
-    }
-    return ids;
-}
-
-// return all non-null poses
-// return unique links between nodes (for neighbors: old->new, for loops: parent->child)
-void RTABMapDBAdapter::getMetricConstraints(
-    int dbId,
-    const std::set<int> &ids,
-    std::map<int, rtabmap::Transform> &poses,
-    std::multimap<int, rtabmap::Link> &links)
-{
-    UDEBUG("");
-    for (std::set<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
+    std::map<int, rtabmap::Transform> optimizedPoses;
+    if (memory.getLastWorkingSignature())
     {
-        const rtabmap::Signature *s = _signatureMaps.at(dbId).at(*iter);
-        rtabmap::Transform pose = s->getPose();
-        if (!pose.isNull())
-        {
-            poses.insert(std::make_pair(*iter, pose));
-        }
+        // Get all IDs linked to last signature (including those in Long-Term Memory)
+        std::map<int, int> ids = memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
+
+        // Get all metric constraints (the graph)
+        std::map<int, rtabmap::Transform> poses;
+        std::multimap<int, rtabmap::Link> links;
+        memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
+
+        // Optimize the graph
+        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
+        optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        delete graphOptimizer;
     }
 
-    for (std::set<int>::const_iterator iter = ids.begin(); iter != ids.end(); ++iter)
-    {
-        if (uContains(poses, *iter))
-        {
-            const rtabmap::Signature *s = _signatureMaps.at(dbId).at(*iter);
-            UASSERT(s != NULL);
-            std::map<int, rtabmap::Link> tmpLinks = s->getLinks();
-            for (std::map<int, rtabmap::Link>::iterator jter = tmpLinks.begin(); jter != tmpLinks.end(); ++jter)
-            {
-                if (jter->second.isValid() &&
-                        uContains(poses, jter->first) &&
-                        rtabmap::graph::findLink(links, *iter, jter->first) == links.end())
-                {
-                    if ((jter->second.type() == rtabmap::Link::kNeighbor ||
-                            jter->second.type() == rtabmap::Link::kNeighborMerged))
-                    {
-                        rtabmap::Link link = jter->second;
-                        const rtabmap::Signature *s = _signatureMaps.at(dbId).at(jter->first);
-                        UASSERT(s != NULL);
-                        while (s && s->getWeight() == -1)
-                        {
-                            // skip to next neighbor, well we assume that bad signatures
-                            // are only linked by max 2 neighbor links.
-                            std::map<int, rtabmap::Link> n = this->getNeighborLinks(dbId, s->id());
-                            UASSERT(n.size() <= 2);
-                            std::map<int, rtabmap::Link>::iterator uter = n.upper_bound(s->id());
-                            if (uter != n.end())
-                            {
-                                const rtabmap::Signature *s2 = _signatureMaps.at(dbId).at(uter->first);
-                                if (s2)
-                                {
-                                    link = link.merge(uter->second, uter->second.type());
-                                    poses.erase(s->id());
-                                    s = s2;
-                                }
-                            }
-                            else
-                            {
-                                break;
-                            }
-                        }
-
-                        links.insert(std::make_pair(*iter, link));
-                    }
-                    else
-                    {
-                        links.insert(std::make_pair(*iter, jter->second));
-                    }
-                }
-            }
-        }
-    }
+    return optimizedPoses;
 }

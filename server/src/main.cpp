@@ -37,7 +37,9 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    RTABMapDBAdapter memory;
+    WordsKdTree words;
+    SignaturesSimple signatures;
+    LabelsSimple labels;
     HTTPServer httpServer;
     CameraNetwork camera;
     FeatureExtraction feature;
@@ -53,7 +55,6 @@ int main(int argc, char *argv[])
     QThread perspectiveThread;
     QThread visThread;
 
-    // Memory
     rtabmap::ParametersMap params;
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "3"));
@@ -70,11 +71,10 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
-    UINFO("Initializing Memory");
-    if (!memory.init(dbfiles, params))
+    UINFO("Reading data");
+    if (!RTABMapDBAdapter::readData(dbfiles, &words, &signatures, &labels))
     {
-        UERROR("Initializing memory failed");
-        showUsage();
+        UERROR("Reading data failed");
         return 1;
     }
 

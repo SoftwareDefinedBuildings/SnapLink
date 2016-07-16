@@ -14,6 +14,7 @@ public:
 
     /**
      * get all words
+     * TODO: use map for lookup, there is no point returning as a list. Or maybe only expose a lookup method.
      */
     virtual const std::list<rtabmap::VisualWord *> &getWords() const = 0;
 

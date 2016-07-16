@@ -17,33 +17,28 @@
 
 class Words;
 
-class RTABMapDBAdapter
+class RTABMapDBAdapter : public Adapter
 {
-public:
-    static const int kIdStart;
-
 public:
     RTABMapDBAdapter();
     virtual ~RTABMapDBAdapter();
 
-    bool init(std::vector<std::string> &dbUrls,
-              const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
-
-    const std::map< int, std::list<Label *> > &getLabels() const;
-    const Words *getWords() const;
-    const std::map<int, Signature *> &getSignatures() const;
-
-    std::vector<int> findKNearestSignatures(std::vector<int> wordIds, int k);
+    /**
+     * read data from database files, NULL pointers will be ignored
+     */
+    static bool readData(std::vector<std::string> &dbs, Words *words, Signatures *signatures, Labels *labels);
+    
+    bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
 private:
     virtual void parseParameters(const rtabmap::ParametersMap &parameters);
-    void optimizePoses(int dbId);  // optimize poses using TORO graph
-    std::list<Label *> readLabels(int dbId, std::string dbUrl) const;
-    bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const;
+    static std::map<int, Transform> RTABMapDBAdapter::getOptimizedPoses(std::string dbPath);
+    static std::list<Label *> readLabels(int dbId, std::string dbPath);
+    static bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
     std::map<int, int> getNeighborsId(
-        int dbId,
         int signatureId,
+        const std::map<int, rtabmap::Signature *> &signatureMap,
         bool incrementMarginOnLoop = false,
         bool ignoreLoopIds = false,
         bool ignoreIntermediateNodes = false) const;
@@ -53,22 +48,4 @@ private:
         const std::set<int> &ids,
         std::map<int, rtabmap::Transform> &poses,
         std::multimap<int, rtabmap::Link> &links);
-
-    void removeVirtualLinks(int signatureId);
-
-    int getNextId();
-
-private:
-    // parameters
-    rtabmap::ParametersMap parameters_;
-
-    std::vector< std::map<int, int> > _sigIdMaps; // maps of ids of DB signatures and mem signatures
-    std::vector< std::map<int, int> > _wordIdMaps; // maps of ids of DB words and mem words
-
-    std::vector< std::map<int, rtabmap::Signature *> > _signatureMaps;
-
-    //Keypoint stuff
-    Words *_words;
-    Signatures *_signatures;
-    Labels *_labels;
 };
