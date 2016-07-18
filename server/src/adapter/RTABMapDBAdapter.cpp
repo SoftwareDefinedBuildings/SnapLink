@@ -45,86 +45,35 @@ static bool RTABMapDBAdapter::readData(std::vector<std::string> &dbPaths, Words 
     int nextMemWordId = 1; // the ID we assign to next visual word we put in memory
 
     // Read data from databases
-    std::map< int, std::map<int, rtabmap::Signature *> > dbSignatureMaps;
+    std::map< int, std::list<rtabmap::VisualWord *> > allWordsMap;
+    std::list<Signature *> allSignatures;
+    std::list<Label *> allLabels;
     for (int dbId = 0; dbId < dbPaths.size(); dbId++)
     {
         std::string &dbPath = dbPaths.at(dbId);
 
-        if (signatures != NULL)
+        if (signatures != NULL || words != NULL)
         {
-            // get optimized poses of signatures
-            UDEBUG("Optimize poses of signatures...");
-            std::map<int, Transform> optimizedPoses = getOptimizePoses(dbPath);
-
-            // read data from databases
-            rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
-            if (!dbDriver->openConnection(dbPath))
+            std::list<Signature *> dbSignatures = readSignatures(dbPath);
+            allSignaturesMap.insert(std::pair< int, std::list<Signature *> >(dbId, dbSignatures));
+    
+            if (words != NULL)
             {
-                UDEBUG("Connecting to database %s, path is invalid!", dbPath.c_str());
-                return false;
-            }
-            UDEBUG("Connecting to database %s done!", dbPath.c_str());
-
-            // Read signatures from database
-            UDEBUG("Read signatures from database...");
-            std::list<rtabmap::Signature *> signatures;
-            std::set<int> sigIds;
-            dbDriver->getAllNodeIds(sigIds, true);
-            dbDriver->loadSignatures(std::list<int>(sigIds.begin(), sigIds.end()), signatures);
-            dbDriver->loadNodeData(signatures);
-            std::map<int, rtabmap::Signature *> signatureMap;
-            for (std::list<rtabmap::Signature *>::iterator iter = signatures.begin(); iter != signatures.end(); iter++)
-            {
-                rtabmap::Signature *signature = *iter;
-                int signatureId = signature->id();
-                std::map<int, Transform>::const_iterator jter = optimizedPoses.find(signatureId);
-                if (jter != optimizedPoses.end())
-                {
-                    signature->setPose(jter->second);
-                    signatureMap.insert(std::pair<int, rtabmap::Signature *>(signatureId, signature));
-                }
-                else
-                {
-                    UWARN("Cannot find optimized pose for signature %d in database %d", signatureId, dbId);
-                }
+                std::list<rtabmap::VisualWord *> dbWords = readWords(dbPath, signatures);
+                allWordsMap.insert(std::pair< int, std::list<rtabmap::VisualWord *> >(dbId, dbWords));
             }
         }
-
-        if (signatures != NULL)
-        {
-            // Read words from database
-            UDEBUG("Read words from database...");
-            std::set<int> wordIds;
-            for (std::list<rtabmap::Signature *>::const_iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
-            {
-                const std::multimap<int, cv::KeyPoint> &words = (*iter)->getWords();
-                std::list<int> keys = uUniqueKeys(words);
-                wordIds.insert(keys.begin(), keys.end());
-            }
-            std::list<rtabmap::VisualWord *> words;
-            dbDriver->loadWords(wordIds, words);
-        }
-
-        UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
-        dbDriver->closeConnection();
-        dbDriver->join();
-        delete dbDriver;
-        dbDriver = NULL;
-        UDEBUG("Closing database, done!");
 
         // Read labels from database before updating signature ids
         if (labels != NULL)
         {
             UDEBUG("Read labels from database...");
-            std::list<Label *> memLabels = readLabels(dbId, db);
-            labels->addLabels(memLabels);
+            std::list<Label *> dbLabels = readLabels(dbId, db);
+            allLabels.insert(allLabels.end(), dbLabels.begin(), dbLabels.end());
         }
-
-
-        dbSignatureMaps.insert(std::pair< int, std::map<int, rtabmap::Signature *> >(dbId, signatureMap));
     }
 
-    // Re-assign signature Id and word Id
+    /*
     {
         // Update signature ids and words in memory
         UDEBUG("Update signatures ids and words in memory...");
@@ -228,20 +177,114 @@ static bool RTABMapDBAdapter::readData(std::vector<std::string> &dbPaths, Words 
         // }
         //UDEBUG("Total word references added = %d", _words->getTotalActiveReferences());
     }
+    */
+
+    labels->addLabels(allLabels);
 }
 
-bool RTABMapDBAdapter::init(const rtabmap::ParametersMap &parameters)
+static std::list<Signature *> RTABMapDBAdapter::readSignatures(std::string &dbPath, int dbId)
 {
-    UDEBUG("");
+    std::list<Signature *> signatures;
 
-    this->parseParameters(parameters);
+    // get optimized poses of signatures
+    UDEBUG("Optimize poses of signatures...");
+    std::map<int, rtabmap::Transform> optimizedPoses = getOptimizedPoses(dbPath);
 
-    return true;
+    rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
+    if (!dbDriver->openConnection(dbPath))
+    {
+        UDEBUG("Connecting to database %s, path is invalid!", dbPath.c_str());
+        return signatures;
+    }
+
+    // Read signatures from database
+    UDEBUG("Read signatures from database...");
+    std::list<rtabmap::Signature *> rtabmapSignatures;
+    std::set<int> sigIds;
+    dbDriver->getAllNodeIds(sigIds, true);
+    dbDriver->loadSignatures(std::list<int>(sigIds.begin(), sigIds.end()), rtabmapSignatures);
+    dbDriver->loadNodeData(rtabmapSignatures);
+    for (std::list<rtabmap::Signature *>::iterator iter = rtabmapSignatures.begin(); iter != rtabmapSignatures.end(); iter++)
+    {
+        rtabmap::Signature *signature = *iter;
+        int signatureId = signature->id();
+        std::map<int, Transform>::const_iterator jter = optimizedPoses.find(signatureId);
+        if (jter != optimizedPoses.end())
+        {
+            signature->setPose(jter->second);
+            signatures.insert(convertSignature(dbId, signature));
+            delete signature;
+            signature = NULL;
+        }
+        else
+        {
+            UWARN("Cannot find optimized pose for signature %d in database %d", signatureId, dbId);
+        }
+    }
+
+    UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
+    dbDriver->closeConnection();
+    dbDriver->join();
+    delete dbDriver;
+    dbDriver = NULL;
+
+    return signatures;
+}
+    
+static std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(std::string &dbPath, int dbId, std::list<Signature *> &signatures)
+{
+    std::list<rtabmap::VisualWord *> words;
+
+    rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
+    if (!dbDriver->openConnection(dbPath))
+    {
+        UDEBUG("Connecting to database %s, path is invalid!", dbPath.c_str());
+        return words;
+    }
+
+    // Read words from database
+    UDEBUG("Read words from database...");
+    std::set<int> wordIds;
+    for (std::list<Signature *>::const_iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
+    {
+        const std::multimap<int, cv::KeyPoint> &words = (*iter)->getWords();
+        std::list<int> keys = uUniqueKeys(words);
+        wordIds.insert(keys.begin(), keys.end());
+    }
+    dbDriver->loadWords(wordIds, words);
+
+    UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
+    dbDriver->closeConnection();
+    dbDriver->join();
+    delete dbDriver;
+    dbDriver = NULL;
+
+    return words;
 }
 
-void RTABMapDBAdapter::parseParameters(const rtabmap::ParametersMap &parameters)
+static std::map<int, Transform> RTABMapDBAdapter::getOptimizedPoses(std::string &dbPath)
 {
-    uInsert(parameters_, parameters);
+    rtabmap::Memory memory;
+    memory.init(dbPath);
+
+    std::map<int, rtabmap::Transform> optimizedPoses;
+    if (memory.getLastWorkingSignature())
+    {
+        // Get all IDs linked to last signature (including those in Long-Term Memory)
+        std::map<int, int> ids = memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
+
+        // Get all metric constraints (the graph)
+        std::map<int, rtabmap::Transform> poses;
+        std::multimap<int, rtabmap::Link> links;
+        memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
+
+        // Optimize the graph
+        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
+        optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        delete graphOptimizer;
+    }
+
+    return optimizedPoses;
 }
 
 std::list<Label *> RTABMapDBAdapter::readLabels(int dbId, std::string dbPath) const
@@ -288,6 +331,12 @@ std::list<Label *> RTABMapDBAdapter::readLabels(int dbId, std::string dbPath) co
     return labels;
 }
 
+static Signature *RTABMapDBAdapter::convertSignature(int dbId, const rtabmap::Signature &signature)
+{
+    Signature *newSignature = new Signature(signature.id(), signature.mapId(), dbId, signature.getPose(), signature.sensorData(), signature.getWords(), signature.getWords3());
+    return newSignature;
+}
+
 bool RTABMapDBAdapter::getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) const
 {
     UDEBUG("");
@@ -315,29 +364,4 @@ bool RTABMapDBAdapter::getPoint3World(int dbId, int imageId, int x, int y, pcl::
     poseWorld = poseWorld * cm.localTransform();
     pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
     return true;
-}
-
-static std::map<int, Transform> RTABMapDBAdapter::getOptimizedPoses(std::string dbPath)
-{
-    rtabmap::Memory memory;
-    memory.init(dbPath);
-
-    std::map<int, rtabmap::Transform> optimizedPoses;
-    if (memory.getLastWorkingSignature())
-    {
-        // Get all IDs linked to last signature (including those in Long-Term Memory)
-        std::map<int, int> ids = memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
-
-        // Get all metric constraints (the graph)
-        std::map<int, rtabmap::Transform> poses;
-        std::multimap<int, rtabmap::Link> links;
-        memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
-
-        // Optimize the graph
-        rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
-        optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
-        delete graphOptimizer;
-    }
-
-    return optimizedPoses;
 }
