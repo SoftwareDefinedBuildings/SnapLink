@@ -6,26 +6,22 @@
 #include <rtabmap/core/Parameters.h>
 #include <QObject>
 #include <QEvent>
-#include "MemoryLoc.h"
 #include "Visibility.h"
 #include "HTTPServer.h"
-#include "Time.h"
-
-#define TOP_K 5
+#include "Signature.h"
 
 class Visibility;
 class HTTPServer;
 
-class Localization :
+class Perspective :
     public QObject
 {
 public:
-    Localization();
-    virtual ~Localization();
+    Perspective();
+    virtual ~Perspective();
 
     bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
 
-    void setMemory(MemoryLoc *memory);
     void setVisibility(Visibility *vis);
     void setHTTPServer(HTTPServer *httpServer);
 
@@ -33,12 +29,10 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    bool localize(rtabmap::SensorData *sensorData, rtabmap::Transform *pose, int *dbId, void *context);
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform computeGlobalVisualTransform(const rtabmap::Signature *newSig, int oldDbId, int oldSigId) const;
+    rtabmap::Transform localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, Signature *oldSig, void *context) const;
 
 private:
-    MemoryLoc *_memory;
     Visibility *_vis;
     HTTPServer *_httpServer;
 

@@ -7,10 +7,10 @@ SignaturesSimple::SignaturesSimple()
 
 SignaturesSimple::~SignaturesSimple()
 {
-    for (std::map<int, Signature *>::iterator iter = _signatures.begin(); i != _signatures.end(); ++i)
+    for (std::map<int, Signature *>::iterator iter = _signatures.begin(); iter != _signatures.end(); ++iter)
     {
-        delete i->second;
-        i->second = NULL;
+        delete iter->second;
+        iter->second = NULL;
     }
     _signatures.clear();
 }
@@ -26,7 +26,6 @@ void SignaturesSimple::addSignatures(const std::list<Signature *> &signatures)
             _signatures.insert(std::pair<int, Signature *>(signature->getId(), signature));
         }
     }
-    build();
 }
 
 const std::map<int, Signature *> &SignaturesSimple::getSignatures() const
@@ -37,12 +36,11 @@ const std::map<int, Signature *> &SignaturesSimple::getSignatures() const
 std::vector<int> SignaturesSimple::findKNN(const std::vector<int> wordIds, int k) const
 {
     std::map<int, float> similarities;
-    similarities.reserve(_signatures.size());
     std::map<int, Signature *>::const_iterator iter = _signatures.begin();
     for (; iter != _signatures.end(); iter++)
     {
         const Signature *signature = iter->second;
-        float similarity = computeSimilarity(wordIds, signature);
+        float similarity = computeSimilarity(wordIds, *signature);
         similarities.insert(std::pair<int, float>(signature->getId(), similarity));
     }
 
@@ -53,19 +51,19 @@ std::vector<int> SignaturesSimple::findKNN(const std::vector<int> wordIds, int k
         std::partial_sort_copy(similarities.begin(), similarities.end(), topSimilarities.begin(), topSimilarities.end(), compareSimilarity);
         for (std::vector< std::pair<int, float> >::const_iterator iter = topSimilarities.begin(); iter != topSimilarities.end(); iter++)
         {
-            topIds.push_back(it->first);
+            topIds.push_back(iter->first);
         }
     }
 
     return topIds;
 }
 
-float SignaturesSimple::computeSimilarity(const std::vector<int> &wordIds, const rtabmap::Signature &signature)
+float SignaturesSimple::computeSimilarity(const std::vector<int> &wordIds, const Signature &signature)
 {
     std::set<int> uniqueWordIds(wordIds.begin(), wordIds.end());
     const std::multimap<int, cv::KeyPoint> &sigWords = signature.getWords();
     float numPairs = 0;
-    for(std::vector<int>::const_iterator iter = uniqueWordIds.begin(); iter != uniqueWordIds.end(); iter++)
+    for (std::set<int>::const_iterator iter = uniqueWordIds.begin(); iter != uniqueWordIds.end(); iter++)
     {
         std::multimap<int, cv::KeyPoint>::const_iterator jter = sigWords.find(*iter);
         if (jter != sigWords.end())
@@ -76,7 +74,7 @@ float SignaturesSimple::computeSimilarity(const std::vector<int> &wordIds, const
     return numPairs;
 }
 
-bool SignaturesSimple::compareSimilarity(std::pair<int, float> const &l, std::pair<int, float> const &r)
+bool SignaturesSimple::compareSimilarity(const std::pair<int, float> &l, const std::pair<int, float> &r)
 {
     return l.second > r.second;
 }

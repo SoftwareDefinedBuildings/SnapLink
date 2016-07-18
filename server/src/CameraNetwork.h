@@ -2,10 +2,10 @@
 
 #include <rtabmap/core/Camera.h>
 #include <QObject>
-#include "Localization.h"
+#include "FeatureExtraction.h"
 #include "HTTPServer.h"
 
-class Localization;
+class FeatureExtraction;
 class HTTPServer;
 
 class CameraNetwork :
@@ -15,7 +15,7 @@ public:
     CameraNetwork();
     virtual ~CameraNetwork();
 
-    void setLocalization(Localization *loc);
+    void setFeatureExtraction(FeatureExtraction *feature);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:
@@ -26,6 +26,6 @@ private:
     rtabmap::SensorData *createSensorData(std::vector<unsigned char> *data, int width, int height, double fx, double fy, double cx, double cy);
 
 private:
-    Localization *_loc;
+    FeatureExtraction *_feature;
     HTTPServer *_httpServer;
 };

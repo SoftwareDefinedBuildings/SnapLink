@@ -7,7 +7,10 @@
 #include <QCoreApplication>
 #include <QThread>
 #include "HTTPServer.h"
-#include "Localization.h"
+#include "FeatureExtraction.h"
+#include "WordSearch.h"
+#include "SignatureSearch.h"
+#include "Perspective.h"
 #include "CameraNetwork.h"
 #include "Visibility.h"
 #include "MemoryLoc.h"
@@ -16,7 +19,7 @@
 void showUsage()
 {
     printf("\nUsage:\n"
-           "rtabmap-rgbd_mapping database_file1 [database_file2 ...]\n");
+           "CellMate database_file1 [database_file2 ...]\n");
     exit(1);
 }
 
@@ -37,11 +40,17 @@ int main(int argc, char *argv[])
     MemoryLoc memory;
     HTTPServer httpServer;
     CameraNetwork camera;
-    Localization loc;
+    FeatureExtraction feature;
+    WordSearch wordSearch;
+    SignatureSearch signatureSearch;
+    Perspective perspective;
     Visibility vis;
 
     QThread cameraThread;
-    QThread locThread;
+    QThread featureThread;
+    QThread wordSearchThread;
+    QThread signatureSearchThread;
+    QThread perspectiveThread;
     QThread visThread;
 
     // Memory
@@ -76,23 +85,43 @@ int main(int argc, char *argv[])
     vis.moveToThread(&visThread);
     visThread.start();
 
-    // Localization
-    UINFO("Initializing Localization");
-    loc.setMemory(&memory);
-    loc.setHTTPServer(&httpServer);
-    loc.setVisibility(&vis);
-    if (!loc.init(params))
+    // Perspective
+    UINFO("Initializing Perspective");
+    perspective.setHTTPServer(&httpServer);
+    perspective.setVisibility(&vis);
+    if (!perspective.init(params))
     {
-        UERROR("Initializing localization failed");
+        UERROR("Initializing Perspective failed");
         return 1;
     }
-    loc.moveToThread(&locThread);
-    locThread.start();
+    perspective.moveToThread(&perspectiveThread);
+    perspectiveThread.start();
+
+    // Signature Search
+    UINFO("Initializing Signature Search");
+    signatureSearch.setMemory(&memory);
+    signatureSearch.setPerspective(&perspective);
+    signatureSearch.moveToThread(&signatureSearchThread);
+    signatureSearchThread.start();
+
+    // Word Search
+    UINFO("Initializing Word Search");
+    wordSearch.setWords(memory.getWords());
+    wordSearch.setSignatureSearch(&signatureSearch);
+    wordSearch.moveToThread(&wordSearchThread);
+    wordSearchThread.start();
+
+    // FeatureExtraction
+    UINFO("Initializing feature extraction");
+    feature.init(params);
+    feature.setWordSearch(&wordSearch);
+    feature.moveToThread(&featureThread);
+    featureThread.start();
 
     // CameraNetwork
     UINFO("Initializing camera");
     camera.setHTTPServer(&httpServer);
-    camera.setLocalization(&loc);
+    camera.setFeatureExtraction(&feature);
     camera.moveToThread(&cameraThread);
     cameraThread.start();
 
