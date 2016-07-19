@@ -28,12 +28,12 @@ public:
 private:
     static std::list<Signature *> readSignatures(const std::string &dbPath, int dbId);
     static std::list<rtabmap::VisualWord *> readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures);
-    static std::list<Label *> readLabels(const std::string &dbPath, int dbId, std::list<Signature *> &signatures);
+    static std::list<Label *> readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures);
 
     static std::map<int, rtabmap::Transform> getOptimizedPoses(const std::string &dbPath);
-    
+
     static Signature *convertSignature(const rtabmap::Signature &signature, int dbId);
-    static bool getPoint3World(std::list<Signature *> &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
+    static bool getPoint3World(const std::list<Signature *> &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
     static std::map<std::pair<int, int>, int> getMergeWordsIdMap(const std::map< int, std::list<rtabmap::VisualWord *> > &words);
     static std::map<std::pair<int, int>, int> getMergeSignaturesIdMap(const std::list<Signature *> &signatures);

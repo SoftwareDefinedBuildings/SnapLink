@@ -46,7 +46,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
 
         std::list<Signature *> dbSignatures = readSignatures(dbPath, dbId);
         allSignatures.insert(allSignatures.end(), dbSignatures.begin(), dbSignatures.end());
-    
+
         std::list<rtabmap::VisualWord *> dbWords = readWords(dbPath, dbId, dbSignatures);
         allWordsMap.insert(std::pair< int, std::list<rtabmap::VisualWord *> >(dbId, dbWords));
 
@@ -66,6 +66,8 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     words.addWords(mergedWords);
 
     labels.addLabels(allLabels);
+
+    return true;
 }
 
 std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPath, int dbId)
@@ -92,20 +94,26 @@ std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPat
     dbDriver->loadNodeData(rtabmapSignatures);
     for (std::list<rtabmap::Signature *>::iterator iter = rtabmapSignatures.begin(); iter != rtabmapSignatures.end(); iter++)
     {
-        rtabmap::Signature *signature = *iter;
-        int signatureId = signature->id();
+        rtabmap::Signature *rtabmapSignature = *iter;
+        int signatureId = rtabmapSignature->id();
         std::map<int, rtabmap::Transform>::const_iterator jter = optimizedPoses.find(signatureId);
         if (jter != optimizedPoses.end())
         {
-            signature->setPose(jter->second);
-            signatures.push_back(convertSignature(*signature, dbId));
+            rtabmapSignature->setPose(jter->second);
+            if (!rtabmapSignature->sensorData().imageCompressed().empty())
+            {
+                rtabmapSignature->sensorData().uncompressData();
+            }
+            Signature *signature = convertSignature(*rtabmapSignature, dbId);
+            signatures.push_back(signature);
         }
         else
         {
             UWARN("Cannot find optimized pose for signature %d in database %d", signatureId, dbId);
         }
-        delete signature;
-        signature = NULL;
+        delete rtabmapSignature;
+        rtabmapSignature = NULL;
+        *iter = NULL;
     }
 
     UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
@@ -116,7 +124,7 @@ std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPat
 
     return signatures;
 }
-    
+
 std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures)
 {
     std::list<rtabmap::VisualWord *> words;
@@ -148,7 +156,7 @@ std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(const std::string &
     return words;
 }
 
-std::list<Label *> RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, std::list<Signature *> &signatures)
+std::list<Label *> RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures)
 {
     std::list<Label *> labels;
     sqlite3 *db = NULL;
@@ -223,7 +231,7 @@ Signature *RTABMapDBAdapter::convertSignature(const rtabmap::Signature &signatur
     return newSignature;
 }
 
-bool RTABMapDBAdapter::getPoint3World(std::list<Signature *> &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
+bool RTABMapDBAdapter::getPoint3World(const std::list<Signature *> &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
 {
     UDEBUG("");
     Signature *signature = NULL;
@@ -241,6 +249,7 @@ bool RTABMapDBAdapter::getPoint3World(std::list<Signature *> &signatures, int db
     const rtabmap::SensorData &data = signature->getSensorData();
     const rtabmap::CameraModel &cm = data.cameraModels()[0];
     bool smoothing = false;
+    assert(!data.depthRaw().empty());
     pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
     if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
     {

@@ -21,11 +21,7 @@ Signature::Signature(
     _words(words),
     _words3(words3)
 {
-    if (_sensorData.id() == 0)
-    {
-        _sensorData.setId(id);
-    }
-    assert(_sensorData.id() == _id);
+    _sensorData.setId(id);
     assert(_pose.isNull() == false);
     assert(_words.size() == _words3.size());
 }
