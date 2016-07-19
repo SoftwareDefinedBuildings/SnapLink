@@ -6,14 +6,17 @@
 #include <cstdio>
 #include <QCoreApplication>
 #include <QThread>
-#include "HTTPServer.h"
-#include "FeatureExtraction.h"
-#include "WordSearch.h"
-#include "SignatureSearch.h"
-#include "Perspective.h"
-#include "CameraNetwork.h"
-#include "Visibility.h"
-#include "MemoryLoc.h"
+#include "data/WordsKdTree.h"
+#include "data/SignaturesSimple.h"
+#include "data/LabelsSimple.h"
+#include "stage/HTTPServer.h"
+#include "stage/FeatureExtraction.h"
+#include "stage/WordSearch.h"
+#include "stage/SignatureSearch.h"
+#include "stage/Perspective.h"
+#include "stage/CameraNetwork.h"
+#include "stage/Visibility.h"
+#include "adapter/RTABMapDBAdapter.h"
 
 
 void showUsage()
@@ -37,7 +40,9 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    MemoryLoc memory;
+    WordsKdTree words;
+    SignaturesSimple signatures;
+    LabelsSimple labels;
     HTTPServer httpServer;
     CameraNetwork camera;
     FeatureExtraction feature;
@@ -53,7 +58,6 @@ int main(int argc, char *argv[])
     QThread perspectiveThread;
     QThread visThread;
 
-    // Memory
     rtabmap::ParametersMap params;
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "3"));
@@ -70,17 +74,16 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
-    UINFO("Initializing Memory");
-    if (!memory.init(dbfiles, params))
+    UINFO("Reading data");
+    if (!RTABMapDBAdapter::readData(dbfiles, words, signatures, labels))
     {
-        UERROR("Initializing memory failed");
-        showUsage();
+        UERROR("Reading data failed");
         return 1;
     }
 
     // Visibility
     UINFO("Initializing Visibility");
-    vis.setMemory(&memory);
+    vis.setLabels(&labels);
     vis.setHTTPServer(&httpServer);
     vis.moveToThread(&visThread);
     visThread.start();
@@ -99,14 +102,14 @@ int main(int argc, char *argv[])
 
     // Signature Search
     UINFO("Initializing Signature Search");
-    signatureSearch.setMemory(&memory);
+    signatureSearch.setSignatures(&signatures);
     signatureSearch.setPerspective(&perspective);
     signatureSearch.moveToThread(&signatureSearchThread);
     signatureSearchThread.start();
 
     // Word Search
     UINFO("Initializing Word Search");
-    wordSearch.setWords(memory.getWords());
+    wordSearch.setWords(&words);
     wordSearch.setSignatureSearch(&signatureSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();
