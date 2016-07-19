@@ -17,20 +17,20 @@
 #include "data/Signature.h"
 
 SignatureSearch::SignatureSearch() :
-    _memory(NULL),
+    _signatures(NULL),
     _perspective(NULL)
 {
 }
 
 SignatureSearch::~SignatureSearch()
 {
-    _memory = NULL;
+    _signatures = NULL;
     _perspective = NULL;
 }
 
-void SignatureSearch::setMemory(RTABMapDBAdapter *memory)
+void SignatureSearch::setSignatures(Signatures *signatures)
 {
-    _memory = memory;
+    _signatures = signatures;
 }
 
 void SignatureSearch::setPerspective(Perspective *perspective)
@@ -55,10 +55,10 @@ std::vector<Signature *> SignatureSearch::searchSignatures(std::vector<int> word
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
     con_info->time.search_start = getTime();
-    std::vector<int> topIds = _memory->findKNearestSignatures(wordIds, TOP_K);
+    std::vector<int> topIds = _signatures->findKNN(wordIds, TOP_K);
     con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
     int topSigId = topIds[0];
-    Signature *topSig = _memory->getSignatures().at(topSigId);
+    Signature *topSig = _signatures->getSignatures().at(topSigId);
 
     UDEBUG("topSigId: %d", topSigId);
 

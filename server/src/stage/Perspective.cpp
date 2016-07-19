@@ -95,7 +95,7 @@ rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap
 
     const rtabmap::Transform &oldSigPose = oldSig->getPose();
 
-    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3D();
+    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;
     for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
     {

@@ -17,31 +17,26 @@
 
 class Words;
 
-class RTABMapDBAdapter : public Adapter
+class RTABMapDBAdapter
 {
 public:
-    RTABMapDBAdapter();
-    virtual ~RTABMapDBAdapter();
-
     /**
      * read data from database files, NULL pointers will be ignored
      */
-    static bool readData(std::vector<std::string> &dbs, Words *words, Signatures *signatures, Labels *labels);
+    static bool readData(const std::vector<std::string> &dbs, Words &words, Signatures &signatures, Labels &labels);
 
 private:
-    static std::list<rtabmap::Signature *> readSignatures(std::string &dbPath, int dbId);
-    static std::list<rtabmap::VisualWord *> readWords(std::string &dbPath, int dbId, std::list<Signature *> &signatures);
-    static std::list<Label *> readLabels(int dbId, std::string dbPath);
+    static std::list<Signature *> readSignatures(const std::string &dbPath, int dbId);
+    static std::list<rtabmap::VisualWord *> readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures);
+    static std::list<Label *> readLabels(const std::string &dbPath, int dbId, std::list<Signature *> &signatures);
 
-    static std::map<int, Transform> getOptimizedPoses(std::string &dbPath);
+    static std::map<int, rtabmap::Transform> getOptimizedPoses(const std::string &dbPath);
     
-    static Signature *convertSignature(const rtabmap::Signature *signature);
+    static Signature *convertSignature(const rtabmap::Signature &signature, int dbId);
+    static bool getPoint3World(std::list<Signature *> &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
-    static std::map<std::pair<int, int>, int> getMergeWordsIdMap(const std::map< int, std::list<rtabmap::VirtualWord *> > &words);
-    static std::map<std::pair<int, int>, int> getMergeSignaturesIdMap(const std::map< int, std::list<rtabmap::Signature *> > &signaturesMap);
-
-    static std::list<rtabmap::VirtualWord *> mergeWords(std::map< int, std::list<rtabmap::VirtualWord *> >, std::map<std::pair<int, int>, int> *IdMap = NULL);
-    static std::list<rtabmap::Signature *> mergeSignatures(std::map< int, std::list<rtabmap::Signature *> >, std::map<std::pair<int, int>, int> *IdMap = NULL);
-
-    static bool getPoint3World(int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
+    static std::map<std::pair<int, int>, int> getMergeWordsIdMap(const std::map< int, std::list<rtabmap::VisualWord *> > &words);
+    static std::map<std::pair<int, int>, int> getMergeSignaturesIdMap(const std::list<Signature *> &signatures);
+    static std::list<rtabmap::VisualWord *> mergeWords(const std::map< int, std::list<rtabmap::VisualWord *> > &words, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap);
+    static std::list<Signature *> mergeSignatures(const std::list<Signature *> &signatures, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap);
 };

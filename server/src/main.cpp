@@ -6,6 +6,9 @@
 #include <cstdio>
 #include <QCoreApplication>
 #include <QThread>
+#include "data/WordsKdTree.h"
+#include "data/SignaturesSimple.h"
+#include "data/LabelsSimple.h"
 #include "stage/HTTPServer.h"
 #include "stage/FeatureExtraction.h"
 #include "stage/WordSearch.h"
@@ -72,7 +75,7 @@ int main(int argc, char *argv[])
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
     UINFO("Reading data");
-    if (!RTABMapDBAdapter::readData(dbfiles, &words, &signatures, &labels))
+    if (!RTABMapDBAdapter::readData(dbfiles, words, signatures, labels))
     {
         UERROR("Reading data failed");
         return 1;
@@ -80,7 +83,7 @@ int main(int argc, char *argv[])
 
     // Visibility
     UINFO("Initializing Visibility");
-    vis.setMemory(&memory);
+    vis.setLabels(&labels);
     vis.setHTTPServer(&httpServer);
     vis.moveToThread(&visThread);
     visThread.start();
@@ -99,14 +102,14 @@ int main(int argc, char *argv[])
 
     // Signature Search
     UINFO("Initializing Signature Search");
-    signatureSearch.setMemory(&memory);
+    signatureSearch.setSignatures(&signatures);
     signatureSearch.setPerspective(&perspective);
     signatureSearch.moveToThread(&signatureSearchThread);
     signatureSearchThread.start();
 
     // Word Search
     UINFO("Initializing Word Search");
-    wordSearch.setWords(memory.getWords());
+    wordSearch.setWords(&words);
     wordSearch.setSignatureSearch(&signatureSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();

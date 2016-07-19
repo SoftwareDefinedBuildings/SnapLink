@@ -21,7 +21,7 @@ public:
               const rtabmap::Transform &pose,
               const rtabmap::SensorData &sensorData,
               const std::multimap<int, cv::KeyPoint> &words,
-              const std::multimap<int, cv::Point3f> &words3D);
+              const std::multimap<int, cv::Point3f> &words3);
     virtual ~Signature();
 
     int getId() const;
@@ -30,7 +30,7 @@ public:
     const rtabmap::Transform &getPose() const;
     const rtabmap::SensorData &getSensorData() const;
     const std::multimap<int, cv::KeyPoint> &getWords() const;
-    const std::multimap<int, cv::Point3f> &getWords3D() const;
+    const std::multimap<int, cv::Point3f> &getWords3() const;
 
 private:
     int _id;
@@ -43,6 +43,6 @@ private:
     // times in the signature, it will be 2 times in this list)
     // Words match with the CvSeq keypoints and descriptors
     std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
-    std::multimap<int, cv::Point3f> _words3D; // word <id, 3D point> // in base_link frame (localTransform applied))
+    std::multimap<int, cv::Point3f> _words3; // word <id, 3D point> // in base_link frame (localTransform applied))
 };
 

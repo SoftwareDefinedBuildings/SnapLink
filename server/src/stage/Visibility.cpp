@@ -25,9 +25,9 @@ Visibility::~Visibility()
     _httpServer = NULL;
 }
 
-void Visibility::setMemory(RTABMapDBAdapter *memory)
+void Visibility::setLabels(Labels *labels)
 {
-    _memory = memory;
+    _labels = labels;
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -57,7 +57,7 @@ bool Visibility::event(QEvent *event)
 
 std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
 {
-    const std::list<Label *> &labels = _memory->getLabels().at(dbId);
+    const std::list<Label *> &labels = _labels->getLabels().at(dbId);
     std::vector<cv::Point3f> points;
     std::vector<std::string> names;
     for (std::list<Label *>::const_iterator iter = labels.begin(); iter != labels.end(); iter++)
