@@ -207,9 +207,9 @@ public class MainActivity extends ActionBarActivity {
 
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
-        public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
+        public void onImageAvailable(byte[] imageData, int width, int height, double fx, double fy, double cx, double cy) {
             // AsyncTask task instance must be created and executed on the UI thread
-            runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
+            runOnUiThread(new HttpPostImageRunnable(imageData, width, height, fx, fy, cx, cy));
         }
     };
 

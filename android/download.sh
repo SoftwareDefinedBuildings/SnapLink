@@ -21,10 +21,10 @@ mkdir -p ../openCVLibrary2411
 cp ./OpenCV-android-sdk/sdk/java/lint.xml ../openCVLibrary2411
 
 mkdir -p ../openCVLibrary2411/src/main/java
-rsync -avz ./OpenCV-android-sdk/sdk/java/src/ ../openCVLibrary2411/src/main/java
+rsync -avz --exclude 'org/opencv/engine/' ./OpenCV-android-sdk/sdk/java/src/ ../openCVLibrary2411/src/main/java
 
-mkdir -p ../openCVLibrary2411/src/main/aidl/org/opencv
-mv ../openCVLibrary2411/src/main/java/org/opencv/engine/ ../openCVLibrary2411/src/main/aidl/org/opencv/
+mkdir -p ../openCVLibrary2411/src/main/aidl/org/opencv/engine
+rsync -avz ./OpenCV-android-sdk/sdk/java/src/org/opencv/engine/ ../openCVLibrary2411/src/main/aidl/org/opencv/engine
 
 mkdir -p ../openCVLibrary2411/src/main/res
 rsync -avz ./OpenCV-android-sdk/sdk/java/res/ ../openCVLibrary2411/src/main/res

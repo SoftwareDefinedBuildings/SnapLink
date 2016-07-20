@@ -3,6 +3,11 @@ package edu.berkeley.cs.sdb.cellmate;
 import android.os.AsyncTask;
 import android.util.Log;
 
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.highgui.Highgui;
+
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -28,6 +33,10 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private double mCy;
     private Listener mListener;
 
+    static {
+        System.loadLibrary("opencv_java");
+    }
+
     public interface Listener {
         void onResponse(String result); // null means network error
     }
@@ -45,14 +54,22 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         mListener = listener;
     }
 
+    byte[] compressJPEG(byte[] imageData, int width, int height) {
+        Mat image = new Mat(height, width, CvType.CV_8UC1);
+        image.put(0, 0, imageData);
+
+        MatOfByte jpgMat = new MatOfByte();
+        Highgui.imencode(".jpg", image, jpgMat);
+        image.release();
+        return jpgMat.toArray();
+    }
+
     @Override
     protected String doInBackground(Void... voids) {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
         RequestBody requestBody = new MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("file", timeStamp, RequestBody.create(MediaType.parse("application/octet-stream"), mImageData))
-                .addFormDataPart("width", Integer.toString(mWidth))
-                .addFormDataPart("height", Integer.toString(mHeight))
+                .addFormDataPart("file", timeStamp, RequestBody.create(MediaType.parse("application/octet-stream"), compressJPEG(mImageData, mWidth, mHeight)))
                 .addFormDataPart("fx", Double.toString(mFx))
                 .addFormDataPart("fy", Double.toString(mFy))
                 .addFormDataPart("cx", Double.toString(mCx))
