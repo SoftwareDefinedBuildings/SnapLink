@@ -37,15 +37,13 @@ bool CameraNetwork::event(QEvent *event)
     {
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
 
-        std::vector<unsigned char> *data = &networkEvent->conInfo()->data;
-        int width = networkEvent->conInfo()->width;
-        int height = networkEvent->conInfo()->height;
+        std::vector<char> *data = &networkEvent->conInfo()->data;
         double fx = networkEvent->conInfo()->fx;
         double fy = networkEvent->conInfo()->fy;
         double cx = networkEvent->conInfo()->cx;
         double cy = networkEvent->conInfo()->cy;
 
-        rtabmap::SensorData *sensorData = createSensorData(data, width, height, fx, fy, cx, cy);
+        rtabmap::SensorData *sensorData = createSensorData(data, fx, fy, cx, cy);
         if (sensorData != NULL)
         {
             QCoreApplication::postEvent(_feature, new ImageEvent(sensorData, networkEvent->conInfo()));
@@ -59,16 +57,15 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<unsigned char> *data, int width, int height, double fx, double fy, double cx, double cy)
+rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy)
 {
     UDEBUG("");
     if (data != NULL)
     {
-        UDEBUG("Received image width %d, height %d", width, height);
         // there is no data copy here, the cv::Mat has a pointer to the data
-        cv::Mat img(height, width, CV_8UC1, &(*data)[0]);
+        cv::Mat img = imdecode(cv::Mat(*data), cv::IMREAD_GRAYSCALE);
 
-        //imwrite("image.jpg", img);
+        imwrite("image.jpg", img);
 
         if (!img.empty())
         {

@@ -20,6 +20,15 @@ def test_file(filename):
     obj_name = os.path.basename(filename).split(".")[0]
 
     img = Image.open(filename)
+    width, height = img.size
+    if height/width == 480/640:
+        width, height = 640, 480
+    elif width/height == 480/640:
+        width, height = 480, 640
+    else:
+        print "wrong image aspect ratio"
+        return RESULT_BAD_FORMAT, 0
+
     for orientation in ExifTags.TAGS.keys():
         if ExifTags.TAGS[orientation]=='Orientation':
             break
@@ -29,29 +38,24 @@ def test_file(filename):
     exif = dict(img._getexif().items())
 
     if exif[orientation] == 3:
-        img = img.rotate(180)
+        img = img.rotate(180, expand=True)
     elif exif[orientation] == 6:
-        img = img.rotate(270)
+        img = img.rotate(270, expand=True)
+        width, height = height, width
     elif exif[orientation] == 8:
-        img = img.rotate(90)
+        img = img.rotate(90, expand=True)
+        width, height = height, width
+
+    img.thumbnail((width, height), Image.ANTIALIAS)
 
     img = img.convert('L') # convert to grayscale
-    img = np.array(img) # convert from PIL image to OpenCV image
-    rows, cols = img.shape
-    width = 480
-    height = 640
-    if rows/cols == width/height:
-        width, height = height, width
-    elif cols/rows == width/height:
-        pass
-    else:
-        print "wrong image aspect ratio"
-        return RESULT_BAD_FORMAT, 0
 
-    img = cv2.resize(img, (width, height)) # scale
+    img = np.array(img) # convert from PIL image to OpenCV image
+
+    _, jpg = cv2.imencode('.jpg', img)
     
     print filename, 'width:', width, 'height:', height
-    files = {'file': (filename, img.tostring()), 'width': str(width), 'height': str(height), 'fx': str(562.25), 'fy': str(562.25), 'cx': str(240), 'cy': str(320)}
+    files = {'file': (filename, jpg.tostring()), 'fx': str(562.25), 'fy': str(562.25), 'cx': str(240), 'cy': str(320)}
     t0 = time.time()
     r = requests.post(SERVER_ADDR, files=files)
     t1 = time.time()

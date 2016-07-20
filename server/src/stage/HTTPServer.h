@@ -92,7 +92,7 @@ typedef struct
 {
     enum ConnectionType connectiontype;
     struct MHD_PostProcessor *postprocessor;
-    std::vector<unsigned char> data;
+    std::vector<char> data;
     int width;
     int height;
     double fx;
