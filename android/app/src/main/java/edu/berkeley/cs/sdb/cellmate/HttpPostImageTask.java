@@ -6,7 +6,7 @@ import android.util.Log;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
-import org.opencv.highgui.Highgui;
+import org.opencv.imgcodecs.Imgcodecs;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -34,7 +34,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
     private Listener mListener;
 
     static {
-        System.loadLibrary("opencv_java");
+        System.loadLibrary("opencv_java3");
     }
 
     public interface Listener {
@@ -59,7 +59,7 @@ public class HttpPostImageTask extends AsyncTask<Void, Void, String> {
         image.put(0, 0, imageData);
 
         MatOfByte jpgMat = new MatOfByte();
-        Highgui.imencode(".jpg", image, jpgMat);
+        Imgcodecs.imencode(".jpg", image, jpgMat);
         image.release();
         return jpgMat.toArray();
     }

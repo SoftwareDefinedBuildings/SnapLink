@@ -90,7 +90,7 @@ downloads/
 # opencv files 
 app/src/main/jni/include/opencv/
 app/src/main/jni/include/opencv2/
-openCVLibrary2411/lint.xml
-openCVLibrary2411/src/main/aidl/
-openCVLibrary2411/src/main/java/
-openCVLibrary2411/src/main/res/
+openCVLibrary310/lint.xml
+openCVLibrary310/src/main/aidl/
+openCVLibrary310/src/main/java/
+openCVLibrary310/src/main/res/
