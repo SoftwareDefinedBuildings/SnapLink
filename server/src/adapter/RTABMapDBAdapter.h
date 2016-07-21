@@ -23,7 +23,7 @@ public:
     /**
      * read data from database files, NULL pointers will be ignored
      */
-    static bool readData(const std::vector<std::string> &dbs, Words &words, Signatures &signatures, Labels &labels);
+    static bool readData(const std::vector<std::string> &dbPaths, Words &words, Signatures &signatures, Labels &labels);
 
 private:
     static std::list<Signature *> readSignatures(const std::string &dbPath, int dbId);

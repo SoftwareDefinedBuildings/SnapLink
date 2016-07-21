@@ -22,7 +22,7 @@ public:
     virtual ~SignatureSearch();
 
     void setSignatures(Signatures *signatures);
-    void setPerspective(Perspective *vis);
+    void setPerspective(Perspective *perspective);
 
 protected:
     virtual bool event(QEvent *event);

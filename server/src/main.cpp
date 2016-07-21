@@ -10,13 +10,13 @@
 #include "data/SignaturesSimple.h"
 #include "data/LabelsSimple.h"
 #include "stage/HTTPServer.h"
-#include "stage/FeatureExtraction.h"
-#include "stage/WordSearch.h"
-#include "stage/SignatureSearch.h"
-#include "stage/Perspective.h"
-#include "stage/CameraNetwork.h"
-#include "stage/Visibility.h"
 #include "adapter/RTABMapDBAdapter.h"
+#include "stage/CameraNetwork.h"
+#include "stage/FeatureExtraction.h"
+#include "stage/Perspective.h"
+#include "stage/SignatureSearch.h"
+#include "stage/Visibility.h"
+#include "stage/WordSearch.h"
 
 
 void showUsage()

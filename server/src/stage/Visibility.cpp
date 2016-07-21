@@ -2,14 +2,14 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d.h>
-#include <pcl/point_types.h>
 #include <opencv/cv.h>
+#include <pcl/point_types.h>
 #include <QCoreApplication>
 #include <QDirIterator>
 #include <QTextStream>
 #include <fstream>
-#include <iostream>
 #include "util/Utility.h"
+#include <iostream>
 #include "stage/Visibility.h"
 #include "event/LocationEvent.h"
 #include "event/DetectionEvent.h"

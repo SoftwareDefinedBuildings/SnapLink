@@ -26,10 +26,10 @@
 #include <sqlite3.h>
 
 #include "adapter/RTABMapDBAdapter.h"
-#include "util/Time.h"
-#include "data/Words.h"
-#include "data/Signatures.h"
 #include "data/Labels.h"
+#include "data/Signatures.h"
+#include "data/Words.h"
+#include "util/Time.h"
 
 bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &words, Signatures &signatures, Labels &labels)
 {
