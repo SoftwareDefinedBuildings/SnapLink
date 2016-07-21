@@ -133,6 +133,7 @@ public class MainActivity extends ActionBarActivity {
             mCameraOpenCloseLock.release();
             mCameraDevice = mCamera;
             createCameraPreviewSession();
+            setButtonsEnabled(false, false, true);
         }
     }
 
@@ -206,9 +207,9 @@ public class MainActivity extends ActionBarActivity {
 
     private final AutoFitImageReader.OnImageAvailableListener mOnImageAvailableListener = new AutoFitImageReader.OnImageAvailableListener() {
         @Override
-        public void onImageAvailable(byte[] image, int width, int height, double fx, double fy, double cx, double cy) {
+        public void onImageAvailable(byte[] imageData, int width, int height, double fx, double fy, double cx, double cy) {
             // AsyncTask task instance must be created and executed on the UI thread
-            runOnUiThread(new HttpPostImageRunnable(image, width, height, fx, fy, cx, cy));
+            runOnUiThread(new HttpPostImageRunnable(imageData, width, height, fx, fy, cx, cy));
         }
     };
 
@@ -366,7 +367,7 @@ public class MainActivity extends ActionBarActivity {
 
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
 
-        setButtonsEnabled(false, false, true);
+        setButtonsEnabled(false, false, false);
 
         mHttpClient = new OkHttpClient();
 
@@ -384,6 +385,12 @@ public class MainActivity extends ActionBarActivity {
         super.onResume();
         startBackgroundThread();
 
+        if (mTarget != null) {
+            mTextView.setText(mTarget);
+        } else {
+            mTextView.setText(getString(R.string.none));
+        }
+
         // When the screen is turned off and turned back on, the SurfaceTexture is already
         // available, and "onSurfaceTextureAvailable" will not be called. In that case, we can open
         // a camera and start preview from here (otherwise, we wait until the surface is ready in
@@ -397,6 +404,8 @@ public class MainActivity extends ActionBarActivity {
 
     @Override
     protected void onPause() {
+        setButtonsEnabled(false, false, false);
+        mTarget = null;
         closeCamera();
         stopBackgroundThread();
         super.onPause();
