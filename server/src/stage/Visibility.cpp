@@ -40,7 +40,8 @@ bool Visibility::event(QEvent *event)
     if (event->type() == LocationEvent::type())
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
-        std::vector<std::string> *names = process(locEvent->dbId(), locEvent->sensorData(), locEvent->pose());
+        std::unique_ptr<rtabmap::SensorData> sensorData = locEvent->getSensorData();
+        std::vector<std::string> *names = process(locEvent->dbId(), sensorData.get(), locEvent->pose());
         if (names != nullptr)
         {
             QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
@@ -49,7 +50,6 @@ bool Visibility::event(QEvent *event)
         {
             QCoreApplication::postEvent(_httpServer, new FailureEvent(locEvent->conInfo()));
         }
-        delete locEvent->sensorData();
         return true;
     }
     return QObject::event(event);

@@ -3,10 +3,10 @@
 const QEvent::Type WordEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-WordEvent::WordEvent(std::vector<int> wordIds, rtabmap::SensorData *sensorData, ConnectionInfo *conInfo) :
+WordEvent::WordEvent(std::vector<int> wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, ConnectionInfo *conInfo) :
     QEvent(WordEvent::type()),
     _wordIds(std::move(wordIds)),
-    _sensorData(sensorData),
+    _sensorData(std::move(sensorData)),
     _conInfo(conInfo)
 {
 }
@@ -16,9 +16,9 @@ std::vector<int> WordEvent::wordIds() const
     return _wordIds;
 }
 
-rtabmap::SensorData *WordEvent::sensorData() const
+std::unique_ptr<rtabmap::SensorData> WordEvent::getSensorData()
 {
-    return _sensorData;
+    return std::move(_sensorData);
 }
 
 ConnectionInfo *WordEvent::conInfo() const

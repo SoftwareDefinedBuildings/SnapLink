@@ -23,7 +23,7 @@ protected:
 
 private:
     // ownership transferred
-    rtabmap::SensorData *createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy);
+    std::unique_ptr<rtabmap::SensorData> createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy);
 
 private:
     FeatureExtraction *_feature;

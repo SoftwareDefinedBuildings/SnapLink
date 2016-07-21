@@ -10,10 +10,10 @@ class SignatureEvent :
 {
 public:
     // ownership transfer
-    SignatureEvent(std::vector<int> wordIds, rtabmap::SensorData *sensorData, std::vector<Signature *> signatures, ConnectionInfo *conInfo);
+    SignatureEvent(std::vector<int> wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::vector<Signature *> signatures, ConnectionInfo *conInfo);
 
     std::vector<int> wordIds() const;
-    rtabmap::SensorData *sensorData() const;
+    std::unique_ptr<rtabmap::SensorData> getSensorData();
     std::vector<Signature *> signatures() const;
     ConnectionInfo *conInfo() const;
 
@@ -22,7 +22,7 @@ public:
 private:
     static const QEvent::Type _type;
     const std::vector<int> _wordIds;
-    rtabmap::SensorData *_sensorData;
+    std::unique_ptr<rtabmap::SensorData> _sensorData;
     const std::vector<Signature *> _signatures;
     ConnectionInfo *_conInfo;
 };

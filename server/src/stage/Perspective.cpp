@@ -60,14 +60,14 @@ bool Perspective::event(QEvent *event)
     {
         SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
         std::vector<int> wordIds = signatureEvent->wordIds();
-        rtabmap::SensorData *sensorData = signatureEvent->sensorData();
+        std::unique_ptr<rtabmap::SensorData> sensorData = signatureEvent->getSensorData();
         std::vector<Signature *> signatures = signatureEvent->signatures();
         ConnectionInfo *conInfo = signatureEvent->conInfo();
-        rtabmap::Transform pose = localize(wordIds, sensorData, signatures.at(0), conInfo);
+        rtabmap::Transform pose = localize(wordIds, sensorData.get(), signatures.at(0), conInfo);
         // a null pose notify that loc could not be computed
         if (pose.isNull() == false)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(signatures.at(0)->getDbId(), sensorData, pose, conInfo));
+            QCoreApplication::postEvent(_vis, new LocationEvent(signatures.at(0)->getDbId(), std::move(sensorData), pose, conInfo));
         }
         else
         {

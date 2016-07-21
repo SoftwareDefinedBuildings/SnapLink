@@ -9,10 +9,10 @@ class WordEvent :
 {
 public:
     // ownership transfer
-    WordEvent(std::vector<int> wordIds, rtabmap::SensorData *sensorData, ConnectionInfo *conInfo);
+    WordEvent(std::vector<int> wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, ConnectionInfo *conInfo);
 
     std::vector<int> wordIds() const;
-    rtabmap::SensorData *sensorData() const;
+    std::unique_ptr<rtabmap::SensorData> getSensorData();
     ConnectionInfo *conInfo() const;
 
     static QEvent::Type type();
@@ -20,6 +20,6 @@ public:
 private:
     static const QEvent::Type _type;
     const std::vector<int> _wordIds;
-    rtabmap::SensorData *_sensorData;
+    std::unique_ptr<rtabmap::SensorData> _sensorData;
     ConnectionInfo *_conInfo;
 };

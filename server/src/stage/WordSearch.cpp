@@ -41,11 +41,11 @@ bool WordSearch::event(QEvent *event)
     if (event->type() == FeatureEvent::type())
     {
         FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-        rtabmap::SensorData *sensorData = featureEvent->sensorData();
+        std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->getSensorData();
         ConnectionInfo *conInfo = featureEvent->conInfo();
-        std::vector<int> wordIds = searchWords(sensorData, conInfo);
+        std::vector<int> wordIds = searchWords(sensorData.get(), conInfo);
         // a null pose notify that loc could not be computed
-        QCoreApplication::postEvent(_imageSearch, new WordEvent(wordIds, sensorData, conInfo));
+        QCoreApplication::postEvent(_imageSearch, new WordEvent(wordIds, std::move(sensorData), conInfo));
         return true;
     }
     return QObject::event(event);

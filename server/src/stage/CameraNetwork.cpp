@@ -43,10 +43,10 @@ bool CameraNetwork::event(QEvent *event)
         double cx = networkEvent->conInfo()->cx;
         double cy = networkEvent->conInfo()->cy;
 
-        rtabmap::SensorData *sensorData = createSensorData(data, fx, fy, cx, cy);
+        std::unique_ptr<rtabmap::SensorData> sensorData = createSensorData(data, fx, fy, cx, cy);
         if (sensorData != nullptr)
         {
-            QCoreApplication::postEvent(_feature, new ImageEvent(sensorData, networkEvent->conInfo()));
+            QCoreApplication::postEvent(_feature, new ImageEvent(std::move(sensorData), networkEvent->conInfo()));
         }
         else
         {
@@ -57,7 +57,7 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy)
+std::unique_ptr<rtabmap::SensorData> CameraNetwork::createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy)
 {
     UDEBUG("");
     if (data != nullptr)
@@ -65,13 +65,18 @@ rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<char> *data, do
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img = imdecode(cv::Mat(*data), cv::IMREAD_GRAYSCALE);
 
-        imwrite("image.jpg", img);
+        if (img.empty())
+        {
+            return nullptr;
+        }
+
+        //imwrite("image.jpg", img);
 
         if (!img.empty())
         {
             rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
             rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
-            rtabmap::SensorData *sensorData = new rtabmap::SensorData(img, model);
+            std::unique_ptr<rtabmap::SensorData> sensorData(new rtabmap::SensorData(img, model));
             img.release(); // decrement the reference counter
             return sensorData;
         }

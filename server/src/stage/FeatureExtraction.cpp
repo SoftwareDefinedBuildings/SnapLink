@@ -32,10 +32,10 @@ bool FeatureExtraction::event(QEvent *event)
     if (event->type() == ImageEvent::type())
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        rtabmap::SensorData *sensorData = imageEvent->sensorData();
+        std::unique_ptr<rtabmap::SensorData> sensorData = imageEvent->getSensorData();
         ConnectionInfo *conInfo = imageEvent->conInfo();
-        extractFeatures(sensorData, conInfo);
-        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(sensorData, conInfo));
+        extractFeatures(sensorData.get(), conInfo);
+        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), conInfo));
         return true;
     }
     return QObject::event(event);

@@ -41,8 +41,9 @@ bool SignatureSearch::event(QEvent *event)
     if (event->type() == WordEvent::type())
     {
         WordEvent *wordEvent = static_cast<WordEvent *>(event);
-        std::vector<Signature *> signatures = searchSignatures(wordEvent->wordIds(), wordEvent->sensorData(), wordEvent->conInfo());
-        QCoreApplication::postEvent(_perspective, new SignatureEvent(wordEvent->wordIds(), wordEvent->sensorData(), signatures, wordEvent->conInfo()));
+        std::unique_ptr<rtabmap::SensorData> sensorData = wordEvent->getSensorData();
+        std::vector<Signature *> signatures = searchSignatures(wordEvent->wordIds(), sensorData.get(), wordEvent->conInfo());
+        QCoreApplication::postEvent(_perspective, new SignatureEvent(wordEvent->wordIds(), std::move(sensorData), signatures, wordEvent->conInfo()));
         return true;
     }
     return QObject::event(event);
