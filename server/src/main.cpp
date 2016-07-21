@@ -4,6 +4,7 @@
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UEventsManager.h>
 #include <cstdio>
+#include <utility>
 #include <QCoreApplication>
 #include <QThread>
 #include "data/WordsKdTree.h"
@@ -40,9 +41,9 @@ int main(int argc, char *argv[])
 
     QCoreApplication app(argc, argv);
 
-    WordsKdTree words;
-    SignaturesSimple signatures;
-    LabelsSimple labels;
+    std::unique_ptr<WordsKdTree> words(new WordsKdTree());
+    std::unique_ptr<SignaturesSimple> signatures(new SignaturesSimple());
+    std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
     HTTPServer httpServer;
     CameraNetwork camera;
     FeatureExtraction feature;
@@ -75,7 +76,7 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
     UINFO("Reading data");
-    if (!RTABMapDBAdapter::readData(dbfiles, words, signatures, labels))
+    if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels))
     {
         UERROR("Reading data failed");
         return 1;
@@ -83,7 +84,7 @@ int main(int argc, char *argv[])
 
     // Visibility
     UINFO("Initializing Visibility");
-    vis.setLabels(&labels);
+    vis.setLabels(std::move(labels));
     vis.setHTTPServer(&httpServer);
     vis.moveToThread(&visThread);
     visThread.start();
@@ -102,14 +103,14 @@ int main(int argc, char *argv[])
 
     // Signature Search
     UINFO("Initializing Signature Search");
-    signatureSearch.setSignatures(&signatures);
+    signatureSearch.setSignatures(std::move(signatures));
     signatureSearch.setPerspective(&perspective);
     signatureSearch.moveToThread(&signatureSearchThread);
     signatureSearchThread.start();
 
     // Word Search
     UINFO("Initializing Word Search");
-    wordSearch.setWords(&words);
+    wordSearch.setWords(std::move(words));
     wordSearch.setSignatureSearch(&signatureSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();

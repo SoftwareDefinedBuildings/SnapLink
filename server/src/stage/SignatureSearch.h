@@ -4,6 +4,7 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
+#include <memory>
 #include <QObject>
 #include <QEvent>
 #include "data/Signatures.h"
@@ -21,7 +22,7 @@ public:
     SignatureSearch();
     virtual ~SignatureSearch();
 
-    void setSignatures(Signatures *signatures);
+    void setSignatures(std::unique_ptr<Signatures> &&signatures);
     void setPerspective(Perspective *perspective);
 
 protected:
@@ -31,6 +32,6 @@ private:
     std::vector<Signature *> searchSignatures(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, void *context);
 
 private:
-    Signatures *_signatures;
+    std::unique_ptr<Signatures> _signatures;
     Perspective *_perspective;
 };

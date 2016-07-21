@@ -17,20 +17,18 @@
 #include "data/Signature.h"
 
 SignatureSearch::SignatureSearch() :
-    _signatures(nullptr),
     _perspective(nullptr)
 {
 }
 
 SignatureSearch::~SignatureSearch()
 {
-    _signatures = nullptr;
     _perspective = nullptr;
 }
 
-void SignatureSearch::setSignatures(Signatures *signatures)
+void SignatureSearch::setSignatures(std::unique_ptr<Signatures> &&signatures)
 {
-    _signatures = signatures;
+    _signatures = std::move(signatures);
 }
 
 void SignatureSearch::setPerspective(Perspective *perspective)

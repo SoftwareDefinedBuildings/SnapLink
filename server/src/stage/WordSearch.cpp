@@ -17,20 +17,18 @@
 #include "util/Time.h"
 
 WordSearch::WordSearch() :
-    _words(nullptr),
     _imageSearch(nullptr)
 {
 }
 
 WordSearch::~WordSearch()
 {
-    _words = nullptr;
     _imageSearch = nullptr;
 }
 
-void WordSearch::setWords(const Words *words)
+void WordSearch::setWords(std::unique_ptr<Words> &&words)
 {
-    _words = words;
+    _words = std::move(words);
 }
 
 void WordSearch::setSignatureSearch(SignatureSearch *imageSearch)

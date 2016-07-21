@@ -4,6 +4,7 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
+#include <memory>
 #include <QObject>
 #include <QEvent>
 #include "adapter/RTABMapDBAdapter.h"
@@ -21,7 +22,7 @@ public:
     WordSearch();
     virtual ~WordSearch();
 
-    void setWords(const Words *words);
+    void setWords(std::unique_ptr<Words> &&words);
     void setSignatureSearch(SignatureSearch *imageSearch);
 
 protected:
@@ -31,6 +32,6 @@ private:
     std::vector<int> searchWords(rtabmap::SensorData *sensorData, void *context);
 
 private:
-    const Words *_words;
+    std::unique_ptr<Words> _words;
     SignatureSearch *_imageSearch;
 };
