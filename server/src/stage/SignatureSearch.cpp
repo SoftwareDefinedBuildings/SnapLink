@@ -17,15 +17,15 @@
 #include "data/Signature.h"
 
 SignatureSearch::SignatureSearch() :
-    _signatures(NULL),
-    _perspective(NULL)
+    _signatures(nullptr),
+    _perspective(nullptr)
 {
 }
 
 SignatureSearch::~SignatureSearch()
 {
-    _signatures = NULL;
-    _perspective = NULL;
+    _signatures = nullptr;
+    _perspective = nullptr;
 }
 
 void SignatureSearch::setSignatures(Signatures *signatures)

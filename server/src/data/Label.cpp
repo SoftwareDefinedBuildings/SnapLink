@@ -10,13 +10,12 @@ Label::Label(int dbId,
     _signatureId(signatureId),
     _point2(point2),
     _point3(point3),
-    _name(name)
+    _name(std::move(name))
 {
 }
 
 Label::~Label()
-{
-}
+= default;
 
 int Label::getDbId() const
 {

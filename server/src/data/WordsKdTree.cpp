@@ -4,33 +4,33 @@
 WordsKdTree::WordsKdTree() :
     _type(-1),
     _dim(-1),
-    _index(NULL)
+    _index(nullptr)
 {
 }
 
 WordsKdTree::~WordsKdTree()
 {
-    for (std::list<rtabmap::VisualWord *>::iterator iter = _words.begin(); iter != _words.end(); iter++)
+    for (auto & _word : _words)
     {
-        delete *iter;
-        *iter = NULL;
+        delete _word;
+        _word = nullptr;
     }
     _words.clear();
     _dataMat = cv::Mat();
     _mapIndexId.clear();
     delete _index;
-    _index = NULL;
+    _index = nullptr;
     _type = -1;
     _dim = -1;
 }
 
 void WordsKdTree::addWords(const std::list<rtabmap::VisualWord *> &words)
 {
-    std::list<rtabmap::VisualWord *>::const_iterator iter = words.begin();
+    auto iter = words.begin();
     for (; iter != words.end(); iter++)
     {
         rtabmap::VisualWord *word = *iter;
-        if (word != NULL)
+        if (word != nullptr)
         {
             _words.push_back(word);
         }
@@ -55,7 +55,7 @@ std::vector<int> WordsKdTree::findNNs(const cv::Mat &descriptors) const
 
         cv::Mat indices;
         cv::Mat dists;
-        if (_index != NULL && !_dataMat.empty())
+        if (_index != nullptr && !_dataMat.empty())
         {
             //Find nearest neighbors
             indices.create(descriptors.rows, 1, CV_32S);
@@ -109,7 +109,7 @@ void WordsKdTree::build()
         }
 
         delete _index;
-        _index = NULL;
+        _index = nullptr;
         flann::Matrix<float> dataset((float *)_dataMat.data, _dataMat.rows, _dataMat.cols);
         _index = new flann::Index<flann::L2<float> >(dataset, flann::KDTreeIndexParams(4));
         _index->buildIndex();

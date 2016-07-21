@@ -7,12 +7,12 @@ LabelsSimple::LabelsSimple()
 
 LabelsSimple::~LabelsSimple()
 {
-    for (std::map< int, std::list<Label *> >::iterator iter = _labels.begin(); iter != _labels.end(); iter++)
+    for (auto & _label : _labels)
     {
-        for (std::list<Label *>::iterator jter = iter->second.begin(); jter != iter->second.end(); jter++)
+        for (auto & jter : _label.second)
         {
-            delete *jter;
-            *jter = NULL;
+            delete jter;
+            jter = nullptr;
         }
     }
     _labels.clear();
@@ -20,12 +20,11 @@ LabelsSimple::~LabelsSimple()
 
 void LabelsSimple::addLabels(const std::list<Label *> &labels)
 {
-    for (std::list<Label *>::const_iterator iter = labels.begin(); iter != labels.end(); iter++)
+    for (auto label : labels)
     {
-        Label *label = *iter;
-        if (label != NULL)
+        if (label != nullptr)
         {
-            std::map< int, std::list<Label *> >::iterator jter = _labels.find(label->getDbId());
+            auto jter = _labels.find(label->getDbId());
             if (jter == _labels.end())
             {
                 _labels.insert(std::pair<int, std::list<Label *> >(label->getDbId(), std::list<Label *>(1, label)));

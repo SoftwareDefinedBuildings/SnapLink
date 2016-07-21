@@ -5,14 +5,14 @@
 #include "util/Time.h"
 
 FeatureExtraction::FeatureExtraction() :
-    _feature2D(NULL)
+    _feature2D(nullptr)
 {
 }
 
 FeatureExtraction::~FeatureExtraction()
 {
     delete _feature2D;
-    _feature2D = NULL;
+    _feature2D = nullptr;
 }
 
 bool FeatureExtraction::init(const rtabmap::ParametersMap &parameters)
@@ -43,7 +43,7 @@ bool FeatureExtraction::event(QEvent *event)
 
 void FeatureExtraction::extractFeatures(rtabmap::SensorData *sensorData, void *context)
 {
-    assert(sensorData != NULL);
+    assert(sensorData != nullptr);
 
     ConnectionInfo *con_info = (ConnectionInfo *) context;
     cv::Mat imageMono;

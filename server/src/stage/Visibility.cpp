@@ -16,13 +16,13 @@
 #include "event/FailureEvent.h"
 
 Visibility::Visibility() :
-    _httpServer(NULL)
+    _httpServer(nullptr)
 {
 }
 
 Visibility::~Visibility()
 {
-    _httpServer = NULL;
+    _httpServer = nullptr;
 }
 
 void Visibility::setLabels(Labels *labels)
@@ -41,7 +41,7 @@ bool Visibility::event(QEvent *event)
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
         std::vector<std::string> *names = process(locEvent->dbId(), locEvent->sensorData(), locEvent->pose());
-        if (names != NULL)
+        if (names != nullptr)
         {
             QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
         }
@@ -60,13 +60,13 @@ std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorDat
     const std::list<Label *> &labels = _labels->getLabels().at(dbId);
     std::vector<cv::Point3f> points;
     std::vector<std::string> names;
-    for (std::list<Label *>::const_iterator iter = labels.begin(); iter != labels.end(); iter++)
+    for (auto label : labels)
     {
-        points.push_back((*iter)->getPoint3());
-        names.push_back((*iter)->getName());
+        points.push_back(label->getPoint3());
+        names.push_back(label->getName());
     }
 
-    std::vector<std::string> *results = new std::vector<std::string>();
+    auto results = new std::vector<std::string>();
     if (points.size() == 0)
     {
         return results;

@@ -17,8 +17,8 @@
 #include "util/Time.h"
 
 Perspective::Perspective() :
-    _vis(NULL),
-    _httpServer(NULL),
+    _vis(nullptr),
+    _httpServer(nullptr),
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
     _iterations(rtabmap::Parameters::defaultVisIterations()),
     _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
@@ -29,8 +29,8 @@ Perspective::Perspective() :
 
 Perspective::~Perspective()
 {
-    _vis = NULL;
-    _httpServer = NULL;
+    _vis = nullptr;
+    _httpServer = nullptr;
 }
 
 bool Perspective::init(const rtabmap::ParametersMap &parameters)
@@ -109,7 +109,7 @@ rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap
     {
         UASSERT(wordIds.size() == keypoints.size());
         unsigned int i = 0;
-        for (std::vector<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
+        for (auto iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
         {
             words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
         }

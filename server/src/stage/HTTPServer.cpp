@@ -18,9 +18,9 @@ const std::string HTTPServer::servererrorpage = "An internal server error has oc
 
 // ownership transferred
 HTTPServer::HTTPServer():
-    _daemon(NULL),
+    _daemon(nullptr),
     _numClients(0),
-    _camera(NULL)
+    _camera(nullptr)
 {
 }
 
@@ -28,7 +28,7 @@ HTTPServer::~HTTPServer()
 {
     stop();
     _numClients = 0;
-    _camera = NULL;
+    _camera = nullptr;
 }
 
 bool HTTPServer::start(uint16_t port, unsigned int maxClients)
@@ -37,11 +37,11 @@ bool HTTPServer::start(uint16_t port, unsigned int maxClients)
 
     // start MHD daemon, listening on port
     unsigned int flags = MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL;
-    _daemon = MHD_start_daemon(flags, port, NULL, NULL,
+    _daemon = MHD_start_daemon(flags, port, nullptr, nullptr,
                                &answer_to_connection, static_cast<void *>(this),
                                MHD_OPTION_NOTIFY_COMPLETED, &request_completed, static_cast<void *>(this),
                                MHD_OPTION_END);
-    if (_daemon == NULL)
+    if (_daemon == nullptr)
     {
         return false;
     }
@@ -51,10 +51,10 @@ bool HTTPServer::start(uint16_t port, unsigned int maxClients)
 
 void HTTPServer::stop()
 {
-    if (_daemon != NULL)
+    if (_daemon != nullptr)
     {
         MHD_stop_daemon(_daemon);
-        _daemon = NULL;
+        _daemon = nullptr;
     }
 }
 
@@ -87,7 +87,7 @@ bool HTTPServer::event(QEvent *event)
     {
         FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
         ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(failureEvent->conInfo());
-        conInfo->names = NULL;
+        conInfo->names = nullptr;
         conInfo->detected.release();
         return true;
     }
@@ -105,7 +105,7 @@ int HTTPServer::answer_to_connection(void *cls,
 {
     HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
 
-    if (*con_cls == NULL)
+    if (*con_cls == nullptr)
     {
 
         if (httpServer->numClients() >= httpServer->maxClients())
@@ -113,7 +113,7 @@ int HTTPServer::answer_to_connection(void *cls,
             return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
 
-        ConnectionInfo *con_info = new ConnectionInfo();
+        auto con_info = new ConnectionInfo();
 
         con_info->time.overall_start = 0;
         con_info->time.keypoints = 0;
@@ -129,7 +129,7 @@ int HTTPServer::answer_to_connection(void *cls,
         {
             con_info->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iterate_post, (void *)con_info);
 
-            if (con_info->postprocessor == NULL)
+            if (con_info->postprocessor == nullptr)
             {
                 delete con_info;
                 return MHD_NO;
@@ -137,7 +137,7 @@ int HTTPServer::answer_to_connection(void *cls,
 
             httpServer->numClients()++;
 
-            con_info->names = NULL;
+            con_info->names = nullptr;
             con_info->connectiontype = POST;
             con_info->answercode = MHD_HTTP_OK;
             con_info->answerstring = completepage;
@@ -182,7 +182,7 @@ int HTTPServer::answer_to_connection(void *cls,
             // wait for the result to come
             con_info->detected.acquire();
 
-            if (con_info->names != NULL && !con_info->names->empty())
+            if (con_info->names != nullptr && !con_info->names->empty())
             {
                 con_info->answerstring = con_info->names->at(0);
             }
@@ -191,7 +191,7 @@ int HTTPServer::answer_to_connection(void *cls,
                 con_info->answerstring = "None";
             }
             delete con_info->names;
-            con_info->names = NULL;
+            con_info->names = nullptr;
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }
@@ -270,7 +270,7 @@ void HTTPServer::request_completed(void *cls,
     HTTPServer *httpServer = (HTTPServer *) cls;
     ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
 
-    if (con_info == NULL)
+    if (con_info == nullptr)
     {
         return;
     }
@@ -286,7 +286,7 @@ void HTTPServer::request_completed(void *cls,
         UINFO("TAG_TIME search %ld", con_info->time.search);
         UINFO("TAG_TIME pnp %ld", con_info->time.pnp);
 
-        if (con_info->postprocessor != NULL)
+        if (con_info->postprocessor != nullptr)
         {
             MHD_destroy_post_processor(con_info->postprocessor);
             httpServer->numClients()--;
@@ -294,7 +294,7 @@ void HTTPServer::request_completed(void *cls,
     }
 
     delete con_info;
-    *con_cls = NULL;
+    *con_cls = nullptr;
 }
 
 int HTTPServer::send_page(struct MHD_Connection *connection, const std::string &page, int status_code)

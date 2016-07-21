@@ -10,15 +10,15 @@
 #include "event/FailureEvent.h"
 
 CameraNetwork::CameraNetwork() :
-    _feature(NULL),
-    _httpServer(NULL)
+    _feature(nullptr),
+    _httpServer(nullptr)
 {
 }
 
 CameraNetwork::~CameraNetwork()
 {
-    _feature = NULL;
-    _httpServer = NULL;
+    _feature = nullptr;
+    _httpServer = nullptr;
 }
 
 void CameraNetwork::setFeatureExtraction(FeatureExtraction *feature)
@@ -44,7 +44,7 @@ bool CameraNetwork::event(QEvent *event)
         double cy = networkEvent->conInfo()->cy;
 
         rtabmap::SensorData *sensorData = createSensorData(data, fx, fy, cx, cy);
-        if (sensorData != NULL)
+        if (sensorData != nullptr)
         {
             QCoreApplication::postEvent(_feature, new ImageEvent(sensorData, networkEvent->conInfo()));
         }
@@ -60,7 +60,7 @@ bool CameraNetwork::event(QEvent *event)
 rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy)
 {
     UDEBUG("");
-    if (data != NULL)
+    if (data != nullptr)
     {
         // there is no data copy here, the cv::Mat has a pointer to the data
         cv::Mat img = imdecode(cv::Mat(*data), cv::IMREAD_GRAYSCALE);
@@ -77,5 +77,5 @@ rtabmap::SensorData *CameraNetwork::createSensorData(std::vector<char> *data, do
         }
     }
 
-    return NULL;
+    return nullptr;
 }

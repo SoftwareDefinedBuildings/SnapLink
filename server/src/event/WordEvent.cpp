@@ -5,7 +5,7 @@ const QEvent::Type WordEvent::_type = static_cast<QEvent::Type>(QEvent::register
 // ownership transfer
 WordEvent::WordEvent(std::vector<int> wordIds, rtabmap::SensorData *sensorData, ConnectionInfo *conInfo) :
     QEvent(WordEvent::type()),
-    _wordIds(wordIds),
+    _wordIds(std::move(wordIds)),
     _sensorData(sensorData),
     _conInfo(conInfo)
 {

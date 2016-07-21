@@ -17,15 +17,15 @@
 #include "util/Time.h"
 
 WordSearch::WordSearch() :
-    _words(NULL),
-    _imageSearch(NULL)
+    _words(nullptr),
+    _imageSearch(nullptr)
 {
 }
 
 WordSearch::~WordSearch()
 {
-    _words = NULL;
-    _imageSearch = NULL;
+    _words = nullptr;
+    _imageSearch = nullptr;
 }
 
 void WordSearch::setWords(const Words *words)

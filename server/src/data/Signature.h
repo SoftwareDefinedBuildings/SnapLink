@@ -18,10 +18,10 @@ public:
     Signature(int id,
               int mapId,
               int dbId,
-              const rtabmap::Transform &pose,
+              rtabmap::Transform pose,
               const rtabmap::SensorData &sensorData,
-              const std::multimap<int, cv::KeyPoint> &words,
-              const std::multimap<int, cv::Point3f> &words3);
+              std::multimap<int, cv::KeyPoint> words,
+              std::multimap<int, cv::Point3f> words3);
     virtual ~Signature();
 
     int getId() const;

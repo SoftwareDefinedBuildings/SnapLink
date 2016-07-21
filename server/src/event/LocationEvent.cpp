@@ -7,7 +7,7 @@ LocationEvent::LocationEvent(int dbId, rtabmap::SensorData *sensorData, rtabmap:
     QEvent(LocationEvent::type()),
     _dbId(dbId),
     _sensorData(sensorData),
-    _pose(pose),
+    _pose(std::move(pose)),
     _conInfo(conInfo)
 {
 }
