@@ -52,7 +52,7 @@ bool WordSearch::event(QEvent *event)
     return QObject::event(event);
 }
 
-std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData, void *context)
+std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData, void *context) const
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 

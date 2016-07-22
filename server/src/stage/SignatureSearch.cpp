@@ -51,7 +51,7 @@ bool SignatureSearch::event(QEvent *event)
     return QObject::event(event);
 }
 
-std::vector<Signature *> SignatureSearch::searchSignatures(const std::vector<int> &wordIds, void *context)
+std::vector<Signature *> SignatureSearch::searchSignatures(const std::vector<int> &wordIds, void *context) const
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 

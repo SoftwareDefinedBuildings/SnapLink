@@ -37,7 +37,7 @@ bool CameraNetwork::event(QEvent *event)
     {
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
 
-        std::vector<char> *data = &networkEvent->conInfo()->data;
+        const std::vector<char> &data = networkEvent->conInfo()->data;
         double fx = networkEvent->conInfo()->fx;
         double fy = networkEvent->conInfo()->fy;
         double cx = networkEvent->conInfo()->cx;
@@ -57,29 +57,27 @@ bool CameraNetwork::event(QEvent *event)
     return QObject::event(event);
 }
 
-std::unique_ptr<rtabmap::SensorData> CameraNetwork::createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy)
+std::unique_ptr<rtabmap::SensorData> CameraNetwork::createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy) const
 {
     UDEBUG("");
-    if (data != nullptr)
+
+    // there is no data copy here, the cv::Mat has a pointer to the data
+    const bool copyData = false;
+    cv::Mat img = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+
+    if (img.empty())
     {
-        // there is no data copy here, the cv::Mat has a pointer to the data
-        cv::Mat img = imdecode(cv::Mat(*data), cv::IMREAD_GRAYSCALE);
+        return nullptr;
+    }
 
-        if (img.empty())
-        {
-            return nullptr;
-        }
+    //imwrite("image.jpg", img);
 
-        //imwrite("image.jpg", img);
-
-        if (!img.empty())
-        {
-            rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-            rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
-            std::unique_ptr<rtabmap::SensorData> sensorData(new rtabmap::SensorData(img, model));
-            img.release(); // decrement the reference counter
-            return sensorData;
-        }
+    if (!img.empty())
+    {
+        rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+        rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
+        std::unique_ptr<rtabmap::SensorData> sensorData(new rtabmap::SensorData(img, model));
+        return sensorData;
     }
 
     return nullptr;

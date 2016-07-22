@@ -41,7 +41,7 @@ bool FeatureExtraction::event(QEvent *event)
     return QObject::event(event);
 }
 
-void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData, void *context)
+void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData, void *context) const
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
     cv::Mat imageMono;

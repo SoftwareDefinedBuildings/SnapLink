@@ -29,7 +29,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<int> searchWords(const rtabmap::SensorData &sensorData, void *context);
+    std::vector<int> searchWords(const rtabmap::SensorData &sensorData, void *context) const;
 
 private:
     std::unique_ptr<Words> _words;

@@ -22,8 +22,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    // ownership transferred
-    std::unique_ptr<rtabmap::SensorData> createSensorData(std::vector<char> *data, double fx, double fy, double cx, double cy);
+    std::unique_ptr<rtabmap::SensorData> createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy) const;
 
 private:
     FeatureExtraction *_feature;
