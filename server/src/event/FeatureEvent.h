@@ -11,7 +11,7 @@ public:
     // ownership transfer
     FeatureEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, ConnectionInfo *conInfo);
 
-    std::unique_ptr<rtabmap::SensorData> getSensorData();
+    std::unique_ptr<rtabmap::SensorData> takeSensorData();
     ConnectionInfo *conInfo() const;
 
     static QEvent::Type type();

@@ -10,7 +10,7 @@ FeatureEvent::FeatureEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, Co
 {
 }
 
-std::unique_ptr<rtabmap::SensorData> FeatureEvent::getSensorData()
+std::unique_ptr<rtabmap::SensorData> FeatureEvent::takeSensorData()
 {
     return std::move(_sensorData);
 }

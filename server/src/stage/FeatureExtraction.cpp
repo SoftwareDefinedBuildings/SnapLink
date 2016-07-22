@@ -32,28 +32,26 @@ bool FeatureExtraction::event(QEvent *event)
     if (event->type() == ImageEvent::type())
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = imageEvent->getSensorData();
+        std::unique_ptr<rtabmap::SensorData> sensorData = imageEvent->takeSensorData();
         ConnectionInfo *conInfo = imageEvent->conInfo();
-        extractFeatures(sensorData.get(), conInfo);
+        extractFeatures(*sensorData, conInfo);
         QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), conInfo));
         return true;
     }
     return QObject::event(event);
 }
 
-void FeatureExtraction::extractFeatures(rtabmap::SensorData *sensorData, void *context)
+void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData, void *context)
 {
-    assert(sensorData != nullptr);
-
     ConnectionInfo *con_info = (ConnectionInfo *) context;
     cv::Mat imageMono;
-    if (sensorData->imageRaw().channels() == 3)
+    if (sensorData.imageRaw().channels() == 3)
     {
-        cv::cvtColor(sensorData->imageRaw(), imageMono, CV_BGR2GRAY);
+        cv::cvtColor(sensorData.imageRaw(), imageMono, CV_BGR2GRAY);
     }
     else
     {
-        imageMono = sensorData->imageRaw();
+        imageMono = sensorData.imageRaw();
     }
 
     con_info->time.keypoints_start = getTime(); // start of generateKeypoints
@@ -64,5 +62,5 @@ void FeatureExtraction::extractFeatures(rtabmap::SensorData *sensorData, void *c
     cv::Mat descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
     con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
 
-    sensorData->setFeatures(keypoints, descriptors);
+    sensorData.setFeatures(keypoints, descriptors);
 }

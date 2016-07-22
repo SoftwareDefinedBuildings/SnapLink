@@ -30,7 +30,7 @@ protected:
 
 private:
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, Signature *oldSig, void *context) const;
+    rtabmap::Transform localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig, void *context) const;
 
 private:
     Visibility *_vis;

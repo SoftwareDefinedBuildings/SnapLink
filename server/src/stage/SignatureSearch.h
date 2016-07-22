@@ -29,7 +29,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<Signature *> searchSignatures(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, void *context);
+    std::vector<Signature *> searchSignatures(const std::vector<int> &wordIds, void *context);
 
 private:
     std::unique_ptr<Signatures> _signatures;

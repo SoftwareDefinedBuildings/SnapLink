@@ -23,7 +23,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<std::string> *process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
+    std::vector<std::string> process(int dbId, const rtabmap::SensorData &sensorData, const rtabmap::Transform &pose) const;
 
 private:
     std::unique_ptr<Labels> _labels;

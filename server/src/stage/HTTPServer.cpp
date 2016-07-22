@@ -79,7 +79,7 @@ bool HTTPServer::event(QEvent *event)
     {
         DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
         ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(detectionEvent->conInfo());
-        conInfo->names = detectionEvent->names();
+        conInfo->names = detectionEvent->getNames();
         conInfo->detected.release();
         return true;
     }
@@ -87,7 +87,6 @@ bool HTTPServer::event(QEvent *event)
     {
         FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
         ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(failureEvent->conInfo());
-        conInfo->names = nullptr;
         conInfo->detected.release();
         return true;
     }
@@ -137,7 +136,6 @@ int HTTPServer::answer_to_connection(void *cls,
 
             httpServer->numClients()++;
 
-            con_info->names = nullptr;
             con_info->connectiontype = POST;
             con_info->answercode = MHD_HTTP_OK;
             con_info->answerstring = completepage;
@@ -190,8 +188,6 @@ int HTTPServer::answer_to_connection(void *cls,
             {
                 con_info->answerstring = "None";
             }
-            delete con_info->names;
-            con_info->names = nullptr;
             return send_page(connection, con_info->answerstring, con_info->answercode);
         }
     }

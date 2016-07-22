@@ -21,5 +21,5 @@ public:
     /**
      * find the indices of the k most similar signatures
      */
-    virtual std::vector<int> findKNN(const std::vector<int> wordIds, int k) const = 0;
+    virtual std::vector<int> findKNN(const std::vector<int> &wordIds, int k) const = 0;
 };

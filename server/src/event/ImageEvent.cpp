@@ -10,7 +10,7 @@ ImageEvent::ImageEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, Connec
 {
 }
 
-std::unique_ptr<rtabmap::SensorData> ImageEvent::getSensorData()
+std::unique_ptr<rtabmap::SensorData> ImageEvent::takeSensorData()
 {
     return std::move(_sensorData);
 }

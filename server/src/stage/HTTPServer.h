@@ -101,7 +101,7 @@ typedef struct
     double cy;
     std::string answerstring;
     int answercode;
-    const std::vector<std::string> *names;
+    std::unique_ptr< std::vector<std::string> > names;
     QSemaphore detected;
     TimeInfo time;
 } ConnectionInfo;

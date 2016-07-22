@@ -21,7 +21,7 @@ public:
     /**
      * find the indices of the k most similar signatures
      */
-    std::vector<int> findKNN(const std::vector<int> wordIds, int k) const;
+    std::vector<int> findKNN(const std::vector<int> &wordIds, int k) const;
 
 private:
     static float computeSimilarity(const std::vector<int> &wordIds, const Signature &signature);

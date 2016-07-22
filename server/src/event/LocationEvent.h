@@ -10,11 +10,11 @@ class LocationEvent :
 {
 public:
     // ownership transfer
-    LocationEvent(int dbId, std::unique_ptr<rtabmap::SensorData> &&sensorData, rtabmap::Transform pose, ConnectionInfo *conInfo);
+    LocationEvent(int dbId, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<rtabmap::Transform> &&pose, ConnectionInfo *conInfo);
 
     int dbId() const;
-    std::unique_ptr<rtabmap::SensorData> getSensorData();
-    rtabmap::Transform pose() const;
+    std::unique_ptr<rtabmap::SensorData> takeSensorData();
+    std::unique_ptr<rtabmap::Transform> takePose();
     ConnectionInfo *conInfo() const;
 
     static QEvent::Type type();
@@ -23,8 +23,8 @@ public:
 
 private:
     static const QEvent::Type _type;
-    std::unique_ptr<rtabmap::SensorData> _sensorData;
     int _dbId;
-    rtabmap::Transform _pose;
+    std::unique_ptr<rtabmap::SensorData> _sensorData;
+    std::unique_ptr<rtabmap::Transform> _pose;
     ConnectionInfo *_conInfo;
 };

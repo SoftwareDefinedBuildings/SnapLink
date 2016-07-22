@@ -33,7 +33,7 @@ const std::map<int, Signature *> &SignaturesSimple::getSignatures() const
     return _signatures;
 }
 
-std::vector<int> SignaturesSimple::findKNN(const std::vector<int> wordIds, int k) const
+std::vector<int> SignaturesSimple::findKNN(const std::vector<int> &wordIds, int k) const
 {
     std::map<int, float> similarities;
     auto iter = _signatures.begin();

@@ -41,26 +41,27 @@ bool WordSearch::event(QEvent *event)
     if (event->type() == FeatureEvent::type())
     {
         FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->getSensorData();
+        std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->takeSensorData();
         ConnectionInfo *conInfo = featureEvent->conInfo();
-        std::vector<int> wordIds = searchWords(sensorData.get(), conInfo);
+        std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
+        *wordIds = searchWords(*sensorData, conInfo);
         // a null pose notify that loc could not be computed
-        QCoreApplication::postEvent(_imageSearch, new WordEvent(wordIds, std::move(sensorData), conInfo));
+        QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), conInfo));
         return true;
     }
     return QObject::event(event);
 }
 
-std::vector<int> WordSearch::searchWords(rtabmap::SensorData *sensorData, void *context)
+std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData, void *context)
 {
     ConnectionInfo *con_info = (ConnectionInfo *) context;
 
-    UASSERT(!sensorData->imageRaw().empty());
+    UASSERT(!sensorData.imageRaw().empty());
 
-    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
+    const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
 
-    std::vector<cv::KeyPoint> keypoints = sensorData->keypoints();
-    cv::Mat descriptors = sensorData->descriptors();
+    std::vector<cv::KeyPoint> keypoints = sensorData.keypoints();
+    cv::Mat descriptors = sensorData.descriptors();
 
     std::vector<int> wordIds;
     if (descriptors.rows)
