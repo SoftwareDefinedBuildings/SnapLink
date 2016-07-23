@@ -2,21 +2,22 @@
 
 #include <QEvent>
 #include <vector>
-#include "stage/HTTPServer.h"
+#include <memory>
+#include "data/SessionInfo.h"
 
 class DetectionEvent :
     public QEvent
 {
 public:
-    DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, const ConnectionInfo *conInfo);
+    DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, std::unique_ptr<SessionInfo> &&sessionInfo);
 
-    std::unique_ptr< std::vector<std::string> > getNames();
-    const ConnectionInfo *conInfo() const;
+    std::unique_ptr< std::vector<std::string> > takeNames();
+    std::unique_ptr<SessionInfo> takeSessionInfo();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
     std::unique_ptr< std::vector<std::string> > _names;
-    const ConnectionInfo *_conInfo;
+    std::unique_ptr<SessionInfo> _sessionInfo;
 };

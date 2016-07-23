@@ -2,10 +2,10 @@
 
 const QEvent::Type DetectionEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
-DetectionEvent::DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, const ConnectionInfo *conInfo) :
+DetectionEvent::DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, std::unique_ptr<SessionInfo> &&sessionInfo) :
     QEvent(DetectionEvent::type()),
     _names(std::move(names)),
-    _conInfo(conInfo)
+    _sessionInfo(std::move(sessionInfo))
 {
 }
 
@@ -14,9 +14,9 @@ std::unique_ptr< std::vector<std::string> > DetectionEvent::getNames()
     return std::move(_names);
 }
 
-const ConnectionInfo *DetectionEvent::conInfo() const
+std::unique_ptr<SessionInfo> DetectionEvent::takeSessionInfo()
 {
-    return _conInfo;
+    return std::move(_sessionInfo);
 }
 
 QEvent::Type DetectionEvent::type()

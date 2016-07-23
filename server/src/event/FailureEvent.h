@@ -1,21 +1,20 @@
 #pragma once
 
 #include <QEvent>
-#include "stage/HTTPServer.h"
+#include <memory>
+#include "data/SessionInfo.h"
 
 class FailureEvent :
     public QEvent
 {
 public:
-    // ownership transfer
-    FailureEvent(const ConnectionInfo *conInfo);
+    FailureEvent(std::unique<SessionInfo> &&sessionInfo);
 
-    // get the names of the detected objects
-    const ConnectionInfo *conInfo() const;
+    std::unique_ptr<SessionInfo> takeSessionInfo();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
-    const ConnectionInfo *_conInfo;
+    std::unique<SessionInfo> _sessionInfo;
 };

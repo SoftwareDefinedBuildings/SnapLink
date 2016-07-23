@@ -36,10 +36,10 @@ bool HTTPServer::start(uint16_t port, unsigned int maxClients)
     _maxClients = maxClients;
 
     // start MHD daemon, listening on port
-    unsigned int flags = MHD_USE_THREAD_PER_CONNECTION | MHD_USE_POLL;
+    unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;
     _daemon = MHD_start_daemon(flags, port, nullptr, nullptr,
-                               &answer_to_connection, static_cast<void *>(this),
-                               MHD_OPTION_NOTIFY_COMPLETED, &request_completed, static_cast<void *>(this),
+                               &answerConnection, static_cast<void *>(this),
+                               MHD_OPTION_NOTIFY_COMPLETED, &requestCompleted, static_cast<void *>(this),
                                MHD_OPTION_END);
     if (_daemon == nullptr)
     {
@@ -58,14 +58,19 @@ void HTTPServer::stop()
     }
 }
 
-const unsigned int &HTTPServer::maxClients() const
+int HTTPServer::getMaxClients() const
 {
     return _maxClients;
 }
 
-unsigned int &HTTPServer::numClients()
+int HTTPServer::getNumClients() const
 {
     return _numClients;
+}
+
+void HTTPServer::setNumClients(int numClients)
+{
+    _numClients = numClients;
 }
 
 void HTTPServer::setCamera(CameraNetwork *camera)
@@ -78,22 +83,22 @@ bool HTTPServer::event(QEvent *event)
     if (event->type() == DetectionEvent::type())
     {
         DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
-        ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(detectionEvent->conInfo());
-        conInfo->names = detectionEvent->getNames();
-        conInfo->detected.release();
+        std::unique_ptr<SessionInfo> sessionInfo = detectionEvent->takeSessionInfo();
+        sessionInfo->names = detectionEvent->takeNames();
+        sessionInfo->detected.release();
         return true;
     }
     else if (event->type() == FailureEvent::type())
     {
         FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-        ConnectionInfo *conInfo = const_cast<ConnectionInfo *>(failureEvent->conInfo());
-        conInfo->detected.release();
+        std::unique_ptr<SessionInfo> sessionInfo = failureEvent->takeSessionInfo();
+        sessionInfo->detected.release();
         return true;
     }
     return QObject::event(event);
 }
 
-int HTTPServer::answer_to_connection(void *cls,
+int HTTPServer::answerConnection(void *cls,
                                      struct MHD_Connection *connection,
                                      const char *url,
                                      const char *method,
@@ -109,43 +114,45 @@ int HTTPServer::answer_to_connection(void *cls,
 
         if (httpServer->numClients() >= httpServer->maxClients())
         {
-            return send_page(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
+            return sendPage(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
 
-        auto con_info = new ConnectionInfo();
+        std::unique_ptr<SessionInfo> sessionInfo(new SessionInfo());
 
-        con_info->time.overall_start = 0;
-        con_info->time.keypoints = 0;
-        con_info->time.descriptors = 0;
-        con_info->time.vwd = 0;
-        con_info->time.search = 0;
-        con_info->time.pnp = 0;
+        sessionInfo->timeInfo.overall_start = 0;
+        sessionInfo->timeInfo.keypoints = 0;
+        sessionInfo->timeInfo.descriptors = 0;
+        sessionInfo->timeInfo.vwd = 0;
+        sessionInfo->timeInfo.search = 0;
+        sessionInfo->timeInfo.pnp = 0;
 
         // reserve enough space for an image
-        con_info->data.reserve(IMAGE_INIT_SIZE);
+        sessionInfo->data.reserve(IMAGE_INIT_SIZE);
+        
+        sessionInfo->names.reset(new std::vector<std::string>());
+        sessionInfo->detected.reset(new QSemaphore());
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
         {
-            con_info->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iterate_post, (void *)con_info);
+            sessionInfo->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iteratePost, (void *)sessionInfo);
 
-            if (con_info->postprocessor == nullptr)
+            if (sessionInfo->postprocessor == nullptr)
             {
-                delete con_info;
                 return MHD_NO;
             }
 
-            httpServer->numClients()++;
+            httpServer->setNumClients(httpServer->getNumClients() + 1);
 
-            con_info->connectiontype = POST;
-            con_info->answercode = MHD_HTTP_OK;
-            con_info->answerstring = completepage;
+            sessionInfo->connectiontype = POST;
+            sessionInfo->answercode.reset(new int(MHD_HTTP_OK));
+            sessionInfo->answerstring.reset(new std::string(completepage));
         }
         else
         {
-            con_info->connectiontype = GET;
+            sessionInfo->connectiontype = GET;
         }
 
-        *con_cls = static_cast<void *>(con_info);
+        *con_cls = static_cast<void *>(sessionInfo);
 
         return MHD_YES;
     }
@@ -153,49 +160,55 @@ int HTTPServer::answer_to_connection(void *cls,
     if (strcasecmp(method, MHD_HTTP_METHOD_GET) == 0)
     {
         // we do not accept GET request
-        return send_page(connection, errorpage, MHD_HTTP_SERVICE_UNAVAILABLE);
+        return sendPage(connection, errorpage, MHD_HTTP_SERVICE_UNAVAILABLE);
     }
 
     if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
     {
-        ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
+        std::unique_ptr<SessionInfo> sessionInfo = static_cast< std::unique_ptr<SessionInfo> >(*con_cls);
 
         if (*upload_data_size != 0)
         {
-            MHD_post_process(con_info->postprocessor, upload_data, *upload_data_size);
+            MHD_post_process(sessionInfo->postprocessor, upload_data, *upload_data_size);
             *upload_data_size = 0;
 
             return MHD_YES;
         }
         else
         {
-            if (!con_info->data.empty())
+            std::shared_ptr<QSemaphore> detected = sessionInfo->detected;
+
+            if (!sessionInfo->data.empty())
             {
                 // all data are received
-                con_info->time.overall_start = getTime(); // log start of processing
-                // seperate ownership of data from con_info
-                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(con_info));
+                sessionInfo->time.overall_start = getTime(); // log start of processing
+                // seperate ownership of data from sessionInfo
+                QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(sessionInfo.release()));
             }
 
             // wait for the result to come
-            con_info->detected.acquire();
+            detected.acquire();
 
-            if (con_info->names != nullptr && !con_info->names->empty())
+            std::shared_ptr< std::vector<std::string> > names = sessionInfo->names;
+            std::shared_ptr<std::string> answerString = sessionInfo->answerString;
+            std::shared_ptr<int> answerCode = sessionInfo->answerCode;
+
+            if (names != nullptr && !names->empty())
             {
-                con_info->answerstring = con_info->names->at(0);
+                *answerstring = names->at(0);
             }
             else
             {
-                con_info->answerstring = "None";
+                *answerstring = "None";
             }
-            return send_page(connection, con_info->answerstring, con_info->answercode);
+            return sendPage(connection, *answerstring, *answercode);
         }
     }
 
-    return send_page(connection, errorpage, MHD_HTTP_BAD_REQUEST);
+    return sendPage(connection, errorpage, MHD_HTTP_BAD_REQUEST);
 }
 
-int HTTPServer::iterate_post(void *coninfo_cls,
+int HTTPServer::iteratePost(void *coninfo_cls,
                              enum MHD_ValueKind kind,
                              const char *key,
                              const char *filename,
@@ -205,7 +218,7 @@ int HTTPServer::iterate_post(void *coninfo_cls,
                              uint64_t off,
                              size_t size)
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) coninfo_cls;
+    SessionInfo *con_info = (SessionInfo *) coninfo_cls;
 
     con_info->answerstring = servererrorpage;
     con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
@@ -226,28 +239,28 @@ int HTTPServer::iterate_post(void *coninfo_cls,
             char buf[size + 1];
             memcpy(buf, data, size);
             buf[size] = 0;
-            con_info->fx = atof(buf);
+            con_info->cameraInfo.fx = atof(buf);
         }
         else if (strcmp(key, "fy") == 0)
         {
             char buf[size + 1];
             memcpy(buf, data, size);
             buf[size] = 0;
-            con_info->fy = atof(buf);
+            con_info->cameraInfo.fy = atof(buf);
         }
         else if (strcmp(key, "cx") == 0)
         {
             char buf[size + 1];
             memcpy(buf, data, size);
             buf[size] = 0;
-            con_info->cx = atof(buf);
+            con_info->cameraInfo.cx = atof(buf);
         }
         else if (strcmp(key, "cy") == 0)
         {
             char buf[size + 1];
             memcpy(buf, data, size);
             buf[size] = 0;
-            con_info->cy = atof(buf);
+            con_info->cameraInfo.cy = atof(buf);
         }
     }
 
@@ -257,14 +270,14 @@ int HTTPServer::iterate_post(void *coninfo_cls,
     return MHD_YES;
 }
 
-void HTTPServer::request_completed(void *cls,
+void HTTPServer::requestCompleted(void *cls,
                                    struct MHD_Connection *connection,
                                    void **con_cls,
                                    enum MHD_RequestTerminationCode toe)
 {
     UDEBUG("");
     HTTPServer *httpServer = (HTTPServer *) cls;
-    ConnectionInfo *con_info = (ConnectionInfo *) *con_cls;
+    SessionInfo *con_info = (SessionInfo *) *con_cls;
 
     if (con_info == nullptr)
     {
@@ -293,7 +306,7 @@ void HTTPServer::request_completed(void *cls,
     *con_cls = nullptr;
 }
 
-int HTTPServer::send_page(struct MHD_Connection *connection, const std::string &page, int status_code)
+int HTTPServer::sendPage(struct MHD_Connection *connection, const std::string &page, int status_code)
 {
     int ret;
     struct MHD_Response *response;
