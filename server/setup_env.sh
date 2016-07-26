@@ -9,6 +9,7 @@ apt-get install -y libflann-dev
 apt-get install -y libopenni-dev
 apt-get install -y cmake
 apt-get install -y libvtk6-dev
+apt-get install -y libeigen3-dev
 mkdir -p ~/workspace
 cd ~/workspace
 git clone https://github.com/PointCloudLibrary/pcl.git
@@ -55,7 +56,7 @@ cd ~/workspace/
 git clone https://github.com/introlab/rtabmap.git
 mkdir -p rtabmap/build
 cd rtabmap/build
-git checkout 0.11.7-indigo
+git checkout 0.11.8
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j8
 make install
