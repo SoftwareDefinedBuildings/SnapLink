@@ -3,15 +3,15 @@
 const QEvent::Type NetworkEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-NetworkEvent::NetworkEvent(ConnectionInfo *conInfo) :
+NetworkEvent::NetworkEvent(SessionInfo *sessionInfo) :
     QEvent(NetworkEvent::type()),
-    _conInfo(conInfo)
+    _sessionInfo(sessionInfo)
 {
 }
 
-ConnectionInfo *NetworkEvent::conInfo() const
+SessionInfo *NetworkEvent::sessionInfo() const
 {
-    return _conInfo;
+    return _sessionInfo;
 }
 
 QEvent::Type NetworkEvent::type()

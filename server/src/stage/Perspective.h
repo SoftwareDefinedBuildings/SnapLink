@@ -8,6 +8,7 @@
 #include <QEvent>
 #include "stage/Visibility.h"
 #include "stage/HTTPServer.h"
+#include "data/SessionInfo.h"
 #include "data/Signature.h"
 
 class Visibility;

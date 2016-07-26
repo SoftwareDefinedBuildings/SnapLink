@@ -62,17 +62,17 @@ bool Perspective::event(QEvent *event)
         std::unique_ptr< std::vector<int> > wordIds = signatureEvent->takeWordIds();
         std::unique_ptr<rtabmap::SensorData> sensorData = signatureEvent->takeSensorData();
         std::unique_ptr< std::vector<Signature *> > signatures = signatureEvent->takeSignatures();
-        ConnectionInfo *conInfo = signatureEvent->conInfo();
+        std::unique_ptr<SessionInfo> sessionInfo(signatureEvent->sessionInfo());
         std::unique_ptr<rtabmap::Transform> pose(new rtabmap::Transform);
-        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)), conInfo);
+        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)), sessionInfo.get());
         // a null pose notify that loc could not be computed
         if (pose->isNull() == false)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(signatures->at(0)->getDbId(), std::move(sensorData), std::move(pose), conInfo));
+            QCoreApplication::postEvent(_vis, new LocationEvent(signatures->at(0)->getDbId(), std::move(sensorData), std::move(pose), sessionInfo.release()));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(signatureEvent->conInfo()));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(std::move(sessionInfo)));
         }
         return true;
     }
@@ -81,7 +81,7 @@ bool Perspective::event(QEvent *event)
 
 rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig, void *context) const
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
+    SessionInfo *sessionInfo = (SessionInfo *) context;
 
     const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
     UASSERT(!sensorData.imageRaw().empty());
@@ -122,7 +122,7 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
         std::vector<int> matches;
         std::vector<int> inliers;
 
-        con_info->time.pnp_start = getTime();
+        sessionInfo->timeInfo.pnp_start = getTime();
         transform = rtabmap::util3d::estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
                         uMultimapToMapUnique(words),
@@ -137,7 +137,7 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
                         &variance,
                         &matches,
                         &inliers);
-        con_info->time.pnp += getTime() - con_info->time.pnp_start;
+        sessionInfo->timeInfo.pnp += getTime() - sessionInfo->timeInfo.pnp_start;
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {

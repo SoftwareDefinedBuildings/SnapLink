@@ -1,20 +1,20 @@
 #pragma once
 
 #include <QEvent>
-#include "stage/HTTPServer.h"
+#include "data/SessionInfo.h"
 
 class NetworkEvent :
     public QEvent
 {
 public:
     // ownership transfer
-    NetworkEvent(ConnectionInfo *conInfo);
+    NetworkEvent(SessionInfo *sessionInfo);
 
-    ConnectionInfo *conInfo() const;
+    SessionInfo *sessionInfo() const;
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
-    ConnectionInfo *_conInfo;
+    SessionInfo *_sessionInfo;
 };

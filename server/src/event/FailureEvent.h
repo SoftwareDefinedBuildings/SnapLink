@@ -8,7 +8,7 @@ class FailureEvent :
     public QEvent
 {
 public:
-    FailureEvent(std::unique<SessionInfo> &&sessionInfo);
+    FailureEvent(std::unique_ptr<SessionInfo> &&sessionInfo);
 
     std::unique_ptr<SessionInfo> takeSessionInfo();
 
@@ -16,5 +16,5 @@ public:
 
 private:
     static const QEvent::Type _type;
-    std::unique<SessionInfo> _sessionInfo;
+    std::unique_ptr<SessionInfo> _sessionInfo;
 };

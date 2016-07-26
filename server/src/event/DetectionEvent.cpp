@@ -9,7 +9,7 @@ DetectionEvent::DetectionEvent(std::unique_ptr< std::vector<std::string> > &&nam
 {
 }
 
-std::unique_ptr< std::vector<std::string> > DetectionEvent::getNames()
+std::unique_ptr< std::vector<std::string> > DetectionEvent::takeNames()
 {
     return std::move(_names);
 }

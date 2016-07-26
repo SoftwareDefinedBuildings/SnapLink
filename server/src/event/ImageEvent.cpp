@@ -3,10 +3,10 @@
 const QEvent::Type ImageEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-ImageEvent::ImageEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, ConnectionInfo *conInfo) :
+ImageEvent::ImageEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, SessionInfo *sessionInfo) :
     QEvent(ImageEvent::type()),
     _sensorData(std::move(sensorData)),
-    _conInfo(conInfo)
+    _sessionInfo(sessionInfo)
 {
 }
 
@@ -15,9 +15,9 @@ std::unique_ptr<rtabmap::SensorData> ImageEvent::takeSensorData()
     return std::move(_sensorData);
 }
 
-ConnectionInfo *ImageEvent::conInfo() const
+SessionInfo *ImageEvent::sessionInfo() const
 {
-    return _conInfo;
+    return _sessionInfo;
 }
 
 QEvent::Type ImageEvent::type()

@@ -2,6 +2,7 @@
 
 #include <QSemaphore>
 #include <microhttpd.h>
+#include <memory>
 
 enum SessionType
 {
@@ -35,8 +36,8 @@ typedef struct
 
 typedef struct
 {
-    enum SessionType sessiontype;
-    struct MHD_PostProcessor *postprocessor;
+    enum SessionType sessionType;
+    struct MHD_PostProcessor *postProcessor;
     std::vector<char> data;
     CameraInfo cameraInfo;
     TimeInfo timeInfo;

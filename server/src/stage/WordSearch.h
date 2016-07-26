@@ -9,7 +9,7 @@
 #include <QEvent>
 #include "adapter/RTABMapDBAdapter.h"
 #include "stage/SignatureSearch.h"
-#include "stage/HTTPServer.h"
+#include "data/SessionInfo.h"
 #include "util/Time.h"
 
 class SignatureSearch;

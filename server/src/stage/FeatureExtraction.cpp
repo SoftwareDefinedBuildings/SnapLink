@@ -33,9 +33,9 @@ bool FeatureExtraction::event(QEvent *event)
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
         std::unique_ptr<rtabmap::SensorData> sensorData = imageEvent->takeSensorData();
-        ConnectionInfo *conInfo = imageEvent->conInfo();
-        extractFeatures(*sensorData, conInfo);
-        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), conInfo));
+        SessionInfo *sessionInfo = imageEvent->sessionInfo();
+        extractFeatures(*sensorData, sessionInfo);
+        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), sessionInfo));
         return true;
     }
     return QObject::event(event);
@@ -43,7 +43,7 @@ bool FeatureExtraction::event(QEvent *event)
 
 void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData, void *context) const
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
+    SessionInfo *sessionInfo = (SessionInfo *) context;
     cv::Mat imageMono;
     if (sensorData.imageRaw().channels() == 3)
     {
@@ -54,13 +54,13 @@ void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData, void *c
         imageMono = sensorData.imageRaw();
     }
 
-    con_info->time.keypoints_start = getTime(); // start of generateKeypoints
+    sessionInfo->timeInfo.keypoints_start = getTime(); // start of generateKeypoints
     std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(imageMono);
-    con_info->time.keypoints += getTime() - con_info->time.keypoints_start; // end of generateKeypoints
+    sessionInfo->timeInfo.keypoints += getTime() - sessionInfo->timeInfo.keypoints_start; // end of generateKeypoints
 
-    con_info->time.descriptors_start = getTime(); // start of generateDescriptors
+    sessionInfo->timeInfo.descriptors_start = getTime(); // start of generateDescriptors
     cv::Mat descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-    con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
+    sessionInfo->timeInfo.descriptors += getTime() - sessionInfo->timeInfo.descriptors_start; // end of SURF extraction
 
     sensorData.setFeatures(keypoints, descriptors);
 }

@@ -2,11 +2,11 @@
 
 const QEvent::Type WordEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
-WordEvent::WordEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, ConnectionInfo *conInfo) :
+WordEvent::WordEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, SessionInfo *sessionInfo) :
     QEvent(WordEvent::type()),
     _wordIds(std::move(wordIds)),
     _sensorData(std::move(sensorData)),
-    _conInfo(conInfo)
+    _sessionInfo(sessionInfo)
 {
 }
 
@@ -20,9 +20,9 @@ std::unique_ptr<rtabmap::SensorData> WordEvent::takeSensorData()
     return std::move(_sensorData);
 }
 
-ConnectionInfo *WordEvent::conInfo() const
+SessionInfo *WordEvent::sessionInfo() const
 {
-    return _conInfo;
+    return _sessionInfo;
 }
 
 QEvent::Type WordEvent::type()

@@ -44,8 +44,8 @@ bool SignatureSearch::event(QEvent *event)
         std::unique_ptr< std::vector<int> > wordIds = wordEvent->takeWordIds();
         std::unique_ptr<rtabmap::SensorData> sensorData = wordEvent->takeSensorData();
         std::unique_ptr< std::vector<Signature *> > signatures(new std::vector<Signature *>());
-        *signatures = searchSignatures(*wordIds, wordEvent->conInfo());
-        QCoreApplication::postEvent(_perspective, new SignatureEvent(std::move(wordIds), std::move(sensorData), std::move(signatures), wordEvent->conInfo()));
+        *signatures = searchSignatures(*wordIds, wordEvent->sessionInfo());
+        QCoreApplication::postEvent(_perspective, new SignatureEvent(std::move(wordIds), std::move(sensorData), std::move(signatures), wordEvent->sessionInfo()));
         return true;
     }
     return QObject::event(event);
@@ -53,11 +53,11 @@ bool SignatureSearch::event(QEvent *event)
 
 std::vector<Signature *> SignatureSearch::searchSignatures(const std::vector<int> &wordIds, void *context) const
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
+    SessionInfo *sessionInfo = (SessionInfo *) context;
 
-    con_info->time.search_start = getTime();
+    sessionInfo->timeInfo.search_start = getTime();
     std::vector<int> topIds = _signatures->findKNN(wordIds, TOP_K);
-    con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
+    sessionInfo->timeInfo.search += getTime() - sessionInfo->timeInfo.search_start; // end of find closest match
     int topSigId = topIds[0];
     Signature *topSig = _signatures->getSignatures().at(topSigId);
 

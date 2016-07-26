@@ -5,6 +5,7 @@
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
 #include <memory>
+#include "data/Labels.h"
 #include "stage/HTTPServer.h"
 
 class HTTPServer;

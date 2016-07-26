@@ -53,7 +53,7 @@ private:
                                   struct MHD_Connection *connection,
                                   void **con_cls,
                                   enum MHD_RequestTerminationCode toe);
-    static int sendPge(struct MHD_Connection *connection, const std::string &page, int status_code);
+    static int sendPage(struct MHD_Connection *connection, const std::string &page, int status_code);
 
 private:
     static const std::string busypage;

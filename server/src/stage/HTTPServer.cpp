@@ -85,14 +85,14 @@ bool HTTPServer::event(QEvent *event)
         DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
         std::unique_ptr<SessionInfo> sessionInfo = detectionEvent->takeSessionInfo();
         sessionInfo->names = detectionEvent->takeNames();
-        sessionInfo->detected.release();
+        sessionInfo->detected->release();
         return true;
     }
     else if (event->type() == FailureEvent::type())
     {
         FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
         std::unique_ptr<SessionInfo> sessionInfo = failureEvent->takeSessionInfo();
-        sessionInfo->detected.release();
+        sessionInfo->detected->release();
         return true;
     }
     return QObject::event(event);
@@ -112,7 +112,7 @@ int HTTPServer::answerConnection(void *cls,
     if (*con_cls == nullptr)
     {
 
-        if (httpServer->numClients() >= httpServer->maxClients())
+        if (httpServer->getNumClients() >= httpServer->getMaxClients())
         {
             return sendPage(connection, busypage, MHD_HTTP_SERVICE_UNAVAILABLE);
         }
@@ -134,25 +134,25 @@ int HTTPServer::answerConnection(void *cls,
 
         if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
         {
-            sessionInfo->postprocessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iteratePost, (void *)sessionInfo);
+            sessionInfo->postProcessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iteratePost, (void *)&sessionInfo);
 
-            if (sessionInfo->postprocessor == nullptr)
+            if (sessionInfo->postProcessor == nullptr)
             {
                 return MHD_NO;
             }
 
             httpServer->setNumClients(httpServer->getNumClients() + 1);
 
-            sessionInfo->connectiontype = POST;
-            sessionInfo->answercode.reset(new int(MHD_HTTP_OK));
-            sessionInfo->answerstring.reset(new std::string(completepage));
+            sessionInfo->sessionType = POST;
+            sessionInfo->answerCode.reset(new int(MHD_HTTP_OK));
+            sessionInfo->answerString.reset(new std::string(completepage));
         }
         else
         {
-            sessionInfo->connectiontype = GET;
+            sessionInfo->sessionType = GET;
         }
 
-        *con_cls = static_cast<void *>(sessionInfo);
+        *con_cls = static_cast<void *>(&sessionInfo);
 
         return MHD_YES;
     }
@@ -165,11 +165,11 @@ int HTTPServer::answerConnection(void *cls,
 
     if (strcasecmp(method, MHD_HTTP_METHOD_POST) == 0)
     {
-        std::unique_ptr<SessionInfo> sessionInfo = static_cast< std::unique_ptr<SessionInfo> >(*con_cls);
+        std::unique_ptr<SessionInfo> sessionInfo = std::move(*static_cast<std::unique_ptr<SessionInfo> *>(*con_cls));
 
         if (*upload_data_size != 0)
         {
-            MHD_post_process(sessionInfo->postprocessor, upload_data, *upload_data_size);
+            MHD_post_process(sessionInfo->postProcessor, upload_data, *upload_data_size);
             *upload_data_size = 0;
 
             return MHD_YES;
@@ -181,13 +181,13 @@ int HTTPServer::answerConnection(void *cls,
             if (!sessionInfo->data.empty())
             {
                 // all data are received
-                sessionInfo->time.overall_start = getTime(); // log start of processing
+                sessionInfo->timeInfo.overall_start = getTime(); // log start of processing
                 // seperate ownership of data from sessionInfo
                 QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(sessionInfo.release()));
             }
 
             // wait for the result to come
-            detected.acquire();
+            detected->acquire();
 
             std::shared_ptr< std::vector<std::string> > names = sessionInfo->names;
             std::shared_ptr<std::string> answerString = sessionInfo->answerString;
@@ -195,13 +195,13 @@ int HTTPServer::answerConnection(void *cls,
 
             if (names != nullptr && !names->empty())
             {
-                *answerstring = names->at(0);
+                *answerString = names->at(0);
             }
             else
             {
-                *answerstring = "None";
+                *answerString = "None";
             }
-            return sendPage(connection, *answerstring, *answercode);
+            return sendPage(connection, *answerString, *answerCode);
         }
     }
 
@@ -220,8 +220,8 @@ int HTTPServer::iteratePost(void *coninfo_cls,
 {
     SessionInfo *con_info = (SessionInfo *) coninfo_cls;
 
-    con_info->answerstring = servererrorpage;
-    con_info->answercode = MHD_HTTP_INTERNAL_SERVER_ERROR;
+    *(con_info->answerString) = servererrorpage;
+    *(con_info->answerCode) = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
     if (strcmp(key, "file") != 0 && strcmp(key, "fx") != 0 && strcmp(key, "fy") != 0 && strcmp(key, "cx") != 0 && strcmp(key, "cy") != 0)
     {
@@ -264,8 +264,8 @@ int HTTPServer::iteratePost(void *coninfo_cls,
         }
     }
 
-    con_info->answerstring = completepage;
-    con_info->answercode = MHD_HTTP_OK;
+    *(con_info->answerString) = completepage;
+    *(con_info->answerCode) = MHD_HTTP_OK;
 
     return MHD_YES;
 }
@@ -284,21 +284,21 @@ void HTTPServer::requestCompleted(void *cls,
         return;
     }
 
-    if (con_info->connectiontype == POST)
+    if (con_info->sessionType == POST)
     {
-        con_info->time.overall = getTime() - con_info->time.overall_start; // log processing end time
+        con_info->timeInfo.overall = getTime() - con_info->timeInfo.overall_start; // log processing end time
 
-        UINFO("TAG_TIME overall %ld", con_info->time.overall);
-        UINFO("TAG_TIME keypoints %ld", con_info->time.keypoints);
-        UINFO("TAG_TIME descriptors %ld", con_info->time.descriptors);
-        UINFO("TAG_TIME vwd %ld", con_info->time.vwd);
-        UINFO("TAG_TIME search %ld", con_info->time.search);
-        UINFO("TAG_TIME pnp %ld", con_info->time.pnp);
+        UINFO("TAG_TIME overall %ld", con_info->timeInfo.overall);
+        UINFO("TAG_TIME keypoints %ld", con_info->timeInfo.keypoints);
+        UINFO("TAG_TIME descriptors %ld", con_info->timeInfo.descriptors);
+        UINFO("TAG_TIME vwd %ld", con_info->timeInfo.vwd);
+        UINFO("TAG_TIME search %ld", con_info->timeInfo.search);
+        UINFO("TAG_TIME pnp %ld", con_info->timeInfo.pnp);
 
-        if (con_info->postprocessor != nullptr)
+        if (con_info->postProcessor != nullptr)
         {
-            MHD_destroy_post_processor(con_info->postprocessor);
-            httpServer->numClients()--;
+            MHD_destroy_post_processor(con_info->postProcessor);
+            httpServer->setNumClients(httpServer->getNumClients() - 1);
         }
     }
 
