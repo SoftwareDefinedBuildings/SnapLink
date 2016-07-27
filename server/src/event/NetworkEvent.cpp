@@ -3,15 +3,27 @@
 const QEvent::Type NetworkEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-NetworkEvent::NetworkEvent(SessionInfo *sessionInfo) :
+NetworkEvent::NetworkEvent(std::unique_ptr< std::vector<char> > &&rawData, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(NetworkEvent::type()),
-    _sessionInfo(sessionInfo)
+    _rawData(std::move(rawData)),
+    _perfData(std::move(PerfData)),
+    _session(session)
 {
 }
 
-SessionInfo *NetworkEvent::sessionInfo() const
+std::unique_ptr< std::vector<char> > NetworkEvent::takeRawData()
 {
-    return _sessionInfo;
+    return std::move(_rawData);
+}
+
+std::unique_ptr<PerfData> NetworkEvent::takePerfData()
+{
+    return std::move(_perfData);
+}
+
+const void *NetworkEvent::getSession()
+{
+    return _session;
 }
 
 QEvent::Type NetworkEvent::type()

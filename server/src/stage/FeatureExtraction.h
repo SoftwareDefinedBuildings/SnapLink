@@ -23,7 +23,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    void extractFeatures(rtabmap::SensorData &sensorData, void *context) const;
+    void extractFeatures(rtabmap::SensorData &sensorData, PerfData &perfData) const;
 
 private:
     WordSearch *_wordSearch;

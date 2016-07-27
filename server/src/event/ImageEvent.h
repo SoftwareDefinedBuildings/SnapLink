@@ -3,22 +3,24 @@
 #include <QEvent>
 #include <rtabmap/core/SensorData.h>
 #include <memory>
-#include "data/SessionInfo.h"
+#include "data/PerfData.h"
 
 class ImageEvent :
     public QEvent
 {
 public:
     // ownership transfer
-    ImageEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, SessionInfo *sessionInfo);
+    ImageEvent(const void *session, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData);
 
+    const void *getSession();
     std::unique_ptr<rtabmap::SensorData> takeSensorData();
-    SessionInfo *sessionInfo() const;
+    std::unique_ptr<PerfData> takePerfData();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
+    const void *_session;
     std::unique_ptr<rtabmap::SensorData> _sensorData;
-    SessionInfo *_sessionInfo;
+    std::unique<PerfData> _perfData;
 };

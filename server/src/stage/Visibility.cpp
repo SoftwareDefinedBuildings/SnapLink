@@ -14,7 +14,7 @@
 #include "event/LocationEvent.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
-#include "data/SessionInfo.h"
+#include "data/PerfData.h"
 
 Visibility::Visibility() :
     _httpServer(nullptr)
@@ -43,16 +43,16 @@ bool Visibility::event(QEvent *event)
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
         std::unique_ptr<rtabmap::SensorData> sensorData = locEvent->takeSensorData();
         std::unique_ptr<rtabmap::Transform> pose = locEvent->takePose();
-        std::unique_ptr<SessionInfo> sessionInfo(locEvent->sessionInfo());
+        std::unique_ptr<PerfData> PerfData = locEvent->takePerfData();
         std::unique_ptr< std::vector<std::string> > names(new std::vector<std::string>()); 
         *names = process(locEvent->dbId(), *sensorData, *pose);
         if (!names->empty())
         {
-            QCoreApplication::postEvent(_httpServer, new DetectionEvent(std::move(names), std::move(sessionInfo)));
+            QCoreApplication::postEvent(_httpServer, new DetectionEvent(std::move(names), std::move(PerfData)));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(std::move(sessionInfo)));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(std::move(PerfData)));
         }
         return true;
     }

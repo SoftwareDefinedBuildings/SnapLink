@@ -3,15 +3,15 @@
 const QEvent::Type FailureEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-FailureEvent::FailureEvent(std::unique_ptr<SessionInfo> &&sessionInfo) :
+FailureEvent::FailureEvent(, const void *session) :
     QEvent(FailureEvent::type()),
-    _sessionInfo(std::move(sessionInfo))
+    _session(session)
 {
 }
 
-std::unique_ptr<SessionInfo> FailureEvent::takeSessionInfo()
+const void *FailureEvent::getSession()
 {
-    return std::move(_sessionInfo);
+    return _session;
 }
 
 QEvent::Type FailureEvent::type()

@@ -9,7 +9,7 @@
 #include <QEvent>
 #include "adapter/RTABMapDBAdapter.h"
 #include "stage/SignatureSearch.h"
-#include "data/SessionInfo.h"
+#include "data/PerfData.h"
 #include "util/Time.h"
 
 class SignatureSearch;
@@ -29,7 +29,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<int> searchWords(const rtabmap::SensorData &sensorData, void *context) const;
+    std::vector<int> searchWords(const rtabmap::SensorData &sensorData, PerfData &perfData) const;
 
 private:
     std::unique_ptr<Words> _words;

@@ -1,20 +1,24 @@
 #pragma once
 
 #include <QEvent>
-#include "data/SessionInfo.h"
+#include <memory>
+#include "data/PerfData.h"
 
 class NetworkEvent :
     public QEvent
 {
 public:
-    // ownership transfer
-    NetworkEvent(SessionInfo *sessionInfo);
+    NetworkEvent(std::unique_ptr< std::vector<char> > &&rawData, std::unique_ptr<PerfData> &&perfData, const void *session = nullptr);
 
-    SessionInfo *sessionInfo() const;
+    std::unique_ptr< std::vector<char> > takeRawData();
+    std::unique_ptr<PerfData> takePerfData();
+    const void *getSession();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
-    SessionInfo *_sessionInfo;
+    const void *_session;
+    std::unique_ptr< std::vector<char> > _rawData;
+    std::unique_ptr<PerfData> _perfData;
 };

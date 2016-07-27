@@ -1,8 +1,11 @@
 #pragma once
 
 #include <QObject>
+#include <QSemaphore>
+#include <microhttpd.h>
+#include <memory>
 #include "stage/CameraNetwork.h"
-#include "data/SessionInfo.h"
+#include "data/PerfData.h"
 
 #define PORT 8080
 #define MAX_CLIENTS 10
@@ -66,3 +69,29 @@ private:
     unsigned int _numClients;
     CameraNetwork *_camera;
 };
+
+enum ConnectionType
+{
+    POST = 0
+};
+
+// TODO delete after combine cameranetwork and http server
+typedef struct
+{
+    double fx;
+    double fy;
+    double cx;
+    double cy;
+} CameraInfo;
+
+typedef struct
+{
+    enum ConnectionType sessionType;
+    struct MHD_PostProcessor *postProcessor;
+    CameraInfo cameraInfo;
+    QSemaphore detected;
+    std::string answerString;
+    std::unique_ptr< std::vector<std::string> > names;
+    std::unique_ptr<PerfData> PerfData;
+    std::unique_ptr< std::vector<char> > rawData;
+} ConnectionInfo;

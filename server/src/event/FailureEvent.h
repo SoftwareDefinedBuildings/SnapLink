@@ -2,19 +2,19 @@
 
 #include <QEvent>
 #include <memory>
-#include "data/SessionInfo.h"
+#include "data/PerfData.h"
 
 class FailureEvent :
     public QEvent
 {
 public:
-    FailureEvent(std::unique_ptr<SessionInfo> &&sessionInfo);
+    FailureEvent(const void *session = nullptr);
 
-    std::unique_ptr<SessionInfo> takeSessionInfo();
+    const void *getSession();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
-    std::unique_ptr<SessionInfo> _sessionInfo;
+    const void *_session;
 };
