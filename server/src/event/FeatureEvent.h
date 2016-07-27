@@ -2,6 +2,7 @@
 
 #include <rtabmap/core/SensorData.h>
 #include <QEvent>
+#include <memory>
 #include "data/PerfData.h"
 
 class FeatureEvent :

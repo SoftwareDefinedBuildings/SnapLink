@@ -38,21 +38,22 @@ bool CameraNetwork::event(QEvent *event)
         NetworkEvent *networkEvent = static_cast<NetworkEvent *>(event);
 
         std::unique_ptr< std::vector<char> > rawData = networkEvent->takeRawData();
-        std::unique_ptr<PerfData> PerfData = networkEvent->takePerfData();
+        std::unique_ptr<PerfData> perfData = networkEvent->takePerfData();
+        const void *session = networkEvent->getSession();
 
         // read from client
         double fx = 562.25;
         double fy = 562.25;
         double cx = 240;
         double cy = 320;
-        std::unique_ptr<rtabmap::SensorData> sensorData = createSensorData(data, fx, fy, cx, cy);
+        std::unique_ptr<rtabmap::SensorData> sensorData = createSensorData(*rawData, fx, fy, cx, cy);
         if (sensorData != nullptr)
         {
-            QCoreApplication::postEvent(_feature, new ImageEvent(std::move(sensorData), std::move(PerfData)));
+            QCoreApplication::postEvent(_feature, new ImageEvent(std::move(sensorData), std::move(perfData), session));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(std::move(PerfData)));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
         }
         return true;
     }

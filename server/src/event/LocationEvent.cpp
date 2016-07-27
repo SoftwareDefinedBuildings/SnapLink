@@ -8,7 +8,8 @@ LocationEvent::LocationEvent(int dbId, std::unique_ptr<rtabmap::SensorData> &&se
     _dbId(dbId),
     _sensorData(std::move(sensorData)),
     _pose(std::move(pose)),
-    _perfData(std::move(PerfData))
+    _perfData(std::move(perfData)),
+    _session(session)
 {
 }
 

@@ -62,17 +62,18 @@ bool Perspective::event(QEvent *event)
         std::unique_ptr< std::vector<int> > wordIds = signatureEvent->takeWordIds();
         std::unique_ptr<rtabmap::SensorData> sensorData = signatureEvent->takeSensorData();
         std::unique_ptr< std::vector<Signature *> > signatures = signatureEvent->takeSignatures();
-        std::unique_ptr<PerfData> PerfData = signatureEvent->takePerfData();
+        std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
+        const void *session = signatureEvent->getSession();
         std::unique_ptr<rtabmap::Transform> pose(new rtabmap::Transform);
-        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)), *PerfData);
+        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)), *perfData);
         // a null pose notify that loc could not be computed
         if (pose->isNull() == false)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(signatures->at(0)->getDbId(), std::move(sensorData), std::move(pose), std::move(PerfData)));
+            QCoreApplication::postEvent(_vis, new LocationEvent(signatures->at(0)->getDbId(), std::move(sensorData), std::move(pose), std::move(perfData), session));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(std::move(PerfData)));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
         }
         return true;
     }
@@ -120,7 +121,7 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
         std::vector<int> matches;
         std::vector<int> inliers;
 
-        PerfData.timeInfo.pnp_start = getTime();
+        perfData.pnp_start = getTime();
         transform = rtabmap::util3d::estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
                         uMultimapToMapUnique(words),
@@ -135,7 +136,7 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
                         &variance,
                         &matches,
                         &inliers);
-        PerfData.timeInfo.pnp += getTime() - PerfData.timeInfo.pnp_start;
+        perfData.pnp += getTime() - perfData.pnp_start;
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {

@@ -6,7 +6,7 @@ WordEvent::WordEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_
     QEvent(WordEvent::type()),
     _wordIds(std::move(wordIds)),
     _sensorData(std::move(sensorData)),
-    _perfData(std::move(PerfData)),
+    _perfData(std::move(perfData)),
     _session(session)
 {
 }

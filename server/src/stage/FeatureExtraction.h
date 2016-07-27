@@ -5,6 +5,7 @@
 #include <rtabmap/core/Features2d.h>
 #include <QObject>
 #include "stage/WordSearch.h"
+#include "data/PerfData.h"
 
 class WordSearch;
 

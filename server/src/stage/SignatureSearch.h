@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QEvent>
 #include "data/Signatures.h"
+#include "data/PerfData.h"
 #include "stage/Perspective.h"
 #include "util/Time.h"
 

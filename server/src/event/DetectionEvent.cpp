@@ -5,7 +5,7 @@ const QEvent::Type DetectionEvent::_type = static_cast<QEvent::Type>(QEvent::reg
 DetectionEvent::DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(DetectionEvent::type()),
     _names(std::move(names)),
-    _perfData(std::move(PerfData)),
+    _perfData(std::move(perfData)),
     _session(session)
 {
 }

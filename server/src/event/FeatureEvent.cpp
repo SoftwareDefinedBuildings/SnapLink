@@ -6,7 +6,7 @@ const QEvent::Type FeatureEvent::_type = static_cast<QEvent::Type>(QEvent::regis
 FeatureEvent::FeatureEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(FeatureEvent::type()),
     _sensorData(std::move(sensorData)),
-    _perfData(std::move(PerfData)),
+    _perfData(std::move(perfData)),
     _session(session)
 {
 }

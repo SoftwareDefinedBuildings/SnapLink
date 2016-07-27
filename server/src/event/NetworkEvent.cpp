@@ -6,7 +6,7 @@ const QEvent::Type NetworkEvent::_type = static_cast<QEvent::Type>(QEvent::regis
 NetworkEvent::NetworkEvent(std::unique_ptr< std::vector<char> > &&rawData, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(NetworkEvent::type()),
     _rawData(std::move(rawData)),
-    _perfData(std::move(PerfData)),
+    _perfData(std::move(perfData)),
     _session(session)
 {
 }

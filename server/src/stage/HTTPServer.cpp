@@ -81,16 +81,16 @@ bool HTTPServer::event(QEvent *event)
     if (event->type() == DetectionEvent::type())
     {
         DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
-        const ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(detectionEvent->getSession());
+        ConnectionInfo *connInfo = const_cast<ConnectionInfo *>(static_cast<const ConnectionInfo *>(detectionEvent->getSession()));
         connInfo->names = detectionEvent->takeNames();
-        connInfo->PerfData = detectionEvent->takePerfData();
+        connInfo->perfData = detectionEvent->takePerfData();
         connInfo->detected.release();
         return true;
     }
     else if (event->type() == FailureEvent::type())
     {
         FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-        const ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(detectionEvent->getSession());
+        ConnectionInfo *connInfo = const_cast<ConnectionInfo *>(static_cast<const ConnectionInfo *>(failureEvent->getSession()));
         connInfo->detected.release();
         return true;
     }
@@ -122,7 +122,7 @@ int HTTPServer::answerConnection(void *cls,
 
         ConnectionInfo *connInfo = new ConnectionInfo();
 
-        connInfo->perfData->reset(new PerfData());
+        connInfo->perfData.reset(new PerfData());
 
         // reserve enough space for an image
         connInfo->rawData.reset(new std::vector<char>());
@@ -154,11 +154,11 @@ int HTTPServer::answerConnection(void *cls,
     }
     else
     {
-        if (!connInfo->rawData.empty())
+        if (!connInfo->rawData->empty())
         {
             // all data are received
-            connInfo->PerfData->overall_start = getTime(); // log start of processing
-            QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(std::move(connInfo->rawData), std::move(connInfo->PerfData)));
+            connInfo->perfData->overall_start = getTime(); // log start of processing
+            QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(std::move(connInfo->rawData), std::move(connInfo->perfData), connInfo));
         }
 
         // wait for the result to come
@@ -197,7 +197,7 @@ int HTTPServer::iteratePost(void *coninfo_cls,
     {
         if (strcmp(key, "file") == 0)
         {
-            connInfo->rawData.insert(connInfo->rawData.end(), data, data + size);
+            connInfo->rawData->insert(connInfo->rawData->end(), data, data + size);
         }
         else if (strcmp(key, "fx") == 0)
         {
@@ -248,7 +248,7 @@ void HTTPServer::requestCompleted(void *cls,
 
     if (connInfo->perfData != nullptr)
     {
-        connInfo->PerfData->overall = getTime() - connInfo->PerfData->overall_start; // log processing end time
+        connInfo->perfData->overall = getTime() - connInfo->perfData->overall_start; // log processing end time
 
         UINFO("TAG_TIME overall %ld", connInfo->perfData->overall);
         UINFO("TAG_TIME keypoints %ld", connInfo->perfData->keypoints);
@@ -256,7 +256,6 @@ void HTTPServer::requestCompleted(void *cls,
         UINFO("TAG_TIME vwd %ld", connInfo->perfData->vwd);
         UINFO("TAG_TIME search %ld", connInfo->perfData->search);
         UINFO("TAG_TIME pnp %ld", connInfo->perfData->pnp);
-
     }
 
     if (connInfo->postProcessor != nullptr)
@@ -272,7 +271,7 @@ void HTTPServer::requestCompleted(void *cls,
 
 int HTTPServer::sendPage(struct MHD_Connection *connection, const std::string &page, int status_code)
 {
-    struct MHD_Response *response = MHD_create_response_from_buffer(page.length(), (void *) page.c_str(), MHD_RESPMEM_MUST_COPY);
+    struct MHD_Response *response = MHD_create_response_from_buffer(page.length(), const_cast<void *>(static_cast<const void *>(page.c_str())),  MHD_RESPMEM_PERSISTENT);
     if (!response)
     {
         return MHD_NO;

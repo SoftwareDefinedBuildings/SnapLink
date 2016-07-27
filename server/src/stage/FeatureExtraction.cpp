@@ -33,9 +33,10 @@ bool FeatureExtraction::event(QEvent *event)
     {
         ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
         std::unique_ptr<rtabmap::SensorData> sensorData = imageEvent->takeSensorData();
-        std::unique_ptr<PerfData> PerfData = imageEvent->takePerfData();
-        extractFeatures(*sensorData, *PerfData);
-        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), std::move(PerfData)));
+        std::unique_ptr<PerfData> perfData = imageEvent->takePerfData();
+        const void *session = imageEvent->getSession();
+        extractFeatures(*sensorData, *perfData);
+        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), std::move(perfData), session));
         return true;
     }
     return QObject::event(event);
@@ -53,13 +54,13 @@ void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData, PerfDat
         imageMono = sensorData.imageRaw();
     }
 
-    PerfData.timeInfo.keypoints_start = getTime(); // start of generateKeypoints
+    perfData.keypoints_start = getTime(); // start of generateKeypoints
     std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(imageMono);
-    PerfData.timeInfo.keypoints += getTime() - PerfData.timeInfo.keypoints_start; // end of generateKeypoints
+    perfData.keypoints += getTime() - perfData.keypoints_start; // end of generateKeypoints
 
-    PerfData.timeInfo.descriptors_start = getTime(); // start of generateDescriptors
+    perfData.descriptors_start = getTime(); // start of generateDescriptors
     cv::Mat descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-    PerfData.timeInfo.descriptors += getTime() - PerfData.timeInfo.descriptors_start; // end of SURF extraction
+    perfData.descriptors += getTime() - perfData.descriptors_start; // end of SURF extraction
 
     sensorData.setFeatures(keypoints, descriptors);
 }

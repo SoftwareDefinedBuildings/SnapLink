@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QEvent>
+#include <memory>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Transform.h>
 #include "data/PerfData.h"
@@ -22,6 +23,7 @@ public:
 
 private:
     static const QEvent::Type _type;
+    const void *_session;
     int _dbId;
     std::unique_ptr<rtabmap::SensorData> _sensorData;
     std::unique_ptr<rtabmap::Transform> _pose;

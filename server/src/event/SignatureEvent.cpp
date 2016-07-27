@@ -8,7 +8,7 @@ SignatureEvent::SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, st
     _wordIds(std::move(wordIds)),
     _sensorData(std::move(sensorData)),
     _signatures(std::move(signatures)),
-    _perfData(std::move(PerfData)),
+    _perfData(std::move(perfData)),
     _session(session)
 {
 }

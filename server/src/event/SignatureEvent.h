@@ -22,6 +22,7 @@ public:
 
 private:
     static const QEvent::Type _type;
+    const void *_session;
     std::unique_ptr< std::vector<int> > _wordIds;
     std::unique_ptr<rtabmap::SensorData> _sensorData;
     std::unique_ptr< std::vector<Signature *> > _signatures;

@@ -42,11 +42,12 @@ bool WordSearch::event(QEvent *event)
     {
         FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
         std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->takeSensorData();
-        std::unique_ptr<PerfData> PerfData = featureEvent->takePerfData();
+        std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
+        const void *session = featureEvent->getSession();
         std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
-        *wordIds = searchWords(*sensorData, *PerfData);
+        *wordIds = searchWords(*sensorData, *perfData);
         // a null pose notify that loc could not be computed
-        QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), std::move(PerfData)));
+        QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), std::move(perfData)));
         return true;
     }
     return QObject::event(event);
@@ -64,9 +65,9 @@ std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData, 
     std::vector<int> wordIds;
     if (descriptors.rows)
     {
-        PerfData.timeInfo.vwd_start = getTime();
+        perfData.vwd_start = getTime();
         wordIds = _words->findNNs(descriptors);
-        PerfData.timeInfo.vwd += getTime() - PerfData.timeInfo.vwd_start;
+        perfData.vwd += getTime() - perfData.vwd_start;
     }
 
     return wordIds;
