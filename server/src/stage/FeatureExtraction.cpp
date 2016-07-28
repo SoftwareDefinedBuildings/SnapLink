@@ -1,6 +1,6 @@
 #include <QCoreApplication>
 #include "stage/FeatureExtraction.h"
-#include "event/ImageEvent.h"
+#include "event/QueryEvent.h"
 #include "event/FeatureEvent.h"
 #include "util/Time.h"
 
@@ -29,12 +29,12 @@ void FeatureExtraction::setWordSearch(WordSearch *wordSearch)
 
 bool FeatureExtraction::event(QEvent *event)
 {
-    if (event->type() == ImageEvent::type())
+    if (event->type() == QueryEvent::type())
     {
-        ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = imageEvent->takeSensorData();
-        std::unique_ptr<PerfData> perfData = imageEvent->takePerfData();
-        const void *session = imageEvent->getSession();
+        QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
+        std::unique_ptr<rtabmap::SensorData> sensorData = queryEvent->takeSensorData();
+        std::unique_ptr<PerfData> perfData = queryEvent->takePerfData();
+        const void *session = queryEvent->getSession();
 
         perfData->featuresStart = getTime();
         extractFeatures(*sensorData);

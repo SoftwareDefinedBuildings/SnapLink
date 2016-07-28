@@ -11,7 +11,7 @@ class LocationEvent :
 {
 public:
     // ownership transfer
-    LocationEvent(int dbId, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<rtabmap::Transform> &&pose, std::unique_ptr<PerfData> &&perfData, const void *session = nullptr);
+    LocationEvent(int dbId, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<rtabmap::Transform> &&pose, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     int dbId() const;
     std::unique_ptr<rtabmap::SensorData> takeSensorData();

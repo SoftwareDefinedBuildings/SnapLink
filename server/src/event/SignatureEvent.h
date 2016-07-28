@@ -10,7 +10,7 @@ class SignatureEvent :
 {
 public:
     // ownership transfer
-    SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr< std::vector<Signature *> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session = nullptr);
+    SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr< std::vector<Signature *> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     std::unique_ptr< std::vector<int> > takeWordIds();
     std::unique_ptr<rtabmap::SensorData> takeSensorData();

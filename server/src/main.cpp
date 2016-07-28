@@ -12,7 +12,6 @@
 #include "data/LabelsSimple.h"
 #include "stage/HTTPServer.h"
 #include "adapter/RTABMapDBAdapter.h"
-#include "stage/CameraNetwork.h"
 #include "stage/FeatureExtraction.h"
 #include "stage/Perspective.h"
 #include "stage/SignatureSearch.h"
@@ -45,14 +44,12 @@ int main(int argc, char *argv[])
     std::unique_ptr<SignaturesSimple> signatures(new SignaturesSimple());
     std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
     HTTPServer httpServer;
-    CameraNetwork camera;
     FeatureExtraction feature;
     WordSearch wordSearch;
     SignatureSearch signatureSearch;
     Perspective perspective;
     Visibility vis;
 
-    QThread cameraThread;
     QThread featureThread;
     QThread wordSearchThread;
     QThread signatureSearchThread;
@@ -122,16 +119,9 @@ int main(int argc, char *argv[])
     feature.moveToThread(&featureThread);
     featureThread.start();
 
-    // CameraNetwork
-    UINFO("Initializing camera");
-    camera.setHTTPServer(&httpServer);
-    camera.setFeatureExtraction(&feature);
-    camera.moveToThread(&cameraThread);
-    cameraThread.start();
-
     // HTTPServer
     UINFO("Initializing HTTP server");
-    httpServer.setCamera(&camera);
+    httpServer.setFeatureExtraction(&feature);
     if (!httpServer.start())
     {
         UERROR("Starting HTTP Server failed");

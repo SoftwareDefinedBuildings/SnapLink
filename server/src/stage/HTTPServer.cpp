@@ -5,7 +5,7 @@
 #include <QCoreApplication>
 
 #include "stage/HTTPServer.h"
-#include "event/NetworkEvent.h"
+#include "event/QueryEvent.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 
@@ -18,7 +18,7 @@ const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 HTTPServer::HTTPServer():
     _daemon(nullptr),
     _numClients(0),
-    _camera(nullptr)
+    _feature(nullptr)
 {
 }
 
@@ -26,7 +26,7 @@ HTTPServer::~HTTPServer()
 {
     stop();
     _numClients = 0;
-    _camera = nullptr;
+    _feature = nullptr;
 }
 
 bool HTTPServer::start(uint16_t port, unsigned int maxClients)
@@ -71,9 +71,9 @@ void HTTPServer::setNumClients(int numClients)
     _numClients = numClients;
 }
 
-void HTTPServer::setCamera(CameraNetwork *camera)
+void HTTPServer::setFeatureExtraction(FeatureExtraction *feature)
 {
-    _camera = camera;
+    _feature = feature;
 }
 
 bool HTTPServer::event(QEvent *event)
@@ -158,7 +158,8 @@ int HTTPServer::answerConnection(void *cls,
         {
             // all data are received
             connInfo->perfData->overallStart = getTime(); // log start of processing
-            QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(std::move(connInfo->rawData), std::move(connInfo->perfData), connInfo));
+            std::unique_ptr<rtabmap::SensorData> sensorData = createSensorData(*(connInfo->rawData), connInfo->cameraInfo.fx, connInfo->cameraInfo.fy, connInfo->cameraInfo.cx, connInfo->cameraInfo.cy);
+            QCoreApplication::postEvent(httpServer->_feature, new QueryEvent(std::move(sensorData), std::move(connInfo->perfData), connInfo));
         }
 
         // wait for the result to come
@@ -281,4 +282,30 @@ int HTTPServer::sendPage(struct MHD_Connection *connection, const std::string &p
     MHD_destroy_response(response);
 
     return ret;
+}
+
+std::unique_ptr<rtabmap::SensorData> HTTPServer::createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy)
+{
+    UDEBUG("");
+
+    // there is no data copy here, the cv::Mat has a pointer to the data
+    const bool copyData = false;
+    cv::Mat img = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+
+    if (img.empty())
+    {
+        return nullptr;
+    }
+
+    //imwrite("image.jpg", img);
+
+    if (!img.empty())
+    {
+        rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+        rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
+        std::unique_ptr<rtabmap::SensorData> sensorData(new rtabmap::SensorData(img, model));
+        return sensorData;
+    }
+
+    return nullptr;
 }

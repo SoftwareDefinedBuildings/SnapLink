@@ -8,7 +8,7 @@ class FailureEvent :
     public QEvent
 {
 public:
-    FailureEvent(const void *session = nullptr);
+    FailureEvent(const void *session);
 
     const void *getSession();
 

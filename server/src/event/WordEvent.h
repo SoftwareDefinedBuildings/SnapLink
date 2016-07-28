@@ -9,7 +9,7 @@ class WordEvent :
     public QEvent
 {
 public:
-    WordEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session = nullptr);
+    WordEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     std::unique_ptr<std::vector<int>> takeWordIds();
     std::unique_ptr<rtabmap::SensorData> takeSensorData();

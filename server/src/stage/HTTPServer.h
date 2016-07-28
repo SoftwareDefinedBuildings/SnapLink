@@ -4,15 +4,15 @@
 #include <QSemaphore>
 #include <microhttpd.h>
 #include <memory>
-#include "stage/CameraNetwork.h"
 #include "data/PerfData.h"
+#include "stage/FeatureExtraction.h"
 
 #define PORT 8080
 #define MAX_CLIENTS 10
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
 
-class CameraNetwork;
+class FeatureExtraction;
 
 class HTTPServer :
     public QObject
@@ -28,7 +28,7 @@ public:
     int getNumClients() const;
     void setNumClients(int numClients);
 
-    void setCamera(CameraNetwork *camera);
+    void setFeatureExtraction(FeatureExtraction *feature);
 
 protected:
     virtual bool event(QEvent *event);
@@ -57,6 +57,7 @@ private:
                                  void **con_cls,
                                  enum MHD_RequestTerminationCode toe);
     static int sendPage(struct MHD_Connection *connection, const std::string &page, int status_code);
+    static std::unique_ptr<rtabmap::SensorData> createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy);
 
 private:
     static const std::string busypage;
@@ -67,7 +68,7 @@ private:
     struct MHD_Daemon *_daemon;
     unsigned int _maxClients;
     unsigned int _numClients;
-    CameraNetwork *_camera;
+    FeatureExtraction *_feature;
 };
 
 enum ConnectionType

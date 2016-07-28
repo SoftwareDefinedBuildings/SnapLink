@@ -9,7 +9,7 @@ class DetectionEvent :
     public QEvent
 {
 public:
-    DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, std::unique_ptr<PerfData> &&perfData, const void *session = nullptr);
+    DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     std::unique_ptr< std::vector<std::string> > takeNames();
     std::unique_ptr<PerfData> takePerfData();

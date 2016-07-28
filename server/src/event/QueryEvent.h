@@ -5,12 +5,12 @@
 #include <memory>
 #include "data/PerfData.h"
 
-class ImageEvent :
+class QueryEvent :
     public QEvent
 {
 public:
     // ownership transfer
-    ImageEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session = nullptr);
+    QueryEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     std::unique_ptr<rtabmap::SensorData> takeSensorData();
     std::unique_ptr<PerfData> takePerfData();
