@@ -8,9 +8,7 @@
 #include <QObject>
 #include <QEvent>
 #include "data/Signatures.h"
-#include "data/PerfData.h"
 #include "stage/Perspective.h"
-#include "util/Time.h"
 
 #define TOP_K 1
 
@@ -30,7 +28,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<Signature *> searchSignatures(const std::vector<int> &wordIds, PerfData &perfData) const;
+    std::vector<Signature *> searchSignatures(const std::vector<int> &wordIds) const;
 
 private:
     std::unique_ptr<Signatures> _signatures;

@@ -157,7 +157,7 @@ int HTTPServer::answerConnection(void *cls,
         if (!connInfo->rawData->empty())
         {
             // all data are received
-            connInfo->perfData->overall_start = getTime(); // log start of processing
+            connInfo->perfData->overallStart = getTime(); // log start of processing
             QCoreApplication::postEvent(httpServer->_camera, new NetworkEvent(std::move(connInfo->rawData), std::move(connInfo->perfData), connInfo));
         }
 
@@ -246,16 +246,16 @@ void HTTPServer::requestCompleted(void *cls,
         return;
     }
 
-    if (connInfo->perfData != nullptr)
+    std::unique_ptr<PerfData> perfData = std::move(connInfo->perfData);
+    if (perfData != nullptr)
     {
-        connInfo->perfData->overall = getTime() - connInfo->perfData->overall_start; // log processing end time
+        perfData->overallEnd = getTime(); // log processing end time
 
-        UINFO("TAG_TIME overall %ld", connInfo->perfData->overall);
-        UINFO("TAG_TIME keypoints %ld", connInfo->perfData->keypoints);
-        UINFO("TAG_TIME descriptors %ld", connInfo->perfData->descriptors);
-        UINFO("TAG_TIME vwd %ld", connInfo->perfData->vwd);
-        UINFO("TAG_TIME search %ld", connInfo->perfData->search);
-        UINFO("TAG_TIME pnp %ld", connInfo->perfData->pnp);
+        UINFO("TAG_TIME overall %ld", perfData->overallEnd - perfData->overallStart);
+        UINFO("TAG_TIME features %ld", perfData->featuresEnd - perfData->featuresStart);
+        UINFO("TAG_TIME words %ld", perfData->wordsEnd - perfData->wordsStart);
+        UINFO("TAG_TIME signatures %ld", perfData->signaturesEnd - perfData->signaturesStart);
+        UINFO("TAG_TIME perspective %ld", perfData->perspectiveEnd - perfData->perspectiveStart);
     }
 
     if (connInfo->postProcessor != nullptr)

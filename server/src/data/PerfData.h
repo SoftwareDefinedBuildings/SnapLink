@@ -3,16 +3,14 @@
 class PerfData
 {
 public:
-    long overall;
-    long overall_start;
-    long keypoints;
-    long keypoints_start;
-    long descriptors;
-    long descriptors_start;
-    long vwd;
-    long vwd_start;
-    long search;
-    long search_start;
-    long pnp;
-    long pnp_start;
+    long overallStart;
+    long overallEnd;
+    long featuresStart;
+    long featuresEnd;
+    long wordsStart;
+    long wordsEnd;
+    long signaturesStart;
+    long signaturesEnd;
+    long perspectiveStart;
+    long perspectiveEnd;
 };

@@ -14,6 +14,7 @@
 #include "event/FeatureEvent.h"
 #include "event/WordEvent.h"
 #include "data/Signature.h"
+#include "data/PerfData.h"
 #include "util/Time.h"
 
 WordSearch::WordSearch() :
@@ -45,7 +46,9 @@ bool WordSearch::event(QEvent *event)
         std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
         const void *session = featureEvent->getSession();
         std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
-        *wordIds = searchWords(*sensorData, *perfData);
+        perfData->wordsStart = getTime();
+        *wordIds = searchWords(*sensorData);
+        perfData->wordsEnd = getTime();
         // a null pose notify that loc could not be computed
         QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), std::move(perfData), session));
         return true;
@@ -53,9 +56,10 @@ bool WordSearch::event(QEvent *event)
     return QObject::event(event);
 }
 
-std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData, PerfData &perfData) const
+// TODO maybe only pass skeypoints, descriptors, and model
+std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData) const
 {
-    UASSERT(!sensorData.imageRaw().empty());
+    assert(!sensorData.imageRaw().empty());
 
     const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
 
@@ -65,9 +69,7 @@ std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData, 
     std::vector<int> wordIds;
     if (descriptors.rows)
     {
-        perfData.vwd_start = getTime();
         wordIds = _words->findNNs(descriptors);
-        perfData.vwd += getTime() - perfData.vwd_start;
     }
 
     return wordIds;

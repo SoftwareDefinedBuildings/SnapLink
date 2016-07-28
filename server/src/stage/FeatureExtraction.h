@@ -5,7 +5,6 @@
 #include <rtabmap/core/Features2d.h>
 #include <QObject>
 #include "stage/WordSearch.h"
-#include "data/PerfData.h"
 
 class WordSearch;
 
@@ -24,7 +23,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    void extractFeatures(rtabmap::SensorData &sensorData, PerfData &perfData) const;
+    void extractFeatures(rtabmap::SensorData &sensorData) const;
 
 private:
     WordSearch *_wordSearch;

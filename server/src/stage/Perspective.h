@@ -8,7 +8,6 @@
 #include <QEvent>
 #include "stage/Visibility.h"
 #include "stage/HTTPServer.h"
-#include "data/PerfData.h"
 #include "data/Signature.h"
 
 class Visibility;
@@ -31,7 +30,7 @@ protected:
 
 private:
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig, PerfData &perfData) const;
+    rtabmap::Transform localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const;
 
 private:
     Visibility *_vis;

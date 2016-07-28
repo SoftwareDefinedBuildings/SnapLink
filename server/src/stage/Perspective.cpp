@@ -14,6 +14,7 @@
 #include "event/SignatureEvent.h"
 #include "event/LocationEvent.h"
 #include "event/FailureEvent.h"
+#include "data/PerfData.h"
 #include "util/Time.h"
 
 Perspective::Perspective() :
@@ -65,7 +66,9 @@ bool Perspective::event(QEvent *event)
         std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
         const void *session = signatureEvent->getSession();
         std::unique_ptr<rtabmap::Transform> pose(new rtabmap::Transform);
-        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)), *perfData);
+        perfData->perspectiveStart = getTime();
+        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)));
+        perfData->perspectiveEnd = getTime();
         // a null pose notify that loc could not be computed
         if (pose->isNull() == false)
         {
@@ -80,7 +83,7 @@ bool Perspective::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig, PerfData &perfData) const
+rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const
 {
     const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
     UASSERT(!sensorData.imageRaw().empty());
@@ -121,7 +124,6 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
         std::vector<int> matches;
         std::vector<int> inliers;
 
-        perfData.pnp_start = getTime();
         transform = rtabmap::util3d::estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
                         uMultimapToMapUnique(words),
@@ -136,7 +138,6 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
                         &variance,
                         &matches,
                         &inliers);
-        perfData.pnp += getTime() - perfData.pnp_start;
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
