@@ -98,13 +98,13 @@ bool HTTPServer::event(QEvent *event)
 }
 
 int HTTPServer::answerConnection(void *cls,
-                                     struct MHD_Connection *connection,
-                                     const char *url,
-                                     const char *method,
-                                     const char *version,
-                                     const char *upload_data,
-                                     size_t *upload_data_size,
-                                     void **con_cls)
+                                 struct MHD_Connection *connection,
+                                 const char *url,
+                                 const char *method,
+                                 const char *version,
+                                 const char *upload_data,
+                                 size_t *upload_data_size,
+                                 void **con_cls)
 {
     if (strcasecmp(method, MHD_HTTP_METHOD_POST) != 0)
     {
@@ -127,7 +127,7 @@ int HTTPServer::answerConnection(void *cls,
         // reserve enough space for an image
         connInfo->rawData.reset(new std::vector<char>());
         connInfo->rawData->reserve(IMAGE_INIT_SIZE);
-        
+
         connInfo->postProcessor = MHD_create_post_processor(connection, POST_BUFFER_SIZE, iteratePost, static_cast<void *>(connInfo));
         if (connInfo->postProcessor == nullptr)
         {
@@ -177,17 +177,17 @@ int HTTPServer::answerConnection(void *cls,
 }
 
 int HTTPServer::iteratePost(void *coninfo_cls,
-                             enum MHD_ValueKind kind,
-                             const char *key,
-                             const char *filename,
-                             const char *content_type,
-                             const char *transfer_encoding,
-                             const char *data,
-                             uint64_t off,
-                             size_t size)
+                            enum MHD_ValueKind kind,
+                            const char *key,
+                            const char *filename,
+                            const char *content_type,
+                            const char *transfer_encoding,
+                            const char *data,
+                            uint64_t off,
+                            size_t size)
 {
     ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(coninfo_cls);
-    
+
     if (strcmp(key, "file") != 0 && strcmp(key, "fx") != 0 && strcmp(key, "fy") != 0 && strcmp(key, "cx") != 0 && strcmp(key, "cy") != 0)
     {
         return MHD_NO;
@@ -233,9 +233,9 @@ int HTTPServer::iteratePost(void *coninfo_cls,
 }
 
 void HTTPServer::requestCompleted(void *cls,
-                                   struct MHD_Connection *connection,
-                                   void **con_cls,
-                                   enum MHD_RequestTerminationCode toe)
+                                  struct MHD_Connection *connection,
+                                  void **con_cls,
+                                  enum MHD_RequestTerminationCode toe)
 {
     UDEBUG("");
     HTTPServer *httpServer = static_cast<HTTPServer *>(cls);

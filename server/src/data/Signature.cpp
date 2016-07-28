@@ -27,7 +27,7 @@ Signature::Signature(
 }
 
 Signature::~Signature()
-= default;
+    = default;
 
 int Signature::getId() const
 {

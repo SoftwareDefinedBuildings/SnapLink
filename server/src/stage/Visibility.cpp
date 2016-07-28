@@ -45,7 +45,7 @@ bool Visibility::event(QEvent *event)
         std::unique_ptr<rtabmap::Transform> pose = locEvent->takePose();
         std::unique_ptr<PerfData> perfData = locEvent->takePerfData();
         const void *session = locEvent->getSession();
-        std::unique_ptr< std::vector<std::string> > names(new std::vector<std::string>()); 
+        std::unique_ptr< std::vector<std::string> > names(new std::vector<std::string>());
         *names = process(locEvent->dbId(), *sensorData, *pose);
         if (!names->empty())
         {
