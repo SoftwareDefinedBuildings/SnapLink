@@ -47,7 +47,7 @@ bool SignatureSearch::event(QEvent *event)
         const void *session = wordEvent->getSession();
         std::unique_ptr< std::vector<Signature *> > signatures(new std::vector<Signature *>());
         *signatures = searchSignatures(*wordIds, *perfData);
-        QCoreApplication::postEvent(_perspective, new SignatureEvent(std::move(wordIds), std::move(sensorData), std::move(signatures), std::move(perfData)));
+        QCoreApplication::postEvent(_perspective, new SignatureEvent(std::move(wordIds), std::move(sensorData), std::move(signatures), std::move(perfData), session));
         return true;
     }
     return QObject::event(event);

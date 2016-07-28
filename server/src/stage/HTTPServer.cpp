@@ -165,7 +165,7 @@ int HTTPServer::answerConnection(void *cls,
         connInfo->detected.acquire();
 
         std::string answer = "None";
-        if (!connInfo->names->empty())
+        if (connInfo->names != nullptr && !connInfo->names->empty())
         {
             answer = std::move(connInfo->names->at(0));
         }

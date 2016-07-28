@@ -47,7 +47,7 @@ bool WordSearch::event(QEvent *event)
         std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
         *wordIds = searchWords(*sensorData, *perfData);
         // a null pose notify that loc could not be computed
-        QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), std::move(perfData)));
+        QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), std::move(perfData), session));
         return true;
     }
     return QObject::event(event);
