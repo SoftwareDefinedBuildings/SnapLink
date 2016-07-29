@@ -5,19 +5,16 @@
 class LabelsSimple : public Labels
 {
 public:
-    LabelsSimple();
-    virtual ~LabelsSimple();
-
     /**
      * Add labels, ownership transfer
      */
-    void addLabels(const std::list<Label *> &labels);
+    void putLabels(std::list< std::unique_ptr<Label> > &&labels);
 
     /**
      * get all labels
      */
-    const std::map< int, std::list<Label *> > &getLabels() const;
+    const std::map< int, std::list< std::unique_ptr<Label> > > &getLabels() const;
 
 private:
-    std::map< int, std::list<Label *> > _labels;
+    std::map< int, std::list< std::unique_ptr<Label> > > _labels;
 };

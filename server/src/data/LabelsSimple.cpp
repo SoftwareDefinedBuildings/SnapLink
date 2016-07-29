@@ -1,43 +1,28 @@
-#include <cassert>
 #include "data/LabelsSimple.h"
 
-LabelsSimple::LabelsSimple()
+void LabelsSimple::putLabels(std::list< std::unique_ptr<Label> > &&labels)
 {
-}
-
-LabelsSimple::~LabelsSimple()
-{
-    for (auto & _label : _labels)
-    {
-        for (auto & jter : _label.second)
-        {
-            delete jter;
-            jter = nullptr;
-        }
-    }
-    _labels.clear();
-}
-
-void LabelsSimple::addLabels(const std::list<Label *> &labels)
-{
-    for (auto label : labels)
+    for (auto &label : labels)
     {
         if (label != nullptr)
         {
-            auto jter = _labels.find(label->getDbId());
-            if (jter == _labels.end())
+            auto iter = _labels.find(label->getDbId());
+            if (iter == _labels.end())
             {
-                _labels.insert(std::pair<int, std::list<Label *> >(label->getDbId(), std::list<Label *>(1, label)));
+                int dbId = label->getDbId();
+                auto labelList = std::list< std::unique_ptr<Label> >();
+                labelList.emplace_back(std::move(label));
+                _labels.insert(std::make_pair(dbId, std::move(labelList)));
             }
             else
             {
-                jter->second.push_back(label);
+                iter->second.push_back(std::move(label));
             }
         }
     }
 }
 
-const std::map< int, std::list<Label *> > &LabelsSimple::getLabels() const
+const std::map< int, std::list< std::unique_ptr<Label> > > &LabelsSimple::getLabels() const
 {
     return _labels;
 }

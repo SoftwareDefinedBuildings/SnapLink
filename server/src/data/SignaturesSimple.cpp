@@ -7,10 +7,10 @@ SignaturesSimple::SignaturesSimple()
 
 SignaturesSimple::~SignaturesSimple()
 {
-    for (auto & _signature : _signatures)
+    for (auto &signature : _signatures)
     {
-        delete _signature.second;
-        _signature.second = nullptr;
+        delete signature.second;
+        signature.second = nullptr;
     }
     _signatures.clear();
 }

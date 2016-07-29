@@ -28,7 +28,7 @@ public:
 private:
     static std::list<Signature *> readSignatures(const std::string &dbPath, int dbId);
     static std::list<rtabmap::VisualWord *> readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures);
-    static std::list<Label *> readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures);
+    static std::list< std::unique_ptr<Label> > readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures);
 
     static std::map<int, rtabmap::Transform> getOptimizedPoses(const std::string &dbPath);
 

@@ -10,7 +10,6 @@ public:
           cv::Point2f point2,
           cv::Point3f point3,
           std::string name);
-    virtual ~Label();
 
     int getDbId() const;
     int getSignatureId() const;

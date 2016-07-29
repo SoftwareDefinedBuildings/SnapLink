@@ -14,9 +14,6 @@ Label::Label(int dbId,
 {
 }
 
-Label::~Label()
-    = default;
-
 int Label::getDbId() const
 {
     return _dbId;

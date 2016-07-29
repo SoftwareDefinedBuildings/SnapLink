@@ -39,7 +39,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     // Read data from databases
     std::map< int, std::list<rtabmap::VisualWord *> > allWordsMap;
     std::list<Signature *> allSignatures;
-    std::list<Label *> allLabels;
+    std::list< std::unique_ptr<Label> > allLabels;
     for (int dbId = 0; dbId < dbPaths.size(); dbId++)
     {
         const std::string &dbPath = dbPaths.at(dbId);
@@ -51,8 +51,8 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
         allWordsMap.insert(std::pair< int, std::list<rtabmap::VisualWord *> >(dbId, dbWords));
 
         UDEBUG("Read labels from database...");
-        std::list<Label *> dbLabels = readLabels(dbPath, dbId, dbSignatures);
-        allLabels.insert(allLabels.end(), dbLabels.begin(), dbLabels.end());
+        std::list< std::unique_ptr<Label> > dbLabels = readLabels(dbPath, dbId, dbSignatures);
+        std::move(dbLabels.begin(), dbLabels.end(), std::back_inserter(allLabels));
     }
 
     // merge data from all databases
@@ -65,7 +65,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     std::list<rtabmap::VisualWord *> mergedWords = mergeWords(allWordsMap, mergeWordsIdMap, mergeSignaturesIdMap);
     words.addWords(mergedWords);
 
-    labels.addLabels(allLabels);
+    labels.putLabels(std::move(allLabels));
 
     return true;
 }
@@ -156,9 +156,9 @@ std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(const std::string &
     return words;
 }
 
-std::list<Label *> RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures)
+std::list< std::unique_ptr<Label> > RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures)
 {
-    std::list<Label *> labels;
+    std::list< std::unique_ptr<Label> > labels;
     sqlite3 *db = nullptr;
     sqlite3_stmt *stmt = nullptr;
     int rc;
@@ -184,7 +184,7 @@ std::list<Label *> RTABMapDBAdapter::readLabels(const std::string &dbPath, int d
             pcl::PointXYZ pWorld;
             if (getPoint3World(signatures, dbId, imageId, x, y, pWorld))
             {
-                labels.push_back(new Label(dbId, imageId, cv::Point2f(x, y), cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name));
+                labels.emplace_back(std::unique_ptr<Label>(new Label(dbId, imageId, cv::Point2f(x, y), cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name)));
                 UINFO("Read point (%lf,%lf,%lf) with label %s in database %s", pWorld.x, pWorld.y, pWorld.z, name.c_str(), dbPath.c_str());
             }
         }
