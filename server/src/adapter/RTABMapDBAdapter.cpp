@@ -37,7 +37,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     int nextMemWordId = 1; // the ID we assign to next visual word we put in memory
 
     // Read data from databases
-    std::map< int, std::list<rtabmap::VisualWord *> > allWordsMap;
+    std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > allWordsMap;
     std::list<Signature *> allSignatures;
     std::list< std::unique_ptr<Label> > allLabels;
     for (int dbId = 0; dbId < dbPaths.size(); dbId++)
@@ -47,8 +47,8 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
         std::list<Signature *> dbSignatures = readSignatures(dbPath, dbId);
         allSignatures.insert(allSignatures.end(), dbSignatures.begin(), dbSignatures.end());
 
-        std::list<rtabmap::VisualWord *> dbWords = readWords(dbPath, dbId, dbSignatures);
-        allWordsMap.insert(std::pair< int, std::list<rtabmap::VisualWord *> >(dbId, dbWords));
+        std::list< std::unique_ptr<rtabmap::VisualWord> > dbWords = readWords(dbPath, dbId, dbSignatures);
+        allWordsMap.insert(std::make_pair(dbId, std::move(dbWords)));
 
         UDEBUG("Read labels from database...");
         std::list< std::unique_ptr<Label> > dbLabels = readLabels(dbPath, dbId, dbSignatures);
@@ -62,8 +62,8 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     std::list<Signature *> mergedSignatures = mergeSignatures(allSignatures, mergeSignaturesIdMap, mergeWordsIdMap);
     signatures.addSignatures(mergedSignatures);
 
-    std::list<rtabmap::VisualWord *> mergedWords = mergeWords(allWordsMap, mergeWordsIdMap, mergeSignaturesIdMap);
-    words.addWords(mergedWords);
+    std::list< std::unique_ptr<rtabmap::VisualWord> > mergedWords = mergeWords(std::move(allWordsMap), mergeWordsIdMap, mergeSignaturesIdMap);
+    words.putWords(std::move(mergedWords));
 
     labels.putLabels(std::move(allLabels));
 
@@ -125,15 +125,15 @@ std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPat
     return signatures;
 }
 
-std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures)
+std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures)
 {
-    std::list<rtabmap::VisualWord *> words;
+    std::list< std::unique_ptr<rtabmap::VisualWord> > allWords;
 
     rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
     if (!dbDriver->openConnection(dbPath))
     {
         UDEBUG("Connecting to database %s, path is invalid!", dbPath.c_str());
-        return words;
+        return allWords;
     }
 
     // Read words from database
@@ -145,7 +145,13 @@ std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(const std::string &
         std::list<int> keys = uUniqueKeys(words);
         wordIds.insert(keys.begin(), keys.end());
     }
-    dbDriver->loadWords(wordIds, words);
+    std::list<rtabmap::VisualWord *> allDbWords;
+    dbDriver->loadWords(wordIds, allDbWords);
+    for (auto &word : allDbWords)
+    {
+        allWords.emplace_back(std::unique_ptr<rtabmap::VisualWord>(word));
+        word = nullptr;
+    }
 
     UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
     dbDriver->closeConnection();
@@ -153,7 +159,7 @@ std::list<rtabmap::VisualWord *> RTABMapDBAdapter::readWords(const std::string &
     delete dbDriver;
     dbDriver = nullptr;
 
-    return words;
+    return allWords;
 }
 
 std::list< std::unique_ptr<Label> > RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures)
@@ -267,17 +273,17 @@ bool RTABMapDBAdapter::getPoint3World(const std::list<Signature *> &signatures, 
     return true;
 }
 
-std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(const std::map< int, std::list<rtabmap::VisualWord *> > &words)
+std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(const std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > &wordsMap)
 {
     std::map<std::pair<int, int>, int> mergeWordsIdMap;
     int nextWordId = 1;
-    for (const auto & word : words)
+    for (const auto &words : wordsMap)
     {
-        for (auto jter = word.second.begin(); jter != word.second.end(); jter++)
+        int dbId = words.first;
+        for (const auto &word : words.second)
         {
-            int dbId = word.first;
-            int wordId = (*jter)->id();
-            mergeWordsIdMap.insert(std::pair<std::pair<int, int>, int>(std::pair<int, int>(dbId, wordId), nextWordId));
+            int wordId = word->id();
+            mergeWordsIdMap.insert(std::make_pair(std::make_pair(dbId, wordId), nextWordId));
             nextWordId++;
         }
     }
@@ -298,25 +304,22 @@ std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeSignaturesIdMap(con
     return mergeSignaturesIdMap;
 }
 
-std::list<rtabmap::VisualWord *> RTABMapDBAdapter::mergeWords(const std::map< int, std::list<rtabmap::VisualWord *> > &words, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap)
+std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::mergeWords(const std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > &&wordsMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap)
 {
-    std::list<rtabmap::VisualWord *> mergedWords;
+    std::list< std::unique_ptr<rtabmap::VisualWord> > mergedWords;
 
-    for (const auto & wordsIter : words)
+    for (const auto &words : wordsMap)
     {
-        for (auto wordIter = wordsIter.second.begin(); wordIter != wordsIter.second.end(); wordIter++)
+        int dbId = words.first;
+        for (const auto &word : words.second)
         {
-            rtabmap::VisualWord *word = *wordIter;
-            int dbId = wordsIter.first;
             int wordId = word->id();
-            auto wordIdIter = mergeWordsIdMap.find(std::pair<int, int>(dbId, wordId));
+            auto wordIdIter = mergeWordsIdMap.find(std::make_pair(dbId, wordId));
             // TODO update reference signatures
             if (wordIdIter != mergeWordsIdMap.end())
             {
-                mergedWords.push_back(new rtabmap::VisualWord(wordIdIter->second, word->getDescriptor()));
+                mergedWords.emplace_back(std::unique_ptr<rtabmap::VisualWord>(new rtabmap::VisualWord(wordIdIter->second, word->getDescriptor())));
             }
-            delete word;
-            word = nullptr;
         }
     }
     return mergedWords;

@@ -3,6 +3,7 @@
 #include <rtabmap/core/VisualWord.h>
 #include <vector>
 #include <list>
+#include <memory>
 
 class Words
 {
@@ -10,13 +11,7 @@ public:
     /**
      * Add words, ownership transfer
      */
-    virtual void addWords(const std::list<rtabmap::VisualWord *> &words) = 0;
-
-    /**
-     * get all words
-     * TODO: use map for lookup, there is no point returning as a list. Or maybe only expose a lookup method.
-     */
-    virtual const std::list<rtabmap::VisualWord *> &getWords() const = 0;
+    virtual void putWords(std::list< std::unique_ptr<rtabmap::VisualWord> > &&words) = 0;
 
     /**
      * find the indices of the nearst neighbors of descriptors
