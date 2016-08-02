@@ -25,5 +25,5 @@ private:
     static bool compareSimilarity(const std::pair<int, float> &l, const std::pair<int, float> &r);
 
 private:
-    std::map<int, Signature *> _signatures;
+    std::map<int, std::unique_ptr<Signature> > _signatures;
 };

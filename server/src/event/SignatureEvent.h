@@ -10,11 +10,11 @@ class SignatureEvent :
 {
 public:
     // ownership transfer
-    SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr< std::vector<Signature *> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session);
+    SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::vector< std::unique_ptr<Signature> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     std::unique_ptr< std::vector<int> > takeWordIds();
     std::unique_ptr<rtabmap::SensorData> takeSensorData();
-    std::unique_ptr< std::vector<Signature *> > takeSignatures();
+    std::vector< std::unique_ptr<Signature> > takeSignatures();
     std::unique_ptr<PerfData> takePerfData();
     const void *getSession();
 
@@ -25,6 +25,6 @@ private:
     const void *_session;
     std::unique_ptr< std::vector<int> > _wordIds;
     std::unique_ptr<rtabmap::SensorData> _sensorData;
-    std::unique_ptr< std::vector<Signature *> > _signatures;
+    std::vector< std::unique_ptr<Signature> > _signatures;
     std::unique_ptr<PerfData> _perfData;
 };

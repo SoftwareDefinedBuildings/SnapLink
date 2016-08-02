@@ -1,9 +1,9 @@
 #include <cassert>
 #include "data/SignaturesSimple.h"
 
-void SignaturesSimple::putSignatures(std::list< std::unique_prt<Signature> > &&signatures)
+void SignaturesSimple::putSignatures(std::list< std::unique_ptr<Signature> > &&signatures)
 {
-    for (auto &signature : signatures)
+    for (auto & signature : signatures)
     {
         assert(signature != nullptr);
         int id = signature->getId();
@@ -11,7 +11,7 @@ void SignaturesSimple::putSignatures(std::list< std::unique_prt<Signature> > &&s
     }
 }
 
-const std::map<int, std::unque_ptr<Signature> > &SignaturesSimple::getSignatures() const
+const std::map<int, std::unique_ptr<Signature> > &SignaturesSimple::getSignatures() const
 {
     return _signatures;
 }
@@ -19,10 +19,10 @@ const std::map<int, std::unque_ptr<Signature> > &SignaturesSimple::getSignatures
 std::vector<int> SignaturesSimple::findKNN(const std::vector<int> &wordIds, int k) const
 {
     std::map<int, float> similarities;
-    for (const auto &signature : _signatures)
+    for (const auto & signature : _signatures)
     {
-        float similarity = computeSimilarity(wordIds, *signature);
-        similarities.insert(std::make_pair(signature->getId(), similarity));
+        float similarity = computeSimilarity(wordIds, *(signature.second));
+        similarities.insert(std::make_pair(signature.second->getId(), similarity));
     }
 
     std::vector<int> topIds;
@@ -30,7 +30,7 @@ std::vector<int> SignaturesSimple::findKNN(const std::vector<int> &wordIds, int 
     {
         std::vector< std::pair<int, float> > topSimilarities(k);
         std::partial_sort_copy(similarities.begin(), similarities.end(), topSimilarities.begin(), topSimilarities.end(), compareSimilarity);
-        for (const auto &similarity : topSimilarities)
+        for (const auto & similarity : topSimilarities)
         {
             topIds.push_back(similarity.first);
         }

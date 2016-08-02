@@ -28,7 +28,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<Signature *> searchSignatures(const std::vector<int> &wordIds) const;
+    std::vector< std::unique_ptr<Signature> > searchSignatures(const std::vector<int> &wordIds) const;
 
 private:
     std::unique_ptr<Signatures> _signatures;

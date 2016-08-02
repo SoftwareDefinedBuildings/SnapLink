@@ -62,17 +62,17 @@ bool Perspective::event(QEvent *event)
         SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
         std::unique_ptr< std::vector<int> > wordIds = signatureEvent->takeWordIds();
         std::unique_ptr<rtabmap::SensorData> sensorData = signatureEvent->takeSensorData();
-        std::unique_ptr< std::vector<Signature *> > signatures = signatureEvent->takeSignatures();
+        std::vector< std::unique_ptr<Signature> > signatures = signatureEvent->takeSignatures();
         std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
         const void *session = signatureEvent->getSession();
         std::unique_ptr<rtabmap::Transform> pose(new rtabmap::Transform);
         perfData->perspectiveStart = getTime();
-        *pose = localize(*wordIds, *sensorData, *(signatures->at(0)));
+        *pose = localize(*wordIds, *sensorData, *(signatures.at(0)));
         perfData->perspectiveEnd = getTime();
         // a null pose notify that loc could not be computed
         if (pose->isNull() == false)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(signatures->at(0)->getDbId(), std::move(sensorData), std::move(pose), std::move(perfData), session));
+            QCoreApplication::postEvent(_vis, new LocationEvent(signatures.at(0)->getDbId(), std::move(sensorData), std::move(pose), std::move(perfData), session));
         }
         else
         {
