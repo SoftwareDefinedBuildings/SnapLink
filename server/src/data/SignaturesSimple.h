@@ -5,18 +5,15 @@
 class SignaturesSimple : public Signatures
 {
 public:
-    SignaturesSimple();
-    virtual ~SignaturesSimple();
-
     /**
      * Add signatures, ownership transfer
      */
-    void addSignatures(const std::list<Signature *> &signatures);
+    void putSignatures(std::list< std::unique_ptr<Signature> > &&signatures);
 
     /**
      * get all signatures
      */
-    const std::map<int, Signature *> &getSignatures() const;
+    const std::map<int, std::unique_ptr<Signature> > &getSignatures() const;
 
     /**
      * find the indices of the k most similar signatures

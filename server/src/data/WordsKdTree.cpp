@@ -67,7 +67,7 @@ void WordsKdTree::build()
         // Create the data matrix
         _dataMat = cv::Mat(_words.size(), _dim, _type);
         int i = 0;
-        for (const auto &word : _words)
+        for (const auto & word : _words)
         {
             cv::Mat descriptor = word->getDescriptor();
 

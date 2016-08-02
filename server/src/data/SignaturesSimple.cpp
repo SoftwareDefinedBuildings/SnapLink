@@ -1,34 +1,17 @@
 #include <cassert>
 #include "data/SignaturesSimple.h"
 
-SignaturesSimple::SignaturesSimple()
+void SignaturesSimple::putSignatures(std::list< std::unique_prt<Signature> > &&signatures)
 {
-}
-
-SignaturesSimple::~SignaturesSimple()
-{
-    for (auto &signature : _signatures)
+    for (auto &signature : signatures)
     {
-        delete signature.second;
-        signature.second = nullptr;
-    }
-    _signatures.clear();
-}
-
-void SignaturesSimple::addSignatures(const std::list<Signature *> &signatures)
-{
-    auto iter = signatures.begin();
-    for (; iter != signatures.end(); iter++)
-    {
-        Signature *signature = *iter;
-        if (signature != nullptr)
-        {
-            _signatures.insert(std::pair<int, Signature *>(signature->getId(), signature));
-        }
+        assert(signature != nullptr);
+        int id = signature->getId();
+        _signatures.insert(std::make_pair(id, std::move(signature)));
     }
 }
 
-const std::map<int, Signature *> &SignaturesSimple::getSignatures() const
+const std::map<int, std::unque_ptr<Signature> > &SignaturesSimple::getSignatures() const
 {
     return _signatures;
 }
@@ -36,12 +19,10 @@ const std::map<int, Signature *> &SignaturesSimple::getSignatures() const
 std::vector<int> SignaturesSimple::findKNN(const std::vector<int> &wordIds, int k) const
 {
     std::map<int, float> similarities;
-    auto iter = _signatures.begin();
-    for (; iter != _signatures.end(); iter++)
+    for (const auto &signature : _signatures)
     {
-        const Signature *signature = iter->second;
         float similarity = computeSimilarity(wordIds, *signature);
-        similarities.insert(std::pair<int, float>(signature->getId(), similarity));
+        similarities.insert(std::make_pair(signature->getId(), similarity));
     }
 
     std::vector<int> topIds;
@@ -49,9 +30,9 @@ std::vector<int> SignaturesSimple::findKNN(const std::vector<int> &wordIds, int 
     {
         std::vector< std::pair<int, float> > topSimilarities(k);
         std::partial_sort_copy(similarities.begin(), similarities.end(), topSimilarities.begin(), topSimilarities.end(), compareSimilarity);
-        for (std::vector< std::pair<int, float> >::const_iterator iter = topSimilarities.begin(); iter != topSimilarities.end(); iter++)
+        for (const auto &similarity : topSimilarities)
         {
-            topIds.push_back(iter->first);
+            topIds.push_back(similarity.first);
         }
     }
 
@@ -65,8 +46,8 @@ float SignaturesSimple::computeSimilarity(const std::vector<int> &wordIds, const
     float numPairs = 0;
     for (int uniqueWordId : uniqueWordIds)
     {
-        auto jter = sigWords.find(uniqueWordId);
-        if (jter != sigWords.end())
+        auto iter = sigWords.find(uniqueWordId);
+        if (iter != sigWords.end())
         {
             numPairs += 1;
         }

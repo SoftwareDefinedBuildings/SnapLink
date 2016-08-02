@@ -38,31 +38,31 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
 
     // Read data from databases
     std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > allWordsMap;
-    std::list<Signature *> allSignatures;
+    std::list< std::unique_ptr<Signature> > allSignatures;
     std::list< std::unique_ptr<Label> > allLabels;
-    for (int dbId = 0; dbId < dbPaths.size(); dbId++)
+    int dbId = 0;
+    for (const auto &dbPath : dbPaths)
     {
-        const std::string &dbPath = dbPaths.at(dbId);
+        auto dbSignatures = readSignatures(dbPath, dbId);
+        std::move(dbSignatures.begin(), dbSignatures.end(), std::back_inserter(allSignatures));
 
-        std::list<Signature *> dbSignatures = readSignatures(dbPath, dbId);
-        allSignatures.insert(allSignatures.end(), dbSignatures.begin(), dbSignatures.end());
-
-        std::list< std::unique_ptr<rtabmap::VisualWord> > dbWords = readWords(dbPath, dbId, dbSignatures);
+        auto dbWords = readWords(dbPath, dbId, dbSignatures);
         allWordsMap.insert(std::make_pair(dbId, std::move(dbWords)));
 
-        UDEBUG("Read labels from database...");
-        std::list< std::unique_ptr<Label> > dbLabels = readLabels(dbPath, dbId, dbSignatures);
+        auto dbLabels = readLabels(dbPath, dbId, dbSignatures);
         std::move(dbLabels.begin(), dbLabels.end(), std::back_inserter(allLabels));
+
+        dbId++;
     }
 
     // merge data from all databases
-    std::map<std::pair<int, int>, int> mergeWordsIdMap = getMergeWordsIdMap(allWordsMap);
-    std::map<std::pair<int, int>, int> mergeSignaturesIdMap = getMergeSignaturesIdMap(allSignatures);
+    auto mergeWordsIdMap = getMergeWordsIdMap(allWordsMap);
+    auto mergeSignaturesIdMap = getMergeSignaturesIdMap(allSignatures);
 
-    std::list<Signature *> mergedSignatures = mergeSignatures(allSignatures, mergeSignaturesIdMap, mergeWordsIdMap);
-    signatures.addSignatures(mergedSignatures);
+    auto mergedSignatures = mergeSignatures(std::move(allSignatures), mergeSignaturesIdMap, mergeWordsIdMap);
+    signatures.putSignatures(std::move(mergedSignatures));
 
-    std::list< std::unique_ptr<rtabmap::VisualWord> > mergedWords = mergeWords(std::move(allWordsMap), mergeWordsIdMap, mergeSignaturesIdMap);
+    auto mergedWords = mergeWords(std::move(allWordsMap), mergeWordsIdMap, mergeSignaturesIdMap);
     words.putWords(std::move(mergedWords));
 
     labels.putLabels(std::move(allLabels));
@@ -70,13 +70,13 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     return true;
 }
 
-std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPath, int dbId)
+std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::readSignatures(const std::string &dbPath, int dbId)
 {
-    std::list<Signature *> signatures;
+    std::list< std::unique_ptr<Signature> > signatures;
 
     // get optimized poses of signatures
     UDEBUG("Optimize poses of signatures...");
-    std::map<int, rtabmap::Transform> optimizedPoses = getOptimizedPoses(dbPath);
+    std::map<int, rtabmap::Transform> optimizedPoseMap = getOptimizedPoseMap(dbPath);
 
     rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
     if (!dbDriver->openConnection(dbPath))
@@ -92,28 +92,26 @@ std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPat
     dbDriver->getAllNodeIds(sigIds, true);
     dbDriver->loadSignatures(std::list<int>(sigIds.begin(), sigIds.end()), rtabmapSignatures);
     dbDriver->loadNodeData(rtabmapSignatures);
-    for (auto & iter : rtabmapSignatures)
+    for (auto &signature : rtabmapSignatures)
     {
-        rtabmap::Signature *rtabmapSignature = iter;
-        int signatureId = rtabmapSignature->id();
-        std::map<int, rtabmap::Transform>::const_iterator jter = optimizedPoses.find(signatureId);
-        if (jter != optimizedPoses.end())
+        int id = signature->id();
+        auto iter = optimizedPoseMap.find(id);
+        assert(iter != optimizedPoseMap.end());
+
+        signature->setPose(iter->second);
+        if (!signature->sensorData().imageCompressed().empty())
         {
-            rtabmapSignature->setPose(jter->second);
-            if (!rtabmapSignature->sensorData().imageCompressed().empty())
-            {
-                rtabmapSignature->sensorData().uncompressData();
-            }
-            Signature *signature = convertSignature(*rtabmapSignature, dbId);
-            signatures.push_back(signature);
+            signature->sensorData().uncompressData();
         }
-        else
-        {
-            UWARN("Cannot find optimized pose for signature %d in database %d", signatureId, dbId);
-        }
-        delete rtabmapSignature;
-        rtabmapSignature = nullptr;
-        iter = nullptr;
+        int mapId = signature->mapId();
+        const rtabmap::Transform &pose = signature->getPose();
+        rtabmap::SensorData &sensorData = signature->sensorData();
+        const auto &words = signature->getWords();
+        const auto &words3 = signature->getWords3();
+        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, pose, std::move(sensorData), words, words3)));
+            
+        delete signature;
+        signature = nullptr;
     }
 
     UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
@@ -125,7 +123,7 @@ std::list<Signature *> RTABMapDBAdapter::readSignatures(const std::string &dbPat
     return signatures;
 }
 
-std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, std::list<Signature *> &signatures)
+std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, const std::list< std::unique_ptr<Signature> > &signatures)
 {
     std::list< std::unique_ptr<rtabmap::VisualWord> > allWords;
 
@@ -139,9 +137,9 @@ std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(co
     // Read words from database
     UDEBUG("Read words from database...");
     std::set<int> wordIds;
-    for (std::list<Signature *>::const_iterator iter = signatures.begin(); iter != signatures.end(); ++iter)
+    for (const auto &signature : signatures)
     {
-        const std::multimap<int, cv::KeyPoint> &words = (*iter)->getWords();
+        const auto &words = signature->getWords();
         std::list<int> keys = uUniqueKeys(words);
         wordIds.insert(keys.begin(), keys.end());
     }
@@ -162,7 +160,7 @@ std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(co
     return allWords;
 }
 
-std::list< std::unique_ptr<Label> > RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, const std::list<Signature *> &signatures)
+std::list< std::unique_ptr<Label> > RTABMapDBAdapter::readLabels(const std::string &dbPath, int dbId, const std::list< std::unique_ptr<Signature> > &signatures)
 {
     std::list< std::unique_ptr<Label> > labels;
     sqlite3 *db = nullptr;
@@ -206,12 +204,12 @@ std::list< std::unique_ptr<Label> > RTABMapDBAdapter::readLabels(const std::stri
     return labels;
 }
 
-std::map<int, rtabmap::Transform> RTABMapDBAdapter::getOptimizedPoses(const std::string &dbPath)
+std::map<int, rtabmap::Transform> RTABMapDBAdapter::getOptimizedPoseMap(const std::string &dbPath)
 {
     rtabmap::Memory memory;
     memory.init(dbPath);
 
-    std::map<int, rtabmap::Transform> optimizedPoses;
+    std::map<int, rtabmap::Transform> optimizedPoseMap;
     if (memory.getLastWorkingSignature())
     {
         // Get all IDs linked to last signature (including those in Long-Term Memory)
@@ -224,27 +222,20 @@ std::map<int, rtabmap::Transform> RTABMapDBAdapter::getOptimizedPoses(const std:
 
         // Optimize the graph
         rtabmap::Optimizer *graphOptimizer = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
-        optimizedPoses = graphOptimizer->optimize(poses.begin()->first, poses, links);
+        optimizedPoseMap = graphOptimizer->optimize(poses.begin()->first, poses, links);
         delete graphOptimizer;
     }
 
-    return optimizedPoses;
+    return optimizedPoseMap;
 }
 
-Signature *RTABMapDBAdapter::convertSignature(const rtabmap::Signature &signature, int dbId)
-{
-    auto newSignature = new Signature(signature.id(), signature.mapId(), dbId, signature.getPose(), signature.sensorData(), signature.getWords(), signature.getWords3());
-    return newSignature;
-}
-
-bool RTABMapDBAdapter::getPoint3World(const std::list<Signature *> &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
+bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature> > &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
 {
     UDEBUG("");
     Signature *signature = nullptr;
     // TODO: Use map of map for both signature and words
-    for (auto iter : signatures)
+    for (const auto &signature : signatures)
     {
-        signature = iter;
         if (signature->getDbId() == dbId && signature->getId() == imageId)
         {
             break;
@@ -290,11 +281,11 @@ std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(const st
     return mergeWordsIdMap;
 }
 
-std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeSignaturesIdMap(const std::list<Signature *> &signatures)
+std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeSignaturesIdMap(const std::list< std::unique_ptr<Signature> > &signatures)
 {
     std::map<std::pair<int, int>, int> mergeSignaturesIdMap;
     int nextSignatureId = 1;
-    for (auto signature : signatures)
+    for (const auto &signature : signatures)
     {
         int dbId = signature->getDbId();
         int signatureId = signature->getId();
@@ -304,7 +295,7 @@ std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeSignaturesIdMap(con
     return mergeSignaturesIdMap;
 }
 
-std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::mergeWords(const std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > &&wordsMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap)
+std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::mergeWords(std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > &&wordsMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap)
 {
     std::list< std::unique_ptr<rtabmap::VisualWord> > mergedWords;
 
@@ -318,42 +309,49 @@ std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::mergeWords(c
             // TODO update reference signatures
             if (wordIdIter != mergeWordsIdMap.end())
             {
-                mergedWords.emplace_back(std::unique_ptr<rtabmap::VisualWord>(new rtabmap::VisualWord(wordIdIter->second, word->getDescriptor())));
+                int newId = wordIdIter->second;
+                const cv::Mat &descriptor = word->getDescriptor();
+                mergedWords.emplace_back(std::unique_ptr<rtabmap::VisualWord>(new rtabmap::VisualWord(newId, descriptor)));
             }
         }
     }
     return mergedWords;
 }
 
-std::list<Signature *> RTABMapDBAdapter::mergeSignatures(const std::list<Signature *> &signatures, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap)
+std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::mergeSignatures(std::list< std::unique_ptr<Signature> > &&signatures, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap)
 {
-    std::list<Signature *> mergedSignatures;
+    std::list< std::unique_ptr<Signature> > mergedSignatures;
 
-    for (auto signature : signatures)
+    for (auto &signature : signatures)
     {
         int dbId = signature->getDbId();
         int signatureId = signature->getId();
-        auto signatureIdIter = mergeSignaturesIdMap.find(std::pair<int, int>(dbId, signatureId));
-        if (signatureIdIter != mergeSignaturesIdMap.end())
+        auto signatureIdIter = mergeSignaturesIdMap.find(std::make_pair(dbId, signatureId));
+        assert(signatureIdIter != mergeSignaturesIdMap.end());
+
+        int newId = signatureIdIter->second;
+        int mapId = signature->getMapId();
+        const rtabmap::Transform &pose = signature->getPose();
+        const rtabmap::SensorData &sensorData = signature->getSensorData();
+
+        std::multimap<int, cv::KeyPoint> words;
+        for (const auto &word : signature->getWords())
         {
-            std::multimap<int, cv::KeyPoint> words;
-            for (const auto & wordIter : signature->getWords())
-            {
-                auto wordIdIter = mergeWordsIdMap.find(std::pair<int, int>(dbId, wordIter.first));
-                assert(wordIdIter != mergeWordsIdMap.end());
-                words.insert(std::pair<int, cv::KeyPoint>(wordIdIter->second, wordIter.second));
-            }
-            std::multimap<int, cv::Point3f> words3;
-            for (const auto & word3Iter : signature->getWords3())
-            {
-                auto wordIdIter = mergeWordsIdMap.find(std::pair<int, int>(dbId, word3Iter.first));
-                assert(wordIdIter != mergeWordsIdMap.end());
-                words3.insert(std::pair<int, cv::Point3f>(wordIdIter->second, word3Iter.second));
-            }
-            mergedSignatures.push_back(new Signature(signatureIdIter->second, signature->getMapId(), dbId, signature->getPose(), signature->getSensorData(), words, words3));
+            auto wordIdIter = mergeWordsIdMap.find(std::make_pair(dbId, word.first));
+            assert(wordIdIter != mergeWordsIdMap.end());
+            words.insert(std::make_pair(wordIdIter->second, word.second));
         }
-        delete signature;
-        signature = nullptr;
+
+        std::multimap<int, cv::Point3f> words3;
+        for (const auto &word3 : signature->getWords3())
+        {
+            auto wordIdIter = mergeWordsIdMap.find(std::make_pair(dbId, word3.first));
+            assert(wordIdIter != mergeWordsIdMap.end());
+            words3.insert(std::make_pair(wordIdIter->second, word3.second));
+        }
+
+        mergedSignatures.emplace_back(std::unique_ptr<Signature>(new Signature(newId, mapId, dbId, pose, sensorData, std::move(words), std::move(words3))));
     }
+
     return mergedSignatures;
 }

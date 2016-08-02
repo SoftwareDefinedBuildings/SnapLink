@@ -2,7 +2,7 @@
 
 void LabelsSimple::putLabels(std::list< std::unique_ptr<Label> > &&labels)
 {
-    for (auto &label : labels)
+    for (auto & label : labels)
     {
         if (label != nullptr)
         {
