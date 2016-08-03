@@ -12,7 +12,7 @@ public:
     /**
      * Add words
      */
-    void putWords(std::list< std::unique_ptr<rtabmap::VisualWord> > &&words);
+    void putWords(std::list< std::unique_ptr<Word> > &&words);
 
     /**
      * find the indices of the nearst neighbors of descriptors
@@ -25,7 +25,7 @@ private:
 private:
     int _type;
     int _dim;
-    std::list< std::unique_ptr<rtabmap::VisualWord> > _words;
+    std::list< std::unique_ptr<Word> > _words;
     cv::Mat _dataMat;
     std::unique_ptr< flann::Index< flann::L2<float> > > _index;
     std::map<int , int> _mapIndexId;

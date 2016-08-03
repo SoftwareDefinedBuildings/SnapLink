@@ -7,7 +7,7 @@ WordsKdTree::WordsKdTree() :
 {
 }
 
-void WordsKdTree::putWords(std::list< std::unique_ptr<rtabmap::VisualWord> > &&words)
+void WordsKdTree::putWords(std::list< std::unique_ptr<Word> > &&words)
 {
     std::move(words.begin(), words.end(), std::back_inserter(_words));
     build();
@@ -59,7 +59,7 @@ void WordsKdTree::build()
         // use the first word to define the type and dim
         if (_type < 0 || _dim < 0)
         {
-            cv::Mat descriptor = (*_words.begin())->getDescriptor();
+            const cv::Mat &descriptor = (*_words.begin())->getDescriptor();
             _type = descriptor.type();
             _dim = descriptor.cols;
         }
@@ -69,13 +69,13 @@ void WordsKdTree::build()
         int i = 0;
         for (const auto & word : _words)
         {
-            cv::Mat descriptor = word->getDescriptor();
+            const cv::Mat &descriptor = word->getDescriptor();
 
             assert(descriptor.type() == _type);
             assert(descriptor.cols == _dim);
 
             descriptor.copyTo(_dataMat.row(i));
-            _mapIndexId.insert(_mapIndexId.end(), std::make_pair(i, word->id()));
+            _mapIndexId.insert(_mapIndexId.end(), std::make_pair(i, word->getId()));
             i++;
         }
 
