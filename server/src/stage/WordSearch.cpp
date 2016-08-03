@@ -27,7 +27,7 @@ WordSearch::~WordSearch()
     _imageSearch = nullptr;
 }
 
-void WordSearch::setWords(std::unique_ptr<Words> &&words)
+void WordSearch::putWords(std::unique_ptr<Words> &&words)
 {
     _words = std::move(words);
 }

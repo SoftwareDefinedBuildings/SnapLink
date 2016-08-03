@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
     // Visibility
     UINFO("Initializing Visibility");
-    vis.setLabels(std::move(labels));
+    vis.putLabels(std::move(labels));
     vis.setHTTPServer(&httpServer);
     vis.moveToThread(&visThread);
     visThread.start();
@@ -100,14 +100,14 @@ int main(int argc, char *argv[])
 
     // Signature Search
     UINFO("Initializing Signature Search");
-    signatureSearch.setSignatures(std::move(signatures));
+    signatureSearch.putSignatures(std::move(signatures));
     signatureSearch.setPerspective(&perspective);
     signatureSearch.moveToThread(&signatureSearchThread);
     signatureSearchThread.start();
 
     // Word Search
     UINFO("Initializing Word Search");
-    wordSearch.setWords(std::move(words));
+    wordSearch.putWords(std::move(words));
     wordSearch.setSignatureSearch(&signatureSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();

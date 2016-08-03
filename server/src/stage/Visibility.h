@@ -17,7 +17,7 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    void setLabels(std::unique_ptr<Labels> &&labels);
+    void putLabels(std::unique_ptr<Labels> &&labels);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:

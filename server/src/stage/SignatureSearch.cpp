@@ -28,7 +28,7 @@ SignatureSearch::~SignatureSearch()
     _perspective = nullptr;
 }
 
-void SignatureSearch::setSignatures(std::unique_ptr<Signatures> &&signatures)
+void SignatureSearch::putSignatures(std::unique_ptr<Signatures> &&signatures)
 {
     _signatures = std::move(signatures);
 }

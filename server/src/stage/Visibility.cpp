@@ -26,7 +26,7 @@ Visibility::~Visibility()
     _httpServer = nullptr;
 }
 
-void Visibility::setLabels(std::unique_ptr<Labels> &&labels)
+void Visibility::putLabels(std::unique_ptr<Labels> &&labels)
 {
     _labels = std::move(labels);
 }

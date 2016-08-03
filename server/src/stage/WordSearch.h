@@ -20,7 +20,7 @@ public:
     WordSearch();
     virtual ~WordSearch();
 
-    void setWords(std::unique_ptr<Words> &&words);
+    void putWords(std::unique_ptr<Words> &&words);
     void setSignatureSearch(SignatureSearch *imageSearch);
 
 protected:

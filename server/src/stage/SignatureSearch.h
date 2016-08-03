@@ -21,7 +21,7 @@ public:
     SignatureSearch();
     virtual ~SignatureSearch();
 
-    void setSignatures(std::unique_ptr<Signatures> &&signatures);
+    void putSignatures(std::unique_ptr<Signatures> &&signatures);
     void setPerspective(Perspective *perspective);
 
 protected:
