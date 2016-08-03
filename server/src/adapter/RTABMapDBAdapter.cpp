@@ -44,13 +44,14 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     for (const auto & dbPath : dbPaths)
     {
         auto dbSignatures = readSignatures(dbPath, dbId);
-        std::move(dbSignatures.begin(), dbSignatures.end(), std::back_inserter(allSignatures));
 
         auto dbWords = readWords(dbPath, dbId, dbSignatures);
         allWordsMap.insert(std::make_pair(dbId, std::move(dbWords)));
 
         auto dbLabels = readLabels(dbPath, dbId, dbSignatures);
         std::move(dbLabels.begin(), dbLabels.end(), std::back_inserter(allLabels));
+
+        std::move(dbSignatures.begin(), dbSignatures.end(), std::back_inserter(allSignatures));
 
         dbId++;
     }
@@ -139,9 +140,11 @@ std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(co
     std::set<int> wordIds;
     for (const auto & signature : signatures)
     {
-        const auto &words = signature->getWords();
-        std::list<int> keys = uUniqueKeys(words);
-        wordIds.insert(keys.begin(), keys.end());
+        const std::multimap<int, cv::KeyPoint> &words = signature->getWords();
+        for (const auto & word : words)
+        {
+            wordIds.insert(word.first);
+        }
     }
     std::list<rtabmap::VisualWord *> allDbWords;
     dbDriver->loadWords(wordIds, allDbWords);
@@ -232,18 +235,20 @@ std::map<int, rtabmap::Transform> RTABMapDBAdapter::getOptimizedPoseMap(const st
 bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature> > &signatures, int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld)
 {
     UDEBUG("");
-    Signature *signature = nullptr;
     // TODO: Use map of map for both signature and words
+    rtabmap::SensorData data;
+    rtabmap::Transform poseWorld;
     for (const auto & signature : signatures)
     {
         if (signature->getDbId() == dbId && signature->getId() == imageId)
         {
+            data = signature->getSensorData();
+            poseWorld = signature->getPose();
             break;
         }
     }
-    assert(signature != nullptr);
+    assert(!poseWorld.isNull());
 
-    const rtabmap::SensorData &data = signature->getSensorData();
     const rtabmap::CameraModel &cm = data.cameraModels()[0];
     bool smoothing = false;
     assert(!data.depthRaw().empty());
@@ -253,7 +258,6 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
         UWARN("Depth value not valid");
         return false;
     }
-    rtabmap::Transform poseWorld = signature->getPose();
     if (poseWorld.isNull())
     {
         UWARN("Image pose is Null");
