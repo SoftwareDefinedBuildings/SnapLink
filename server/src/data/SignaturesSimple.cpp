@@ -32,7 +32,7 @@ std::vector<int> SignaturesSimple::findKNN(const std::vector<int> &wordIds, int 
         std::partial_sort_copy(similarities.begin(), similarities.end(), topSimilarities.begin(), topSimilarities.end(), compareSimilarity);
         for (const auto & similarity : topSimilarities)
         {
-            topIds.push_back(similarity.first);
+            topIds.emplace_back(similarity.first);
         }
     }
 

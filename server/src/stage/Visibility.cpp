@@ -67,8 +67,8 @@ std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData
     std::vector<std::string> names;
     for (auto & label : labels)
     {
-        points.push_back(label->getPoint3());
-        names.push_back(label->getName());
+        points.emplace_back(label->getPoint3());
+        names.emplace_back(label->getName());
     }
 
     std::vector<std::string> results;
@@ -109,14 +109,14 @@ std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData
             if (Utility::isInFrontOfCamera(points[i], P))
             {
                 std::string name = names[i];
-                visibleLabels.push_back(name);
+                visibleLabels.emplace_back(name);
                 float x, y, z, roll, pitch, yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 cv::Point3f cameraLoc(x, y, z);
                 //double dist = cv::norm(points[i] - cameraLoc);
                 double dist = cv::norm(planePoints[i] - center);
-                distances[name].push_back(dist);
-                labelPoints[name].push_back(planePoints[i]);
+                distances[name].emplace_back(dist);
+                labelPoints[name].emplace_back(planePoints[i]);
                 UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
             }
             else
@@ -136,7 +136,7 @@ std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
         std::string minlabel = minDist.first;
         UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-        results.push_back(minlabel);
+        results.emplace_back(minlabel);
     }
     else
     {

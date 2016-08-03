@@ -10,7 +10,7 @@ class FeatureEvent :
 {
 public:
     // ownership transfer
-    FeatureEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session = NULL);
+    FeatureEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session);
 
     std::unique_ptr<rtabmap::SensorData> takeSensorData();
     std::unique_ptr<PerfData> takePerfData();

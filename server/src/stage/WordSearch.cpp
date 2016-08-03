@@ -61,16 +61,11 @@ std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData) 
 {
     assert(!sensorData.imageRaw().empty());
 
-    const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
-
-    std::vector<cv::KeyPoint> keypoints = sensorData.keypoints();
     cv::Mat descriptors = sensorData.descriptors();
 
-    std::vector<int> wordIds;
-    if (descriptors.rows)
-    {
-        wordIds = _words->findNNs(descriptors);
-    }
+    assert(descriptors.rows > 0);
+
+    std::vector<int> wordIds = _words->findNNs(descriptors);
 
     return wordIds;
 }
