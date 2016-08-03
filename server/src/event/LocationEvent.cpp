@@ -3,12 +3,13 @@
 const QEvent::Type LocationEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-LocationEvent::LocationEvent(int dbId, rtabmap::SensorData *sensorData, rtabmap::Transform pose, ConnectionInfo *conInfo) :
+LocationEvent::LocationEvent(int dbId, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<rtabmap::Transform> &&pose, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(LocationEvent::type()),
     _dbId(dbId),
-    _sensorData(sensorData),
-    _pose(pose),
-    _conInfo(conInfo)
+    _sensorData(std::move(sensorData)),
+    _pose(std::move(pose)),
+    _perfData(std::move(perfData)),
+    _session(session)
 {
 }
 
@@ -17,19 +18,24 @@ int LocationEvent::dbId() const
     return _dbId;
 }
 
-rtabmap::SensorData *LocationEvent::sensorData() const
+std::unique_ptr<rtabmap::SensorData> LocationEvent::takeSensorData()
 {
-    return _sensorData;
+    return std::move(_sensorData);
 }
 
-rtabmap::Transform LocationEvent::pose() const
+std::unique_ptr<rtabmap::Transform> LocationEvent::takePose()
 {
-    return _pose;
+    return std::move(_pose);
 }
 
-ConnectionInfo *LocationEvent::conInfo() const
+std::unique_ptr<PerfData> LocationEvent::takePerfData()
 {
-    return _conInfo;
+    return std::move(_perfData);
+}
+
+const void *LocationEvent::getSession()
+{
+    return _session;
 }
 
 QEvent::Type LocationEvent::type()

@@ -10,11 +10,7 @@ Label::Label(int dbId,
     _signatureId(signatureId),
     _point2(point2),
     _point3(point3),
-    _name(name)
-{
-}
-
-Label::~Label()
+    _name(std::move(name))
 {
 }
 

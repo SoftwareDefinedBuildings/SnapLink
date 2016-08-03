@@ -2,7 +2,7 @@
 
 #include <rtabmap/core/SensorData.h>
 #include <QEvent>
-#include "stage/HTTPServer.h"
+#include "data/PerfData.h"
 #include "data/Signature.h"
 
 class SignatureEvent :
@@ -10,19 +10,21 @@ class SignatureEvent :
 {
 public:
     // ownership transfer
-    SignatureEvent(std::vector<int> wordIds, rtabmap::SensorData *sensorData, std::vector<Signature *> signatures, ConnectionInfo *conInfo);
+    SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::vector< std::unique_ptr<Signature> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session);
 
-    std::vector<int> wordIds() const;
-    rtabmap::SensorData *sensorData() const;
-    std::vector<Signature *> signatures() const;
-    ConnectionInfo *conInfo() const;
+    std::unique_ptr< std::vector<int> > takeWordIds();
+    std::unique_ptr<rtabmap::SensorData> takeSensorData();
+    std::vector< std::unique_ptr<Signature> > takeSignatures();
+    std::unique_ptr<PerfData> takePerfData();
+    const void *getSession();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
-    const std::vector<int> _wordIds;
-    rtabmap::SensorData *_sensorData;
-    const std::vector<Signature *> _signatures;
-    ConnectionInfo *_conInfo;
+    const void *_session;
+    std::unique_ptr< std::vector<int> > _wordIds;
+    std::unique_ptr<rtabmap::SensorData> _sensorData;
+    std::vector< std::unique_ptr<Signature> > _signatures;
+    std::unique_ptr<PerfData> _perfData;
 };

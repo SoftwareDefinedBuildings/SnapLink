@@ -2,23 +2,27 @@
 
 const QEvent::Type DetectionEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
-// ownership transfer
-DetectionEvent::DetectionEvent(const std::vector<std::string> *names, const ConnectionInfo *conInfo) :
+DetectionEvent::DetectionEvent(std::unique_ptr< std::vector<std::string> > &&names, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(DetectionEvent::type()),
-    _names(names),
-    _conInfo(conInfo)
+    _names(std::move(names)),
+    _perfData(std::move(perfData)),
+    _session(session)
 {
 }
 
-// get the names of the detected objects
-const std::vector<std::string> *DetectionEvent::names() const
+std::unique_ptr< std::vector<std::string> > DetectionEvent::takeNames()
 {
-    return _names;
+    return std::move(_names);
 }
 
-const ConnectionInfo *DetectionEvent::conInfo() const
+std::unique_ptr<PerfData> DetectionEvent::takePerfData()
 {
-    return _conInfo;
+    return std::move(_perfData);
+}
+
+const void *DetectionEvent::getSession()
+{
+    return _session;
 }
 
 QEvent::Type DetectionEvent::type()

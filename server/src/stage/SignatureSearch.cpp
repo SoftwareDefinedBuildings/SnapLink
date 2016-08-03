@@ -15,22 +15,22 @@
 #include "event/SignatureEvent.h"
 #include "event/FailureEvent.h"
 #include "data/Signature.h"
+#include "data/PerfData.h"
+#include "util/Time.h"
 
 SignatureSearch::SignatureSearch() :
-    _signatures(NULL),
-    _perspective(NULL)
+    _perspective(nullptr)
 {
 }
 
 SignatureSearch::~SignatureSearch()
 {
-    _signatures = NULL;
-    _perspective = NULL;
+    _perspective = nullptr;
 }
 
-void SignatureSearch::setSignatures(Signatures *signatures)
+void SignatureSearch::putSignatures(std::unique_ptr<Signatures> &&signatures)
 {
-    _signatures = signatures;
+    _signatures = std::move(signatures);
 }
 
 void SignatureSearch::setPerspective(Perspective *perspective)
@@ -43,26 +43,28 @@ bool SignatureSearch::event(QEvent *event)
     if (event->type() == WordEvent::type())
     {
         WordEvent *wordEvent = static_cast<WordEvent *>(event);
-        std::vector<Signature *> signatures = searchSignatures(wordEvent->wordIds(), wordEvent->sensorData(), wordEvent->conInfo());
-        QCoreApplication::postEvent(_perspective, new SignatureEvent(wordEvent->wordIds(), wordEvent->sensorData(), signatures, wordEvent->conInfo()));
+        std::unique_ptr< std::vector<int> > wordIds = wordEvent->takeWordIds();
+        std::unique_ptr<rtabmap::SensorData> sensorData = wordEvent->takeSensorData();
+        std::unique_ptr<PerfData> perfData = wordEvent->takePerfData();
+        const void *session = wordEvent->getSession();
+        perfData->signaturesStart = getTime();
+        std::vector< std::unique_ptr<Signature> > signatures = searchSignatures(*wordIds);
+        perfData->signaturesEnd = getTime();
+        QCoreApplication::postEvent(_perspective, new SignatureEvent(std::move(wordIds), std::move(sensorData), std::move(signatures), std::move(perfData), session));
         return true;
     }
     return QObject::event(event);
 }
 
-std::vector<Signature *> SignatureSearch::searchSignatures(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, void *context)
+std::vector< std::unique_ptr<Signature> > SignatureSearch::searchSignatures(const std::vector<int> &wordIds) const
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
-
-    con_info->time.search_start = getTime();
     std::vector<int> topIds = _signatures->findKNN(wordIds, TOP_K);
-    con_info->time.search += getTime() - con_info->time.search_start; // end of find closest match
     int topSigId = topIds[0];
-    Signature *topSig = _signatures->getSignatures().at(topSigId);
+    std::unique_ptr<Signature> topSig(new Signature(*_signatures->getSignatures().at(topSigId)));
 
     UDEBUG("topSigId: %d", topSigId);
 
-    std::vector<Signature *> signatures;
-    signatures.push_back(topSig);
+    std::vector< std::unique_ptr<Signature> > signatures;
+    signatures.emplace_back(std::move(topSig));
     return signatures;
 }

@@ -2,24 +2,26 @@
 
 #include <rtabmap/core/SensorData.h>
 #include <QEvent>
-#include "stage/HTTPServer.h"
+#include <memory>
+#include "data/PerfData.h"
 
 class WordEvent :
     public QEvent
 {
 public:
-    // ownership transfer
-    WordEvent(std::vector<int> wordIds, rtabmap::SensorData *sensorData, ConnectionInfo *conInfo);
+    WordEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session);
 
-    std::vector<int> wordIds() const;
-    rtabmap::SensorData *sensorData() const;
-    ConnectionInfo *conInfo() const;
+    std::unique_ptr<std::vector<int>> takeWordIds();
+    std::unique_ptr<rtabmap::SensorData> takeSensorData();
+    std::unique_ptr<PerfData> takePerfData();
+    const void *getSession();
 
     static QEvent::Type type();
 
 private:
     static const QEvent::Type _type;
-    const std::vector<int> _wordIds;
-    rtabmap::SensorData *_sensorData;
-    ConnectionInfo *_conInfo;
+    const void *_session;
+    std::unique_ptr< std::vector<int> > _wordIds;
+    std::unique_ptr<rtabmap::SensorData> _sensorData;
+    std::unique_ptr<PerfData> _perfData;
 };

@@ -14,11 +14,12 @@
 #include "event/SignatureEvent.h"
 #include "event/LocationEvent.h"
 #include "event/FailureEvent.h"
+#include "data/PerfData.h"
 #include "util/Time.h"
 
 Perspective::Perspective() :
-    _vis(NULL),
-    _httpServer(NULL),
+    _vis(nullptr),
+    _httpServer(nullptr),
     _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
     _iterations(rtabmap::Parameters::defaultVisIterations()),
     _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
@@ -29,8 +30,8 @@ Perspective::Perspective() :
 
 Perspective::~Perspective()
 {
-    _vis = NULL;
-    _httpServer = NULL;
+    _vis = nullptr;
+    _httpServer = nullptr;
 }
 
 bool Perspective::init(const rtabmap::ParametersMap &parameters)
@@ -59,31 +60,33 @@ bool Perspective::event(QEvent *event)
     if (event->type() == SignatureEvent::type())
     {
         SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
-        std::vector<int> wordIds = signatureEvent->wordIds();
-        rtabmap::SensorData *sensorData = signatureEvent->sensorData();
-        std::vector<Signature *> signatures = signatureEvent->signatures();
-        ConnectionInfo *conInfo = signatureEvent->conInfo();
-        rtabmap::Transform pose = localize(wordIds, sensorData, signatures.at(0), conInfo);
+        std::unique_ptr< std::vector<int> > wordIds = signatureEvent->takeWordIds();
+        std::unique_ptr<rtabmap::SensorData> sensorData = signatureEvent->takeSensorData();
+        std::vector< std::unique_ptr<Signature> > signatures = signatureEvent->takeSignatures();
+        std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
+        const void *session = signatureEvent->getSession();
+        std::unique_ptr<rtabmap::Transform> pose(new rtabmap::Transform);
+        perfData->perspectiveStart = getTime();
+        *pose = localize(*wordIds, *sensorData, *(signatures.at(0)));
+        perfData->perspectiveEnd = getTime();
         // a null pose notify that loc could not be computed
-        if (pose.isNull() == false)
+        if (pose->isNull() == false)
         {
-            QCoreApplication::postEvent(_vis, new LocationEvent(signatures.at(0)->getDbId(), sensorData, pose, conInfo));
+            QCoreApplication::postEvent(_vis, new LocationEvent(signatures.at(0)->getDbId(), std::move(sensorData), std::move(pose), std::move(perfData), session));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(signatureEvent->conInfo()));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
         }
         return true;
     }
     return QObject::event(event);
 }
 
-rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap::SensorData *sensorData, Signature *oldSig, void *context) const
+rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
-
-    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
-    UASSERT(!sensorData->imageRaw().empty());
+    const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
+    UASSERT(!sensorData.imageRaw().empty());
 
     rtabmap::Transform transform;
     std::string msg;
@@ -93,9 +96,9 @@ rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap
 
     std::multimap<int, cv::Point3f> words3;
 
-    const rtabmap::Transform &oldSigPose = oldSig->getPose();
+    const rtabmap::Transform &oldSigPose = oldSig.getPose();
 
-    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
+    const std::multimap<int, cv::Point3f> &sigWords3 = oldSig.getWords3();
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;
     for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
     {
@@ -104,12 +107,12 @@ rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap
     }
 
     std::multimap<int, cv::KeyPoint> words;
-    const std::vector<cv::KeyPoint> &keypoints = sensorData->keypoints();
+    const std::vector<cv::KeyPoint> &keypoints = sensorData.keypoints();
     if (wordIds.size() > 0)
     {
         UASSERT(wordIds.size() == keypoints.size());
         unsigned int i = 0;
-        for (std::vector<int>::iterator iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
+        for (auto iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
         {
             words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
         }
@@ -121,7 +124,6 @@ rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap
         std::vector<int> matches;
         std::vector<int> inliers;
 
-        con_info->time.pnp_start = getTime();
         transform = rtabmap::util3d::estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
                         uMultimapToMapUnique(words),
@@ -136,11 +138,10 @@ rtabmap::Transform Perspective::localize(std::vector<int> wordIds, const rtabmap
                         &variance,
                         &matches,
                         &inliers);
-        con_info->time.pnp += getTime() - con_info->time.pnp_start;
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            msg = uFormat("Not enough inliers %d/%d between the old signature %d and the new image", inliersCount, _minInliers, oldSig->getId());
+            msg = uFormat("Not enough inliers %d/%d between the old signature %d and the new image", inliersCount, _minInliers, oldSig.getId());
             UINFO(msg.c_str());
         }
     }

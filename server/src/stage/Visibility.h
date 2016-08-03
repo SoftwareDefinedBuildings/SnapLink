@@ -4,6 +4,8 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
+#include <memory>
+#include "data/Labels.h"
 #include "stage/HTTPServer.h"
 
 class HTTPServer;
@@ -15,18 +17,17 @@ public:
     Visibility();
     virtual ~Visibility();
 
-    void setLabels(Labels *labels);
+    void putLabels(std::unique_ptr<Labels> &&labels);
     void setHTTPServer(HTTPServer *httpServer);
 
 protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<std::string> *process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const;
+    std::vector<std::string> process(int dbId, const rtabmap::SensorData &sensorData, const rtabmap::Transform &pose) const;
 
 private:
-    // labels
-    Labels *_labels;
+    std::unique_ptr<Labels> _labels;
     HTTPServer *_httpServer;
 };
 

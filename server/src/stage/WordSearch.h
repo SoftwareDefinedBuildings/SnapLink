@@ -4,12 +4,11 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
+#include <memory>
 #include <QObject>
 #include <QEvent>
 #include "adapter/RTABMapDBAdapter.h"
 #include "stage/SignatureSearch.h"
-#include "stage/HTTPServer.h"
-#include "util/Time.h"
 
 class SignatureSearch;
 class HTTPServer;
@@ -21,16 +20,16 @@ public:
     WordSearch();
     virtual ~WordSearch();
 
-    void setWords(const Words *words);
+    void putWords(std::unique_ptr<Words> &&words);
     void setSignatureSearch(SignatureSearch *imageSearch);
 
 protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<int> searchWords(rtabmap::SensorData *sensorData, void *context);
+    std::vector<int> searchWords(const rtabmap::SensorData &sensorData) const;
 
 private:
-    const Words *_words;
+    std::unique_ptr<Words> _words;
     SignatureSearch *_imageSearch;
 };

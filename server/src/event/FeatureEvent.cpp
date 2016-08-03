@@ -3,21 +3,27 @@
 const QEvent::Type FeatureEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-FeatureEvent::FeatureEvent(rtabmap::SensorData *sensorData, ConnectionInfo *conInfo) :
+FeatureEvent::FeatureEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(FeatureEvent::type()),
-    _sensorData(sensorData),
-    _conInfo(conInfo)
+    _sensorData(std::move(sensorData)),
+    _perfData(std::move(perfData)),
+    _session(session)
 {
 }
 
-rtabmap::SensorData *FeatureEvent::sensorData() const
+std::unique_ptr<rtabmap::SensorData> FeatureEvent::takeSensorData()
 {
-    return _sensorData;
+    return std::move(_sensorData);
 }
 
-ConnectionInfo *FeatureEvent::conInfo() const
+std::unique_ptr<PerfData> FeatureEvent::takePerfData()
 {
-    return _conInfo;
+    return std::move(_perfData);
+}
+
+const void *FeatureEvent::getSession()
+{
+    return _session;
 }
 
 QEvent::Type FeatureEvent::type()

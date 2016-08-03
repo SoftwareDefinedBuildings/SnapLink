@@ -9,17 +9,17 @@ Signature::Signature(
     int id,
     int mapId,
     int dbId,
-    const rtabmap::Transform &pose,
+    rtabmap::Transform pose,
     const rtabmap::SensorData &sensorData,
-    const std::multimap<int, cv::KeyPoint> &words,
-    const std::multimap<int, cv::Point3f> &words3):
+    std::multimap<int, cv::KeyPoint> words,
+    std::multimap<int, cv::Point3f> words3):
     _id(id),
     _mapId(mapId),
     _dbId(dbId),
-    _pose(pose),
+    _pose(std::move(pose)),
     _sensorData(sensorData),
-    _words(words),
-    _words3(words3)
+    _words(std::move(words)),
+    _words3(std::move(words3))
 {
     _sensorData.setId(id);
     assert(_pose.isNull() == false);
@@ -27,8 +27,7 @@ Signature::Signature(
 }
 
 Signature::~Signature()
-{
-}
+    = default;
 
 int Signature::getId() const
 {

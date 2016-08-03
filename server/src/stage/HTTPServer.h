@@ -1,16 +1,18 @@
 #pragma once
 
-#include <QSemaphore>
 #include <QObject>
+#include <QSemaphore>
 #include <microhttpd.h>
-#include "stage/CameraNetwork.h"
+#include <memory>
+#include "data/PerfData.h"
+#include "stage/FeatureExtraction.h"
 
 #define PORT 8080
 #define MAX_CLIENTS 10
-#define POST_BUFFER_SIZE 300000
-#define IMAGE_INIT_SIZE 300000
+#define POST_BUFFER_SIZE 100000
+#define IMAGE_INIT_SIZE 100000
 
-class CameraNetwork;
+class FeatureExtraction;
 
 class HTTPServer :
     public QObject
@@ -22,37 +24,40 @@ public:
     bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
     void stop();
 
-    const unsigned int &maxClients() const;
-    unsigned int &numClients();
-    void setCamera(CameraNetwork *camera);
+    int getMaxClients() const;
+    int getNumClients() const;
+    void setNumClients(int numClients);
+
+    void setFeatureExtraction(FeatureExtraction *feature);
 
 protected:
     virtual bool event(QEvent *event);
 
 private:
     // TODO use camelCase
-    static int answer_to_connection(void *cls,
-                                    struct MHD_Connection *connection,
-                                    const char *url,
-                                    const char *method,
-                                    const char *version,
-                                    const char *upload_data,
-                                    size_t *upload_data_size,
-                                    void **con_cls);
-    static int iterate_post(void *coninfo_cls,
-                            enum MHD_ValueKind kind,
-                            const char *key,
-                            const char *filename,
-                            const char *content_type,
-                            const char *transfer_encoding,
-                            const char *data,
-                            uint64_t off,
-                            size_t size);
-    static void request_completed(void *cls,
-                                  struct MHD_Connection *connection,
-                                  void **con_cls,
-                                  enum MHD_RequestTerminationCode toe);
-    static int send_page(struct MHD_Connection *connection, const std::string &page, int status_code);
+    static int answerConnection(void *cls,
+                                struct MHD_Connection *connection,
+                                const char *url,
+                                const char *method,
+                                const char *version,
+                                const char *upload_data,
+                                size_t *upload_data_size,
+                                void **con_cls);
+    static int iteratePost(void *coninfo_cls,
+                           enum MHD_ValueKind kind,
+                           const char *key,
+                           const char *filename,
+                           const char *content_type,
+                           const char *transfer_encoding,
+                           const char *data,
+                           uint64_t off,
+                           size_t size);
+    static void requestCompleted(void *cls,
+                                 struct MHD_Connection *connection,
+                                 void **con_cls,
+                                 enum MHD_RequestTerminationCode toe);
+    static int sendPage(struct MHD_Connection *connection, const std::string &page, int status_code);
+    static std::unique_ptr<rtabmap::SensorData> createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy);
 
 private:
     static const std::string busypage;
@@ -63,45 +68,31 @@ private:
     struct MHD_Daemon *_daemon;
     unsigned int _maxClients;
     unsigned int _numClients;
-    CameraNetwork *_camera;
+    FeatureExtraction *_feature;
 };
 
 enum ConnectionType
 {
-    GET = 0,
-    POST = 1
+    POST = 0
 };
 
+// TODO delete after combine cameranetwork and http server
 typedef struct
 {
-    long overall;
-    long overall_start;
-    long keypoints;
-    long keypoints_start;
-    long descriptors;
-    long descriptors_start;
-    long vwd;
-    long vwd_start;
-    long search;
-    long search_start;
-    long pnp;
-    long pnp_start;
-} TimeInfo;
-
-typedef struct
-{
-    enum ConnectionType connectiontype;
-    struct MHD_PostProcessor *postprocessor;
-    std::vector<char> data;
-    int width;
-    int height;
     double fx;
     double fy;
     double cx;
     double cy;
-    std::string answerstring;
-    int answercode;
-    const std::vector<std::string> *names;
+} CameraInfo;
+
+typedef struct
+{
+    enum ConnectionType sessionType;
+    struct MHD_PostProcessor *postProcessor;
+    CameraInfo cameraInfo;
     QSemaphore detected;
-    TimeInfo time;
+    std::string answerString;
+    std::unique_ptr< std::vector<std::string> > names;
+    std::unique_ptr<PerfData> perfData;
+    std::unique_ptr< std::vector<char> > rawData;
 } ConnectionInfo;

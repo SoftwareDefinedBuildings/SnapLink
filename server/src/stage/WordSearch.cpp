@@ -14,23 +14,22 @@
 #include "event/FeatureEvent.h"
 #include "event/WordEvent.h"
 #include "data/Signature.h"
+#include "data/PerfData.h"
 #include "util/Time.h"
 
 WordSearch::WordSearch() :
-    _words(NULL),
-    _imageSearch(NULL)
+    _imageSearch(nullptr)
 {
 }
 
 WordSearch::~WordSearch()
 {
-    _words = NULL;
-    _imageSearch = NULL;
+    _imageSearch = nullptr;
 }
 
-void WordSearch::setWords(const Words *words)
+void WordSearch::putWords(std::unique_ptr<Words> &&words)
 {
-    _words = words;
+    _words = std::move(words);
 }
 
 void WordSearch::setSignatureSearch(SignatureSearch *imageSearch)
@@ -43,33 +42,34 @@ bool WordSearch::event(QEvent *event)
     if (event->type() == FeatureEvent::type())
     {
         FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-        rtabmap::SensorData *sensorData = featureEvent->sensorData();
-        ConnectionInfo *conInfo = featureEvent->conInfo();
-        std::vector<int> wordIds = searchWords(sensorData, conInfo);
+        std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->takeSensorData();
+        std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
+        const void *session = featureEvent->getSession();
+        std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
+        perfData->wordsStart = getTime();
+        *wordIds = searchWords(*sensorData);
+        perfData->wordsEnd = getTime();
         // a null pose notify that loc could not be computed
-        QCoreApplication::postEvent(_imageSearch, new WordEvent(wordIds, sensorData, conInfo));
+        QCoreApplication::postEvent(_imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData), std::move(perfData), session));
         return true;
     }
     return QObject::event(event);
 }
 
-std::vector<int> WordSearch::searchWords(rtabmap::SensorData *sensorData, void *context)
+// TODO maybe only pass skeypoints, descriptors, and model
+std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData) const
 {
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
+    assert(!sensorData.imageRaw().empty());
 
-    UASSERT(!sensorData->imageRaw().empty());
+    const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
 
-    const rtabmap::CameraModel &cameraModel = sensorData->cameraModels()[0];
-
-    std::vector<cv::KeyPoint> keypoints = sensorData->keypoints();
-    cv::Mat descriptors = sensorData->descriptors();
+    std::vector<cv::KeyPoint> keypoints = sensorData.keypoints();
+    cv::Mat descriptors = sensorData.descriptors();
 
     std::vector<int> wordIds;
     if (descriptors.rows)
     {
-        con_info->time.vwd_start = getTime();
         wordIds = _words->findNNs(descriptors);
-        con_info->time.vwd += getTime() - con_info->time.vwd_start;
     }
 
     return wordIds;

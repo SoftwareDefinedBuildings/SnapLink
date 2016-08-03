@@ -2,32 +2,33 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d.h>
-#include <pcl/point_types.h>
 #include <opencv/cv.h>
+#include <pcl/point_types.h>
 #include <QCoreApplication>
 #include <QDirIterator>
 #include <QTextStream>
 #include <fstream>
-#include <iostream>
 #include "util/Utility.h"
+#include <iostream>
 #include "stage/Visibility.h"
 #include "event/LocationEvent.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
+#include "data/PerfData.h"
 
 Visibility::Visibility() :
-    _httpServer(NULL)
+    _httpServer(nullptr)
 {
 }
 
 Visibility::~Visibility()
 {
-    _httpServer = NULL;
+    _httpServer = nullptr;
 }
 
-void Visibility::setLabels(Labels *labels)
+void Visibility::putLabels(std::unique_ptr<Labels> &&labels)
 {
-    _labels = labels;
+    _labels = std::move(labels);
 }
 
 void Visibility::setHTTPServer(HTTPServer *httpServer)
@@ -40,44 +41,44 @@ bool Visibility::event(QEvent *event)
     if (event->type() == LocationEvent::type())
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
-        std::vector<std::string> *names = process(locEvent->dbId(), locEvent->sensorData(), locEvent->pose());
-        if (names != NULL)
+        std::unique_ptr<rtabmap::SensorData> sensorData = locEvent->takeSensorData();
+        std::unique_ptr<rtabmap::Transform> pose = locEvent->takePose();
+        std::unique_ptr<PerfData> perfData = locEvent->takePerfData();
+        const void *session = locEvent->getSession();
+        std::unique_ptr< std::vector<std::string> > names(new std::vector<std::string>());
+        *names = process(locEvent->dbId(), *sensorData, *pose);
+        if (!names->empty())
         {
-            QCoreApplication::postEvent(_httpServer, new DetectionEvent(names, locEvent->conInfo()));
+            QCoreApplication::postEvent(_httpServer, new DetectionEvent(std::move(names), std::move(perfData), session));
         }
         else
         {
-            QCoreApplication::postEvent(_httpServer, new FailureEvent(locEvent->conInfo()));
+            QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
         }
-        delete locEvent->sensorData();
         return true;
     }
     return QObject::event(event);
 }
 
-std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorData *data, const rtabmap::Transform &pose) const
+std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData &sensorData, const rtabmap::Transform &pose) const
 {
-    const std::list<Label *> &labels = _labels->getLabels().at(dbId);
+    const std::list< std::unique_ptr<Label> > &labels = _labels->getLabels().at(dbId);
     std::vector<cv::Point3f> points;
     std::vector<std::string> names;
-    for (std::list<Label *>::const_iterator iter = labels.begin(); iter != labels.end(); iter++)
+    for (auto & label : labels)
     {
-        points.push_back((*iter)->getPoint3());
-        names.push_back((*iter)->getName());
+        points.push_back(label->getPoint3());
+        names.push_back(label->getName());
     }
 
-    std::vector<std::string> *results = new std::vector<std::string>();
-    if (points.size() == 0)
-    {
-        return results;
-    }
+    std::vector<std::string> results;
 
     UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
 
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
-    const rtabmap::CameraModel &model = data->cameraModels()[0];
+    const rtabmap::CameraModel &model = sensorData.cameraModels()[0];
     cv::Mat K = model.K();
     rtabmap::Transform P = (pose * model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
@@ -93,8 +94,8 @@ std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorDat
     cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);
 
     // find points in the image
-    int cols = data->imageRaw().cols;
-    int rows = data->imageRaw().rows;
+    int cols = sensorData.imageRaw().cols;
+    int rows = sensorData.imageRaw().rows;
     std::map< std::string, std::vector<double> > distances;
     std::map< std::string, std::vector<cv::Point2f> > labelPoints;
     cv::Point2f center(cols / 2, rows / 2);
@@ -135,7 +136,7 @@ std::vector<std::string> *Visibility::process(int dbId, const rtabmap::SensorDat
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
         std::string minlabel = minDist.first;
         UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
-        results->push_back(minlabel);
+        results.push_back(minlabel);
     }
     else
     {

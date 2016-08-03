@@ -1,18 +1,18 @@
 #include <QCoreApplication>
 #include "stage/FeatureExtraction.h"
-#include "event/ImageEvent.h"
+#include "event/QueryEvent.h"
 #include "event/FeatureEvent.h"
 #include "util/Time.h"
 
 FeatureExtraction::FeatureExtraction() :
-    _feature2D(NULL)
+    _feature2D(nullptr)
 {
 }
 
 FeatureExtraction::~FeatureExtraction()
 {
     delete _feature2D;
-    _feature2D = NULL;
+    _feature2D = nullptr;
 }
 
 bool FeatureExtraction::init(const rtabmap::ParametersMap &parameters)
@@ -29,40 +29,30 @@ void FeatureExtraction::setWordSearch(WordSearch *wordSearch)
 
 bool FeatureExtraction::event(QEvent *event)
 {
-    if (event->type() == ImageEvent::type())
+    if (event->type() == QueryEvent::type())
     {
-        ImageEvent *imageEvent = static_cast<ImageEvent *>(event);
-        rtabmap::SensorData *sensorData = imageEvent->sensorData();
-        ConnectionInfo *conInfo = imageEvent->conInfo();
-        extractFeatures(sensorData, conInfo);
-        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(sensorData, conInfo));
+        QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
+        std::unique_ptr<rtabmap::SensorData> sensorData = queryEvent->takeSensorData();
+        std::unique_ptr<PerfData> perfData = queryEvent->takePerfData();
+        const void *session = queryEvent->getSession();
+
+        perfData->featuresStart = getTime();
+        extractFeatures(*sensorData);
+        perfData->featuresEnd = getTime();
+
+        QCoreApplication::postEvent(_wordSearch, new FeatureEvent(std::move(sensorData), std::move(perfData), session));
+
         return true;
     }
     return QObject::event(event);
 }
 
-void FeatureExtraction::extractFeatures(rtabmap::SensorData *sensorData, void *context)
+void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData) const
 {
-    assert(sensorData != NULL);
+    cv::Mat image = sensorData.imageRaw(); // OpenCV uses a shared pointer internally
 
-    ConnectionInfo *con_info = (ConnectionInfo *) context;
-    cv::Mat imageMono;
-    if (sensorData->imageRaw().channels() == 3)
-    {
-        cv::cvtColor(sensorData->imageRaw(), imageMono, CV_BGR2GRAY);
-    }
-    else
-    {
-        imageMono = sensorData->imageRaw();
-    }
+    std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(image);
+    cv::Mat descriptors = _feature2D->generateDescriptors(image, keypoints);
 
-    con_info->time.keypoints_start = getTime(); // start of generateKeypoints
-    std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(imageMono);
-    con_info->time.keypoints += getTime() - con_info->time.keypoints_start; // end of generateKeypoints
-
-    con_info->time.descriptors_start = getTime(); // start of generateDescriptors
-    cv::Mat descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-    con_info->time.descriptors += getTime() - con_info->time.descriptors_start; // end of SURF extraction
-
-    sensorData->setFeatures(keypoints, descriptors);
+    sensorData.setFeatures(keypoints, descriptors);
 }

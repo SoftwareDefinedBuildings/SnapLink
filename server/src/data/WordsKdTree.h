@@ -8,17 +8,11 @@ class WordsKdTree : public Words
 {
 public:
     WordsKdTree();
-    virtual ~WordsKdTree();
 
     /**
      * Add words
      */
-    void addWords(const std::list<rtabmap::VisualWord *> &words);
-
-    /**
-     * get all words
-     */
-    const std::list<rtabmap::VisualWord *> &getWords() const;
+    void putWords(std::list< std::unique_ptr<rtabmap::VisualWord> > &&words);
 
     /**
      * find the indices of the nearst neighbors of descriptors
@@ -31,8 +25,8 @@ private:
 private:
     int _type;
     int _dim;
-    std::list<rtabmap::VisualWord *> _words;
-    flann::Index<flann::L2<float> > *_index;
+    std::list< std::unique_ptr<rtabmap::VisualWord> > _words;
     cv::Mat _dataMat;
+    std::unique_ptr< flann::Index< flann::L2<float> > > _index;
     std::map<int , int> _mapIndexId;
 };
