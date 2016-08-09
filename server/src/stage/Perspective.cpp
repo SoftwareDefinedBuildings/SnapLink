@@ -3,6 +3,7 @@
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/EpipolarGeometry.h>
@@ -124,8 +125,7 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::
         std::vector<int> matches;
         std::vector<int> inliers;
 
-        transform = Transform::fromEigen4f(
-                        rtabmap::util3d::estimateMotion3DTo2D(
+        transform = estimateMotion3DTo2D(
                             uMultimapToMapUnique(words3),
                             uMultimapToMapUnique(words),
                             cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
@@ -134,12 +134,11 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::
                             _pnpReprojError,
                             _pnpFlags,
                             _pnpRefineIterations,
-                            rtabmap::Transform::fromEigen4f(oldSigPose.toEigen4f()), // use the old signature's pose as a guess
+                            oldSigPose, // use the old signature's pose as a guess
                             std::map<int, cv::Point3f>(),
                             &variance,
                             &matches,
-                            &inliers
-                        ).toEigen4f());
+                            &inliers);
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
@@ -156,5 +155,156 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::
     // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
     UDEBUG("transform=%s", transform.prettyPrint().c_str());
+    return transform;
+}
+
+Transform Perspective::estimateMotion3DTo2D(
+            const std::map<int, cv::Point3f> & words3A,
+            const std::map<int, cv::KeyPoint> & words2B,
+            const rtabmap::CameraModel & cameraModel,
+            int minInliers,
+            int iterations,
+            double reprojError,
+            int flagsPnP,
+            int refineIterations,
+            const Transform & guess,
+            const std::map<int, cv::Point3f> & words3B,
+            double * varianceOut,
+            std::vector<int> * matchesOut,
+            std::vector<int> * inliersOut) const
+{
+    UASSERT(cameraModel.isValidForProjection());
+    UASSERT(!guess.isNull());
+    Transform transform;
+    std::vector<int> matches, inliers;
+
+    if(varianceOut)
+    {
+        *varianceOut = 1.0;
+    }
+
+    // find correspondences
+    std::vector<int> ids = uKeys(words2B);
+    std::vector<cv::Point3f> objectPoints(ids.size());
+    std::vector<cv::Point2f> imagePoints(ids.size());
+    int oi=0;
+    matches.resize(ids.size());
+    for(unsigned int i=0; i<ids.size(); ++i)
+    {
+        std::map<int, cv::Point3f>::const_iterator iter=words3A.find(ids[i]);
+        if(iter != words3A.end() && rtabmap::util3d::isFinite(iter->second))
+        {
+            const cv::Point3f & pt = iter->second;
+            objectPoints[oi].x = pt.x;
+            objectPoints[oi].y = pt.y;
+            objectPoints[oi].z = pt.z;
+            imagePoints[oi] = words2B.find(ids[i])->second.pt;
+            matches[oi++] = ids[i];
+        }
+    }
+
+    objectPoints.resize(oi);
+    imagePoints.resize(oi);
+    matches.resize(oi);
+
+    UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d",
+            (int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size());
+
+    if((int)matches.size() >= minInliers)
+    {
+        //PnPRansac
+        cv::Mat K = cameraModel.K();
+        cv::Mat D = cameraModel.D();
+        Transform guessCameraFrame = (guess * Transform::fromEigen4f(cameraModel.localTransform().toEigen4f())).inverse();
+        cv::Mat R = (cv::Mat_<double>(3,3) <<
+                (double)guessCameraFrame.r11(), (double)guessCameraFrame.r12(), (double)guessCameraFrame.r13(),
+                (double)guessCameraFrame.r21(), (double)guessCameraFrame.r22(), (double)guessCameraFrame.r23(),
+                (double)guessCameraFrame.r31(), (double)guessCameraFrame.r32(), (double)guessCameraFrame.r33());
+
+        cv::Mat rvec(1,3, CV_64FC1);
+        cv::Rodrigues(R, rvec);
+        cv::Mat tvec = (cv::Mat_<double>(1,3) <<
+                (double)guessCameraFrame.x(), (double)guessCameraFrame.y(), (double)guessCameraFrame.z());
+
+        rtabmap::util3d::solvePnPRansac(
+                objectPoints,
+                imagePoints,
+                K,
+                D,
+                rvec,
+                tvec,
+                true,
+                iterations,
+                reprojError,
+                minInliers, // min inliers
+                inliers,
+                flagsPnP,
+                refineIterations);
+
+        if((int)inliers.size() >= minInliers)
+        {
+            cv::Rodrigues(rvec, R);
+            Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
+                           R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
+                           R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+            transform = (Transform::fromEigen4f(cameraModel.localTransform().toEigen4f()) * pnp).inverse();
+
+            // compute variance (like in PCL computeVariance() method of sac_model.h)
+            if(varianceOut && words3B.size())
+            {
+                std::vector<float> errorSqrdDists(inliers.size());
+                oi = 0;
+                for(unsigned int i=0; i<inliers.size(); ++i)
+                {
+                    std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
+                    if(iter != words3B.end() && rtabmap::util3d::isFinite(iter->second))
+                    {
+                        const cv::Point3f & objPt = objectPoints[inliers[i]];
+                        cv::Point3f newPt = rtabmap::util3d::transformPoint(iter->second, rtabmap::Transform::fromEigen4f(transform.toEigen4f()));
+                        errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+                        //ignore very very far features (stereo)
+                        if(errorSqrdDists[oi] < 100.0f)
+                        {
+                            ++oi;
+                        }
+                    }
+                }
+                errorSqrdDists.resize(oi);
+                if(errorSqrdDists.size())
+                {
+                    std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+                    double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+                    *varianceOut = 2.1981 * median_error_sqr;
+                }
+            }
+            else if(varianceOut)
+            {
+                // compute variance, which is the rms of reprojection errors
+                std::vector<cv::Point2f> imagePointsReproj;
+                cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(), imagePointsReproj);
+                float err = 0.0f;
+                for(unsigned int i=0; i<inliers.size(); ++i)
+                {
+                    err += uNormSquared(imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x, imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y);
+                }
+                *varianceOut = std::sqrt(err/float(inliers.size()));
+            }
+        }
+    }
+
+    if(matchesOut)
+    {
+        *matchesOut = matches;
+    }
+    if(inliersOut)
+    {
+        inliersOut->resize(inliers.size());
+        for(unsigned int i=0; i<inliers.size(); ++i)
+        {
+            inliersOut->at(i) = matches[inliers[i]];
+        }
+    }
+
     return transform;
 }

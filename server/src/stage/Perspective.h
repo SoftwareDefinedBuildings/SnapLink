@@ -31,6 +31,20 @@ protected:
 private:
     // get pose from optimizedPoses if available, otherwise get from sig itself
     Transform localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const;
+    Transform estimateMotion3DTo2D(
+            const std::map<int, cv::Point3f> & words3A,
+            const std::map<int, cv::KeyPoint> & words2B,
+            const rtabmap::CameraModel & cameraModel,
+            int minInliers,
+            int iterations,
+            double reprojError,
+            int flagsPnP,
+            int refineIterations,
+            const Transform & guess,
+            const std::map<int, cv::Point3f> & words3B,
+            double * varianceOut,
+            std::vector<int> * matchesOut,
+            std::vector<int> * inliersOut) const;
 
 private:
     Visibility *_vis;
