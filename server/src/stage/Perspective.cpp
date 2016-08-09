@@ -65,7 +65,7 @@ bool Perspective::event(QEvent *event)
         std::vector< std::unique_ptr<Signature> > signatures = signatureEvent->takeSignatures();
         std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
         const void *session = signatureEvent->getSession();
-        std::unique_ptr<rtabmap::Transform> pose(new rtabmap::Transform);
+        std::unique_ptr<Transform> pose(new Transform);
         perfData->perspectiveStart = getTime();
         *pose = localize(*wordIds, *sensorData, *(signatures.at(0)));
         perfData->perspectiveEnd = getTime();
@@ -83,12 +83,12 @@ bool Perspective::event(QEvent *event)
     return QObject::event(event);
 }
 
-rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const
+Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const
 {
     const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
     UASSERT(!sensorData.imageRaw().empty());
 
-    rtabmap::Transform transform;
+    Transform transform;
     std::string msg;
 
     int inliersCount = 0;
@@ -96,13 +96,13 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
 
     std::multimap<int, cv::Point3f> words3;
 
-    const rtabmap::Transform &oldSigPose = oldSig.getPose();
+    const Transform &oldSigPose = oldSig.getPose();
 
     const std::multimap<int, cv::Point3f> &sigWords3 = oldSig.getWords3();
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;
     for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
     {
-        cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, oldSigPose);
+        cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, rtabmap::Transform::fromEigen4f(oldSigPose.toEigen4f()));
         words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
     }
 
@@ -124,20 +124,22 @@ rtabmap::Transform Perspective::localize(const std::vector<int> &wordIds, const 
         std::vector<int> matches;
         std::vector<int> inliers;
 
-        transform = rtabmap::util3d::estimateMotion3DTo2D(
-                        uMultimapToMapUnique(words3),
-                        uMultimapToMapUnique(words),
-                        cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
-                        _minInliers,
-                        _iterations,
-                        _pnpReprojError,
-                        _pnpFlags,
-                        _pnpRefineIterations,
-                        oldSigPose, // use the old signature's pose as a guess
-                        std::map<int, cv::Point3f>(),
-                        &variance,
-                        &matches,
-                        &inliers);
+        transform = Transform::fromEigen4f(
+                        rtabmap::util3d::estimateMotion3DTo2D(
+                            uMultimapToMapUnique(words3),
+                            uMultimapToMapUnique(words),
+                            cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
+                            _minInliers,
+                            _iterations,
+                            _pnpReprojError,
+                            _pnpFlags,
+                            _pnpRefineIterations,
+                            rtabmap::Transform::fromEigen4f(oldSigPose.toEigen4f()), // use the old signature's pose as a guess
+                            std::map<int, cv::Point3f>(),
+                            &variance,
+                            &matches,
+                            &inliers
+                        ).toEigen4f());
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {

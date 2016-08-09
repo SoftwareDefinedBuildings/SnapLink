@@ -42,7 +42,7 @@ bool Visibility::event(QEvent *event)
     {
         LocationEvent *locEvent = static_cast<LocationEvent *>(event);
         std::unique_ptr<rtabmap::SensorData> sensorData = locEvent->takeSensorData();
-        std::unique_ptr<rtabmap::Transform> pose = locEvent->takePose();
+        std::unique_ptr<Transform> pose = locEvent->takePose();
         std::unique_ptr<PerfData> perfData = locEvent->takePerfData();
         const void *session = locEvent->getSession();
         std::unique_ptr< std::vector<std::string> > names(new std::vector<std::string>());
@@ -60,7 +60,7 @@ bool Visibility::event(QEvent *event)
     return QObject::event(event);
 }
 
-std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData &sensorData, const rtabmap::Transform &pose) const
+std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData &sensorData, const Transform &pose) const
 {
     const std::list< std::unique_ptr<Label> > &labels = _labels->getLabels().at(dbId);
     std::vector<cv::Point3f> points;
@@ -80,7 +80,7 @@ std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData
 
     const rtabmap::CameraModel &model = sensorData.cameraModels()[0];
     cv::Mat K = model.K();
-    rtabmap::Transform P = (pose * model.localTransform()).inverse();
+    Transform P = (pose * Transform::fromEigen4f(model.localTransform().toEigen4f())).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
                  (double)P.r11(), (double)P.r12(), (double)P.r13(),
                  (double)P.r21(), (double)P.r22(), (double)P.r23(),
@@ -110,10 +110,6 @@ std::vector<std::string> Visibility::process(int dbId, const rtabmap::SensorData
             {
                 std::string name = names[i];
                 visibleLabels.emplace_back(name);
-                float x, y, z, roll, pitch, yaw;
-                pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-                cv::Point3f cameraLoc(x, y, z);
-                //double dist = cv::norm(points[i] - cameraLoc);
                 double dist = cv::norm(planePoints[i] - center);
                 distances[name].emplace_back(dist);
                 labelPoints[name].emplace_back(planePoints[i]);

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 #include <memory>
@@ -9,6 +8,7 @@
 #include <QEvent>
 #include "adapter/RTABMapDBAdapter.h"
 #include "stage/SignatureSearch.h"
+#include "data/Transform.h"
 
 class SignatureSearch;
 class HTTPServer;

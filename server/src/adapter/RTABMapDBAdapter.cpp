@@ -106,10 +106,13 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::readSignatures(const s
         }
         int mapId = signature->mapId();
         const rtabmap::Transform &pose = signature->getPose();
+        Transform newPose(pose.r11(), pose.r12(), pose.r13(), pose.o14(),
+                          pose.r21(), pose.r22(), pose.r23(), pose.o24(),
+                          pose.r31(), pose.r32(), pose.r33(), pose.o34());
         rtabmap::SensorData &sensorData = signature->sensorData();
         const auto &words = signature->getWords();
         const auto &words3 = signature->getWords3();
-        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, pose, std::move(sensorData), words, words3)));
+        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, std::move(newPose), std::move(sensorData), words, words3)));
 
         delete signature;
         signature = nullptr;
@@ -239,7 +242,7 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
     UDEBUG("");
     // TODO: Use map of map for both signature and words
     rtabmap::SensorData data;
-    rtabmap::Transform poseWorld;
+    Transform poseWorld;
     for (const auto & signature : signatures)
     {
         if (signature->getDbId() == dbId && signature->getId() == imageId)
@@ -265,8 +268,12 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
         UWARN("Image pose is Null");
         return false;
     }
-    poseWorld = poseWorld * cm.localTransform();
-    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    const rtabmap::Transform &local = cm.localTransform();
+    Transform newLocal(local.r11(), local.r12(), local.r13(), local.o14(),
+                       local.r21(), local.r22(), local.r23(), local.o24(),
+                       local.r31(), local.r32(), local.r33(), local.o34());
+    poseWorld = poseWorld * newLocal;
+    pWorld = rtabmap::util3d::transformPoint(pLocal, rtabmap::Transform::fromEigen4f(poseWorld.toEigen4f()));
     return true;
 }
 
@@ -335,7 +342,7 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::mergeSignatures(std::l
 
         int newId = signatureIdIter->second;
         int mapId = signature->getMapId();
-        const rtabmap::Transform &pose = signature->getPose();
+        const Transform &pose = signature->getPose();
         const rtabmap::SensorData &sensorData = signature->getSensorData();
 
         std::multimap<int, cv::KeyPoint> words;

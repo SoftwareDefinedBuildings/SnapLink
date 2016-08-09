@@ -1,7 +1,6 @@
 #pragma once
 
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 #include <QObject>
@@ -9,6 +8,7 @@
 #include "stage/Visibility.h"
 #include "stage/HTTPServer.h"
 #include "data/Signature.h"
+#include "data/Transform.h"
 
 class Visibility;
 class HTTPServer;
@@ -30,7 +30,7 @@ protected:
 
 private:
     // get pose from optimizedPoses if available, otherwise get from sig itself
-    rtabmap::Transform localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const;
+    Transform localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const;
 
 private:
     Visibility *_vis;
