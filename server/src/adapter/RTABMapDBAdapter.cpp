@@ -14,7 +14,6 @@
 #include <rtabmap/core/util3d_correspondences.h>
 #include <rtabmap/core/util3d_registration.h>
 #include <rtabmap/core/util3d_surface.h>
-#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Compression.h>
@@ -23,6 +22,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
+#include <pcl/common/transforms.h>
 #include <sqlite3.h>
 
 #include "adapter/RTABMapDBAdapter.h"
@@ -273,7 +273,7 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
                        local.r21(), local.r22(), local.r23(), local.o24(),
                        local.r31(), local.r32(), local.r33(), local.o34());
     poseWorld = poseWorld * newLocal;
-    pWorld = rtabmap::util3d::transformPoint(pLocal, rtabmap::Transform::fromEigen4f(poseWorld.toEigen4f()));
+    pWorld = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
     return true;
 }
 

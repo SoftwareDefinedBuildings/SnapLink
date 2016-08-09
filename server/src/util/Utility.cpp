@@ -1,5 +1,4 @@
-#include <rtabmap/core/util3d_transforms.h>
-
+#include <pcl/common/transforms.h>
 #include "util/Utility.h"
 
 bool Utility::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2)
@@ -10,7 +9,6 @@ bool Utility::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2)
 bool Utility::isInFrontOfCamera(const cv::Point3f &point, const Transform &pose)
 {
     pcl::PointXYZ pointPCL(point.x, point.y, point.z);
-    rtabmap::Transform oldPose = rtabmap::Transform::fromEigen4f(pose.toEigen4f());
-    pcl::PointXYZ newPointPCL = rtabmap::util3d::transformPoint(pointPCL, oldPose);
+    pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, pose.toEigen3f());
     return newPointPCL.z > 0;
 }

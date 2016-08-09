@@ -4,11 +4,11 @@
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/core/util3d.h>
-#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/EpipolarGeometry.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Rtabmap.h>
+#include <pcl/common/transforms.h>
 #include <QCoreApplication>
 
 #include "stage/Perspective.h"
@@ -103,8 +103,10 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::
     std::multimap<int, cv::Point3f>::const_iterator word3Iter;
     for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end(); word3Iter++)
     {
-        cv::Point3f point3 = rtabmap::util3d::transformPoint(word3Iter->second, rtabmap::Transform::fromEigen4f(oldSigPose.toEigen4f()));
-        words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, point3));
+        pcl::PointXYZ localPointPCL(word3Iter->second.x, word3Iter->second.y, word3Iter->second.z);
+        pcl::PointXYZ globalPointPCL = pcl::transformPoint(localPointPCL, oldSigPose.toEigen3f());
+        cv::Point3f globalPointCV = cv::Point3f(globalPointPCL.x, globalPointPCL.y, globalPointPCL.z);
+        words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, globalPointCV));
     }
 
     std::multimap<int, cv::KeyPoint> words;
@@ -261,8 +263,9 @@ Transform Perspective::estimateMotion3DTo2D(
                     if(iter != words3B.end() && rtabmap::util3d::isFinite(iter->second))
                     {
                         const cv::Point3f & objPt = objectPoints[inliers[i]];
-                        cv::Point3f newPt = rtabmap::util3d::transformPoint(iter->second, rtabmap::Transform::fromEigen4f(transform.toEigen4f()));
-                        errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+                        pcl::PointXYZ pointPCL(iter->second.x, iter->second.y, iter->second.z);
+                        pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, transform.toEigen3f());
+                        errorSqrdDists[oi] = uNormSquared(objPt.x-newPointPCL.x, objPt.y-newPointPCL.y, objPt.z-newPointPCL.z);
                         //ignore very very far features (stereo)
                         if(errorSqrdDists[oi] < 100.0f)
                         {
