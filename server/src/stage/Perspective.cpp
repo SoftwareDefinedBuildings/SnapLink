@@ -10,7 +10,7 @@
 #include <rtabmap/core/Rtabmap.h>
 #include <pcl/common/transforms.h>
 #include <QCoreApplication>
-
+#include <cassert>
 #include "stage/Perspective.h"
 #include "event/SignatureEvent.h"
 #include "event/LocationEvent.h"
@@ -87,7 +87,7 @@ bool Perspective::event(QEvent *event)
 Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::SensorData &sensorData, const Signature &oldSig) const
 {
     const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
-    UASSERT(!sensorData.imageRaw().empty());
+    assert(!sensorData.imageRaw().empty());
 
     Transform transform;
     std::string msg;
@@ -113,7 +113,7 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const rtabmap::
     const std::vector<cv::KeyPoint> &keypoints = sensorData.keypoints();
     if (wordIds.size() > 0)
     {
-        UASSERT(wordIds.size() == keypoints.size());
+        assert(wordIds.size() == keypoints.size());
         unsigned int i = 0;
         for (auto iter = wordIds.begin(); iter != wordIds.end() && i < keypoints.size(); ++iter, ++i)
         {
@@ -175,8 +175,8 @@ Transform Perspective::estimateMotion3DTo2D(
             std::vector<int> * matchesOut,
             std::vector<int> * inliersOut) const
 {
-    UASSERT(cameraModel.isValidForProjection());
-    UASSERT(!guess.isNull());
+    assert(cameraModel.isValidForProjection());
+    assert(!guess.isNull());
     Transform transform;
     std::vector<int> matches, inliers;
 
