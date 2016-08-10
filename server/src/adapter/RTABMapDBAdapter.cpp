@@ -105,15 +105,14 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::readSignatures(const s
             signature->sensorData().uncompressData();
         }
         int mapId = signature->mapId();
-        const rtabmap::Transform &pose = signature->getPose();
-        Transform newPose(pose.r11(), pose.r12(), pose.r13(), pose.o14(),
-                          pose.r21(), pose.r22(), pose.r23(), pose.o24(),
-                          pose.r31(), pose.r32(), pose.r33(), pose.o34());
+        Transform pose = Transform::fromEigen4f(signature->getPose().toEigen4f());
         const rtabmap::SensorData &sensorData = signature->sensorData();
-        SensorData newSensorData(sensorData.imageRaw(), sensorData.depthRaw(), sensorData.cameraModels()[0]);
+        const rtabmap::CameraModel &cm = sensorData.cameraModels()[0];
+        CameraModel newCameraModel(cm.name(), cm.fx(), cm.fy(), cm.cx(), cm.cy(), Transform::fromEigen4f(cm.localTransform().toEigen4f()));
+        SensorData newSensorData(sensorData.imageRaw(), sensorData.depthRaw(), std::move(newCameraModel));
         const auto &words = signature->getWords();
         const auto &words3 = signature->getWords3();
-        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, std::move(newPose), std::move(newSensorData), words, words3)));
+        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, std::move(pose), std::move(newSensorData), words, words3)));
 
         delete signature;
         signature = nullptr;
@@ -255,7 +254,7 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
     }
     assert(!poseWorld.isNull());
 
-    const rtabmap::CameraModel &cm = data.getCameraModel();
+    const CameraModel &cm = data.getCameraModel();
     bool smoothing = false;
     assert(!data.getDepth().empty());
     pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.getDepth(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
@@ -269,11 +268,7 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
         UWARN("Image pose is Null");
         return false;
     }
-    const rtabmap::Transform &local = cm.localTransform();
-    Transform newLocal(local.r11(), local.r12(), local.r13(), local.o14(),
-                       local.r21(), local.r22(), local.r23(), local.o24(),
-                       local.r31(), local.r32(), local.r33(), local.o34());
-    poseWorld = poseWorld * newLocal;
+    poseWorld = poseWorld * cm.localTransform();
     pWorld = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
     return true;
 }

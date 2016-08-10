@@ -78,9 +78,9 @@ std::vector<std::string> Visibility::process(int dbId, const SensorData &sensorD
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
 
-    const rtabmap::CameraModel &model = sensorData.getCameraModel();
+    const CameraModel &model = sensorData.getCameraModel();
     cv::Mat K = model.K();
-    Transform P = (pose * Transform::fromEigen4f(model.localTransform().toEigen4f())).inverse();
+    Transform P = (pose * model.localTransform()).inverse();
     cv::Mat R = (cv::Mat_<double>(3, 3) <<
                  (double)P.r11(), (double)P.r12(), (double)P.r13(),
                  (double)P.r21(), (double)P.r22(), (double)P.r23(),

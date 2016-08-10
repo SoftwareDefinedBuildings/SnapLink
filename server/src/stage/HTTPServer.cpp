@@ -302,8 +302,8 @@ std::unique_ptr<SensorData> HTTPServer::createSensorData(const std::vector<char>
     if (!img.empty())
     {
         Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-        rtabmap::CameraModel model(fx, fy, cx, cy, rtabmap::Transform::fromEigen4f(localTransform.toEigen4f()));
-        std::unique_ptr<SensorData> sensorData(new SensorData(img, cv::Mat(), model));
+        CameraModel model("", fx, fy, cx, cy, std::move(localTransform));
+        std::unique_ptr<SensorData> sensorData(new SensorData(img, cv::Mat(), std::move(model)));
         return sensorData;
     }
 

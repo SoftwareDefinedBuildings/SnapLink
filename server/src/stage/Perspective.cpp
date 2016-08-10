@@ -86,7 +86,7 @@ bool Perspective::event(QEvent *event)
 
 Transform Perspective::localize(const std::vector<int> &wordIds, const SensorData &sensorData, const Signature &oldSig) const
 {
-    const rtabmap::CameraModel &cameraModel = sensorData.getCameraModel();
+    const CameraModel &cameraModel = sensorData.getCameraModel();
     assert(!sensorData.imageRaw().empty());
 
     Transform transform;
@@ -163,7 +163,7 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const SensorDat
 Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
     const std::map<int, cv::KeyPoint> &words2B,
-    const rtabmap::CameraModel &cameraModel,
+    const CameraModel &cameraModel,
     int minInliers,
     int iterations,
     double reprojError,
@@ -217,7 +217,7 @@ Transform Perspective::estimateMotion3DTo2D(
         //PnPRansac
         cv::Mat K = cameraModel.K();
         cv::Mat D = cameraModel.D();
-        Transform guessCameraFrame = (guess * Transform::fromEigen4f(cameraModel.localTransform().toEigen4f())).inverse();
+        Transform guessCameraFrame = (guess * cameraModel.localTransform()).inverse();
         cv::Mat R = (cv::Mat_<double>(3, 3) <<
                      (double)guessCameraFrame.r11(), (double)guessCameraFrame.r12(), (double)guessCameraFrame.r13(),
                      (double)guessCameraFrame.r21(), (double)guessCameraFrame.r22(), (double)guessCameraFrame.r23(),
@@ -250,7 +250,7 @@ Transform Perspective::estimateMotion3DTo2D(
                           R.at<double>(1, 0), R.at<double>(1, 1), R.at<double>(1, 2), tvec.at<double>(1),
                           R.at<double>(2, 0), R.at<double>(2, 1), R.at<double>(2, 2), tvec.at<double>(2));
 
-            transform = (Transform::fromEigen4f(cameraModel.localTransform().toEigen4f()) * pnp).inverse();
+            transform = (cameraModel.localTransform() * pnp).inverse();
 
             // compute variance (like in PCL computeVariance() method of sac_model.h)
             if (varianceOut && words3B.size())

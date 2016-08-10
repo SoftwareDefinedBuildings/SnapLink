@@ -5,12 +5,12 @@ SensorData::SensorData() = default;
 SensorData::SensorData(
     const cv::Mat &image,
     const cv::Mat &depth,
-    const rtabmap::CameraModel &cameraModel,
+    CameraModel &&cameraModel,
     int id,
     double stamp) :
     _image(image),
     _depth(depth),
-    _cameraModel(cameraModel),
+    _cameraModel(std::move(cameraModel)),
     _id(id),
     _stamp(stamp)
 {
@@ -45,7 +45,7 @@ const cv::Mat &SensorData::getDepth() const
     return _depth;
 }
 
-const rtabmap::CameraModel &SensorData::getCameraModel() const
+const CameraModel &SensorData::getCameraModel() const
 {
     return _cameraModel;
 }

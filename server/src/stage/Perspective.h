@@ -34,7 +34,7 @@ private:
     Transform estimateMotion3DTo2D(
         const std::map<int, cv::Point3f> &words3A,
         const std::map<int, cv::KeyPoint> &words2B,
-        const rtabmap::CameraModel &cameraModel,
+        const CameraModel &cameraModel,
         int minInliers,
         int iterations,
         double reprojError,
