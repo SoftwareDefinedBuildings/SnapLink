@@ -1,10 +1,10 @@
 #pragma once
 
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Features2d.h>
 #include <QObject>
 #include "stage/WordSearch.h"
+#include "data/SensorData.h"
 
 class WordSearch;
 
@@ -23,7 +23,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    void extractFeatures(rtabmap::SensorData &sensorData) const;
+    void extractFeatures(SensorData &sensorData) const;
 
 private:
     WordSearch *_wordSearch;

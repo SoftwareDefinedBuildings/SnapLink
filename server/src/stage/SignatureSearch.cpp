@@ -44,7 +44,7 @@ bool SignatureSearch::event(QEvent *event)
     {
         WordEvent *wordEvent = static_cast<WordEvent *>(event);
         std::unique_ptr< std::vector<int> > wordIds = wordEvent->takeWordIds();
-        std::unique_ptr<rtabmap::SensorData> sensorData = wordEvent->takeSensorData();
+        std::unique_ptr<SensorData> sensorData = wordEvent->takeSensorData();
         std::unique_ptr<PerfData> perfData = wordEvent->takePerfData();
         const void *session = wordEvent->getSession();
         perfData->signaturesStart = getTime();

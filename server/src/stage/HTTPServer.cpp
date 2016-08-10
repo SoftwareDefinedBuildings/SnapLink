@@ -158,7 +158,7 @@ int HTTPServer::answerConnection(void *cls,
         {
             // all data are received
             connInfo->perfData->overallStart = getTime(); // log start of processing
-            std::unique_ptr<rtabmap::SensorData> sensorData = createSensorData(*(connInfo->rawData), connInfo->cameraInfo.fx, connInfo->cameraInfo.fy, connInfo->cameraInfo.cx, connInfo->cameraInfo.cy);
+            std::unique_ptr<SensorData> sensorData = createSensorData(*(connInfo->rawData), connInfo->cameraInfo.fx, connInfo->cameraInfo.fy, connInfo->cameraInfo.cx, connInfo->cameraInfo.cy);
             QCoreApplication::postEvent(httpServer->_feature, new QueryEvent(std::move(sensorData), std::move(connInfo->perfData), connInfo));
         }
 
@@ -284,7 +284,7 @@ int HTTPServer::sendPage(struct MHD_Connection *connection, const std::string &p
     return ret;
 }
 
-std::unique_ptr<rtabmap::SensorData> HTTPServer::createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy)
+std::unique_ptr<SensorData> HTTPServer::createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy)
 {
     UDEBUG("");
 
@@ -303,7 +303,7 @@ std::unique_ptr<rtabmap::SensorData> HTTPServer::createSensorData(const std::vec
     {
         Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
         rtabmap::CameraModel model(fx, fy, cx, cy, rtabmap::Transform::fromEigen4f(localTransform.toEigen4f()));
-        std::unique_ptr<rtabmap::SensorData> sensorData(new rtabmap::SensorData(img, model));
+        std::unique_ptr<SensorData> sensorData(new SensorData(img, cv::Mat(), model));
         return sensorData;
     }
 

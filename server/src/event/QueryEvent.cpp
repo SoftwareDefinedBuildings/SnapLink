@@ -3,7 +3,7 @@
 const QEvent::Type QueryEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-QueryEvent::QueryEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session):
+QueryEvent::QueryEvent(std::unique_ptr<SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session):
     QEvent(QueryEvent::type()),
     _sensorData(std::move(sensorData)),
     _perfData(std::move(perfData)),
@@ -11,7 +11,7 @@ QueryEvent::QueryEvent(std::unique_ptr<rtabmap::SensorData> &&sensorData, std::u
 {
 }
 
-std::unique_ptr<rtabmap::SensorData> QueryEvent::takeSensorData()
+std::unique_ptr<SensorData> QueryEvent::takeSensorData()
 {
     return std::move(_sensorData);
 }

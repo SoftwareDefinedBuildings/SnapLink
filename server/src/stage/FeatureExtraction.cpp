@@ -32,7 +32,7 @@ bool FeatureExtraction::event(QEvent *event)
     if (event->type() == QueryEvent::type())
     {
         QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = queryEvent->takeSensorData();
+        std::unique_ptr<SensorData> sensorData = queryEvent->takeSensorData();
         std::unique_ptr<PerfData> perfData = queryEvent->takePerfData();
         const void *session = queryEvent->getSession();
 
@@ -47,9 +47,9 @@ bool FeatureExtraction::event(QEvent *event)
     return QObject::event(event);
 }
 
-void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData) const
+void FeatureExtraction::extractFeatures(SensorData &sensorData) const
 {
-    cv::Mat image = sensorData.imageRaw(); // OpenCV uses a shared pointer internally
+    const cv::Mat &image = sensorData.getImage(); // OpenCV uses a shared pointer internally
 
     std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(image);
     cv::Mat descriptors = _feature2D->generateDescriptors(image, keypoints);

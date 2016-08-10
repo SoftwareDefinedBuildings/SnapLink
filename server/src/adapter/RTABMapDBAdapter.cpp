@@ -109,10 +109,11 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::readSignatures(const s
         Transform newPose(pose.r11(), pose.r12(), pose.r13(), pose.o14(),
                           pose.r21(), pose.r22(), pose.r23(), pose.o24(),
                           pose.r31(), pose.r32(), pose.r33(), pose.o34());
-        rtabmap::SensorData &sensorData = signature->sensorData();
+        const rtabmap::SensorData &sensorData = signature->sensorData();
+        SensorData newSensorData(sensorData.imageRaw(), sensorData.depthRaw(), sensorData.cameraModels()[0]);
         const auto &words = signature->getWords();
         const auto &words3 = signature->getWords3();
-        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, std::move(newPose), std::move(sensorData), words, words3)));
+        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, std::move(newPose), std::move(newSensorData), words, words3)));
 
         delete signature;
         signature = nullptr;
@@ -241,7 +242,7 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
 {
     UDEBUG("");
     // TODO: Use map of map for both signature and words
-    rtabmap::SensorData data;
+    SensorData data;
     Transform poseWorld;
     for (const auto & signature : signatures)
     {
@@ -254,10 +255,10 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
     }
     assert(!poseWorld.isNull());
 
-    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    const rtabmap::CameraModel &cm = data.getCameraModel();
     bool smoothing = false;
-    assert(!data.depthRaw().empty());
-    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    assert(!data.getDepth().empty());
+    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.getDepth(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
     if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
     {
         UWARN("Depth value not valid");
@@ -320,7 +321,7 @@ std::list< std::unique_ptr<Word> > RTABMapDBAdapter::mergeWords(std::map< int, s
             int wordId = word->getId();
             auto wordIdIter = mergeWordsIdMap.find(std::make_pair(dbId, wordId));
             assert(wordIdIter != mergeWordsIdMap.end());
- 
+
             int newId = wordIdIter->second;
             const cv::Mat &descriptor = word->getDescriptor();
             mergedWords.emplace_back(std::unique_ptr<Word>(new Word(newId, descriptor)));
@@ -343,7 +344,7 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::mergeSignatures(std::l
         int newId = signatureIdIter->second;
         int mapId = signature->getMapId();
         const Transform &pose = signature->getPose();
-        const rtabmap::SensorData &sensorData = signature->getSensorData();
+        const SensorData &sensorData = signature->getSensorData();
 
         std::multimap<int, cv::KeyPoint> words;
         for (const auto & word : signature->getWords())

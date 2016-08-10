@@ -42,7 +42,7 @@ bool WordSearch::event(QEvent *event)
     if (event->type() == FeatureEvent::type())
     {
         FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->takeSensorData();
+        std::unique_ptr<SensorData> sensorData = featureEvent->takeSensorData();
         std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
         const void *session = featureEvent->getSession();
         std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
@@ -57,7 +57,7 @@ bool WordSearch::event(QEvent *event)
 }
 
 // TODO maybe only pass skeypoints, descriptors, and model
-std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData) const
+std::vector<int> WordSearch::searchWords(const SensorData &sensorData) const
 {
     assert(!sensorData.imageRaw().empty());
 

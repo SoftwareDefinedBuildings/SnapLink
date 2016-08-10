@@ -1,11 +1,11 @@
 #pragma once
 
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
 #include <memory>
 #include <QObject>
 #include <QEvent>
+#include "data/SensorData.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "stage/SignatureSearch.h"
 #include "data/Transform.h"
@@ -27,7 +27,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<int> searchWords(const rtabmap::SensorData &sensorData) const;
+    std::vector<int> searchWords(const SensorData &sensorData) const;
 
 private:
     std::unique_ptr<Words> _words;

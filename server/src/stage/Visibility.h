@@ -1,9 +1,9 @@
 #pragma once
 
-#include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/CameraModel.h>
 #include <numeric>
 #include <memory>
+#include "data/SensorData.h"
 #include "data/Labels.h"
 #include "data/Transform.h"
 #include "stage/HTTPServer.h"
@@ -24,7 +24,7 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    std::vector<std::string> process(int dbId, const rtabmap::SensorData &sensorData, const Transform &pose) const;
+    std::vector<std::string> process(int dbId, const SensorData &sensorData, const Transform &pose) const;
 
 private:
     std::unique_ptr<Labels> _labels;

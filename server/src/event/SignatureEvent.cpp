@@ -3,7 +3,7 @@
 const QEvent::Type SignatureEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-SignatureEvent::SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<rtabmap::SensorData> &&sensorData, std::vector< std::unique_ptr<Signature> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session) :
+SignatureEvent::SignatureEvent(std::unique_ptr< std::vector<int> > &&wordIds, std::unique_ptr<SensorData> &&sensorData, std::vector< std::unique_ptr<Signature> > &&signatures, std::unique_ptr<PerfData> &&perfData, const void *session) :
     QEvent(SignatureEvent::type()),
     _wordIds(std::move(wordIds)),
     _sensorData(std::move(sensorData)),
@@ -18,7 +18,7 @@ std::unique_ptr< std::vector<int> > SignatureEvent::takeWordIds()
     return std::move(_wordIds);
 }
 
-std::unique_ptr<rtabmap::SensorData> SignatureEvent::takeSensorData()
+std::unique_ptr<SensorData> SignatureEvent::takeSensorData()
 {
     return std::move(_sensorData);
 }
