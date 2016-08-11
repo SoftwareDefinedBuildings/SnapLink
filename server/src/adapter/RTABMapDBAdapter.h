@@ -1,10 +1,6 @@
 #pragma once
 
-#include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/SensorData.h>
-#include <rtabmap/core/Signature.h>
-#include <rtabmap/core/Link.h>
-#include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/Transform.h>
 #include <typeinfo>
 #include <list>
 #include <map>

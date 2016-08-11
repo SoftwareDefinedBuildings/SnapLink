@@ -3,17 +3,20 @@ QT -= gui
 
 CONFIG += c++11
 
-INCLUDEPATH += /usr/include/eigen3
-
-INCLUDEPATH += /usr/include
+INCLUDEPATH += /usr/local/include/opencv2
 LIBS += -L/usr/lib/x86_64-linux-gnu
-LIBS += -lflann_cpp
+LIBS += -lboost_system
+
+INCLUDEPATH += /usr/include/eigen3
 
 INCLUDEPATH += /usr/local/include/opencv2
 LIBS += -L/usr/local/lib
 LIBS += -lopencv_core
 LIBS += -lopencv_imgproc
 LIBS += -lopencv_features2d
+LIBS += -lopencv_imgcodecs
+LIBS += -lopencv_calib3d
+LIBS += -lopencv_flann
 
 INCLUDEPATH += /usr/local/include/pcl-1.8
 LIBS += -L/usr/local/lib

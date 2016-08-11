@@ -15,6 +15,7 @@ void WordsKdTree::putWords(std::list< std::unique_ptr<Word> > &&words)
 
 std::vector<int> WordsKdTree::findNNs(const cv::Mat &descriptors) const
 {
+    int k = 1;
     std::vector<int> resultIds(descriptors.rows, 0);
 
     if (_words.size() && descriptors.rows)
@@ -28,16 +29,13 @@ std::vector<int> WordsKdTree::findNNs(const cv::Mat &descriptors) const
         if (_index != nullptr)
         {
             //Find nearest neighbors
-            indices.create(descriptors.rows, 1, CV_32S);
-            dists.create(descriptors.rows, 1, CV_32F);
+            indices.create(descriptors.rows, k, CV_32S);
+            dists.create(descriptors.rows, k, CV_32F);
 
-            flann::Matrix<int> indicesF((int *)indices.data, indices.rows, indices.cols);
-            flann::Matrix<float> distsF((float *)dists.data, dists.rows, dists.cols);
-            flann::Matrix<float> queryF((float *)descriptors.data, descriptors.rows, descriptors.cols);
-            _index->knnSearch(queryF, indicesF, distsF, 1, flann::SearchParams(128));
+            _index->knnSearch(descriptors, indices, dists, k, cv::flann::SearchParams(128));
         }
 
-        assert(dists.rows == descriptors.rows && dists.cols == 1);
+        assert(dists.rows == descriptors.rows && dists.cols == k);
         for (int i = 0; i < descriptors.rows; ++i)
         {
             float d = dists.at<float>(i, 0);
@@ -79,8 +77,6 @@ void WordsKdTree::build()
             i++;
         }
 
-        flann::Matrix<float> dataset((float *)_dataMat.data, _dataMat.rows, _dataMat.cols);
-        _index.reset(new flann::Index< flann::L2<float> >(dataset, flann::KDTreeIndexParams(4)));
-        _index->buildIndex();
+        _index.reset(new cv::flann::Index(_dataMat, cv::flann::KDTreeIndexParams(4)));
     }
 }

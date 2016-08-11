@@ -1,7 +1,6 @@
 #pragma once
 
-#include <flann/flann.hpp>
-#include <opencv2/core/core.hpp>
+#include <opencv2/flann.hpp>
 #include "data/Words.h"
 
 class WordsKdTree : public Words
@@ -27,6 +26,6 @@ private:
     int _dim;
     std::list< std::unique_ptr<Word> > _words;
     cv::Mat _dataMat;
-    std::unique_ptr< flann::Index< flann::L2<float> > > _index;
+    std::unique_ptr< cv::flann::Index > _index;
     std::map<int , int> _mapIndexId;
 };

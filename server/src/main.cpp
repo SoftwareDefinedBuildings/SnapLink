@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     std::cout << "Reading data" << std::endl;
     if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels))
     {
-        qFatal() << "Reading data failed";
+        qCritical() << "Reading data failed";
         return 1;
     }
 
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
     perspective.setVisibility(&vis);
     if (!perspective.init(params))
     {
-        qFatal() << "Initializing Perspective failed";
+        qCritical() << "Initializing Perspective failed";
         return 1;
     }
     perspective.moveToThread(&perspectiveThread);
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     httpServer.setFeatureExtraction(&feature);
     if (!httpServer.start())
     {
-        qFatal() << "Starting HTTP Server failed";
+        qCritical() << "Starting HTTP Server failed";
         return 1;
     }
 

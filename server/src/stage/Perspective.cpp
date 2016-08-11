@@ -1,9 +1,6 @@
 #include <rtabmap/utilite/UMath.h>
-#include <rtabmap/core/util3d.h>
+#include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
-#include <rtabmap/core/EpipolarGeometry.h>
-#include <rtabmap/core/VWDictionary.h>
-#include <rtabmap/core/Rtabmap.h>
 #include <pcl/common/transforms.h>
 #include <QCoreApplication>
 #include <QDebug>

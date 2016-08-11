@@ -21,9 +21,14 @@ bool Transform::isNull() const
         return true;
     }
 
+    if (cv::countNonZero(_data) == 0)
+    {
+        return true;
+    }
+
     for (int i = 0; i < 12; i++)
     {
-        if (data()[i] == 0.0f || std::isnan(data()[i]))
+        if (std::isnan(data()[i]))
         {
             return true;
         }

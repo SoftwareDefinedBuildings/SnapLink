@@ -1,7 +1,5 @@
 #pragma once
 
-#include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/Parameters.h>
 #include <memory>
 #include <QObject>
 #include <QEvent>

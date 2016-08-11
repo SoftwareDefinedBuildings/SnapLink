@@ -52,7 +52,7 @@ std::vector< std::unique_ptr<Signature> > SignatureSearch::searchSignatures(cons
     int topSigId = topIds[0];
     std::unique_ptr<Signature> topSig(new Signature(*_signatures->getSignatures().at(topSigId)));
 
-    qDebug() << "topSigId: "<< topSigId;
+    qDebug() << "topSigId: " << topSigId;
 
     std::vector< std::unique_ptr<Signature> > signatures;
     signatures.emplace_back(std::move(topSig));

@@ -3,6 +3,7 @@
 #include <vector>
 #include <list>
 #include <memory>
+#include <opencv2/core/core.hpp>
 #include "Word.h"
 
 class Words

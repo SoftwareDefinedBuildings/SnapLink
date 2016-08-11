@@ -1,8 +1,4 @@
 #include "CameraModel.h"
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UDirectory.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/utilite/UConversion.h>
 #include <cassert>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -26,7 +22,7 @@ CameraModel::CameraModel(
     assert(fy > 0.0);
     assert(cx >= 0.0);
     assert(cy >= 0.0);
-    assert(!localTransform.isNull());
+    assert(!localTransform_.isNull());
     if (Tx != 0.0)
     {
         P_ = cv::Mat::eye(3, 4, CV_64FC1),

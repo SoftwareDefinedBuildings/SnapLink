@@ -1,6 +1,5 @@
 #pragma once
 
-#include <rtabmap/core/CameraModel.h>
 #include <numeric>
 #include <memory>
 #include "data/SensorData.h"
