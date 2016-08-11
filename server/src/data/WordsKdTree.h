@@ -1,7 +1,7 @@
 #pragma once
 
-#include <opencv2/core/core.hpp>
 #include <flann/flann.hpp>
+#include <opencv2/core/core.hpp>
 #include "data/Words.h"
 
 class WordsKdTree : public Words

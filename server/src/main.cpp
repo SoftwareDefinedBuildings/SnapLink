@@ -1,12 +1,10 @@
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/RtabmapThread.h>
-#include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Parameters.h>
-#include <rtabmap/utilite/UEventsManager.h>
+#include <rtabmap/utilite/UConversion.h>
 #include <cstdio>
 #include <utility>
 #include <QCoreApplication>
 #include <QThread>
+#include <QDebug>
 #include "data/WordsKdTree.h"
 #include "data/SignaturesSimple.h"
 #include "data/LabelsSimple.h"
@@ -28,9 +26,9 @@ void showUsage()
 
 int main(int argc, char *argv[])
 {
-    ULogger::setType(ULogger::kTypeConsole);
+    //ULogger::setType(ULogger::kTypeConsole);
     //ULogger::setLevel(ULogger::kInfo);
-    ULogger::setLevel(ULogger::kDebug);
+    //ULogger::setLevel(ULogger::kDebug);
 
     std::vector<std::string> dbfiles;
     for (int i = 1; i < argc; i++)
@@ -72,59 +70,59 @@ int main(int argc, char *argv[])
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
     // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
 
-    UINFO("Reading data");
+    std::cout << "Reading data" << std::endl;
     if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels))
     {
-        UERROR("Reading data failed");
+        qFatal() << "Reading data failed";
         return 1;
     }
 
     // Visibility
-    UINFO("Initializing Visibility");
+    std::cout << "Initializing Visibility" << std::endl;
     vis.putLabels(std::move(labels));
     vis.setHTTPServer(&httpServer);
     vis.moveToThread(&visThread);
     visThread.start();
 
     // Perspective
-    UINFO("Initializing Perspective");
+    std::cout << "Initializing Perspective" << std::endl;
     perspective.setHTTPServer(&httpServer);
     perspective.setVisibility(&vis);
     if (!perspective.init(params))
     {
-        UERROR("Initializing Perspective failed");
+        qFatal() << "Initializing Perspective failed";
         return 1;
     }
     perspective.moveToThread(&perspectiveThread);
     perspectiveThread.start();
 
     // Signature Search
-    UINFO("Initializing Signature Search");
+    std::cout << "Initializing Signature Search" << std::endl;
     signatureSearch.putSignatures(std::move(signatures));
     signatureSearch.setPerspective(&perspective);
     signatureSearch.moveToThread(&signatureSearchThread);
     signatureSearchThread.start();
 
     // Word Search
-    UINFO("Initializing Word Search");
+    std::cout << "Initializing Word Search" << std::endl;
     wordSearch.putWords(std::move(words));
     wordSearch.setSignatureSearch(&signatureSearch);
     wordSearch.moveToThread(&wordSearchThread);
     wordSearchThread.start();
 
     // FeatureExtraction
-    UINFO("Initializing feature extraction");
+    std::cout << "Initializing feature extraction" << std::endl;
     feature.init(params);
     feature.setWordSearch(&wordSearch);
     feature.moveToThread(&featureThread);
     featureThread.start();
 
     // HTTPServer
-    UINFO("Initializing HTTP server");
+    std::cout << "Initializing HTTP server" << std::endl;
     httpServer.setFeatureExtraction(&feature);
     if (!httpServer.start())
     {
-        UERROR("Starting HTTP Server failed");
+        qFatal() << "Starting HTTP Server failed";
         return 1;
     }
 

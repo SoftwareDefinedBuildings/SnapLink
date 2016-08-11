@@ -1,15 +1,12 @@
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UMath.h>
-#include <rtabmap/utilite/UStl.h>
-#include <rtabmap/core/util3d.h>
 #include <opencv/cv.h>
 #include <pcl/point_types.h>
 #include <QCoreApplication>
 #include <QDirIterator>
 #include <QTextStream>
+#include <QDebug>
 #include <fstream>
-#include "util/Utility.h"
 #include <iostream>
+#include "util/Utility.h"
 #include "stage/Visibility.h"
 #include "event/LocationEvent.h"
 #include "event/DetectionEvent.h"
@@ -73,7 +70,7 @@ std::vector<std::string> Visibility::process(int dbId, const SensorData &sensorD
 
     std::vector<std::string> results;
 
-    UDEBUG("processing transform = %s", pose.prettyPrint().c_str());
+    qDebug() << "processing transform = " << pose.prettyPrint().c_str();
 
     std::vector<cv::Point2f> planePoints;
     std::vector<std::string> visibleLabels;
@@ -102,27 +99,27 @@ std::vector<std::string> Visibility::process(int dbId, const SensorData &sensorD
 
     for (unsigned int i = 0; i < points.size(); ++i)
     {
+        std::string name = names[i];
         //if (uIsInBounds(int(planePoints[i].x), 0, cols) &&
         //        uIsInBounds(int(planePoints[i].y), 0, rows))
         if (true)
         {
             if (Utility::isInFrontOfCamera(points[i], P))
             {
-                std::string name = names[i];
                 visibleLabels.emplace_back(name);
                 double dist = cv::norm(planePoints[i] - center);
                 distances[name].emplace_back(dist);
                 labelPoints[name].emplace_back(planePoints[i]);
-                UDEBUG("Find label %s at (%lf, %lf), image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+                qDebug() << "Find label " << name.c_str() << " at (" << planePoints[i].x << "," << planePoints[i].y << ")";
             }
             else
             {
-                UDEBUG("Label %s invalid at (%lf, %lf) because it is from the back of the camera, image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+                qDebug() << "Label " << name.c_str() << " invalid at (" << planePoints[i].x << "," << planePoints[i].y << ")" << " because it is from the back of the camera";
             }
         }
         else
         {
-            UDEBUG("label %s invalid at (%lf, %lf), image size=(%d,%d)", names[i].c_str(), planePoints[i].x, planePoints[i].y, cols, rows);
+            qDebug() << "label " << name.c_str() << " invalid at (" << planePoints[i].x << "," << planePoints[i].y << ")";
         }
     }
 
@@ -131,12 +128,12 @@ std::vector<std::string> Visibility::process(int dbId, const SensorData &sensorD
         // find the label with minimum mean distance
         std::pair< std::string, std::vector<double> > minDist = *min_element(distances.begin(), distances.end(), CompareMeanDist());
         std::string minlabel = minDist.first;
-        UINFO("Nearest label %s with mean distance %lf", minlabel.c_str(), CompareMeanDist::meanDist(minDist.second));
+        std::cout << "Nearest label " << minlabel << " with mean distance " << CompareMeanDist::meanDist(minDist.second) << std::endl;
         results.emplace_back(minlabel);
     }
     else
     {
-        UINFO("No label is qualified");
+        std::cout << "No label is qualified" << std::endl;
     }
     return results;
 }

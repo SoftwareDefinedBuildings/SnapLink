@@ -1,7 +1,3 @@
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
@@ -10,6 +6,7 @@
 #include <rtabmap/core/Rtabmap.h>
 #include <pcl/common/transforms.h>
 #include <QCoreApplication>
+#include <QDebug>
 #include <cassert>
 #include "stage/Perspective.h"
 #include "event/SignatureEvent.h"
@@ -87,10 +84,9 @@ bool Perspective::event(QEvent *event)
 Transform Perspective::localize(const std::vector<int> &wordIds, const SensorData &sensorData, const Signature &oldSig) const
 {
     const CameraModel &cameraModel = sensorData.getCameraModel();
-    assert(!sensorData.imageRaw().empty());
+    assert(!sensorData.getImage().empty());
 
     Transform transform;
-    std::string msg;
 
     int inliersCount = 0;
     double variance = 1.0;
@@ -144,19 +140,17 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const SensorDat
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            msg = uFormat("Not enough inliers %d/%d between the old signature %d and the new image", inliersCount, _minInliers, oldSig.getId());
-            UINFO(msg.c_str());
+            std::cout << "Not enough inliers " << inliersCount << "/" << _minInliers << " between the old signature " << oldSig.getId() << " and the new image" << std::endl;
         }
     }
     else
     {
-        msg = uFormat("Not enough features in images (old=%d, new=%d, min=%d)", (int)words3.size(), (int)words.size(), _minInliers);
-        UINFO(msg.c_str());
+        std::cout << "Not enough features in images (old=" << words3.size() << ", new=" << words.size() << ", min=" << _minInliers << ")" << std::endl;
     }
 
     // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
-    UDEBUG("transform=%s", transform.prettyPrint().c_str());
+    qDebug() << "transform= " << transform.prettyPrint().c_str();
     return transform;
 }
 
@@ -194,7 +188,7 @@ Transform Perspective::estimateMotion3DTo2D(
     for (unsigned int i = 0; i < ids.size(); ++i)
     {
         std::map<int, cv::Point3f>::const_iterator iter = words3A.find(ids[i]);
-        if (iter != words3A.end() && rtabmap::util3d::isFinite(iter->second))
+        if (iter != words3A.end() && std::isfinite(iter->second.x) && std::isfinite(iter->second.y) && std::isfinite(iter->second.z))
         {
             const cv::Point3f &pt = iter->second;
             objectPoints[oi].x = pt.x;
@@ -209,8 +203,7 @@ Transform Perspective::estimateMotion3DTo2D(
     imagePoints.resize(oi);
     matches.resize(oi);
 
-    UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d",
-           (int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size());
+    qDebug() << "words3A=" << words3A.size() << " words2B= " << words2B.size() << " matches=" << matches.size() << " words3B=" << words3B.size();
 
     if ((int)matches.size() >= minInliers)
     {
@@ -260,7 +253,7 @@ Transform Perspective::estimateMotion3DTo2D(
                 for (unsigned int i = 0; i < inliers.size(); ++i)
                 {
                     std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
-                    if (iter != words3B.end() && rtabmap::util3d::isFinite(iter->second))
+                    if (iter != words3B.end() && std::isfinite(iter->second.x) && std::isfinite(iter->second.y) && std::isfinite(iter->second.z))
                     {
                         const cv::Point3f &objPt = objectPoints[inliers[i]];
                         pcl::PointXYZ pointPCL(iter->second.x, iter->second.y, iter->second.z);

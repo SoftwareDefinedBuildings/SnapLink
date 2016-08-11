@@ -1,13 +1,3 @@
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UStl.h>
-#include <rtabmap/utilite/UMath.h>
-#include <rtabmap/core/util3d_transforms.h>
-#include <rtabmap/core/util3d_motion_estimation.h>
-#include <rtabmap/core/EpipolarGeometry.h>
-#include <rtabmap/core/VWDictionary.h>
-#include <rtabmap/core/Rtabmap.h>
 #include <QCoreApplication>
 #include <cassert>
 #include "stage/WordSearch.h"
@@ -59,7 +49,7 @@ bool WordSearch::event(QEvent *event)
 // TODO maybe only pass skeypoints, descriptors, and model
 std::vector<int> WordSearch::searchWords(const SensorData &sensorData) const
 {
-    assert(!sensorData.imageRaw().empty());
+    assert(!sensorData.getImage().empty());
 
     cv::Mat descriptors = sensorData.descriptors();
 

@@ -1,15 +1,5 @@
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UStl.h>
-#include <rtabmap/utilite/UMath.h>
-#include <rtabmap/core/util3d_transforms.h>
-#include <rtabmap/core/util3d_motion_estimation.h>
-#include <rtabmap/core/EpipolarGeometry.h>
-#include <rtabmap/core/VWDictionary.h>
-#include <rtabmap/core/Rtabmap.h>
 #include <QCoreApplication>
-
+#include <QtDebug>
 #include "stage/SignatureSearch.h"
 #include "event/WordEvent.h"
 #include "event/SignatureEvent.h"
@@ -62,7 +52,7 @@ std::vector< std::unique_ptr<Signature> > SignatureSearch::searchSignatures(cons
     int topSigId = topIds[0];
     std::unique_ptr<Signature> topSig(new Signature(*_signatures->getSignatures().at(topSigId)));
 
-    UDEBUG("topSigId: %d", topSigId);
+    qDebug() << "topSigId: "<< topSigId;
 
     std::vector< std::unique_ptr<Signature> > signatures;
     signatures.emplace_back(std::move(topSig));
