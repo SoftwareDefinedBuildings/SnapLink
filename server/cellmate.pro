@@ -17,6 +17,7 @@ LIBS += -lopencv_features2d
 LIBS += -lopencv_imgcodecs
 LIBS += -lopencv_calib3d
 LIBS += -lopencv_flann
+LIBS += -lopencv_xfeatures2d
 
 INCLUDEPATH += /usr/local/include/pcl-1.8
 LIBS += -L/usr/local/lib

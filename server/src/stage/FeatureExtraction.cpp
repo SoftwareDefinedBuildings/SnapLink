@@ -4,20 +4,10 @@
 #include "event/FeatureEvent.h"
 #include "util/Time.h"
 
-FeatureExtraction::FeatureExtraction() :
-    _feature2D(nullptr)
+bool FeatureExtraction::init()
 {
-}
-
-FeatureExtraction::~FeatureExtraction()
-{
-    delete _feature2D;
-    _feature2D = nullptr;
-}
-
-bool FeatureExtraction::init(const rtabmap::ParametersMap &parameters)
-{
-    _feature2D = rtabmap::Feature2D::create(parameters);
+    int minHessian = 400;
+    _detector = cv::xfeatures2d::SURF::create(minHessian);
 
     return true;
 }
@@ -51,8 +41,9 @@ void FeatureExtraction::extractFeatures(SensorData &sensorData) const
 {
     const cv::Mat &image = sensorData.getImage(); // OpenCV uses a shared pointer internally
 
-    std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(image);
-    cv::Mat descriptors = _feature2D->generateDescriptors(image, keypoints);
+    std::vector<cv::KeyPoint> keypoints;
+    cv::Mat descriptors;
+    _detector->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
 
     sensorData.setFeatures(keypoints, descriptors);
 }

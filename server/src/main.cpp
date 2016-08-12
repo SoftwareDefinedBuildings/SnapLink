@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
     QThread visThread;
 
     rtabmap::ParametersMap params;
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
+    //params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "3"));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "false")); // do not create new word because we don't know whether extedning BOW dimension is good...
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false")); // do not compare with last signature's words
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
     // FeatureExtraction
     std::cout << "Initializing feature extraction" << std::endl;
-    feature.init(params);
+    feature.init();
     feature.setWordSearch(&wordSearch);
     feature.moveToThread(&featureThread);
     featureThread.start();
