@@ -1,6 +1,5 @@
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UStl.h>
-#include <rtabmap/core/util3d_motion_estimation.h>
 #include <pcl/common/transforms.h>
 #include <QCoreApplication>
 #include <QDebug>
@@ -14,12 +13,7 @@
 
 Perspective::Perspective() :
     _vis(nullptr),
-    _httpServer(nullptr),
-    _minInliers(rtabmap::Parameters::defaultVisMinInliers()),
-    _iterations(rtabmap::Parameters::defaultVisIterations()),
-    _pnpRefineIterations(rtabmap::Parameters::defaultVisPnPRefineIterations()),
-    _pnpReprojError(rtabmap::Parameters::defaultVisPnPReprojError()),
-    _pnpFlags(rtabmap::Parameters::defaultVisPnPFlags())
+    _httpServer(nullptr)
 {
 }
 
@@ -27,17 +21,6 @@ Perspective::~Perspective()
 {
     _vis = nullptr;
     _httpServer = nullptr;
-}
-
-bool Perspective::init(const rtabmap::ParametersMap &parameters)
-{
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisMinInliers(), _minInliers);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisIterations(), _iterations);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPReprojError(), _pnpReprojError);
-    rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kVisPnPFlags(), _pnpFlags);
-
-    return true;
 }
 
 void Perspective::setVisibility(Visibility *vis)
@@ -80,13 +63,14 @@ bool Perspective::event(QEvent *event)
 
 Transform Perspective::localize(const std::vector<int> &wordIds, const SensorData &sensorData, const Signature &oldSig) const
 {
+    int minInliers = 3;
+
     const CameraModel &cameraModel = sensorData.getCameraModel();
     assert(!sensorData.getImage().empty());
 
     Transform transform;
 
     int inliersCount = 0;
-    double variance = 1.0;
 
     std::multimap<int, cv::Point3f> words3;
 
@@ -115,34 +99,26 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const SensorDat
     }
 
     // 3D to 2D (PnP)
-    if ((int)words3.size() >= _minInliers && words.size() >= _minInliers)
+    if ((int)words3.size() >= minInliers && words.size() >= minInliers)
     {
-        std::vector<int> matches;
         std::vector<int> inliers;
 
         transform = estimateMotion3DTo2D(
                         uMultimapToMapUnique(words3),
                         uMultimapToMapUnique(words),
                         cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
-                        _minInliers,
-                        _iterations,
-                        _pnpReprojError,
-                        _pnpFlags,
-                        _pnpRefineIterations,
                         oldSigPose, // use the old signature's pose as a guess
-                        std::map<int, cv::Point3f>(),
-                        &variance,
-                        &matches,
-                        &inliers);
+                        &inliers,
+                        minInliers);
         inliersCount = (int)inliers.size();
         if (transform.isNull())
         {
-            std::cout << "Not enough inliers " << inliersCount << "/" << _minInliers << " between the old signature " << oldSig.getId() << " and the new image" << std::endl;
+            std::cout << "Not enough inliers " << inliersCount << "/" << minInliers << " between the old signature " << oldSig.getId() << " and the new image" << std::endl;
         }
     }
     else
     {
-        std::cout << "Not enough features in images (old=" << words3.size() << ", new=" << words.size() << ", min=" << _minInliers << ")" << std::endl;
+        std::cout << "Not enough features in images (old=" << words3.size() << ", new=" << words.size() << ", min=" << minInliers << ")" << std::endl;
     }
 
     // TODO check RegistrationVis.cpp to see whether rotation check is necessary
@@ -155,26 +131,14 @@ Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
     const std::map<int, cv::KeyPoint> &words2B,
     const CameraModel &cameraModel,
-    int minInliers,
-    int iterations,
-    double reprojError,
-    int flagsPnP,
-    int refineIterations,
     const Transform &guess,
-    const std::map<int, cv::Point3f> &words3B,
-    double *varianceOut,
-    std::vector<int> *matchesOut,
-    std::vector<int> *inliersOut) const
+    std::vector<int> *inliersOut,
+    int minInliers) const
 {
     assert(cameraModel.isValidForProjection());
     assert(!guess.isNull());
     Transform transform;
     std::vector<int> matches, inliers;
-
-    if (varianceOut)
-    {
-        *varianceOut = 1.0;
-    }
 
     // find correspondences
     std::vector<int> ids = uKeys(words2B);
@@ -200,7 +164,7 @@ Transform Perspective::estimateMotion3DTo2D(
     imagePoints.resize(oi);
     matches.resize(oi);
 
-    qDebug() << "words3A=" << words3A.size() << " words2B= " << words2B.size() << " matches=" << matches.size() << " words3B=" << words3B.size();
+    qDebug() << "words3A=" << words3A.size() << " words2B= " << words2B.size() << " matches=" << matches.size();
 
     if ((int)matches.size() >= minInliers)
     {
@@ -218,7 +182,7 @@ Transform Perspective::estimateMotion3DTo2D(
         cv::Mat tvec = (cv::Mat_<double>(1, 3) <<
                         (double)guessCameraFrame.x(), (double)guessCameraFrame.y(), (double)guessCameraFrame.z());
 
-        rtabmap::util3d::solvePnPRansac(
+        cv::solvePnPRansac(
             objectPoints,
             imagePoints,
             K,
@@ -226,12 +190,12 @@ Transform Perspective::estimateMotion3DTo2D(
             rvec,
             tvec,
             true,
-            iterations,
-            reprojError,
-            minInliers, // min inliers
+            100,
+            8.0,
+            0.99,
             inliers,
-            flagsPnP,
-            refineIterations);
+            cv::SOLVEPNP_ITERATIVE); // cv::SOLVEPNP_EPNP
+        // TODO check RTABMAp refine model code
 
         if ((int)inliers.size() >= minInliers)
         {
@@ -242,54 +206,10 @@ Transform Perspective::estimateMotion3DTo2D(
 
             transform = (cameraModel.localTransform() * pnp).inverse();
 
-            // compute variance (like in PCL computeVariance() method of sac_model.h)
-            if (varianceOut && words3B.size())
-            {
-                std::vector<float> errorSqrdDists(inliers.size());
-                oi = 0;
-                for (unsigned int i = 0; i < inliers.size(); ++i)
-                {
-                    std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
-                    if (iter != words3B.end() && std::isfinite(iter->second.x) && std::isfinite(iter->second.y) && std::isfinite(iter->second.z))
-                    {
-                        const cv::Point3f &objPt = objectPoints[inliers[i]];
-                        pcl::PointXYZ pointPCL(iter->second.x, iter->second.y, iter->second.z);
-                        pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, transform.toEigen3f());
-                        errorSqrdDists[oi] = uNormSquared(objPt.x - newPointPCL.x, objPt.y - newPointPCL.y, objPt.z - newPointPCL.z);
-                        //ignore very very far features (stereo)
-                        if (errorSqrdDists[oi] < 100.0f)
-                        {
-                            ++oi;
-                        }
-                    }
-                }
-                errorSqrdDists.resize(oi);
-                if (errorSqrdDists.size())
-                {
-                    std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-                    double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size() >> 1];
-                    *varianceOut = 2.1981 * median_error_sqr;
-                }
-            }
-            else if (varianceOut)
-            {
-                // compute variance, which is the rms of reprojection errors
-                std::vector<cv::Point2f> imagePointsReproj;
-                cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(), imagePointsReproj);
-                float err = 0.0f;
-                for (unsigned int i = 0; i < inliers.size(); ++i)
-                {
-                    err += uNormSquared(imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x, imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y);
-                }
-                *varianceOut = std::sqrt(err / float(inliers.size()));
-            }
+            // TODO: compute variance (like in PCL computeVariance() method of sac_model.h)
         }
     }
 
-    if (matchesOut)
-    {
-        *matchesOut = matches;
-    }
     if (inliersOut)
     {
         inliersOut->resize(inliers.size());

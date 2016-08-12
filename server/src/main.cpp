@@ -1,5 +1,3 @@
-#include <rtabmap/core/Parameters.h>
-#include <rtabmap/utilite/UConversion.h>
 #include <cstdio>
 #include <utility>
 #include <QCoreApplication>
@@ -54,22 +52,6 @@ int main(int argc, char *argv[])
     QThread perspectiveThread;
     QThread visThread;
 
-    rtabmap::ParametersMap params;
-    //params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), uNumber2Str(rtabmap::Feature2D::kFeatureSurf)));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), "3"));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpIncrementalDictionary(), "false")); // do not create new word because we don't know whether extedning BOW dimension is good...
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNewWordsComparedTogether(), "false")); // do not compare with last signature's words
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), uNumber2Str(rtabmap::VWDictionary::kNNBruteForce))); // bruteforce
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), "0.3"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), "50000"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpBadSignRatio(), "0"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpRoiRatios(), "0.0 0.0 0.0 0.0"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemGenerateIds(), "true"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "2000"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "1.0"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), "0")); // 0=Iterative, 1=EPNP, 2=P3P
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), "true"));
-
     std::cout << "Reading data" << std::endl;
     if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels))
     {
@@ -88,11 +70,6 @@ int main(int argc, char *argv[])
     std::cout << "Initializing Perspective" << std::endl;
     perspective.setHTTPServer(&httpServer);
     perspective.setVisibility(&vis);
-    if (!perspective.init(params))
-    {
-        qCritical() << "Initializing Perspective failed";
-        return 1;
-    }
     perspective.moveToThread(&perspectiveThread);
     perspectiveThread.start();
 

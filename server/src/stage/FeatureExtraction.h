@@ -11,6 +11,9 @@ class FeatureExtraction :
     public QObject
 {
 public:
+    FeatureExtraction();
+    virtual ~FeatureExtraction();
+
     bool init();
 
     void setWordSearch(WordSearch *wordSearch);

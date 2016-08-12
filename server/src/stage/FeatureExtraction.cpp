@@ -4,6 +4,17 @@
 #include "event/FeatureEvent.h"
 #include "util/Time.h"
 
+FeatureExtraction::FeatureExtraction() :
+    _wordSearch(nullptr)
+{
+}
+
+FeatureExtraction::~FeatureExtraction()
+{
+    _wordSearch = nullptr;
+}
+
+
 bool FeatureExtraction::init()
 {
     int minHessian = 400;
