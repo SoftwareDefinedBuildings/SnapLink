@@ -1,5 +1,3 @@
-#include <rtabmap/utilite/UMath.h>
-#include <rtabmap/utilite/UStl.h>
 #include <pcl/common/transforms.h>
 #include <QCoreApplication>
 #include <QDebug>
@@ -10,6 +8,7 @@
 #include "event/FailureEvent.h"
 #include "data/PerfData.h"
 #include "util/Time.h"
+#include "util/Utility.h"
 
 Perspective::Perspective() :
     _vis(nullptr),
@@ -104,8 +103,8 @@ Transform Perspective::localize(const std::vector<int> &wordIds, const SensorDat
         std::vector<int> inliers;
 
         transform = estimateMotion3DTo2D(
-                        uMultimapToMapUnique(words3),
-                        uMultimapToMapUnique(words),
+                        Utility::MultimapToMapUnique(words3),
+                        Utility::MultimapToMapUnique(words),
                         cameraModel, // TODO: cameraModel.localTransform has to be the same for all images
                         oldSigPose, // use the old signature's pose as a guess
                         &inliers,
@@ -141,7 +140,7 @@ Transform Perspective::estimateMotion3DTo2D(
     std::vector<int> matches, inliers;
 
     // find correspondences
-    std::vector<int> ids = uKeys(words2B);
+    std::vector<int> ids = Utility::Keys(words2B);
     std::vector<cv::Point3f> objectPoints(ids.size());
     std::vector<cv::Point2f> imagePoints(ids.size());
     int oi = 0;
@@ -221,3 +220,4 @@ Transform Perspective::estimateMotion3DTo2D(
 
     return transform;
 }
+
