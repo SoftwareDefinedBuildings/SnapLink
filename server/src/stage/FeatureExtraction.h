@@ -1,31 +1,29 @@
 #pragma once
 
-#include <opencv2/xfeatures2d.hpp>
-#include <QObject>
-#include "stage/WordSearch.h"
 #include "data/SensorData.h"
+#include "stage/WordSearch.h"
+#include <QObject>
+#include <opencv2/xfeatures2d.hpp>
 
 class WordSearch;
 
-class FeatureExtraction :
-    public QObject
-{
+class FeatureExtraction : public QObject {
 public:
-    FeatureExtraction();
-    virtual ~FeatureExtraction();
+  FeatureExtraction();
+  virtual ~FeatureExtraction();
 
-    bool init();
+  bool init();
 
-    void setWordSearch(WordSearch *wordSearch);
+  void setWordSearch(WordSearch *wordSearch);
 
 protected:
-    virtual bool event(QEvent *event);
+  virtual bool event(QEvent *event);
 
 private:
-    void extractFeatures(SensorData &sensorData) const;
+  void extractFeatures(SensorData &sensorData) const;
 
 private:
-    WordSearch *_wordSearch;
+  WordSearch *_wordSearch;
 
-    cv::Ptr<cv::xfeatures2d::SURF> _detector;
+  cv::Ptr<cv::xfeatures2d::SURF> _detector;
 };

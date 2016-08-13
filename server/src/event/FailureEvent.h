@@ -1,20 +1,18 @@
 #pragma once
 
+#include "data/PerfData.h"
 #include <QEvent>
 #include <memory>
-#include "data/PerfData.h"
 
-class FailureEvent :
-    public QEvent
-{
+class FailureEvent : public QEvent {
 public:
-    FailureEvent(const void *session);
+  FailureEvent(const void *session);
 
-    const void *getSession();
+  const void *getSession();
 
-    static QEvent::Type type();
+  static QEvent::Type type();
 
 private:
-    static const QEvent::Type _type;
-    const void *_session;
+  static const QEvent::Type _type;
+  const void *_session;
 };
