@@ -1,10 +1,9 @@
 #pragma once
 
-#include <rtabmap/core/Parameters.h>
-#include <rtabmap/core/SensorData.h>
-#include <rtabmap/core/Features2d.h>
+#include <opencv2/xfeatures2d.hpp>
 #include <QObject>
 #include "stage/WordSearch.h"
+#include "data/SensorData.h"
 
 class WordSearch;
 
@@ -15,7 +14,7 @@ public:
     FeatureExtraction();
     virtual ~FeatureExtraction();
 
-    bool init(const rtabmap::ParametersMap &parameters = rtabmap::ParametersMap());
+    bool init();
 
     void setWordSearch(WordSearch *wordSearch);
 
@@ -23,10 +22,10 @@ protected:
     virtual bool event(QEvent *event);
 
 private:
-    void extractFeatures(rtabmap::SensorData &sensorData) const;
+    void extractFeatures(SensorData &sensorData) const;
 
 private:
     WordSearch *_wordSearch;
 
-    rtabmap::Feature2D *_feature2D;
+    cv::Ptr<cv::xfeatures2d::SURF> _detector;
 };

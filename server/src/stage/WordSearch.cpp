@@ -1,13 +1,3 @@
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UStl.h>
-#include <rtabmap/utilite/UMath.h>
-#include <rtabmap/core/util3d_transforms.h>
-#include <rtabmap/core/util3d_motion_estimation.h>
-#include <rtabmap/core/EpipolarGeometry.h>
-#include <rtabmap/core/VWDictionary.h>
-#include <rtabmap/core/Rtabmap.h>
 #include <QCoreApplication>
 #include <cassert>
 #include "stage/WordSearch.h"
@@ -42,7 +32,7 @@ bool WordSearch::event(QEvent *event)
     if (event->type() == FeatureEvent::type())
     {
         FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = featureEvent->takeSensorData();
+        std::unique_ptr<SensorData> sensorData = featureEvent->takeSensorData();
         std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
         const void *session = featureEvent->getSession();
         std::unique_ptr< std::vector<int> > wordIds(new std::vector<int>());
@@ -57,20 +47,15 @@ bool WordSearch::event(QEvent *event)
 }
 
 // TODO maybe only pass skeypoints, descriptors, and model
-std::vector<int> WordSearch::searchWords(const rtabmap::SensorData &sensorData) const
+std::vector<int> WordSearch::searchWords(const SensorData &sensorData) const
 {
-    assert(!sensorData.imageRaw().empty());
+    assert(!sensorData.getImage().empty());
 
-    const rtabmap::CameraModel &cameraModel = sensorData.cameraModels()[0];
-
-    std::vector<cv::KeyPoint> keypoints = sensorData.keypoints();
     cv::Mat descriptors = sensorData.descriptors();
 
-    std::vector<int> wordIds;
-    if (descriptors.rows)
-    {
-        wordIds = _words->findNNs(descriptors);
-    }
+    assert(descriptors.rows > 0);
+
+    std::vector<int> wordIds = _words->findNNs(descriptors);
 
     return wordIds;
 }

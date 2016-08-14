@@ -16,7 +16,7 @@ void LabelsSimple::putLabels(std::list< std::unique_ptr<Label> > &&labels)
             }
             else
             {
-                iter->second.push_back(std::move(label));
+                iter->second.emplace_back(std::move(label));
             }
         }
     }

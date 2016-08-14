@@ -9,8 +9,8 @@
 #include <vector>
 #include <set>
 
-#include <rtabmap/core/Transform.h>
-#include <rtabmap/core/SensorData.h>
+#include "data/SensorData.h"
+#include "data/Transform.h"
 
 class Signature
 {
@@ -18,8 +18,8 @@ public:
     Signature(int id,
               int mapId,
               int dbId,
-              rtabmap::Transform pose,
-              const rtabmap::SensorData &sensorData,
+              Transform pose,
+              const SensorData &sensorData,
               std::multimap<int, cv::KeyPoint> words,
               std::multimap<int, cv::Point3f> words3);
     virtual ~Signature();
@@ -27,8 +27,8 @@ public:
     int getId() const;
     int getMapId() const;
     int getDbId() const;
-    const rtabmap::Transform &getPose() const;
-    const rtabmap::SensorData &getSensorData() const;
+    const Transform &getPose() const;
+    const SensorData &getSensorData() const;
     const std::multimap<int, cv::KeyPoint> &getWords() const;
     const std::multimap<int, cv::Point3f> &getWords3() const;
 
@@ -36,8 +36,8 @@ private:
     int _id;
     int _mapId;
     int _dbId;
-    rtabmap::Transform _pose;
-    rtabmap::SensorData _sensorData;
+    Transform _pose;
+    SensorData _sensorData;
 
     // Contains all words (Some can be duplicates -> if a word appears 2
     // times in the signature, it will be 2 times in this list)

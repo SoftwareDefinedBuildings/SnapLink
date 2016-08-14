@@ -1,34 +1,24 @@
 #include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UProcessInfo.h>
-#include <rtabmap/utilite/UMath.h>
-
-#include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/VisualWord.h>
-#include <rtabmap/core/Features2d.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Memory.h>
-#include <rtabmap/core/util3d_features.h>
-#include <rtabmap/core/util3d_filtering.h>
-#include <rtabmap/core/util3d_correspondences.h>
-#include <rtabmap/core/util3d_registration.h>
-#include <rtabmap/core/util3d_surface.h>
-#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d.h>
-#include <rtabmap/core/util2d.h>
-#include <rtabmap/core/Compression.h>
-#include <rtabmap/core/Graph.h>
 #include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Link.h>
+#include <rtabmap/utilite/UStl.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
+#include <pcl/common/transforms.h>
 #include <sqlite3.h>
 
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/Labels.h"
 #include "data/Signatures.h"
 #include "data/Words.h"
+#include "data/Transform.h"
 #include "util/Time.h"
 
 bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &words, Signatures &signatures, Labels &labels)
@@ -37,7 +27,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths, Words &
     int nextMemWordId = 1; // the ID we assign to next visual word we put in memory
 
     // Read data from databases
-    std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > allWordsMap;
+    std::map< int, std::list< std::unique_ptr<Word> > > allWordsMap;
     std::list< std::unique_ptr<Signature> > allSignatures;
     std::list< std::unique_ptr<Label> > allLabels;
     int dbId = 0;
@@ -105,11 +95,14 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::readSignatures(const s
             signature->sensorData().uncompressData();
         }
         int mapId = signature->mapId();
-        const rtabmap::Transform &pose = signature->getPose();
-        rtabmap::SensorData &sensorData = signature->sensorData();
+        Transform pose = Transform::fromEigen4f(signature->getPose().toEigen4f());
+        const rtabmap::SensorData &sensorData = signature->sensorData();
+        const rtabmap::CameraModel &cm = sensorData.cameraModels()[0];
+        CameraModel newCameraModel(cm.name(), cm.fx(), cm.fy(), cm.cx(), cm.cy(), Transform::fromEigen4f(cm.localTransform().toEigen4f()));
+        SensorData newSensorData(sensorData.imageRaw(), sensorData.depthRaw(), std::move(newCameraModel));
         const auto &words = signature->getWords();
         const auto &words3 = signature->getWords3();
-        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, pose, std::move(sensorData), words, words3)));
+        signatures.emplace_back(std::unique_ptr<Signature>(new Signature(id, mapId, dbId, std::move(pose), std::move(newSensorData), words, words3)));
 
         delete signature;
         signature = nullptr;
@@ -124,9 +117,9 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::readSignatures(const s
     return signatures;
 }
 
-std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, const std::list< std::unique_ptr<Signature> > &signatures)
+std::list< std::unique_ptr<Word> > RTABMapDBAdapter::readWords(const std::string &dbPath, int dbId, const std::list< std::unique_ptr<Signature> > &signatures)
 {
-    std::list< std::unique_ptr<rtabmap::VisualWord> > allWords;
+    std::list< std::unique_ptr<Word> > allWords;
 
     rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
     if (!dbDriver->openConnection(dbPath))
@@ -148,10 +141,12 @@ std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::readWords(co
     }
     std::list<rtabmap::VisualWord *> allDbWords;
     dbDriver->loadWords(wordIds, allDbWords);
-    for (auto & word : allDbWords)
+    for (auto & dbWord : allDbWords)
     {
-        allWords.emplace_back(std::unique_ptr<rtabmap::VisualWord>(word));
-        word = nullptr;
+        int id = dbWord->id();
+        const cv::Mat &descriptor = dbWord->getDescriptor();
+        allWords.emplace_back(std::unique_ptr<Word>(new Word(id, descriptor)));
+        dbWord = nullptr;
     }
 
     UDEBUG("Closing database \"%s\"...", dbDriver->getUrl().c_str());
@@ -236,8 +231,8 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
 {
     UDEBUG("");
     // TODO: Use map of map for both signature and words
-    rtabmap::SensorData data;
-    rtabmap::Transform poseWorld;
+    SensorData data;
+    Transform poseWorld;
     for (const auto & signature : signatures)
     {
         if (signature->getDbId() == dbId && signature->getId() == imageId)
@@ -249,10 +244,10 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
     }
     assert(!poseWorld.isNull());
 
-    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    const CameraModel &cm = data.getCameraModel();
     bool smoothing = false;
-    assert(!data.depthRaw().empty());
-    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+    assert(!data.getDepth().empty());
+    pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(data.getDepth(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
     if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
     {
         UWARN("Depth value not valid");
@@ -264,11 +259,11 @@ bool RTABMapDBAdapter::getPoint3World(const std::list< std::unique_ptr<Signature
         return false;
     }
     poseWorld = poseWorld * cm.localTransform();
-    pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+    pWorld = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
     return true;
 }
 
-std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(const std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > &wordsMap)
+std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(const std::map< int, std::list< std::unique_ptr<Word> > > &wordsMap)
 {
     std::map<std::pair<int, int>, int> mergeWordsIdMap;
     int nextWordId = 1;
@@ -277,7 +272,7 @@ std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(const st
         int dbId = words.first;
         for (const auto & word : words.second)
         {
-            int wordId = word->id();
+            int wordId = word->getId();
             mergeWordsIdMap.insert(std::make_pair(std::make_pair(dbId, wordId), nextWordId));
             nextWordId++;
         }
@@ -299,24 +294,22 @@ std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeSignaturesIdMap(con
     return mergeSignaturesIdMap;
 }
 
-std::list< std::unique_ptr<rtabmap::VisualWord> > RTABMapDBAdapter::mergeWords(std::map< int, std::list< std::unique_ptr<rtabmap::VisualWord> > > &&wordsMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap)
+std::list< std::unique_ptr<Word> > RTABMapDBAdapter::mergeWords(std::map< int, std::list< std::unique_ptr<Word> > > &&wordsMap, const std::map<std::pair<int, int>, int> &mergeWordsIdMap, const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap)
 {
-    std::list< std::unique_ptr<rtabmap::VisualWord> > mergedWords;
+    std::list< std::unique_ptr<Word> > mergedWords;
 
     for (const auto & words : wordsMap)
     {
         int dbId = words.first;
         for (const auto & word : words.second)
         {
-            int wordId = word->id();
+            int wordId = word->getId();
             auto wordIdIter = mergeWordsIdMap.find(std::make_pair(dbId, wordId));
-            // TODO update reference signatures
-            if (wordIdIter != mergeWordsIdMap.end())
-            {
-                int newId = wordIdIter->second;
-                const cv::Mat &descriptor = word->getDescriptor();
-                mergedWords.emplace_back(std::unique_ptr<rtabmap::VisualWord>(new rtabmap::VisualWord(newId, descriptor)));
-            }
+            assert(wordIdIter != mergeWordsIdMap.end());
+
+            int newId = wordIdIter->second;
+            const cv::Mat &descriptor = word->getDescriptor();
+            mergedWords.emplace_back(std::unique_ptr<Word>(new Word(newId, descriptor)));
         }
     }
     return mergedWords;
@@ -335,8 +328,8 @@ std::list< std::unique_ptr<Signature> > RTABMapDBAdapter::mergeSignatures(std::l
 
         int newId = signatureIdIter->second;
         int mapId = signature->getMapId();
-        const rtabmap::Transform &pose = signature->getPose();
-        const rtabmap::SensorData &sensorData = signature->getSensorData();
+        const Transform &pose = signature->getPose();
+        const SensorData &sensorData = signature->getSensorData();
 
         std::multimap<int, cv::KeyPoint> words;
         for (const auto & word : signature->getWords())

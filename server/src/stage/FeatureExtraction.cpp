@@ -5,19 +5,20 @@
 #include "util/Time.h"
 
 FeatureExtraction::FeatureExtraction() :
-    _feature2D(nullptr)
+    _wordSearch(nullptr)
 {
 }
 
 FeatureExtraction::~FeatureExtraction()
 {
-    delete _feature2D;
-    _feature2D = nullptr;
+    _wordSearch = nullptr;
 }
 
-bool FeatureExtraction::init(const rtabmap::ParametersMap &parameters)
+
+bool FeatureExtraction::init()
 {
-    _feature2D = rtabmap::Feature2D::create(parameters);
+    int minHessian = 400;
+    _detector = cv::xfeatures2d::SURF::create(minHessian);
 
     return true;
 }
@@ -32,7 +33,7 @@ bool FeatureExtraction::event(QEvent *event)
     if (event->type() == QueryEvent::type())
     {
         QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
-        std::unique_ptr<rtabmap::SensorData> sensorData = queryEvent->takeSensorData();
+        std::unique_ptr<SensorData> sensorData = queryEvent->takeSensorData();
         std::unique_ptr<PerfData> perfData = queryEvent->takePerfData();
         const void *session = queryEvent->getSession();
 
@@ -47,12 +48,13 @@ bool FeatureExtraction::event(QEvent *event)
     return QObject::event(event);
 }
 
-void FeatureExtraction::extractFeatures(rtabmap::SensorData &sensorData) const
+void FeatureExtraction::extractFeatures(SensorData &sensorData) const
 {
-    cv::Mat image = sensorData.imageRaw(); // OpenCV uses a shared pointer internally
+    const cv::Mat &image = sensorData.getImage(); // OpenCV uses a shared pointer internally
 
-    std::vector<cv::KeyPoint> keypoints = _feature2D->generateKeypoints(image);
-    cv::Mat descriptors = _feature2D->generateDescriptors(image, keypoints);
+    std::vector<cv::KeyPoint> keypoints;
+    cv::Mat descriptors;
+    _detector->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
 
     sensorData.setFeatures(keypoints, descriptors);
 }

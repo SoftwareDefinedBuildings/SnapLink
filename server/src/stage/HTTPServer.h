@@ -57,7 +57,7 @@ private:
                                  void **con_cls,
                                  enum MHD_RequestTerminationCode toe);
     static int sendPage(struct MHD_Connection *connection, const std::string &page, int status_code);
-    static std::unique_ptr<rtabmap::SensorData> createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy);
+    static std::unique_ptr<SensorData> createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy);
 
 private:
     static const std::string busypage;

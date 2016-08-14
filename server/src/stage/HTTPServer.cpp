@@ -1,4 +1,3 @@
-#include <rtabmap/utilite/ULogger.h>
 #include <strings.h>
 #include <string.h>
 #include <cstdlib>
@@ -158,7 +157,7 @@ int HTTPServer::answerConnection(void *cls,
         {
             // all data are received
             connInfo->perfData->overallStart = getTime(); // log start of processing
-            std::unique_ptr<rtabmap::SensorData> sensorData = createSensorData(*(connInfo->rawData), connInfo->cameraInfo.fx, connInfo->cameraInfo.fy, connInfo->cameraInfo.cx, connInfo->cameraInfo.cy);
+            std::unique_ptr<SensorData> sensorData = createSensorData(*(connInfo->rawData), connInfo->cameraInfo.fx, connInfo->cameraInfo.fy, connInfo->cameraInfo.cx, connInfo->cameraInfo.cy);
             QCoreApplication::postEvent(httpServer->_feature, new QueryEvent(std::move(sensorData), std::move(connInfo->perfData), connInfo));
         }
 
@@ -238,7 +237,6 @@ void HTTPServer::requestCompleted(void *cls,
                                   void **con_cls,
                                   enum MHD_RequestTerminationCode toe)
 {
-    UDEBUG("");
     HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
     ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(*con_cls);
 
@@ -252,11 +250,11 @@ void HTTPServer::requestCompleted(void *cls,
     {
         perfData->overallEnd = getTime(); // log processing end time
 
-        UINFO("TAG_TIME overall %ld", perfData->overallEnd - perfData->overallStart);
-        UINFO("TAG_TIME features %ld", perfData->featuresEnd - perfData->featuresStart);
-        UINFO("TAG_TIME words %ld", perfData->wordsEnd - perfData->wordsStart);
-        UINFO("TAG_TIME signatures %ld", perfData->signaturesEnd - perfData->signaturesStart);
-        UINFO("TAG_TIME perspective %ld", perfData->perspectiveEnd - perfData->perspectiveStart);
+        std::cout << "TAG_TIME overall " << perfData->overallEnd - perfData->overallStart << " ms" << std::endl;
+        std::cout << "TAG_TIME features " << perfData->featuresEnd - perfData->featuresStart << " ms" << std::endl;
+        std::cout << "TAG_TIME words " << perfData->wordsEnd - perfData->wordsStart << " ms" << std::endl;
+        std::cout << "TAG_TIME signatures " << perfData->signaturesEnd - perfData->signaturesStart << " ms" << std::endl;
+        std::cout << "TAG_TIME perspective " << perfData->perspectiveEnd - perfData->perspectiveStart << " ms" << std::endl;
     }
 
     if (connInfo->postProcessor != nullptr)
@@ -284,10 +282,8 @@ int HTTPServer::sendPage(struct MHD_Connection *connection, const std::string &p
     return ret;
 }
 
-std::unique_ptr<rtabmap::SensorData> HTTPServer::createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy)
+std::unique_ptr<SensorData> HTTPServer::createSensorData(const std::vector<char> &data, double fx, double fy, double cx, double cy)
 {
-    UDEBUG("");
-
     // there is no data copy here, the cv::Mat has a pointer to the data
     const bool copyData = false;
     cv::Mat img = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
@@ -301,9 +297,9 @@ std::unique_ptr<rtabmap::SensorData> HTTPServer::createSensorData(const std::vec
 
     if (!img.empty())
     {
-        rtabmap::Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-        rtabmap::CameraModel model(fx, fy, cx, cy, localTransform);
-        std::unique_ptr<rtabmap::SensorData> sensorData(new rtabmap::SensorData(img, model));
+        Transform localTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+        CameraModel model("", fx, fy, cx, cy, std::move(localTransform));
+        std::unique_ptr<SensorData> sensorData(new SensorData(img, cv::Mat(), std::move(model)));
         return sensorData;
     }
 

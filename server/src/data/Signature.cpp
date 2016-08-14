@@ -1,16 +1,12 @@
 #include <cassert>
-#include <rtabmap/core/EpipolarGeometry.h>
-#include <rtabmap/core/Memory.h>
-#include <rtabmap/core/Compression.h>
-#include <opencv2/highgui/highgui.hpp>
 #include "data/Signature.h"
 
 Signature::Signature(
     int id,
     int mapId,
     int dbId,
-    rtabmap::Transform pose,
-    const rtabmap::SensorData &sensorData,
+    Transform pose,
+    const SensorData &sensorData,
     std::multimap<int, cv::KeyPoint> words,
     std::multimap<int, cv::Point3f> words3):
     _id(id),
@@ -44,12 +40,12 @@ int Signature::getDbId() const
     return _dbId;
 }
 
-const rtabmap::Transform &Signature::getPose() const
+const Transform &Signature::getPose() const
 {
     return _pose;
 }
 
-const rtabmap::SensorData &Signature::getSensorData() const
+const SensorData &Signature::getSensorData() const
 {
     return _sensorData;
 }
