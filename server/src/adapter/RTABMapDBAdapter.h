@@ -41,13 +41,14 @@ private:
   static std::map<std::pair<int, int>, int> getMergeWordsIdMap(
       const std::map<int, std::list<std::unique_ptr<Word>>> &wordsMap);
   static std::map<std::pair<int, int>, int> getMergeSignaturesIdMap(
-      const std::list<std::unique_ptr<Signature>> &signatures);
+      const std::map<int, std::list<std::unique_ptr<Signature>>>
+          &signaturesMap);
   static std::list<std::unique_ptr<Word>>
   mergeWords(std::map<int, std::list<std::unique_ptr<Word>>> &&wordsMap,
              const std::map<std::pair<int, int>, int> &mergeWordsIdMap,
              const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap);
   static std::list<std::unique_ptr<Signature>> mergeSignatures(
-      std::list<std::unique_ptr<Signature>> &&signatures,
+      std::map<int, std::list<std::unique_ptr<Signature>>> &&signaturesMap,
       const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap,
       const std::map<std::pair<int, int>, int> &mergeWordsIdMap);
 };
