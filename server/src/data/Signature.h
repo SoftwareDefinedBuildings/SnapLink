@@ -38,8 +38,5 @@ private:
   // Contains all words (Some can be duplicates -> if a word appears 2
   // times in the signature, it will be 2 times in this list)
   // Words match with the CvSeq keypoints and descriptors
-  std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
-  std::multimap<int, cv::Point3f> _words3; // word <id, 3D point> // in
-                                           // base_link frame (localTransform
-                                           // applied))
-};
+  std::multimap<int, cv::KeyPoint> _words;
+  std::multimap<int, cv::Point3f> _words3;

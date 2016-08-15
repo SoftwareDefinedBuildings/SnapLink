@@ -96,10 +96,8 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
 
     transform = estimateMotion3DTo2D(
         Utility::MultimapToMapUnique(words3),
-        Utility::MultimapToMapUnique(words),
-        cameraModel, // TODO: cameraModel.localTransform has to be the same
-                     // for all images
-        oldSigPose,  // use the old signature's pose as a guess
+        Utility::MultimapToMapUnique(words), cameraModel,
+        oldSigPose, // use the old signature's pose as a guess
         &inliers, minInliers);
     inliersCount = (int)inliers.size();
     if (transform.isNull()) {

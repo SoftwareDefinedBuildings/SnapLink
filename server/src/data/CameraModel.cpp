@@ -5,15 +5,13 @@
 CameraModel::CameraModel() = default;
 
 CameraModel::CameraModel(const std::string &name, double fx, double fy,
-                         double cx, double cy, Transform &&localTransform,
-                         double Tx, const cv::Size &imageSize)
-    : name_(name), imageSize_(imageSize), K_(cv::Mat::eye(3, 3, CV_64FC1)),
-      localTransform_(std::move(localTransform)) {
+                         double cx, double cy, double Tx,
+                         const cv::Size &imageSize)
+    : name_(name), imageSize_(imageSize), K_(cv::Mat::eye(3, 3, CV_64FC1)) {
   assert(fx > 0.0);
   assert(fy > 0.0);
   assert(cx >= 0.0);
   assert(cy >= 0.0);
-  assert(!localTransform_.isNull());
   if (Tx != 0.0) {
     P_ = cv::Mat::eye(3, 4, CV_64FC1), P_.at<double>(0, 0) = fx;
     P_.at<double>(1, 1) = fy;
