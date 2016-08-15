@@ -22,33 +22,36 @@ public:
                        Signatures &signatures, Labels &labels);
 
 private:
-  static std::list<std::unique_ptr<Signature>>
+  static std::map<int, std::unique_ptr<Signature>>
   readSignatures(const std::string &dbPath, int dbId);
   static std::list<std::unique_ptr<Word>>
-  readWords(const std::string &dbPath,
-            const std::list<std::unique_ptr<Signature>> &signatures);
+  readWords(const std::string &dbPath, int dbId,
+            const std::map<int, std::map<int, std::unique_ptr<Signature>>>
+                &signatures);
   static std::list<std::unique_ptr<Label>>
   readLabels(const std::string &dbPath, int dbId,
-             const std::list<std::unique_ptr<Signature>> &signatures);
+             const std::map<int, std::map<int, std::unique_ptr<Signature>>>
+                 &allSignatures);
 
   static std::map<int, rtabmap::Transform>
   getOptimizedPoseMap(const std::string &dbPath);
 
   static bool
-  getPoint3World(const std::list<std::unique_ptr<Signature>> &signatures,
+  getPoint3World(const std::map<int, std::map<int, std::unique_ptr<Signature>>>
+                     &allSignatures,
                  int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
   static std::map<std::pair<int, int>, int> getMergeWordsIdMap(
-      const std::map<int, std::list<std::unique_ptr<Word>>> &wordsMap);
+      const std::map<int, std::list<std::unique_ptr<Word>>> &allWords);
   static std::map<std::pair<int, int>, int> getMergeSignaturesIdMap(
-      const std::map<int, std::list<std::unique_ptr<Signature>>>
-          &signaturesMap);
+      const std::map<int, std::map<int, std::unique_ptr<Signature>>>
+          &allSignatures);
   static std::list<std::unique_ptr<Word>>
-  mergeWords(std::map<int, std::list<std::unique_ptr<Word>>> &&wordsMap,
+  mergeWords(std::map<int, std::list<std::unique_ptr<Word>>> &&allWords,
              const std::map<std::pair<int, int>, int> &mergeWordsIdMap,
              const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap);
   static std::list<std::unique_ptr<Signature>> mergeSignatures(
-      std::map<int, std::list<std::unique_ptr<Signature>>> &&signaturesMap,
+      std::map<int, std::map<int, std::unique_ptr<Signature>>> &&allSignatures,
       const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap,
       const std::map<std::pair<int, int>, int> &mergeWordsIdMap);
 };
