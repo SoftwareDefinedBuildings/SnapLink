@@ -19,7 +19,7 @@ public:
 
 private:
   static const QEvent::Type _type;
-  const void *_session;
   std::unique_ptr<SensorData> _sensorData;
   std::unique_ptr<PerfData> _perfData;
+  const void *_session;
 };

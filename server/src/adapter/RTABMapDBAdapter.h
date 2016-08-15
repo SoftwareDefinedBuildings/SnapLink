@@ -25,7 +25,7 @@ private:
   static std::list<std::unique_ptr<Signature>>
   readSignatures(const std::string &dbPath, int dbId);
   static std::list<std::unique_ptr<Word>>
-  readWords(const std::string &dbPath, int dbId,
+  readWords(const std::string &dbPath,
             const std::list<std::unique_ptr<Signature>> &signatures);
   static std::list<std::unique_ptr<Label>>
   readLabels(const std::string &dbPath, int dbId,

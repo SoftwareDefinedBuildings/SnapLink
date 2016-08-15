@@ -22,10 +22,6 @@
 bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
                                 Words &words, Signatures &signatures,
                                 Labels &labels) {
-  int nextMemSigId = 1; // the ID we assign to next signature we put in memory
-  int nextMemWordId =
-      1; // the ID we assign to next visual word we put in memory
-
   // Read data from databases
   std::map<int, std::list<std::unique_ptr<Word>>> allWordsMap;
   std::list<std::unique_ptr<Signature>> allSignatures;
@@ -34,7 +30,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
   for (const auto &dbPath : dbPaths) {
     auto dbSignatures = readSignatures(dbPath, dbId);
 
-    auto dbWords = readWords(dbPath, dbId, dbSignatures);
+    auto dbWords = readWords(dbPath, dbSignatures);
     allWordsMap.insert(std::make_pair(dbId, std::move(dbWords)));
 
     auto dbLabels = readLabels(dbPath, dbId, dbSignatures);
@@ -124,7 +120,7 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath, int dbId) {
 }
 
 std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
-    const std::string &dbPath, int dbId,
+    const std::string &dbPath,
     const std::list<std::unique_ptr<Signature>> &signatures) {
   std::list<std::unique_ptr<Word>> allWords;
 

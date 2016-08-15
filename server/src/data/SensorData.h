@@ -21,12 +21,9 @@ public:
   const CameraModel &getCameraModel() const;
 
   void setFeatures(const std::vector<cv::KeyPoint> &keypoints,
-                   const cv::Mat &descriptors) {
-    _keypoints = keypoints;
-    _descriptors = descriptors;
-  }
-  const std::vector<cv::KeyPoint> &keypoints() const { return _keypoints; }
-  const cv::Mat &descriptors() const { return _descriptors; }
+                   const cv::Mat &descriptors);
+  const std::vector<cv::KeyPoint> &keypoints() const;
+  const cv::Mat &descriptors() const;
 
 private:
   int _id;

@@ -32,7 +32,7 @@ private:
                                  const CameraModel &cameraModel,
                                  const Transform &guess,
                                  std::vector<int> *inliersOut,
-                                 int minInliers) const;
+                                 size_t minInliers) const;
 
 private:
   Visibility *_vis;

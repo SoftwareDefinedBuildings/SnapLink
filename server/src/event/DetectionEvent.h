@@ -18,7 +18,7 @@ public:
 
 private:
   static const QEvent::Type _type;
-  const void *_session;
   std::unique_ptr<std::vector<std::string>> _names;
   std::unique_ptr<PerfData> _perfData;
+  const void *_session;
 };

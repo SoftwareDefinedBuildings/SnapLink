@@ -23,9 +23,9 @@ public:
 
 private:
   static const QEvent::Type _type;
-  const void *_session;
   std::unique_ptr<std::vector<int>> _wordIds;
   std::unique_ptr<SensorData> _sensorData;
   std::vector<std::unique_ptr<Signature>> _signatures;
   std::unique_ptr<PerfData> _perfData;
+  const void *_session;
 };

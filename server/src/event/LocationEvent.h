@@ -23,9 +23,9 @@ public:
 
 private:
   static const QEvent::Type _type;
-  const void *_session;
   int _dbId;
   std::unique_ptr<SensorData> _sensorData;
   std::unique_ptr<Transform> _pose;
   std::unique_ptr<PerfData> _perfData;
+  const void *_session;
 };

@@ -168,25 +168,29 @@ int HTTPServer::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
     if (strcmp(key, "file") == 0) {
       connInfo->rawData->insert(connInfo->rawData->end(), data, data + size);
     } else if (strcmp(key, "fx") == 0) {
-      char buf[size + 1];
+      char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
       connInfo->cameraInfo.fx = atof(buf);
+      delete[] buf;
     } else if (strcmp(key, "fy") == 0) {
-      char buf[size + 1];
+      char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
       connInfo->cameraInfo.fy = atof(buf);
+      delete[] buf;
     } else if (strcmp(key, "cx") == 0) {
-      char buf[size + 1];
+      char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
       connInfo->cameraInfo.cx = atof(buf);
+      delete[] buf;
     } else if (strcmp(key, "cy") == 0) {
-      char buf[size + 1];
+      char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
       connInfo->cameraInfo.cy = atof(buf);
+      delete[] buf;
     }
   }
 

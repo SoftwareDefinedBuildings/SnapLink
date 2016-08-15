@@ -53,7 +53,7 @@ bool Perspective::event(QEvent *event) {
 Transform Perspective::localize(const std::vector<int> &wordIds,
                                 const SensorData &sensorData,
                                 const Signature &oldSig) const {
-  int minInliers = 3;
+  size_t minInliers = 3;
 
   const CameraModel &cameraModel = sensorData.getCameraModel();
   assert(!sensorData.getImage().empty());
@@ -91,7 +91,7 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
   }
 
   // 3D to 2D (PnP)
-  if ((int)words3.size() >= minInliers && words.size() >= minInliers) {
+  if (words3.size() >= minInliers && words.size() >= minInliers) {
     std::vector<int> inliers;
 
     transform = estimateMotion3DTo2D(
@@ -123,7 +123,7 @@ Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
     const std::map<int, cv::KeyPoint> &words2B, const CameraModel &cameraModel,
     const Transform &guess, std::vector<int> *inliersOut,
-    int minInliers) const {
+    size_t minInliers) const {
   assert(cameraModel.isValidForProjection());
   assert(!guess.isNull());
   Transform transform;
@@ -155,7 +155,7 @@ Transform Perspective::estimateMotion3DTo2D(
   qDebug() << "words3A=" << words3A.size() << " words2B= " << words2B.size()
            << " matches=" << matches.size();
 
-  if ((int)matches.size() >= minInliers) {
+  if (matches.size() >= minInliers) {
     // PnPRansac
     cv::Mat K = cameraModel.K();
     cv::Mat D = cameraModel.D();
@@ -178,7 +178,7 @@ Transform Perspective::estimateMotion3DTo2D(
                        cv::SOLVEPNP_ITERATIVE); // cv::SOLVEPNP_EPNP
     // TODO check RTABMAp refine model code
 
-    if ((int)inliers.size() >= minInliers) {
+    if (inliers.size() >= minInliers) {
       cv::Rodrigues(rvec, R);
       Transform pnp(R.at<double>(0, 0), R.at<double>(0, 1), R.at<double>(0, 2),
                     tvec.at<double>(0), R.at<double>(1, 0), R.at<double>(1, 1),
