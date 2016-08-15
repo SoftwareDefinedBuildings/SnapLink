@@ -159,19 +159,15 @@ Transform Perspective::estimateMotion3DTo2D(
     // PnPRansac
     cv::Mat K = cameraModel.K();
     cv::Mat D = cameraModel.D();
-    Transform guessCameraFrame =
-        (guess * cameraModel.localTransform()).inverse();
-    cv::Mat R =
-        (cv::Mat_<double>(3, 3) << (double)guessCameraFrame.r11(),
-         (double)guessCameraFrame.r12(), (double)guessCameraFrame.r13(),
-         (double)guessCameraFrame.r21(), (double)guessCameraFrame.r22(),
-         (double)guessCameraFrame.r23(), (double)guessCameraFrame.r31(),
-         (double)guessCameraFrame.r32(), (double)guessCameraFrame.r33());
+    cv::Mat R = (cv::Mat_<double>(3, 3) << (double)guess.r11(),
+                 (double)guess.r12(), (double)guess.r13(), (double)guess.r21(),
+                 (double)guess.r22(), (double)guess.r23(), (double)guess.r31(),
+                 (double)guess.r32(), (double)guess.r33());
 
     cv::Mat rvec(1, 3, CV_64FC1);
     cv::Rodrigues(R, rvec);
-    cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)guessCameraFrame.x(),
-                    (double)guessCameraFrame.y(), (double)guessCameraFrame.z());
+    cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)guess.x(),
+                    (double)guess.y(), (double)guess.z());
 
     cv::solvePnPRansac(objectPoints, imagePoints, K, D, rvec, tvec, true, 100,
                        8.0, 0.99, inliers,
@@ -185,7 +181,7 @@ Transform Perspective::estimateMotion3DTo2D(
                     R.at<double>(1, 2), tvec.at<double>(1), R.at<double>(2, 0),
                     R.at<double>(2, 1), R.at<double>(2, 2), tvec.at<double>(2));
 
-      transform = (cameraModel.localTransform() * pnp).inverse();
+      transform = std::move(pnp);
 
       // TODO: compute variance (like in PCL computeVariance() method of
       // sac_model.h)

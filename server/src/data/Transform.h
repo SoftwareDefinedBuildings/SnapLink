@@ -23,9 +23,9 @@ public:
   float r31() const { return data()[8]; }
   float r32() const { return data()[9]; }
   float r33() const { return data()[10]; }
-  float x() { return data()[3]; }
-  float y() { return data()[7]; }
-  float z() { return data()[11]; }
+  float x() const { return data()[3]; }
+  float y() const { return data()[7]; }
+  float z() const { return data()[11]; }
 
   bool isNull() const;
 

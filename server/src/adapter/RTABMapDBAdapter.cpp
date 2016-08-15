@@ -63,7 +63,7 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath, int dbId) {
 
   // get optimized poses of signatures
   qDebug() << "Optimize poses of signatures...";
-  std::map<int, rtabmap::Transform> optimizedPoseMap =
+  const std::map<int, rtabmap::Transform> &optimizedPoseMap =
       getOptimizedPoseMap(dbPath);
 
   rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
@@ -83,7 +83,8 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath, int dbId) {
   dbDriver->loadNodeData(rtabmapSignatures);
   for (auto &signature : rtabmapSignatures) {
     int id = signature->id();
-    auto iter = optimizedPoseMap.find(id);
+
+    const auto &iter = optimizedPoseMap.find(id);
     assert(iter != optimizedPoseMap.end());
 
     signature->setPose(iter->second);
