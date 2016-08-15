@@ -2,15 +2,14 @@
 
 #include <opencv2/core/core.hpp>
 
-class Word
-{
+class Word {
 public:
-    Word(int id, const cv::Mat &descriptor);
+  Word(int id, const cv::Mat &descriptor);
 
-    int getId() const;
-    const cv::Mat &getDescriptor() const;
+  int getId() const;
+  const cv::Mat &getDescriptor() const;
 
 private:
-    int _id;
-    cv::Mat _descriptor;
+  int _id;
+  cv::Mat _descriptor;
 };

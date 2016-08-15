@@ -1,32 +1,23 @@
 #include "event/QueryEvent.h"
 
-const QEvent::Type QueryEvent::_type = static_cast<QEvent::Type>(QEvent::registerEventType());
+const QEvent::Type QueryEvent::_type =
+    static_cast<QEvent::Type>(QEvent::registerEventType());
 
 // ownership transfer
-QueryEvent::QueryEvent(std::unique_ptr<SensorData> &&sensorData, std::unique_ptr<PerfData> &&perfData, const void *session):
-    QEvent(QueryEvent::type()),
-    _sensorData(std::move(sensorData)),
-    _perfData(std::move(perfData)),
-    _session(session)
-{
+QueryEvent::QueryEvent(std::unique_ptr<SensorData> &&sensorData,
+                       std::unique_ptr<PerfData> &&perfData,
+                       const void *session)
+    : QEvent(QueryEvent::type()), _sensorData(std::move(sensorData)),
+      _perfData(std::move(perfData)), _session(session) {}
+
+std::unique_ptr<SensorData> QueryEvent::takeSensorData() {
+  return std::move(_sensorData);
 }
 
-std::unique_ptr<SensorData> QueryEvent::takeSensorData()
-{
-    return std::move(_sensorData);
+std::unique_ptr<PerfData> QueryEvent::takePerfData() {
+  return std::move(_perfData);
 }
 
-std::unique_ptr<PerfData> QueryEvent::takePerfData()
-{
-    return std::move(_perfData);
-}
+const void *QueryEvent::getSession() { return _session; }
 
-const void *QueryEvent::getSession()
-{
-    return _session;
-}
-
-QEvent::Type QueryEvent::type()
-{
-    return _type;
-}
+QEvent::Type QueryEvent::type() { return _type; }

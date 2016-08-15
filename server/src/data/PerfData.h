@@ -1,16 +1,15 @@
 #pragma once
 
-class PerfData
-{
+class PerfData {
 public:
-    long overallStart;
-    long overallEnd;
-    long featuresStart;
-    long featuresEnd;
-    long wordsStart;
-    long wordsEnd;
-    long signaturesStart;
-    long signaturesEnd;
-    long perspectiveStart;
-    long perspectiveEnd;
+  long overallStart;
+  long overallEnd;
+  long featuresStart;
+  long featuresEnd;
+  long wordsStart;
+  long wordsEnd;
+  long signaturesStart;
+  long signaturesEnd;
+  long perspectiveStart;
+  long perspectiveEnd;
 };
