@@ -68,15 +68,14 @@ std::vector<std::string> Visibility::process(int dbId,
 
   const CameraModel &model = sensorData.getCameraModel();
   cv::Mat K = model.K();
-  Transform P = pose;
-  cv::Mat R =
-      (cv::Mat_<double>(3, 3) << (double)P.r11(), (double)P.r12(),
-       (double)P.r13(), (double)P.r21(), (double)P.r22(), (double)P.r23(),
-       (double)P.r31(), (double)P.r32(), (double)P.r33());
+  cv::Mat R = (cv::Mat_<double>(3, 3) << (double)pose.r11(), (double)pose.r12(),
+               (double)pose.r13(),                                         //
+               (double)pose.r21(), (double)pose.r22(), (double)pose.r23(), //
+               (double)pose.r31(), (double)pose.r32(), (double)pose.r33());
   cv::Mat rvec(1, 3, CV_64FC1);
   cv::Rodrigues(R, rvec);
-  cv::Mat tvec =
-      (cv::Mat_<double>(1, 3) << (double)P.x(), (double)P.y(), (double)P.z());
+  cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)pose.x(), (double)pose.y(),
+                  (double)pose.z());
 
   // do the projection
   cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);
@@ -93,7 +92,7 @@ std::vector<std::string> Visibility::process(int dbId,
     // if (uIsInBounds(int(planePoints[i].x), 0, cols) &&
     //        uIsInBounds(int(planePoints[i].y), 0, rows))
     if (true) {
-      if (Utility::isInFrontOfCamera(points[i], P)) {
+      if (Utility::isInFrontOfCamera(points[i], pose)) {
         visibleLabels.emplace_back(name);
         double dist = cv::norm(planePoints[i] - center);
         distances[name].emplace_back(dist);

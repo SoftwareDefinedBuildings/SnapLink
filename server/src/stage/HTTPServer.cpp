@@ -267,7 +267,7 @@ HTTPServer::createSensorData(const std::vector<char> &data, double fx,
   // imwrite("image.jpg", img);
 
   if (!img.empty()) {
-    CameraModel model("", fx, fy, cx, cy);
+    CameraModel model("", fx, fy, cx, cy, cv::Size(0, 0));
     std::unique_ptr<SensorData> sensorData(
         new SensorData(img, cv::Mat(), std::move(model)));
     return sensorData;

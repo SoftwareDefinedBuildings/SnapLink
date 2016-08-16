@@ -5,25 +5,37 @@
 CameraModel::CameraModel() = default;
 
 CameraModel::CameraModel(const std::string &name, double fx, double fy,
-                         double cx, double cy, double Tx,
-                         const cv::Size &imageSize)
-    : name_(name), imageSize_(imageSize), K_(cv::Mat::eye(3, 3, CV_64FC1)) {
+                         double cx, double cy, cv::Size &&imageSize)
+    : _name(name), _imageSize(imageSize), _K(cv::Mat::eye(3, 3, CV_64FC1)) {
   assert(fx > 0.0);
   assert(fy > 0.0);
   assert(cx >= 0.0);
   assert(cy >= 0.0);
-  if (Tx != 0.0) {
-    P_ = cv::Mat::eye(3, 4, CV_64FC1), P_.at<double>(0, 0) = fx;
-    P_.at<double>(1, 1) = fy;
-    P_.at<double>(0, 2) = cx;
-    P_.at<double>(1, 2) = cy;
-    P_.at<double>(0, 3) = Tx;
-  }
 
-  K_.at<double>(0, 0) = fx;
-  K_.at<double>(1, 1) = fy;
-  K_.at<double>(0, 2) = cx;
-  K_.at<double>(1, 2) = cy;
+  _K.at<double>(0, 0) = fx;
+  _K.at<double>(1, 1) = fy;
+  _K.at<double>(0, 2) = cx;
+  _K.at<double>(1, 2) = cy;
+
+  assert(!_K.empty());
 }
 
 CameraModel::~CameraModel() = default;
+
+const std::string &CameraModel::name() const { return _name; }
+
+double CameraModel::fx() const { return _K.at<double>(0, 0); }
+
+double CameraModel::fy() const { return _K.at<double>(1, 1); }
+
+double CameraModel::cx() const { return _K.at<double>(0, 2); }
+
+double CameraModel::cy() const { return _K.at<double>(1, 2); }
+
+cv::Mat CameraModel::K() const { return _K; }
+
+cv::Mat CameraModel::D() const {
+  return !_D.empty() ? _D : cv::Mat::zeros(1, 5, CV_64FC1);
+}
+
+const cv::Size &CameraModel::getImageSize() const { return _imageSize; }

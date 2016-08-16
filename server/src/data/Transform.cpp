@@ -3,12 +3,37 @@
 
 Transform::Transform() = default;
 
-Transform::Transform(float r11, float r12, float r13, float t14, float r21,
-                     float r22, float r23, float t24, float r31, float r32,
-                     float r33, float t34) {
-  _data = (cv::Mat_<float>(3, 4) << r11, r12, r13, t14, r21, r22, r23, t24, r31,
-           r32, r33, t34);
+Transform::Transform(float r11, float r12, float r13, float t14, //
+                     float r21, float r22, float r23, float t24, //
+                     float r31, float r32, float r33, float t34) {
+  _data = (cv::Mat_<float>(3, 4) << r11, r12, r13, t14, //
+           r21, r22, r23, t24,                          //
+           r31, r32, r33, t34);
 }
+
+float Transform::r11() const { return data()[0]; }
+
+float Transform::r12() const { return data()[1]; }
+
+float Transform::r13() const { return data()[2]; }
+
+float Transform::r21() const { return data()[4]; }
+
+float Transform::r22() const { return data()[5]; }
+
+float Transform::r23() const { return data()[6]; }
+
+float Transform::r31() const { return data()[8]; }
+
+float Transform::r32() const { return data()[9]; }
+
+float Transform::r33() const { return data()[10]; }
+
+float Transform::x() const { return data()[3]; }
+
+float Transform::y() const { return data()[7]; }
+
+float Transform::z() const { return data()[11]; }
 
 bool Transform::isNull() const {
   if (_data.empty()) {
@@ -28,9 +53,9 @@ bool Transform::isNull() const {
   return false;
 }
 
-Transform Transform::inverse() const {
-  return fromEigen4f(toEigen4f().inverse());
-}
+const float *Transform::data() const { return (const float *)_data.data; }
+
+int Transform::size() const { return 12; }
 
 std::string Transform::prettyPrint() const {
   if (this->isNull()) {
@@ -74,11 +99,6 @@ Eigen::Affine3f Transform::toEigen3f() const {
 }
 
 Transform Transform::fromEigen4f(const Eigen::Matrix4f &matrix) {
-  return Transform(matrix(0, 0), matrix(0, 1), matrix(0, 2), matrix(0, 3),
-                   matrix(1, 0), matrix(1, 1), matrix(1, 2), matrix(1, 3),
-                   matrix(2, 0), matrix(2, 1), matrix(2, 2), matrix(2, 3));
-}
-Transform Transform::fromEigen4d(const Eigen::Matrix4d &matrix) {
   return Transform(matrix(0, 0), matrix(0, 1), matrix(0, 2), matrix(0, 3),
                    matrix(1, 0), matrix(1, 1), matrix(1, 2), matrix(1, 3),
                    matrix(2, 0), matrix(2, 1), matrix(2, 2), matrix(2, 3));

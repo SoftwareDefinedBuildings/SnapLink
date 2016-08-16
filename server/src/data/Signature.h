@@ -40,3 +40,4 @@ private:
   // Words match with the CvSeq keypoints and descriptors
   std::multimap<int, cv::KeyPoint> _words;
   std::multimap<int, cv::Point3f> _words3;
+};

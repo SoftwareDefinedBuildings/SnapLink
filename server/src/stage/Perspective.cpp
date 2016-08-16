@@ -122,7 +122,6 @@ Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::KeyPoint> &words2B, const CameraModel &cameraModel,
     const Transform &guess, std::vector<int> *inliersOut,
     size_t minInliers) const {
-  assert(cameraModel.isValidForProjection());
   assert(!guess.isNull());
   Transform transform;
   std::vector<int> matches, inliers;
@@ -157,10 +156,11 @@ Transform Perspective::estimateMotion3DTo2D(
     // PnPRansac
     cv::Mat K = cameraModel.K();
     cv::Mat D = cameraModel.D();
-    cv::Mat R = (cv::Mat_<double>(3, 3) << (double)guess.r11(),
-                 (double)guess.r12(), (double)guess.r13(), (double)guess.r21(),
-                 (double)guess.r22(), (double)guess.r23(), (double)guess.r31(),
-                 (double)guess.r32(), (double)guess.r33());
+    cv::Mat R =
+        (cv::Mat_<double>(3, 3) << (double)guess.r11(), (double)guess.r12(),
+         (double)guess.r13(),                                           //
+         (double)guess.r21(), (double)guess.r22(), (double)guess.r23(), //
+         (double)guess.r31(), (double)guess.r32(), (double)guess.r33());
 
     cv::Mat rvec(1, 3, CV_64FC1);
     cv::Rodrigues(R, rvec);
@@ -175,9 +175,11 @@ Transform Perspective::estimateMotion3DTo2D(
     if (inliers.size() >= minInliers) {
       cv::Rodrigues(rvec, R);
       Transform pnp(R.at<double>(0, 0), R.at<double>(0, 1), R.at<double>(0, 2),
-                    tvec.at<double>(0), R.at<double>(1, 0), R.at<double>(1, 1),
-                    R.at<double>(1, 2), tvec.at<double>(1), R.at<double>(2, 0),
-                    R.at<double>(2, 1), R.at<double>(2, 2), tvec.at<double>(2));
+                    tvec.at<double>(0), //
+                    R.at<double>(1, 0), R.at<double>(1, 1), R.at<double>(1, 2),
+                    tvec.at<double>(1), //
+                    R.at<double>(2, 0), R.at<double>(2, 1), R.at<double>(2, 2),
+                    tvec.at<double>(2));
 
       transform = std::move(pnp);
 

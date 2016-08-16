@@ -66,4 +66,4 @@ TARGET_LINK_LIBRARIES(cellmate ${LIBRARIES})
 
 SET_PROPERTY(TARGET cellmate PROPERTY CXX_STANDARD 11)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
