@@ -1,13 +1,13 @@
 #pragma once
 
-#include "data/SensorData.h"
-#include "data/Signature.h"
-#include "data/Transform.h"
-#include "stage/HTTPServer.h"
-#include "stage/Visibility.h"
 #include <QEvent>
 #include <QObject>
+#include <opencv2/core/core.hpp>
 
+class CameraModel;
+class Signature;
+class SensorData;
+class Transform;
 class Visibility;
 class HTTPServer;
 

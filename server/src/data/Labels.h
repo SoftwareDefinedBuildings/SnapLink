@@ -7,6 +7,8 @@
 
 class Labels {
 public:
+  virtual ~Labels() = default;
+
   /**
    * Add labels, ownership transfer
    */

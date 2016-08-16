@@ -1,12 +1,13 @@
 #pragma once
 
 #include "data/Labels.h"
-#include "data/SensorData.h"
-#include "data/Transform.h"
-#include "stage/HTTPServer.h"
+#include <QEvent>
+#include <QObject>
 #include <memory>
 #include <numeric>
 
+class SensorData;
+class Transform;
 class HTTPServer;
 
 class Visibility : public QObject {

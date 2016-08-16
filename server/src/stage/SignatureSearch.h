@@ -1,9 +1,6 @@
 #pragma once
 
-#include "data/SensorData.h"
 #include "data/Signatures.h"
-#include "data/Transform.h"
-#include "stage/Perspective.h"
 #include <QEvent>
 #include <QObject>
 #include <memory>

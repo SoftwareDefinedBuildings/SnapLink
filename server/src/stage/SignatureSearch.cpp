@@ -4,6 +4,7 @@
 #include "event/FailureEvent.h"
 #include "event/SignatureEvent.h"
 #include "event/WordEvent.h"
+#include "stage/Perspective.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <QtDebug>

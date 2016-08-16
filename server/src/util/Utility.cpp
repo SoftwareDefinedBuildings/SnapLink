@@ -1,4 +1,5 @@
 #include "util/Utility.h"
+#include "data/Transform.h"
 #include <pcl/common/transforms.h>
 
 bool Utility::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2) {

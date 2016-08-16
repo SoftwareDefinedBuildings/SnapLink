@@ -1,8 +1,11 @@
 #include "stage/Visibility.h"
 #include "data/PerfData.h"
+#include "data/SensorData.h"
+#include "data/Transform.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
+#include "stage/HTTPServer.h"
 #include "util/Utility.h"
 #include <QCoreApplication>
 #include <QDebug>

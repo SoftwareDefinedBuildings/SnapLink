@@ -1,14 +1,13 @@
+#include "stage/HTTPServer.h"
+#include "event/DetectionEvent.h"
+#include "event/FailureEvent.h"
+#include "event/QueryEvent.h"
+#include "stage/FeatureExtraction.h"
+#include "util/Time.h"
 #include <QCoreApplication>
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
-
-#include "event/DetectionEvent.h"
-#include "event/FailureEvent.h"
-#include "event/QueryEvent.h"
-#include "stage/HTTPServer.h"
-
-#include "util/Time.h"
 
 const std::string HTTPServer::busypage =
     "This server is busy, please try again later.";

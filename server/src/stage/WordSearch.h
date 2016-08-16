@@ -1,15 +1,12 @@
 #pragma once
 
-#include "adapter/RTABMapDBAdapter.h"
-#include "data/SensorData.h"
-#include "data/Transform.h"
-#include "stage/SignatureSearch.h"
+#include "data/Words.h"
 #include <QEvent>
 #include <QObject>
 #include <memory>
 
+class SensorData;
 class SignatureSearch;
-class HTTPServer;
 
 class WordSearch : public QObject {
 public:
