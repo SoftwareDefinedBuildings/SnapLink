@@ -8,7 +8,6 @@ Signature::Signature(int id, int mapId, int dbId, Transform pose,
     : _id(id), _mapId(mapId), _dbId(dbId), _pose(std::move(pose)),
       _sensorData(sensorData), _words(std::move(words)),
       _words3(std::move(words3)) {
-  _sensorData.setId(id);
   assert(_pose.isNull() == false);
   assert(_words.size() == _words3.size());
 }

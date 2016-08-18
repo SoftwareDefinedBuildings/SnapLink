@@ -4,7 +4,7 @@
 
 CameraModel::CameraModel(std::string &&name, double fx, double fy, double cx,
                          double cy, cv::Size &&imageSize)
-    : _name(std::move(name)), _K(cv::Mat::eye(3, 3, CV_64FC1)),
+    : _name(std::move(name)), _K(cv::Mat::eye(3, 3, CV_64FC1)), _D(cv::Mat::zeros(1, 5, CV_64FC1)),
       _imageSize(std::move(imageSize)) {
   assert(fx > 0.0);
   assert(fy > 0.0);
@@ -29,8 +29,8 @@ double CameraModel::cx() const { return _K.at<double>(0, 2); }
 
 double CameraModel::cy() const { return _K.at<double>(1, 2); }
 
-cv::Mat CameraModel::K() const { return _K; }
+const cv::Mat &CameraModel::K() const { return _K; }
 
-cv::Mat CameraModel::D() const { return cv::Mat::zeros(1, 5, CV_64FC1); }
+const cv::Mat &CameraModel::D() const { return _D; }
 
 const cv::Size &CameraModel::getImageSize() const { return _imageSize; }

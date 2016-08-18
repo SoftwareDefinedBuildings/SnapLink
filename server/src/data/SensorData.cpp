@@ -1,18 +1,11 @@
 #include "data/SensorData.h"
 
-SensorData::SensorData(cv::Mat &&image, CameraModel &&cameraModel, int id,
-                       double stamp)
-    : _id(id), _stamp(stamp), _image(image),
+SensorData::SensorData(cv::Mat &&image, CameraModel &&cameraModel)
+    : _image(std::move(image)),
       _cameraModel(std::move(cameraModel)) {
-  assert(!image.empty());
-  assert(image.type() == CV_8UC1 || image.type() == CV_8UC3); // Mono or RGB
+  assert(!_image.empty());
+  assert(_image.type() == CV_8UC1 || _image.type() == CV_8UC3); // Mono or RGB
 }
-
-int SensorData::getId() const { return _id; }
-
-void SensorData::setId(int id) { _id = id; }
-
-double SensorData::getStamp() const { return _stamp; }
 
 const cv::Mat &SensorData::getImage() const { return _image; }
 

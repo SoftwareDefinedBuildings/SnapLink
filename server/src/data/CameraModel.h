@@ -13,13 +13,14 @@ public:
   double cx() const;
   double cy() const;
 
-  cv::Mat K() const;
-  cv::Mat D() const;
+  const cv::Mat &K() const;
+  const cv::Mat &D() const;
 
   const cv::Size &getImageSize() const;
 
 private:
   std::string _name;
   cv::Mat _K;
+  cv::Mat _D;
   cv::Size _imageSize;
 };

@@ -6,12 +6,8 @@
 
 class SensorData {
 public:
-  SensorData(cv::Mat &&image, CameraModel &&cameraModel, int id = 0,
-             double stamp = 0.0);
+  SensorData(cv::Mat &&image, CameraModel &&cameraModel);
 
-  int getId() const;
-  void setId(int id);
-  double getStamp() const;
   const cv::Mat &getImage() const;
   const CameraModel &getCameraModel() const;
 
