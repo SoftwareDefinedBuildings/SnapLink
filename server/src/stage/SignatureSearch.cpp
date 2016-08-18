@@ -29,34 +29,25 @@ bool SignatureSearch::event(QEvent *event) {
     std::unique_ptr<PerfData> perfData = wordEvent->takePerfData();
     const void *session = wordEvent->getSession();
 
-    // temporarily create words
-    std::unique_ptr<std::multimap<int, cv::KeyPoint>> words(
-        new std::multimap<int, cv::KeyPoint>());
-    const std::vector<cv::KeyPoint> &keypoints = sensorData.keypoints();
-    if (wordIds.size() > 0) {
-      assert(wordIds.size() == keypoints.size());
-      unsigned int i = 0;
-      for (auto iter = wordIds.begin();
-           iter != wordIds.end() && i < keypoints.size(); ++iter, ++i) {
-        words->insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-      }
-    }
-
     perfData->signaturesStart = getTime();
-    std::vector<std::unique_ptr<Signature>> signatures =
-        searchSignatures(*words);
+    std::vector<std::unique_ptr<Signature>> signatures = search(*wordIds);
     perfData->signaturesEnd = getTime();
+
+    std::unique_ptr<std::multimap<int, cv::KeyPoint>> words =
+        createWords(*wordIds, sensorData->keypoints());
+    std::unique_ptr<CameraModel> camera(
+        new CameraModel(sensorData->getCameraModel()));
     QCoreApplication::postEvent(
-        _perspective, new SignatureEvent(
-                          std::move(words), std::move(sensorData),
-                          std::move(signatures), std::move(perfData), session));
+        _perspective, new SignatureEvent(std::move(words), std::move(camera),
+                                         std::move(signatures),
+                                         std::move(perfData), session));
     return true;
   }
   return QObject::event(event);
 }
 
-std::vector<std::unique_ptr<Signature>> SignatureSearch::searchSignatures(
-    const std::multimap<int, cv::KeyPoint> &words) const {
+std::vector<std::unique_ptr<Signature>>
+SignatureSearch::search(const std::vector<int> &wordIds) const {
   std::vector<int> topIds = _signatures->findKNN(wordIds, TOP_K);
   int topSigId = topIds[0];
   std::unique_ptr<Signature> topSig(
@@ -67,4 +58,19 @@ std::vector<std::unique_ptr<Signature>> SignatureSearch::searchSignatures(
   std::vector<std::unique_ptr<Signature>> signatures;
   signatures.emplace_back(std::move(topSig));
   return signatures;
+}
+
+std::unique_ptr<std::multimap<int, cv::KeyPoint>>
+SignatureSearch::createWords(const std::vector<int> &wordIds,
+                             const std::vector<cv::KeyPoint> &keypoints) {
+  std::unique_ptr<std::multimap<int, cv::KeyPoint>> words(
+      new std::multimap<int, cv::KeyPoint>());
+  assert(wordIds.size() == keypoints.size());
+  unsigned int i = 0;
+  for (auto iter = wordIds.begin();
+       iter != wordIds.end() && i < keypoints.size(); ++iter, ++i) {
+    words->insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
+  }
+
+  return words;
 }

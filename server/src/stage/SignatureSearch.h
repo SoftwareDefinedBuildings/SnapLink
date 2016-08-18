@@ -22,7 +22,10 @@ protected:
 
 private:
   std::vector<std::unique_ptr<Signature>>
-  searchSignatures(const std::vector<int> &wordIds) const;
+  search(const std::vector<int> &wordIds) const;
+  static std::unique_ptr<std::multimap<int, cv::KeyPoint>>
+  createWords(const std::vector<int> &wordIds,
+              const std::vector<cv::KeyPoint> &keypoints);
 
 private:
   std::unique_ptr<Signatures> _signatures;

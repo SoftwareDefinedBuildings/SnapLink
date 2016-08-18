@@ -39,15 +39,13 @@ bool Perspective::event(QEvent *event) {
     const void *session = signatureEvent->getSession();
     std::unique_ptr<Transform> pose(new Transform);
     perfData->perspectiveStart = getTime();
-    *pose = localize(*words, *sensorData, *(signatures.at(0)));
+    *pose = localize(*words, *camera, *(signatures.at(0)));
     perfData->perspectiveEnd = getTime();
     // a null pose notify that loc could not be computed
     if (pose->isNull() == false) {
       QCoreApplication::postEvent(
           _vis,
-          new LocationEvent(signatures.at(0)->getDbId(),
-                            std::unique_ptr<CameraModel>(
-                                new CameraModel(sensorData->getCameraModel())),
+          new LocationEvent(signatures.at(0)->getDbId(), std::move(camera),
                             std::move(pose), std::move(perfData), session));
     } else {
       QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
@@ -61,9 +59,6 @@ Transform Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
                                 const CameraModel &camera,
                                 const Signature &oldSig) const {
   size_t minInliers = 3;
-
-  // const CameraModel &cameraModel = sensorData.getCameraModel();
-  // assert(!sensorData.getImage().empty());
 
   Transform transform;
 
@@ -149,8 +144,8 @@ Transform Perspective::estimateMotion3DTo2D(
 
   if (matches.size() >= minInliers) {
     // PnPRansac
-    cv::Mat K = cameraModel.K();
-    cv::Mat D = cameraModel.D();
+    cv::Mat K = camera.K();
+    cv::Mat D = camera.D();
     cv::Mat R =
         (cv::Mat_<double>(3, 3) << (double)guess.r11(), (double)guess.r12(),
          (double)guess.r13(),                                           //
