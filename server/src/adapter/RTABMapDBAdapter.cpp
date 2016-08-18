@@ -333,11 +333,12 @@ std::list<std::unique_ptr<Signature>> RTABMapDBAdapter::mergeSignatures(
           Transform::fromEigen4f(signature.second->getPose().toEigen4f());
       const rtabmap::SensorData &data = signature.second->sensorData();
       const rtabmap::CameraModel &camera = data.cameraModels()[0];
+      cv::Mat image = data.imageRaw();
+      std::string name = camera.name();
       cv::Size imageSize = camera.imageSize();
-      CameraModel newCamera(camera.name(), camera.fx(), camera.fy(),
+      CameraModel newCamera(std::move(name), camera.fx(), camera.fy(),
                             camera.cx(), camera.cy(), std::move(imageSize));
-      SensorData newSensorData(data.imageRaw(), data.depthRaw(),
-                               std::move(newCamera));
+      SensorData newSensorData(std::move(image), std::move(newCamera));
 
       std::multimap<int, cv::KeyPoint> words;
       for (const auto &word : signature.second->getWords()) {

@@ -6,18 +6,13 @@
 
 class SensorData {
 public:
-  SensorData();
-
-  SensorData(const cv::Mat &image, const cv::Mat &depth,
-             CameraModel &&cameraModel, int id = 0, double stamp = 0.0);
-
-  virtual ~SensorData();
+  SensorData(cv::Mat &&image, CameraModel &&cameraModel, int id = 0,
+             double stamp = 0.0);
 
   int getId() const;
   void setId(int id);
   double getStamp() const;
   const cv::Mat &getImage() const;
-  const cv::Mat &getDepth() const;
   const CameraModel &getCameraModel() const;
 
   void setFeatures(const std::vector<cv::KeyPoint> &keypoints,
@@ -30,7 +25,6 @@ private:
   double _stamp;
 
   cv::Mat _image; // CV_8UC1 or CV_8UC3
-  cv::Mat _depth; // depth CV_16UC1 or CV_32FC1, right image CV_8UC1
 
   CameraModel _cameraModel;
 

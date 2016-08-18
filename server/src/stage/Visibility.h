@@ -1,12 +1,12 @@
 #pragma once
 
 #include "data/Labels.h"
-#include "data/SensorData.h"
-#include "data/Transform.h"
-#include "stage/HTTPServer.h"
+#include <QObject>
 #include <memory>
 #include <numeric>
 
+class Transform;
+class CameraModel;
 class HTTPServer;
 
 class Visibility : public QObject {
@@ -21,7 +21,7 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  std::vector<std::string> process(int dbId, const SensorData &sensorData,
+  std::vector<std::string> process(int dbId, const CameraModel &camera,
                                    const Transform &pose) const;
 
 private:

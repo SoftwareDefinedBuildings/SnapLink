@@ -40,7 +40,9 @@ bool Perspective::event(QEvent *event) {
     if (pose->isNull() == false) {
       QCoreApplication::postEvent(
           _vis,
-          new LocationEvent(signatures.at(0)->getDbId(), std::move(sensorData),
+          new LocationEvent(signatures.at(0)->getDbId(),
+                            std::unique_ptr<CameraModel>(
+                                new CameraModel(sensorData->getCameraModel())),
                             std::move(pose), std::move(perfData), session));
     } else {
       QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
