@@ -1,7 +1,7 @@
 #pragma once
 
 #include "data/PerfData.h"
-#include "stage/FeatureExtraction.h"
+#include "data/SensorData.h"
 #include <QObject>
 #include <QSemaphore>
 #include <memory>

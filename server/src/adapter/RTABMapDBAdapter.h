@@ -1,8 +1,8 @@
 #pragma once
 
-#include "data/Labels.h"
-#include "data/Signatures.h"
-#include "data/Words.h"
+#include "data/Label.h"
+#include "data/Signature.h"
+#include "data/Word.h"
 #include <list>
 #include <map>
 #include <memory>
@@ -12,6 +12,8 @@
 #include <set>
 #include <typeinfo>
 
+class Signatures;
+class Labels;
 class Words;
 
 class RTABMapDBAdapter {

@@ -7,6 +7,8 @@
 
 class Signatures {
 public:
+  virtual ~Signatures() = default;
+
   /**
    * Add signatures, ownership transfer
    */

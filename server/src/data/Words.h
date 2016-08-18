@@ -8,6 +8,8 @@
 
 class Words {
 public:
+  virtual ~Words() = default;
+
   /**
    * Add words, ownership transfer
    */

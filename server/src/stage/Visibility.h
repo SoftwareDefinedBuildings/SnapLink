@@ -1,6 +1,7 @@
 #pragma once
 
 #include "data/Labels.h"
+#include <QEvent>
 #include <QObject>
 #include <memory>
 #include <numeric>

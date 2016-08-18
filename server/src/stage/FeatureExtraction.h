@@ -1,10 +1,9 @@
 #pragma once
 
-#include "data/SensorData.h"
-#include "stage/WordSearch.h"
 #include <QObject>
 #include <opencv2/xfeatures2d.hpp>
 
+class SensorData;
 class WordSearch;
 
 class FeatureExtraction : public QObject {

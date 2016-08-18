@@ -14,11 +14,11 @@
 #include <cstdio>
 #include <utility>
 
-void showUsage() {
-  printf("\nUsage:\n"
-         "CellMate database_file1 [database_file2 ...]\n");
-  exit(1);
-}
+// void showUsage() {
+//   printf("\nUsage:\n"
+//          "CellMate database_file1 [database_file2 ...]\n");
+//   exit(1);
+// }
 
 int main(int argc, char *argv[]) {
   // ULogger::setType(ULogger::kTypeConsole);

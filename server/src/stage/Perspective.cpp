@@ -1,8 +1,13 @@
 #include "stage/Perspective.h"
 #include "data/PerfData.h"
+#include "data/SensorData.h"
+#include "data/Signature.h"
+#include "data/Transform.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
 #include "event/SignatureEvent.h"
+#include "stage/HTTPServer.h"
+#include "stage/Visibility.h"
 #include "util/Time.h"
 #include "util/Utility.h"
 #include <QCoreApplication>
