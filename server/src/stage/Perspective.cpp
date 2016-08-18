@@ -1,6 +1,5 @@
 #include "stage/Perspective.h"
 #include "data/PerfData.h"
-#include "data/SensorData.h"
 #include "data/Signature.h"
 #include "data/Transform.h"
 #include "event/FailureEvent.h"
@@ -31,15 +30,16 @@ void Perspective::setHTTPServer(HTTPServer *httpServer) {
 bool Perspective::event(QEvent *event) {
   if (event->type() == SignatureEvent::type()) {
     SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
-    std::unique_ptr<std::vector<int>> wordIds = signatureEvent->takeWordIds();
-    std::unique_ptr<SensorData> sensorData = signatureEvent->takeSensorData();
+    std::unique_ptr<std::multimap<int, cv::KeyPoint>> words =
+        signatureEvent->takeWords();
+    std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
     std::vector<std::unique_ptr<Signature>> signatures =
         signatureEvent->takeSignatures();
     std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
     const void *session = signatureEvent->getSession();
     std::unique_ptr<Transform> pose(new Transform);
     perfData->perspectiveStart = getTime();
-    *pose = localize(*wordIds, *sensorData, *(signatures.at(0)));
+    *pose = localize(*words, *sensorData, *(signatures.at(0)));
     perfData->perspectiveEnd = getTime();
     // a null pose notify that loc could not be computed
     if (pose->isNull() == false) {
@@ -57,13 +57,13 @@ bool Perspective::event(QEvent *event) {
   return QObject::event(event);
 }
 
-Transform Perspective::localize(const std::vector<int> &wordIds,
-                                const SensorData &sensorData,
+Transform Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
+                                const CameraModel &camera,
                                 const Signature &oldSig) const {
   size_t minInliers = 3;
 
-  const CameraModel &cameraModel = sensorData.getCameraModel();
-  assert(!sensorData.getImage().empty());
+  // const CameraModel &cameraModel = sensorData.getCameraModel();
+  // assert(!sensorData.getImage().empty());
 
   Transform transform;
 
@@ -86,24 +86,13 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
     words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, globalPointCV));
   }
 
-  std::multimap<int, cv::KeyPoint> words;
-  const std::vector<cv::KeyPoint> &keypoints = sensorData.keypoints();
-  if (wordIds.size() > 0) {
-    assert(wordIds.size() == keypoints.size());
-    unsigned int i = 0;
-    for (auto iter = wordIds.begin();
-         iter != wordIds.end() && i < keypoints.size(); ++iter, ++i) {
-      words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-    }
-  }
-
   // 3D to 2D (PnP)
   if (words3.size() >= minInliers && words.size() >= minInliers) {
     std::vector<int> inliers;
 
     transform = estimateMotion3DTo2D(
         Utility::MultimapToMapUnique(words3),
-        Utility::MultimapToMapUnique(words), cameraModel,
+        Utility::MultimapToMapUnique(words), camera,
         oldSigPose, // use the old signature's pose as a guess
         &inliers, minInliers);
     inliersCount = (int)inliers.size();
@@ -126,7 +115,7 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
 
 Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
-    const std::map<int, cv::KeyPoint> &words2B, const CameraModel &cameraModel,
+    const std::map<int, cv::KeyPoint> &words2B, const CameraModel &camera,
     const Transform &guess, std::vector<int> *inliersOut,
     size_t minInliers) const {
   assert(!guess.isNull());
@@ -141,8 +130,7 @@ Transform Perspective::estimateMotion3DTo2D(
   matches.resize(ids.size());
   for (unsigned int i = 0; i < ids.size(); ++i) {
     std::map<int, cv::Point3f>::const_iterator iter = words3A.find(ids[i]);
-    if (iter != words3A.end() && std::isfinite(iter->second.x) &&
-        std::isfinite(iter->second.y) && std::isfinite(iter->second.z)) {
+    if (iter != words3A.end()) {
       const cv::Point3f &pt = iter->second;
       objectPoints[oi].x = pt.x;
       objectPoints[oi].y = pt.y;

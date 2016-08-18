@@ -1,8 +1,7 @@
 #include "data/SensorData.h"
 
 SensorData::SensorData(cv::Mat &&image, CameraModel &&cameraModel)
-    : _image(std::move(image)),
-      _cameraModel(std::move(cameraModel)) {
+    : _image(std::move(image)), _cameraModel(std::move(cameraModel)) {
   assert(!_image.empty());
   assert(_image.type() == CV_8UC1 || _image.type() == CV_8UC3); // Mono or RGB
 }

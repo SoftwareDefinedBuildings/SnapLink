@@ -6,7 +6,6 @@
 
 class CameraModel;
 class Signature;
-class SensorData;
 class Transform;
 class Visibility;
 class HTTPServer;
@@ -24,12 +23,11 @@ protected:
 
 private:
   // get pose from optimizedPoses if available, otherwise get from sig itself
-  Transform localize(const std::vector<int> &wordIds,
-                     const SensorData &sensorData,
-                     const Signature &oldSig) const;
+  Transform localize(const std::multimap<int, cv::KeyPoint> &words,
+                     const CameraModel &camera, const Signature &oldSig) const;
   Transform estimateMotion3DTo2D(const std::map<int, cv::Point3f> &words3A,
                                  const std::map<int, cv::KeyPoint> &words2B,
-                                 const CameraModel &cameraModel,
+                                 const CameraModel &camera,
                                  const Transform &guess,
                                  std::vector<int> *inliersOut,
                                  size_t minInliers) const;
