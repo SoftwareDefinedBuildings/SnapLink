@@ -6,10 +6,10 @@ const QEvent::Type SignatureEvent::_type =
 SignatureEvent::SignatureEvent(
     std::unique_ptr<std::multimap<int, cv::KeyPoint>> &&words,
     std::unique_ptr<CameraModel> &&camera,
-    std::vector<std::unique_ptr<Signature>> &&signatures,
+    std::unique_ptr<std::vector<int>> &&signatureIds,
     std::unique_ptr<PerfData> &&perfData, const void *session)
     : QEvent(SignatureEvent::type()), _words(std::move(words)),
-      _camera(std::move(camera)), _signatures(std::move(signatures)),
+      _camera(std::move(camera)), _signatureIds(std::move(signatureIds)),
       _perfData(std::move(perfData)), _session(session) {}
 
 std::unique_ptr<std::multimap<int, cv::KeyPoint>> SignatureEvent::takeWords() {
@@ -20,8 +20,8 @@ std::unique_ptr<CameraModel> SignatureEvent::takeCameraModel() {
   return std::move(_camera);
 }
 
-std::vector<std::unique_ptr<Signature>> SignatureEvent::takeSignatures() {
-  return std::move(_signatures);
+std::unique_ptr<std::vector<int>> SignatureEvent::takeSignatureIds() {
+  return std::move(_signatureIds);
 }
 
 std::unique_ptr<PerfData> SignatureEvent::takePerfData() {

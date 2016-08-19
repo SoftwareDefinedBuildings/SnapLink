@@ -21,6 +21,10 @@ Perspective::~Perspective() {
   _httpServer = nullptr;
 }
 
+void Perspective::setSignatures(const std::shared_ptr<Signatures> &signatures) {
+  _signatures = signatures;
+}
+
 void Perspective::setVisibility(Visibility *vis) { _vis = vis; }
 
 void Perspective::setHTTPServer(HTTPServer *httpServer) {
@@ -33,20 +37,22 @@ bool Perspective::event(QEvent *event) {
     std::unique_ptr<std::multimap<int, cv::KeyPoint>> words =
         signatureEvent->takeWords();
     std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
-    std::vector<std::unique_ptr<Signature>> signatures =
-        signatureEvent->takeSignatures();
+    std::unique_ptr<std::vector<int>> signatureIds =
+        signatureEvent->takeSignatureIds();
     std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
     const void *session = signatureEvent->getSession();
+    int dbId;
     std::unique_ptr<Transform> pose(new Transform);
+
     perfData->perspectiveStart = getTime();
-    *pose = localize(*words, *camera, *(signatures.at(0)));
+    localize(*words, *camera, signatureIds->at(0), dbId, *pose);
     perfData->perspectiveEnd = getTime();
+
     // a null pose notify that loc could not be computed
     if (pose->isNull() == false) {
       QCoreApplication::postEvent(
-          _vis,
-          new LocationEvent(signatures.at(0)->getDbId(), std::move(camera),
-                            std::move(pose), std::move(perfData), session));
+          _vis, new LocationEvent(dbId, std::move(camera), std::move(pose),
+                                  std::move(perfData), session));
     } else {
       QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
     }
@@ -55,20 +61,24 @@ bool Perspective::event(QEvent *event) {
   return QObject::event(event);
 }
 
-Transform Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
-                                const CameraModel &camera,
-                                const Signature &oldSig) const {
+void Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
+                           const CameraModel &camera, int oldSigId, int &dbId,
+                           Transform &transform) const {
   size_t minInliers = 3;
-
-  Transform transform;
 
   int inliersCount = 0;
 
   std::multimap<int, cv::Point3f> words3;
 
-  const Transform &oldSigPose = oldSig.getPose();
+  const std::map<int, std::unique_ptr<Signature>> &signatures =
+      _signatures->getSignatures();
+  const auto iter = signatures.find(oldSigId);
+  assert(iter != signatures.end());
+  const std::unique_ptr<Signature> &oldSig = iter->second;
+  dbId = oldSig->getDbId();
+  const Transform &oldSigPose = oldSig->getPose();
 
-  const std::multimap<int, cv::Point3f> &sigWords3 = oldSig.getWords3();
+  const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
   std::multimap<int, cv::Point3f>::const_iterator word3Iter;
   for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end();
        word3Iter++) {
@@ -93,7 +103,7 @@ Transform Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
     inliersCount = (int)inliers.size();
     if (transform.isNull()) {
       std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
-                << " between the old signature " << oldSig.getId()
+                << " between the old signature " << oldSig->getId()
                 << " and the new image" << std::endl;
     }
   } else {
@@ -105,7 +115,6 @@ Transform Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
   // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
   qDebug() << "transform= " << transform.prettyPrint().c_str();
-  return transform;
 }
 
 Transform Perspective::estimateMotion3DTo2D(

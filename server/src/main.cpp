@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   QCoreApplication app(argc, argv);
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
-  std::unique_ptr<SignaturesSimple> signatures(new SignaturesSimple());
+  std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
   HTTPServer httpServer;
   FeatureExtraction feature;
@@ -63,6 +63,7 @@ int main(int argc, char *argv[]) {
 
   // Perspective
   std::cout << "Initializing Perspective" << std::endl;
+  perspective.setSignatures(signatures);
   perspective.setHTTPServer(&httpServer);
   perspective.setVisibility(&vis);
   perspective.moveToThread(&perspectiveThread);
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]) {
 
   // Signature Search
   std::cout << "Initializing Signature Search" << std::endl;
-  signatureSearch.putSignatures(std::move(signatures));
+  signatureSearch.setSignatures(signatures);
   signatureSearch.setPerspective(&perspective);
   signatureSearch.moveToThread(&signatureSearchThread);
   signatureSearchThread.start();
