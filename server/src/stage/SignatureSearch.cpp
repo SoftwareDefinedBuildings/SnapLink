@@ -26,7 +26,9 @@ bool SignatureSearch::event(QEvent *event) {
   if (event->type() == WordEvent::type()) {
     WordEvent *wordEvent = static_cast<WordEvent *>(event);
     std::unique_ptr<std::vector<int>> wordIds = wordEvent->takeWordIds();
-    std::unique_ptr<SensorData> sensorData = wordEvent->takeSensorData();
+    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
+        wordEvent->takeKeyPoints();
+    std::unique_ptr<CameraModel> camera = wordEvent->takeCameraModel();
     std::unique_ptr<PerfData> perfData = wordEvent->takePerfData();
     const void *session = wordEvent->getSession();
 
@@ -37,9 +39,7 @@ bool SignatureSearch::event(QEvent *event) {
 
     std::unique_ptr<std::multimap<int, cv::KeyPoint>> words(
         new std::multimap<int, cv::KeyPoint>());
-    *words = createWords(*wordIds, sensorData->keypoints());
-    std::unique_ptr<CameraModel> camera(
-        new CameraModel(sensorData->getCameraModel()));
+    *words = createWords(*wordIds, *keyPoints);
 
     QCoreApplication::postEvent(
         _perspective, new SignatureEvent(std::move(words), std::move(camera),

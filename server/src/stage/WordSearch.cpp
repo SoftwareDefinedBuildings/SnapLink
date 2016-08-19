@@ -28,27 +28,26 @@ bool WordSearch::event(QEvent *event) {
     std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
     const void *session = featureEvent->getSession();
     std::unique_ptr<std::vector<int>> wordIds(new std::vector<int>());
+
     perfData->wordsStart = getTime();
-    *wordIds = searchWords(*sensorData);
+    *wordIds = searchWords(sensorData->descriptors());
     perfData->wordsEnd = getTime();
-    // a null pose notify that loc could not be computed
+
+    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints(
+        new std::vector<cv::KeyPoint>(sensorData->keypoints()));
+    std::unique_ptr<CameraModel> camera(
+        new CameraModel(sensorData->getCameraModel()));
+
     QCoreApplication::postEvent(
-        _imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData),
-                                    std::move(perfData), session));
+        _imageSearch,
+        new WordEvent(std::move(wordIds), std::move(keyPoints),
+                      std::move(camera), std::move(perfData), session));
     return true;
   }
   return QObject::event(event);
 }
 
-// TODO maybe only pass skeypoints, descriptors, and model
-std::vector<int> WordSearch::searchWords(const SensorData &sensorData) const {
-  assert(!sensorData.getImage().empty());
-
-  cv::Mat descriptors = sensorData.descriptors();
-
+std::vector<int> WordSearch::searchWords(const cv::Mat &descriptors) const {
   assert(descriptors.rows > 0);
-
-  std::vector<int> wordIds = _words->findNNs(descriptors);
-
-  return wordIds;
+  return _words->findNNs(descriptors);
 }

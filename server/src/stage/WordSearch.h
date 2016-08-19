@@ -20,7 +20,7 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  std::vector<int> searchWords(const SensorData &sensorData) const;
+  std::vector<int> searchWords(const cv::Mat &descriptors) const;
 
 private:
   std::unique_ptr<Words> _words;
