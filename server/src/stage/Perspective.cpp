@@ -1,5 +1,5 @@
 #include "stage/Perspective.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include "data/Signature.h"
 #include "data/Transform.h"
 #include "event/FailureEvent.h"
@@ -39,20 +39,20 @@ bool Perspective::event(QEvent *event) {
     std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
     std::unique_ptr<std::vector<int>> signatureIds =
         signatureEvent->takeSignatureIds();
-    std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
+    std::unique_ptr<Session> Session = signatureEvent->takeSession();
     const void *session = signatureEvent->getSession();
     int dbId;
     std::unique_ptr<Transform> pose(new Transform);
 
-    perfData->perspectiveStart = getTime();
+    Session->perspectiveStart = getTime();
     localize(*words, *camera, signatureIds->at(0), dbId, *pose);
-    perfData->perspectiveEnd = getTime();
+    Session->perspectiveEnd = getTime();
 
     // a null pose notify that loc could not be computed
     if (pose->isNull() == false) {
       QCoreApplication::postEvent(
           _vis, new LocationEvent(dbId, std::move(camera), std::move(pose),
-                                  std::move(perfData), session));
+                                  std::move(Session), session));
     } else {
       QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
     }

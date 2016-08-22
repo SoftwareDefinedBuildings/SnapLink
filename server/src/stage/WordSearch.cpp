@@ -1,5 +1,5 @@
 #include "stage/WordSearch.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include "data/Signature.h"
 #include "event/FeatureEvent.h"
 #include "event/WordEvent.h"
@@ -27,18 +27,18 @@ bool WordSearch::event(QEvent *event) {
         featureEvent->takeKeyPoints();
     std::unique_ptr<cv::Mat> descriptors = featureEvent->takeDescriptors();
     std::unique_ptr<CameraModel> camera = featureEvent->takeCameraModel();
-    std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
+    std::unique_ptr<Session> Session = featureEvent->takeSession();
     const void *session = featureEvent->getSession();
     std::unique_ptr<std::vector<int>> wordIds(new std::vector<int>());
 
-    perfData->wordsStart = getTime();
+    Session->wordsStart = getTime();
     *wordIds = searchWords(*descriptors);
-    perfData->wordsEnd = getTime();
+    Session->wordsEnd = getTime();
 
     QCoreApplication::postEvent(
         _imageSearch,
         new WordEvent(std::move(wordIds), std::move(keyPoints),
-                      std::move(camera), std::move(perfData), session));
+                      std::move(camera), std::move(Session), session));
     return true;
   }
   return QObject::event(event);

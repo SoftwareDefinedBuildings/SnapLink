@@ -62,7 +62,7 @@ bool HTTPServer::event(QEvent *event) {
     ConnectionInfo *connInfo = const_cast<ConnectionInfo *>(
         static_cast<const ConnectionInfo *>(detectionEvent->getSession()));
     connInfo->names = detectionEvent->takeNames();
-    connInfo->perfData = detectionEvent->takePerfData();
+    connInfo->Session = detectionEvent->takeSession();
     connInfo->detected.release();
     return true;
   } else if (event->type() == FailureEvent::type()) {
@@ -93,7 +93,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
 
     ConnectionInfo *connInfo = new ConnectionInfo();
 
-    connInfo->perfData.reset(new PerfData());
+    connInfo->Session.reset(new Session());
 
     // reserve enough space for an image
     connInfo->rawData.reset(new std::vector<char>());
@@ -125,7 +125,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
   } else {
     if (!connInfo->rawData->empty()) {
       // all data are received
-      connInfo->perfData->overallStart = getTime(); // log start of processing
+      connInfo->Session->overallStart = getTime(); // log start of processing
 
       double fx = connInfo->cameraInfo.fx;
       double fy = connInfo->cameraInfo.fy;
@@ -142,7 +142,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
       QCoreApplication::postEvent(
           httpServer->_feature,
           new QueryEvent(std::move(image), std::move(camera),
-                         std::move(connInfo->perfData), connInfo));
+                         std::move(connInfo->Session), connInfo));
     }
 
     // wait for the result to come
@@ -215,23 +215,23 @@ void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
     return;
   }
 
-  std::unique_ptr<PerfData> perfData = std::move(connInfo->perfData);
-  if (perfData != nullptr) {
-    perfData->overallEnd = getTime(); // log processing end time
+  std::unique_ptr<Session> Session = std::move(connInfo->Session);
+  if (Session != nullptr) {
+    Session->overallEnd = getTime(); // log processing end time
 
     std::cout << "TAG_TIME overall "
-              << perfData->overallEnd - perfData->overallStart << " ms"
+              << Session->overallEnd - Session->overallStart << " ms"
               << std::endl;
     std::cout << "TAG_TIME features "
-              << perfData->featuresEnd - perfData->featuresStart << " ms"
+              << Session->featuresEnd - Session->featuresStart << " ms"
               << std::endl;
-    std::cout << "TAG_TIME words " << perfData->wordsEnd - perfData->wordsStart
+    std::cout << "TAG_TIME words " << Session->wordsEnd - Session->wordsStart
               << " ms" << std::endl;
     std::cout << "TAG_TIME signatures "
-              << perfData->signaturesEnd - perfData->signaturesStart << " ms"
+              << Session->signaturesEnd - Session->signaturesStart << " ms"
               << std::endl;
     std::cout << "TAG_TIME perspective "
-              << perfData->perspectiveEnd - perfData->perspectiveStart << " ms"
+              << Session->perspectiveEnd - Session->perspectiveStart << " ms"
               << std::endl;
   }
 

@@ -5,11 +5,9 @@ const QEvent::Type LocationEvent::_type =
 
 LocationEvent::LocationEvent(int dbId, std::unique_ptr<CameraModel> &&camera,
                              std::unique_ptr<Transform> &&pose,
-                             std::unique_ptr<PerfData> &&perfData,
-                             const void *session)
+                             std::unique_ptr<Session> &&session)
     : QEvent(LocationEvent::type()), _dbId(dbId), _camera(std::move(camera)),
-      _pose(std::move(pose)), _perfData(std::move(perfData)),
-      _session(session) {}
+      _pose(std::move(pose)), _session(std::move(session)) {}
 
 int LocationEvent::dbId() const { return _dbId; }
 
@@ -21,10 +19,8 @@ std::unique_ptr<Transform> LocationEvent::takePose() {
   return std::move(_pose);
 }
 
-std::unique_ptr<PerfData> LocationEvent::takePerfData() {
-  return std::move(_perfData);
+std::unique_ptr<Session> LocationEvent::takeSession() {
+  return std::move(_session);
 }
-
-const void *LocationEvent::getSession() { return _session; }
 
 QEvent::Type LocationEvent::type() { return _type; }

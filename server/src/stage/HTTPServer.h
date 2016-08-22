@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include <QObject>
 #include <QSemaphore>
 #include <memory>
@@ -81,6 +81,6 @@ typedef struct {
   QSemaphore detected;
   std::string answerString;
   std::unique_ptr<std::vector<std::string>> names;
-  std::unique_ptr<PerfData> perfData;
+  std::unique_ptr<Session> Session;
   std::unique_ptr<std::vector<char>> rawData;
 } ConnectionInfo;

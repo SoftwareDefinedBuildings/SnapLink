@@ -1,7 +1,7 @@
 #pragma once
 
 #include "data/CameraModel.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include <QEvent>
 #include <memory>
 
@@ -10,13 +10,12 @@ public:
   FeatureEvent(std::unique_ptr<std::vector<cv::KeyPoint>> &&keyPoints,
                std::unique_ptr<cv::Mat> &&descriptors,
                std::unique_ptr<CameraModel> &&camera,
-               std::unique_ptr<PerfData> &&perfData, const void *session);
+               std::unique_ptr<Session> &&session);
 
   std::unique_ptr<std::vector<cv::KeyPoint>> takeKeyPoints();
   std::unique_ptr<cv::Mat> takeDescriptors();
   std::unique_ptr<CameraModel> takeCameraModel();
-  std::unique_ptr<PerfData> takePerfData();
-  const void *getSession();
+  std::unique_ptr<Session> takeSession();
 
   static QEvent::Type type();
 
@@ -25,6 +24,5 @@ private:
   std::unique_ptr<std::vector<cv::KeyPoint>> _keyPoints;
   std::unique_ptr<cv::Mat> _descriptors;
   std::unique_ptr<CameraModel> _camera;
-  std::unique_ptr<PerfData> _perfData;
-  const void *_session;
+  std::unique_ptr<Session> _session;
 };

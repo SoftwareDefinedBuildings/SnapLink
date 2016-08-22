@@ -1,5 +1,5 @@
 #include "stage/SignatureSearch.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include "data/Signature.h"
 #include "event/FailureEvent.h"
 #include "event/SignatureEvent.h"
@@ -29,13 +29,13 @@ bool SignatureSearch::event(QEvent *event) {
     std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
         wordEvent->takeKeyPoints();
     std::unique_ptr<CameraModel> camera = wordEvent->takeCameraModel();
-    std::unique_ptr<PerfData> perfData = wordEvent->takePerfData();
+    std::unique_ptr<Session> Session = wordEvent->takeSession();
     const void *session = wordEvent->getSession();
 
     std::unique_ptr<std::vector<int>> signatureIds(new std::vector<int>());
-    perfData->signaturesStart = getTime();
+    Session->signaturesStart = getTime();
     *signatureIds = search(*wordIds);
-    perfData->signaturesEnd = getTime();
+    Session->signaturesEnd = getTime();
 
     std::unique_ptr<std::multimap<int, cv::KeyPoint>> words(
         new std::multimap<int, cv::KeyPoint>());
@@ -44,7 +44,7 @@ bool SignatureSearch::event(QEvent *event) {
     QCoreApplication::postEvent(
         _perspective, new SignatureEvent(std::move(words), std::move(camera),
                                          std::move(signatureIds),
-                                         std::move(perfData), session));
+                                         std::move(Session), session));
     return true;
   }
   return QObject::event(event);

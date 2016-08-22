@@ -1,7 +1,7 @@
 #pragma once
 
 #include "data/CameraModel.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include <QEvent>
 #include <memory>
 
@@ -10,13 +10,12 @@ public:
   SignatureEvent(std::unique_ptr<std::multimap<int, cv::KeyPoint>> &&words,
                  std::unique_ptr<CameraModel> &&camera,
                  std::unique_ptr<std::vector<int>> &&signatureIds,
-                 std::unique_ptr<PerfData> &&perfData, const void *session);
+                 std::unique_ptr<Session> &&session);
 
   std::unique_ptr<std::multimap<int, cv::KeyPoint>> takeWords();
   std::unique_ptr<CameraModel> takeCameraModel();
   std::unique_ptr<std::vector<int>> takeSignatureIds();
-  std::unique_ptr<PerfData> takePerfData();
-  const void *getSession();
+  std::unique_ptr<Session> takeSession();
 
   static QEvent::Type type();
 
@@ -25,6 +24,5 @@ private:
   std::unique_ptr<std::multimap<int, cv::KeyPoint>> _words;
   std::unique_ptr<CameraModel> _camera;
   std::unique_ptr<std::vector<int>> _signatureIds;
-  std::unique_ptr<PerfData> _perfData;
-  const void *_session;
+  std::unique_ptr<Session> _session;
 };
