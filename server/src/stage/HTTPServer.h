@@ -12,6 +12,7 @@
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
 
+class CameraModel;
 class FeatureExtraction;
 
 class HTTPServer : public QObject {
@@ -47,9 +48,9 @@ private:
                                enum MHD_RequestTerminationCode toe);
   static int sendPage(struct MHD_Connection *connection,
                       const std::string &page, int status_code);
-  static std::unique_ptr<SensorData>
-  createSensorData(const std::vector<char> &data, double fx, double fy,
-                   double cx, double cy);
+  static void createData(const std::vector<char> &data, double fx, double fy,
+                         double cx, double cy, cv::Mat &image,
+                         CameraModel &camera);
 
 private:
   static const std::string busypage;

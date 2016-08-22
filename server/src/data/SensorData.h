@@ -17,9 +17,6 @@ public:
   const cv::Mat &descriptors() const;
 
 private:
-  int _id;
-  double _stamp;
-
   cv::Mat _image; // CV_8UC1 or CV_8UC3
 
   CameraModel _cameraModel;

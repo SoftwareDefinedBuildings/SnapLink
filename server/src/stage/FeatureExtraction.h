@@ -19,7 +19,9 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  void extractFeatures(const cv::Mat &image, std::vector<cv::KeyPoint> &keyPoints, cv::Mat &descriptors) const;
+  void extractFeatures(const cv::Mat &image,
+                       std::vector<cv::KeyPoint> &keyPoints,
+                       cv::Mat &descriptors) const;
 
 private:
   WordSearch *_wordSearch;

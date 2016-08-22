@@ -1,4 +1,5 @@
 #include "stage/HTTPServer.h"
+#include "data/CameraModel.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
@@ -13,7 +14,6 @@ const std::string HTTPServer::busypage =
     "This server is busy, please try again later.";
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
-// ownership transferred
 HTTPServer::HTTPServer()
     : _daemon(nullptr), _numClients(0), _feature(nullptr) {}
 
@@ -126,14 +126,23 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
     if (!connInfo->rawData->empty()) {
       // all data are received
       connInfo->perfData->overallStart = getTime(); // log start of processing
-      std::unique_ptr<SensorData> sensorData =
-          createSensorData(*(connInfo->rawData), connInfo->cameraInfo.fx,
-                           connInfo->cameraInfo.fy, connInfo->cameraInfo.cx,
-                           connInfo->cameraInfo.cy);
-      QCoreApplication::postEvent(httpServer->_feature,
-                                  new QueryEvent(std::move(sensorData),
-                                                 std::move(connInfo->perfData),
-                                                 connInfo));
+
+      double fx = connInfo->cameraInfo.fx;
+      double fy = connInfo->cameraInfo.fy;
+      double cx = connInfo->cameraInfo.cx;
+      double cy = connInfo->cameraInfo.cy;
+      std::unique_ptr<cv::Mat> image(new cv::Mat());
+      std::unique_ptr<CameraModel> camera(new CameraModel());
+      createData(*(connInfo->rawData), fx, fy, cx, cy, *image, *camera);
+      if (image->empty()) {
+        // TODO do I need to free anything here?
+        return sendPage(connection, errorpage, MHD_HTTP_BAD_REQUEST);
+      }
+
+      QCoreApplication::postEvent(
+          httpServer->_feature,
+          new QueryEvent(std::move(image), std::move(camera),
+                         std::move(connInfo->perfData), connInfo));
     }
 
     // wait for the result to come
@@ -252,25 +261,14 @@ int HTTPServer::sendPage(struct MHD_Connection *connection,
   return ret;
 }
 
-std::unique_ptr<SensorData>
-HTTPServer::createSensorData(const std::vector<char> &data, double fx,
-                             double fy, double cx, double cy) {
-  // there is no data copy here, the cv::Mat has a pointer to the data
+void HTTPServer::createData(const std::vector<char> &data, double fx, double fy,
+                            double cx, double cy, cv::Mat &image,
+                            CameraModel &camera) {
+  // no data copy is needed because conn info
   const bool copyData = false;
-  cv::Mat img = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+  image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
 
-  if (img.empty()) {
-    return nullptr;
-  }
-
-  // imwrite("image.jpg", img);
-
-  if (!img.empty()) {
-    CameraModel model("", fx, fy, cx, cy, cv::Size(0, 0));
-    std::unique_ptr<SensorData> sensorData(
-        new SensorData(std::move(img), std::move(model)));
-    return sensorData;
-  }
-
-  return nullptr;
+  int width = image.cols;
+  int height = image.rows;
+  camera = CameraModel("", fx, fy, cx, cy, cv::Size(width, height));
 }

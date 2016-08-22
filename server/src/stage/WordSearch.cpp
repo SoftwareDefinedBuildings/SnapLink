@@ -24,7 +24,8 @@ void WordSearch::setSignatureSearch(SignatureSearch *imageSearch) {
 bool WordSearch::event(QEvent *event) {
   if (event->type() == FeatureEvent::type()) {
     FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints = featureEvent->takeKeyPoints();
+    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
+        featureEvent->takeKeyPoints();
     std::unique_ptr<cv::Mat> descriptors = featureEvent->takeDescriptors();
     std::unique_ptr<CameraModel> camera = featureEvent->takeCameraModel();
     std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();

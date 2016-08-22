@@ -4,6 +4,8 @@
 
 class CameraModel {
 public:
+  CameraModel();
+
   CameraModel(std::string &&name, double fx, double fy, double cx, double cy,
               cv::Size &&imageSize);
 

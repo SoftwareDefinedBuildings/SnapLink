@@ -3,15 +3,18 @@
 const QEvent::Type QueryEvent::_type =
     static_cast<QEvent::Type>(QEvent::registerEventType());
 
-// ownership transfer
-QueryEvent::QueryEvent(std::unique_ptr<SensorData> &&sensorData,
+QueryEvent::QueryEvent(std::unique_ptr<cv::Mat> &&image,
+                       std::unique_ptr<CameraModel> &&camera,
                        std::unique_ptr<PerfData> &&perfData,
                        const void *session)
-    : QEvent(QueryEvent::type()), _sensorData(std::move(sensorData)),
-      _perfData(std::move(perfData)), _session(session) {}
+    : QEvent(QueryEvent::type()), _image(std::move(image)),
+      _camera(std::move(camera)), _perfData(std::move(perfData)),
+      _session(session) {}
 
-std::unique_ptr<SensorData> QueryEvent::takeSensorData() {
-  return std::move(_sensorData);
+std::unique_ptr<cv::Mat> QueryEvent::takeImage() { return std::move(_image); }
+
+std::unique_ptr<CameraModel> QueryEvent::takeCameraModel() {
+  return std::move(_camera);
 }
 
 std::unique_ptr<PerfData> QueryEvent::takePerfData() {
