@@ -5,7 +5,6 @@
 #include <QObject>
 #include <memory>
 
-class SensorData;
 class SignatureSearch;
 
 class WordSearch : public QObject {

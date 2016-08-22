@@ -331,14 +331,6 @@ std::list<std::unique_ptr<Signature>> RTABMapDBAdapter::mergeSignatures(
       int mapId = signature.second->mapId();
       Transform pose =
           Transform::fromEigen4f(signature.second->getPose().toEigen4f());
-      const rtabmap::SensorData &data = signature.second->sensorData();
-      const rtabmap::CameraModel &camera = data.cameraModels()[0];
-      cv::Mat image = data.imageRaw();
-      std::string name = camera.name();
-      cv::Size imageSize = camera.imageSize();
-      CameraModel newCamera(std::move(name), camera.fx(), camera.fy(),
-                            camera.cx(), camera.cy(), std::move(imageSize));
-      SensorData newSensorData(std::move(image), std::move(newCamera));
 
       std::multimap<int, cv::KeyPoint> words;
       for (const auto &word : signature.second->getWords()) {
@@ -355,9 +347,9 @@ std::list<std::unique_ptr<Signature>> RTABMapDBAdapter::mergeSignatures(
         assert(wordIdIter != mergeWordsIdMap.end());
         words3.insert(std::make_pair(wordIdIter->second, word3.second));
       }
-      mergedSignatures.emplace_back(std::unique_ptr<Signature>(new Signature(
-          newId, mapId, dbId, std::move(pose), std::move(newSensorData),
-          std::move(words), std::move(words3))));
+      mergedSignatures.emplace_back(std::unique_ptr<Signature>(
+          new Signature(newId, mapId, dbId, std::move(pose), std::move(words),
+                        std::move(words3))));
     }
   }
 

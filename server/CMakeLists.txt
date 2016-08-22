@@ -35,7 +35,6 @@ INCLUDE_DIRECTORIES(${CellMate_INCLUDE_DIRS})
 SET(SOURCES
     "src/main.cpp"
     "src/data/CameraModel.cpp"
-    "src/data/SensorData.cpp"
     "src/data/Transform.cpp"
     "src/data/LabelsSimple.cpp"
     "src/data/Word.cpp"

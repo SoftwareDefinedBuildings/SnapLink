@@ -7,7 +7,6 @@
 #include <opencv2/core/core.hpp>
 
 class CameraModel;
-class Signature;
 class Transform;
 class Visibility;
 class HTTPServer;

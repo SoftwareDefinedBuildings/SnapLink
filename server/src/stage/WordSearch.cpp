@@ -1,6 +1,5 @@
 #include "stage/WordSearch.h"
 #include "data/PerfData.h"
-#include "data/SensorData.h"
 #include "data/Signature.h"
 #include "event/FeatureEvent.h"
 #include "event/WordEvent.h"

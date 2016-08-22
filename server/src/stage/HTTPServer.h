@@ -1,11 +1,11 @@
 #pragma once
 
 #include "data/PerfData.h"
-#include "data/SensorData.h"
 #include <QObject>
 #include <QSemaphore>
 #include <memory>
 #include <microhttpd.h>
+#include <opencv2/core/core.hpp>
 
 #define PORT 8080
 #define MAX_CLIENTS 10

@@ -1,5 +1,4 @@
 #include "stage/FeatureExtraction.h"
-#include "data/SensorData.h"
 #include "event/FeatureEvent.h"
 #include "event/QueryEvent.h"
 #include "stage/WordSearch.h"

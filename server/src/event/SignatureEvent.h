@@ -2,8 +2,8 @@
 
 #include "data/CameraModel.h"
 #include "data/PerfData.h"
-#include "data/Signature.h"
 #include <QEvent>
+#include <memory>
 
 class SignatureEvent : public QEvent {
 public:
