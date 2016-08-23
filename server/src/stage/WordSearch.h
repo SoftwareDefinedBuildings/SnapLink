@@ -1,15 +1,11 @@
 #pragma once
 
-#include "adapter/RTABMapDBAdapter.h"
-#include "data/SensorData.h"
-#include "data/Transform.h"
-#include "stage/SignatureSearch.h"
+#include "data/Words.h"
 #include <QEvent>
 #include <QObject>
 #include <memory>
 
 class SignatureSearch;
-class HTTPServer;
 
 class WordSearch : public QObject {
 public:
@@ -23,7 +19,7 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  std::vector<int> searchWords(const SensorData &sensorData) const;
+  std::vector<int> searchWords(const cv::Mat &descriptors) const;
 
 private:
   std::unique_ptr<Words> _words;

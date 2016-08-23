@@ -1,8 +1,12 @@
 #include "stage/Perspective.h"
 #include "data/PerfData.h"
+#include "data/Signature.h"
+#include "data/Transform.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
 #include "event/SignatureEvent.h"
+#include "stage/HTTPServer.h"
+#include "stage/Visibility.h"
 #include "util/Time.h"
 #include "util/Utility.h"
 #include <QCoreApplication>
@@ -17,6 +21,10 @@ Perspective::~Perspective() {
   _httpServer = nullptr;
 }
 
+void Perspective::setSignatures(const std::shared_ptr<Signatures> &signatures) {
+  _signatures = signatures;
+}
+
 void Perspective::setVisibility(Visibility *vis) { _vis = vis; }
 
 void Perspective::setHTTPServer(HTTPServer *httpServer) {
@@ -26,22 +34,25 @@ void Perspective::setHTTPServer(HTTPServer *httpServer) {
 bool Perspective::event(QEvent *event) {
   if (event->type() == SignatureEvent::type()) {
     SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
-    std::unique_ptr<std::vector<int>> wordIds = signatureEvent->takeWordIds();
-    std::unique_ptr<SensorData> sensorData = signatureEvent->takeSensorData();
-    std::vector<std::unique_ptr<Signature>> signatures =
-        signatureEvent->takeSignatures();
+    std::unique_ptr<std::multimap<int, cv::KeyPoint>> words =
+        signatureEvent->takeWords();
+    std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
+    std::unique_ptr<std::vector<int>> signatureIds =
+        signatureEvent->takeSignatureIds();
     std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
     const void *session = signatureEvent->getSession();
+    int dbId;
     std::unique_ptr<Transform> pose(new Transform);
+
     perfData->perspectiveStart = getTime();
-    *pose = localize(*wordIds, *sensorData, *(signatures.at(0)));
+    localize(*words, *camera, signatureIds->at(0), dbId, *pose);
     perfData->perspectiveEnd = getTime();
+
     // a null pose notify that loc could not be computed
     if (pose->isNull() == false) {
       QCoreApplication::postEvent(
-          _vis,
-          new LocationEvent(signatures.at(0)->getDbId(), std::move(sensorData),
-                            std::move(pose), std::move(perfData), session));
+          _vis, new LocationEvent(dbId, std::move(camera), std::move(pose),
+                                  std::move(perfData), session));
     } else {
       QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
     }
@@ -50,23 +61,24 @@ bool Perspective::event(QEvent *event) {
   return QObject::event(event);
 }
 
-Transform Perspective::localize(const std::vector<int> &wordIds,
-                                const SensorData &sensorData,
-                                const Signature &oldSig) const {
+void Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
+                           const CameraModel &camera, int oldSigId, int &dbId,
+                           Transform &transform) const {
   size_t minInliers = 3;
-
-  const CameraModel &cameraModel = sensorData.getCameraModel();
-  assert(!sensorData.getImage().empty());
-
-  Transform transform;
 
   int inliersCount = 0;
 
   std::multimap<int, cv::Point3f> words3;
 
-  const Transform &oldSigPose = oldSig.getPose();
+  const std::map<int, std::unique_ptr<Signature>> &signatures =
+      _signatures->getSignatures();
+  const auto iter = signatures.find(oldSigId);
+  assert(iter != signatures.end());
+  const std::unique_ptr<Signature> &oldSig = iter->second;
+  dbId = oldSig->getDbId();
+  const Transform &oldSigPose = oldSig->getPose();
 
-  const std::multimap<int, cv::Point3f> &sigWords3 = oldSig.getWords3();
+  const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
   std::multimap<int, cv::Point3f>::const_iterator word3Iter;
   for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end();
        word3Iter++) {
@@ -79,32 +91,19 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
     words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, globalPointCV));
   }
 
-  std::multimap<int, cv::KeyPoint> words;
-  const std::vector<cv::KeyPoint> &keypoints = sensorData.keypoints();
-  if (wordIds.size() > 0) {
-    assert(wordIds.size() == keypoints.size());
-    unsigned int i = 0;
-    for (auto iter = wordIds.begin();
-         iter != wordIds.end() && i < keypoints.size(); ++iter, ++i) {
-      words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-    }
-  }
-
   // 3D to 2D (PnP)
   if (words3.size() >= minInliers && words.size() >= minInliers) {
     std::vector<int> inliers;
 
     transform = estimateMotion3DTo2D(
         Utility::MultimapToMapUnique(words3),
-        Utility::MultimapToMapUnique(words),
-        cameraModel, // TODO: cameraModel.localTransform has to be the same
-                     // for all images
-        oldSigPose,  // use the old signature's pose as a guess
+        Utility::MultimapToMapUnique(words), camera,
+        oldSigPose, // use the old signature's pose as a guess
         &inliers, minInliers);
     inliersCount = (int)inliers.size();
     if (transform.isNull()) {
       std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
-                << " between the old signature " << oldSig.getId()
+                << " between the old signature " << oldSig->getId()
                 << " and the new image" << std::endl;
     }
   } else {
@@ -116,15 +115,13 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
   // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
   qDebug() << "transform= " << transform.prettyPrint().c_str();
-  return transform;
 }
 
 Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
-    const std::map<int, cv::KeyPoint> &words2B, const CameraModel &cameraModel,
+    const std::map<int, cv::KeyPoint> &words2B, const CameraModel &camera,
     const Transform &guess, std::vector<int> *inliersOut,
     size_t minInliers) const {
-  assert(cameraModel.isValidForProjection());
   assert(!guess.isNull());
   Transform transform;
   std::vector<int> matches, inliers;
@@ -137,8 +134,7 @@ Transform Perspective::estimateMotion3DTo2D(
   matches.resize(ids.size());
   for (unsigned int i = 0; i < ids.size(); ++i) {
     std::map<int, cv::Point3f>::const_iterator iter = words3A.find(ids[i]);
-    if (iter != words3A.end() && std::isfinite(iter->second.x) &&
-        std::isfinite(iter->second.y) && std::isfinite(iter->second.z)) {
+    if (iter != words3A.end()) {
       const cv::Point3f &pt = iter->second;
       objectPoints[oi].x = pt.x;
       objectPoints[oi].y = pt.y;
@@ -157,21 +153,18 @@ Transform Perspective::estimateMotion3DTo2D(
 
   if (matches.size() >= minInliers) {
     // PnPRansac
-    cv::Mat K = cameraModel.K();
-    cv::Mat D = cameraModel.D();
-    Transform guessCameraFrame =
-        (guess * cameraModel.localTransform()).inverse();
+    cv::Mat K = camera.K();
+    cv::Mat D = camera.D();
     cv::Mat R =
-        (cv::Mat_<double>(3, 3) << (double)guessCameraFrame.r11(),
-         (double)guessCameraFrame.r12(), (double)guessCameraFrame.r13(),
-         (double)guessCameraFrame.r21(), (double)guessCameraFrame.r22(),
-         (double)guessCameraFrame.r23(), (double)guessCameraFrame.r31(),
-         (double)guessCameraFrame.r32(), (double)guessCameraFrame.r33());
+        (cv::Mat_<double>(3, 3) << (double)guess.r11(), (double)guess.r12(),
+         (double)guess.r13(),                                           //
+         (double)guess.r21(), (double)guess.r22(), (double)guess.r23(), //
+         (double)guess.r31(), (double)guess.r32(), (double)guess.r33());
 
     cv::Mat rvec(1, 3, CV_64FC1);
     cv::Rodrigues(R, rvec);
-    cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)guessCameraFrame.x(),
-                    (double)guessCameraFrame.y(), (double)guessCameraFrame.z());
+    cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)guess.x(),
+                    (double)guess.y(), (double)guess.z());
 
     cv::solvePnPRansac(objectPoints, imagePoints, K, D, rvec, tvec, true, 100,
                        8.0, 0.99, inliers,
@@ -181,11 +174,13 @@ Transform Perspective::estimateMotion3DTo2D(
     if (inliers.size() >= minInliers) {
       cv::Rodrigues(rvec, R);
       Transform pnp(R.at<double>(0, 0), R.at<double>(0, 1), R.at<double>(0, 2),
-                    tvec.at<double>(0), R.at<double>(1, 0), R.at<double>(1, 1),
-                    R.at<double>(1, 2), tvec.at<double>(1), R.at<double>(2, 0),
-                    R.at<double>(2, 1), R.at<double>(2, 2), tvec.at<double>(2));
+                    tvec.at<double>(0), //
+                    R.at<double>(1, 0), R.at<double>(1, 1), R.at<double>(1, 2),
+                    tvec.at<double>(1), //
+                    R.at<double>(2, 0), R.at<double>(2, 1), R.at<double>(2, 2),
+                    tvec.at<double>(2));
 
-      transform = (cameraModel.localTransform() * pnp).inverse();
+      transform = std::move(pnp);
 
       // TODO: compute variance (like in PCL computeVariance() method of
       // sac_model.h)

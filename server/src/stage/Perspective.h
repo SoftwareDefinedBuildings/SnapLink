@@ -1,13 +1,13 @@
 #pragma once
 
-#include "data/SensorData.h"
-#include "data/Signature.h"
-#include "data/Transform.h"
-#include "stage/HTTPServer.h"
-#include "stage/Visibility.h"
+#include "data/Signatures.h"
 #include <QEvent>
 #include <QObject>
+#include <memory>
+#include <opencv2/core/core.hpp>
 
+class CameraModel;
+class Transform;
 class Visibility;
 class HTTPServer;
 
@@ -16,6 +16,7 @@ public:
   Perspective();
   virtual ~Perspective();
 
+  void setSignatures(const std::shared_ptr<Signatures> &signatures);
   void setVisibility(Visibility *vis);
   void setHTTPServer(HTTPServer *httpServer);
 
@@ -23,18 +24,18 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  // get pose from optimizedPoses if available, otherwise get from sig itself
-  Transform localize(const std::vector<int> &wordIds,
-                     const SensorData &sensorData,
-                     const Signature &oldSig) const;
+  void localize(const std::multimap<int, cv::KeyPoint> &words,
+                const CameraModel &camera, int oldSigId, int &dbId,
+                Transform &transform) const;
   Transform estimateMotion3DTo2D(const std::map<int, cv::Point3f> &words3A,
                                  const std::map<int, cv::KeyPoint> &words2B,
-                                 const CameraModel &cameraModel,
+                                 const CameraModel &camera,
                                  const Transform &guess,
                                  std::vector<int> *inliersOut,
                                  size_t minInliers) const;
 
 private:
+  std::shared_ptr<Signatures> _signatures;
   Visibility *_vis;
   HTTPServer *_httpServer;
 };

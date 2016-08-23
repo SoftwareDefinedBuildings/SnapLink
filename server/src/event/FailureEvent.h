@@ -1,6 +1,5 @@
 #pragma once
 
-#include "data/PerfData.h"
 #include <QEvent>
 #include <memory>
 

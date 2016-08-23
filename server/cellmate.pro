@@ -35,7 +35,6 @@ LIBS += -lmicrohttpd
 INCLUDEPATH += src
 
 HEADERS += src/data/SignaturesSimple.h
-HEADERS += src/data/SensorData.h
 HEADERS += src/data/Signature.h
 HEADERS += src/data/Word.h
 HEADERS += src/data/Words.h
@@ -66,7 +65,6 @@ HEADERS += src/util/Time.h
 
 SOURCES += src/main.cpp
 SOURCES += src/data/CameraModel.cpp
-SOURCES += src/data/SensorData.cpp
 SOURCES += src/data/Transform.cpp
 SOURCES += src/data/LabelsSimple.cpp
 SOURCES += src/data/Word.cpp

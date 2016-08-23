@@ -1,7 +1,5 @@
 #pragma once
 
-#include "data/SensorData.h"
-#include "stage/WordSearch.h"
 #include <QObject>
 #include <opencv2/xfeatures2d.hpp>
 
@@ -20,7 +18,9 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  void extractFeatures(SensorData &sensorData) const;
+  void extractFeatures(const cv::Mat &image,
+                       std::vector<cv::KeyPoint> &keyPoints,
+                       cv::Mat &descriptors) const;
 
 private:
   WordSearch *_wordSearch;

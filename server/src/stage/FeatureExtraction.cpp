@@ -1,6 +1,7 @@
 #include "stage/FeatureExtraction.h"
 #include "event/FeatureEvent.h"
 #include "event/QueryEvent.h"
+#include "stage/WordSearch.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 
@@ -22,30 +23,30 @@ void FeatureExtraction::setWordSearch(WordSearch *wordSearch) {
 bool FeatureExtraction::event(QEvent *event) {
   if (event->type() == QueryEvent::type()) {
     QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
-    std::unique_ptr<SensorData> sensorData = queryEvent->takeSensorData();
+    std::unique_ptr<cv::Mat> image = queryEvent->takeImage();
+    std::unique_ptr<CameraModel> camera = queryEvent->takeCameraModel();
     std::unique_ptr<PerfData> perfData = queryEvent->takePerfData();
     const void *session = queryEvent->getSession();
 
+    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints(
+        new std::vector<cv::KeyPoint>());
+    std::unique_ptr<cv::Mat> descriptors(new cv::Mat());
     perfData->featuresStart = getTime();
-    extractFeatures(*sensorData);
+    extractFeatures(*image, *keyPoints, *descriptors);
     perfData->featuresEnd = getTime();
 
     QCoreApplication::postEvent(
         _wordSearch,
-        new FeatureEvent(std::move(sensorData), std::move(perfData), session));
+        new FeatureEvent(std::move(keyPoints), std::move(descriptors),
+                         std::move(camera), std::move(perfData), session));
 
     return true;
   }
   return QObject::event(event);
 }
 
-void FeatureExtraction::extractFeatures(SensorData &sensorData) const {
-  const cv::Mat &image =
-      sensorData.getImage(); // OpenCV uses a shared pointer internally
-
-  std::vector<cv::KeyPoint> keypoints;
-  cv::Mat descriptors;
-  _detector->detectAndCompute(image, cv::Mat(), keypoints, descriptors);
-
-  sensorData.setFeatures(keypoints, descriptors);
+void FeatureExtraction::extractFeatures(const cv::Mat &image,
+                                        std::vector<cv::KeyPoint> &keyPoints,
+                                        cv::Mat &descriptors) const {
+  _detector->detectAndCompute(image, cv::Mat(), keyPoints, descriptors);
 }

@@ -1,9 +1,11 @@
 #pragma once
 
-#include "data/Transform.h"
 #include <list>
 #include <map>
+#include <opencv2/core/core.hpp>
 #include <vector>
+
+class Transform;
 
 class Utility {
 public:

@@ -3,6 +3,7 @@
 #include "data/Signature.h"
 #include "event/FeatureEvent.h"
 #include "event/WordEvent.h"
+#include "stage/SignatureSearch.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <cassert>
@@ -22,31 +23,28 @@ void WordSearch::setSignatureSearch(SignatureSearch *imageSearch) {
 bool WordSearch::event(QEvent *event) {
   if (event->type() == FeatureEvent::type()) {
     FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
-    std::unique_ptr<SensorData> sensorData = featureEvent->takeSensorData();
+    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
+        featureEvent->takeKeyPoints();
+    std::unique_ptr<cv::Mat> descriptors = featureEvent->takeDescriptors();
+    std::unique_ptr<CameraModel> camera = featureEvent->takeCameraModel();
     std::unique_ptr<PerfData> perfData = featureEvent->takePerfData();
     const void *session = featureEvent->getSession();
     std::unique_ptr<std::vector<int>> wordIds(new std::vector<int>());
+
     perfData->wordsStart = getTime();
-    *wordIds = searchWords(*sensorData);
+    *wordIds = searchWords(*descriptors);
     perfData->wordsEnd = getTime();
-    // a null pose notify that loc could not be computed
+
     QCoreApplication::postEvent(
-        _imageSearch, new WordEvent(std::move(wordIds), std::move(sensorData),
-                                    std::move(perfData), session));
+        _imageSearch,
+        new WordEvent(std::move(wordIds), std::move(keyPoints),
+                      std::move(camera), std::move(perfData), session));
     return true;
   }
   return QObject::event(event);
 }
 
-// TODO maybe only pass skeypoints, descriptors, and model
-std::vector<int> WordSearch::searchWords(const SensorData &sensorData) const {
-  assert(!sensorData.getImage().empty());
-
-  cv::Mat descriptors = sensorData.descriptors();
-
+std::vector<int> WordSearch::searchWords(const cv::Mat &descriptors) const {
   assert(descriptors.rows > 0);
-
-  std::vector<int> wordIds = _words->findNNs(descriptors);
-
-  return wordIds;
+  return _words->findNNs(descriptors);
 }

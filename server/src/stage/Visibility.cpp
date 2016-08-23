@@ -1,8 +1,11 @@
 #include "stage/Visibility.h"
+#include "data/CameraModel.h"
 #include "data/PerfData.h"
+#include "data/Transform.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
+#include "stage/HTTPServer.h"
 #include "util/Utility.h"
 #include <QCoreApplication>
 #include <QDebug>
@@ -28,13 +31,13 @@ void Visibility::setHTTPServer(HTTPServer *httpServer) {
 bool Visibility::event(QEvent *event) {
   if (event->type() == LocationEvent::type()) {
     LocationEvent *locEvent = static_cast<LocationEvent *>(event);
-    std::unique_ptr<SensorData> sensorData = locEvent->takeSensorData();
+    std::unique_ptr<CameraModel> camera = locEvent->takeCameraModel();
     std::unique_ptr<Transform> pose = locEvent->takePose();
     std::unique_ptr<PerfData> perfData = locEvent->takePerfData();
     const void *session = locEvent->getSession();
     std::unique_ptr<std::vector<std::string>> names(
         new std::vector<std::string>());
-    *names = process(locEvent->dbId(), *sensorData, *pose);
+    *names = process(locEvent->dbId(), *camera, *pose);
     if (!names->empty()) {
       QCoreApplication::postEvent(
           _httpServer,
@@ -48,7 +51,7 @@ bool Visibility::event(QEvent *event) {
 }
 
 std::vector<std::string> Visibility::process(int dbId,
-                                             const SensorData &sensorData,
+                                             const CameraModel &camera,
                                              const Transform &pose) const {
   const std::list<std::unique_ptr<Label>> &labels =
       _labels->getLabels().at(dbId);
@@ -66,34 +69,32 @@ std::vector<std::string> Visibility::process(int dbId,
   std::vector<cv::Point2f> planePoints;
   std::vector<std::string> visibleLabels;
 
-  const CameraModel &model = sensorData.getCameraModel();
-  cv::Mat K = model.K();
-  Transform P = (pose * model.localTransform()).inverse();
-  cv::Mat R =
-      (cv::Mat_<double>(3, 3) << (double)P.r11(), (double)P.r12(),
-       (double)P.r13(), (double)P.r21(), (double)P.r22(), (double)P.r23(),
-       (double)P.r31(), (double)P.r32(), (double)P.r33());
+  cv::Mat K = camera.K();
+  cv::Mat R = (cv::Mat_<double>(3, 3) << (double)pose.r11(), (double)pose.r12(),
+               (double)pose.r13(),                                         //
+               (double)pose.r21(), (double)pose.r22(), (double)pose.r23(), //
+               (double)pose.r31(), (double)pose.r32(), (double)pose.r33());
   cv::Mat rvec(1, 3, CV_64FC1);
   cv::Rodrigues(R, rvec);
-  cv::Mat tvec =
-      (cv::Mat_<double>(1, 3) << (double)P.x(), (double)P.y(), (double)P.z());
+  cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)pose.x(), (double)pose.y(),
+                  (double)pose.z());
 
   // do the projection
   cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);
 
   // find points in the image
-  int cols = sensorData.getImage().cols;
-  int rows = sensorData.getImage().rows;
+  int width = camera.getImageSize().width;
+  int height = camera.getImageSize().height;
   std::map<std::string, std::vector<double>> distances;
   std::map<std::string, std::vector<cv::Point2f>> labelPoints;
-  cv::Point2f center(cols / 2, rows / 2);
+  cv::Point2f center(width / 2, height / 2);
 
   for (unsigned int i = 0; i < points.size(); ++i) {
     std::string name = names[i];
-    // if (uIsInBounds(int(planePoints[i].x), 0, cols) &&
-    //        uIsInBounds(int(planePoints[i].y), 0, rows))
+    // if (uIsInBounds(int(planePoints[i].x), 0, width) &&
+    //        uIsInBounds(int(planePoints[i].y), 0, height))
     if (true) {
-      if (Utility::isInFrontOfCamera(points[i], P)) {
+      if (Utility::isInFrontOfCamera(points[i], pose)) {
         visibleLabels.emplace_back(name);
         double dist = cv::norm(planePoints[i] - center);
         distances[name].emplace_back(dist);

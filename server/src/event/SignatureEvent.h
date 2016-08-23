@@ -1,21 +1,20 @@
 #pragma once
 
+#include "data/CameraModel.h"
 #include "data/PerfData.h"
-#include "data/SensorData.h"
-#include "data/Signature.h"
 #include <QEvent>
+#include <memory>
 
 class SignatureEvent : public QEvent {
 public:
-  // ownership transfer
-  SignatureEvent(std::unique_ptr<std::vector<int>> &&wordIds,
-                 std::unique_ptr<SensorData> &&sensorData,
-                 std::vector<std::unique_ptr<Signature>> &&signatures,
+  SignatureEvent(std::unique_ptr<std::multimap<int, cv::KeyPoint>> &&words,
+                 std::unique_ptr<CameraModel> &&camera,
+                 std::unique_ptr<std::vector<int>> &&signatureIds,
                  std::unique_ptr<PerfData> &&perfData, const void *session);
 
-  std::unique_ptr<std::vector<int>> takeWordIds();
-  std::unique_ptr<SensorData> takeSensorData();
-  std::vector<std::unique_ptr<Signature>> takeSignatures();
+  std::unique_ptr<std::multimap<int, cv::KeyPoint>> takeWords();
+  std::unique_ptr<CameraModel> takeCameraModel();
+  std::unique_ptr<std::vector<int>> takeSignatureIds();
   std::unique_ptr<PerfData> takePerfData();
   const void *getSession();
 
@@ -23,9 +22,9 @@ public:
 
 private:
   static const QEvent::Type _type;
-  std::unique_ptr<std::vector<int>> _wordIds;
-  std::unique_ptr<SensorData> _sensorData;
-  std::vector<std::unique_ptr<Signature>> _signatures;
+  std::unique_ptr<std::multimap<int, cv::KeyPoint>> _words;
+  std::unique_ptr<CameraModel> _camera;
+  std::unique_ptr<std::vector<int>> _signatureIds;
   std::unique_ptr<PerfData> _perfData;
   const void *_session;
 };

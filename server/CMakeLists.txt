@@ -35,7 +35,6 @@ INCLUDE_DIRECTORIES(${CellMate_INCLUDE_DIRS})
 SET(SOURCES
     "src/main.cpp"
     "src/data/CameraModel.cpp"
-    "src/data/SensorData.cpp"
     "src/data/Transform.cpp"
     "src/data/LabelsSimple.cpp"
     "src/data/Word.cpp"
@@ -66,4 +65,4 @@ TARGET_LINK_LIBRARIES(cellmate ${LIBRARIES})
 
 SET_PROPERTY(TARGET cellmate PROPERTY CXX_STANDARD 11)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
