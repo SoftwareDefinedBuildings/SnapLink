@@ -14,5 +14,5 @@ public:
 
 private:
   static const QEvent::Type _type;
-  const void *_session;
+  std::unique_ptr<Session> _session;
 };

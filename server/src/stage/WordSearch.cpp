@@ -27,18 +27,16 @@ bool WordSearch::event(QEvent *event) {
         featureEvent->takeKeyPoints();
     std::unique_ptr<cv::Mat> descriptors = featureEvent->takeDescriptors();
     std::unique_ptr<CameraModel> camera = featureEvent->takeCameraModel();
-    std::unique_ptr<Session> Session = featureEvent->takeSession();
-    const void *session = featureEvent->getSession();
+    std::unique_ptr<Session> session = featureEvent->takeSession();
     std::unique_ptr<std::vector<int>> wordIds(new std::vector<int>());
 
-    Session->wordsStart = getTime();
+    session->wordsStart = getTime();
     *wordIds = searchWords(*descriptors);
-    Session->wordsEnd = getTime();
+    session->wordsEnd = getTime();
 
     QCoreApplication::postEvent(
-        _imageSearch,
-        new WordEvent(std::move(wordIds), std::move(keyPoints),
-                      std::move(camera), std::move(Session), session));
+        _imageSearch, new WordEvent(std::move(wordIds), std::move(keyPoints),
+                                    std::move(camera), std::move(session)));
     return true;
   }
   return QObject::event(event);

@@ -29,22 +29,21 @@ bool SignatureSearch::event(QEvent *event) {
     std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
         wordEvent->takeKeyPoints();
     std::unique_ptr<CameraModel> camera = wordEvent->takeCameraModel();
-    std::unique_ptr<Session> Session = wordEvent->takeSession();
-    const void *session = wordEvent->getSession();
-
+    std::unique_ptr<Session> session = wordEvent->takeSession();
     std::unique_ptr<std::vector<int>> signatureIds(new std::vector<int>());
-    Session->signaturesStart = getTime();
+
+    session->signaturesStart = getTime();
     *signatureIds = search(*wordIds);
-    Session->signaturesEnd = getTime();
+    session->signaturesEnd = getTime();
 
     std::unique_ptr<std::multimap<int, cv::KeyPoint>> words(
         new std::multimap<int, cv::KeyPoint>());
     *words = createWords(*wordIds, *keyPoints);
 
     QCoreApplication::postEvent(
-        _perspective, new SignatureEvent(std::move(words), std::move(camera),
-                                         std::move(signatureIds),
-                                         std::move(Session), session));
+        _perspective,
+        new SignatureEvent(std::move(words), std::move(camera),
+                           std::move(signatureIds), std::move(session)));
     return true;
   }
   return QObject::event(event);

@@ -3,8 +3,10 @@
 #include "data/Session.h"
 #include <QObject>
 #include <QSemaphore>
+#include <boost/uuid/uuid.hpp>
 #include <memory>
 #include <microhttpd.h>
+#include <mutex>
 #include <opencv2/core/core.hpp>
 
 #define PORT 8080
@@ -14,6 +16,27 @@
 
 class CameraModel;
 class FeatureExtraction;
+
+enum ConnectionType { POST = 0 };
+
+// TODO delete after combine cameranetwork and http server
+typedef struct {
+  double fx;
+  double fy;
+  double cx;
+  double cy;
+} CameraInfo;
+
+typedef struct {
+  enum ConnectionType sessionType;
+  struct MHD_PostProcessor *postProcessor;
+  CameraInfo cameraInfo;
+  QSemaphore detected;
+  std::string answerString;
+  std::unique_ptr<std::vector<std::string>> names;
+  std::unique_ptr<Session> session;
+  std::unique_ptr<std::vector<char>> rawData;
+} ConnectionInfo;
 
 class HTTPServer : public QObject {
 public:
@@ -61,26 +84,7 @@ private:
   struct MHD_Daemon *_daemon;
   unsigned int _maxClients;
   unsigned int _numClients;
+  std::mutex _mutex;
+  std::map<boost::uuids::uuid, ConnectionInfo *> _connInfoMap;
   FeatureExtraction *_feature;
 };
-
-enum ConnectionType { POST = 0 };
-
-// TODO delete after combine cameranetwork and http server
-typedef struct {
-  double fx;
-  double fy;
-  double cx;
-  double cy;
-} CameraInfo;
-
-typedef struct {
-  enum ConnectionType sessionType;
-  struct MHD_PostProcessor *postProcessor;
-  CameraInfo cameraInfo;
-  QSemaphore detected;
-  std::string answerString;
-  std::unique_ptr<std::vector<std::string>> names;
-  std::unique_ptr<Session> Session;
-  std::unique_ptr<std::vector<char>> rawData;
-} ConnectionInfo;
