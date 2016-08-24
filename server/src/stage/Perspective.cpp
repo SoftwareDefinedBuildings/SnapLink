@@ -1,11 +1,11 @@
 #include "stage/Perspective.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include "data/Signature.h"
 #include "data/Transform.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
 #include "event/SignatureEvent.h"
-#include "stage/HTTPServer.h"
+#include "front/HTTPServer.h"
 #include "stage/Visibility.h"
 #include "util/Time.h"
 #include "util/Utility.h"
@@ -39,22 +39,22 @@ bool Perspective::event(QEvent *event) {
     std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
     std::unique_ptr<std::vector<int>> signatureIds =
         signatureEvent->takeSignatureIds();
-    std::unique_ptr<PerfData> perfData = signatureEvent->takePerfData();
-    const void *session = signatureEvent->getSession();
+    std::unique_ptr<Session> session = signatureEvent->takeSession();
     int dbId;
     std::unique_ptr<Transform> pose(new Transform);
 
-    perfData->perspectiveStart = getTime();
+    session->perspectiveStart = getTime();
     localize(*words, *camera, signatureIds->at(0), dbId, *pose);
-    perfData->perspectiveEnd = getTime();
+    session->perspectiveEnd = getTime();
 
     // a null pose notify that loc could not be computed
     if (pose->isNull() == false) {
       QCoreApplication::postEvent(
           _vis, new LocationEvent(dbId, std::move(camera), std::move(pose),
-                                  std::move(perfData), session));
+                                  std::move(session)));
     } else {
-      QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
+      QCoreApplication::postEvent(_httpServer,
+                                  new FailureEvent(std::move(session)));
     }
     return true;
   }

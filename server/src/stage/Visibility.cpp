@@ -1,11 +1,11 @@
 #include "stage/Visibility.h"
 #include "data/CameraModel.h"
-#include "data/PerfData.h"
+#include "data/Session.h"
 #include "data/Transform.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
-#include "stage/HTTPServer.h"
+#include "front/HTTPServer.h"
 #include "util/Utility.h"
 #include <QCoreApplication>
 #include <QDebug>
@@ -33,17 +33,19 @@ bool Visibility::event(QEvent *event) {
     LocationEvent *locEvent = static_cast<LocationEvent *>(event);
     std::unique_ptr<CameraModel> camera = locEvent->takeCameraModel();
     std::unique_ptr<Transform> pose = locEvent->takePose();
-    std::unique_ptr<PerfData> perfData = locEvent->takePerfData();
-    const void *session = locEvent->getSession();
+    std::unique_ptr<Session> session = locEvent->takeSession();
     std::unique_ptr<std::vector<std::string>> names(
         new std::vector<std::string>());
+
     *names = process(locEvent->dbId(), *camera, *pose);
+
     if (!names->empty()) {
       QCoreApplication::postEvent(
           _httpServer,
-          new DetectionEvent(std::move(names), std::move(perfData), session));
+          new DetectionEvent(std::move(names), std::move(session)));
     } else {
-      QCoreApplication::postEvent(_httpServer, new FailureEvent(session));
+      QCoreApplication::postEvent(_httpServer,
+                                  new FailureEvent(std::move(session)));
     }
     return true;
   }

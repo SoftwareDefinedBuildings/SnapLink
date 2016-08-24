@@ -6,10 +6,10 @@ const QEvent::Type WordEvent::_type =
 WordEvent::WordEvent(std::unique_ptr<std::vector<int>> &&wordIds,
                      std::unique_ptr<std::vector<cv::KeyPoint>> &&keyPoints,
                      std::unique_ptr<CameraModel> &&camera,
-                     std::unique_ptr<PerfData> &&perfData, const void *session)
+                     std::unique_ptr<Session> &&session)
     : QEvent(WordEvent::type()), _wordIds(std::move(wordIds)),
       _keyPoints(std::move(keyPoints)), _camera(std::move(camera)),
-      _perfData(std::move(perfData)), _session(session) {}
+      _session(std::move(session)) {}
 
 std::unique_ptr<std::vector<int>> WordEvent::takeWordIds() {
   return std::move(_wordIds);
@@ -23,10 +23,8 @@ std::unique_ptr<CameraModel> WordEvent::takeCameraModel() {
   return std::move(_camera);
 }
 
-std::unique_ptr<PerfData> WordEvent::takePerfData() {
-  return std::move(_perfData);
+std::unique_ptr<Session> WordEvent::takeSession() {
+  return std::move(_session);
 }
-
-const void *WordEvent::getSession() { return _session; }
 
 QEvent::Type WordEvent::type() { return _type; }

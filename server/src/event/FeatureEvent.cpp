@@ -6,11 +6,10 @@ const QEvent::Type FeatureEvent::_type =
 FeatureEvent::FeatureEvent(
     std::unique_ptr<std::vector<cv::KeyPoint>> &&keyPoints,
     std::unique_ptr<cv::Mat> &&descriptors,
-    std::unique_ptr<CameraModel> &&camera, std::unique_ptr<PerfData> &&perfData,
-    const void *session)
+    std::unique_ptr<CameraModel> &&camera, std::unique_ptr<Session> &&session)
     : QEvent(FeatureEvent::type()), _keyPoints(std::move(keyPoints)),
       _descriptors(std::move(descriptors)), _camera(std::move(camera)),
-      _perfData(std::move(perfData)), _session(session) {}
+      _session(std::move(session)) {}
 
 std::unique_ptr<std::vector<cv::KeyPoint>> FeatureEvent::takeKeyPoints() {
   return std::move(_keyPoints);
@@ -24,10 +23,8 @@ std::unique_ptr<CameraModel> FeatureEvent::takeCameraModel() {
   return std::move(_camera);
 }
 
-std::unique_ptr<PerfData> FeatureEvent::takePerfData() {
-  return std::move(_perfData);
+std::unique_ptr<Session> FeatureEvent::takeSession() {
+  return std::move(_session);
 }
-
-const void *FeatureEvent::getSession() { return _session; }
 
 QEvent::Type FeatureEvent::type() { return _type; }

@@ -25,20 +25,19 @@ bool FeatureExtraction::event(QEvent *event) {
     QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
     std::unique_ptr<cv::Mat> image = queryEvent->takeImage();
     std::unique_ptr<CameraModel> camera = queryEvent->takeCameraModel();
-    std::unique_ptr<PerfData> perfData = queryEvent->takePerfData();
-    const void *session = queryEvent->getSession();
+    std::unique_ptr<Session> session = queryEvent->takeSession();
 
     std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints(
         new std::vector<cv::KeyPoint>());
     std::unique_ptr<cv::Mat> descriptors(new cv::Mat());
-    perfData->featuresStart = getTime();
+    session->featuresStart = getTime();
     extractFeatures(*image, *keyPoints, *descriptors);
-    perfData->featuresEnd = getTime();
+    session->featuresEnd = getTime();
 
     QCoreApplication::postEvent(
         _wordSearch,
         new FeatureEvent(std::move(keyPoints), std::move(descriptors),
-                         std::move(camera), std::move(perfData), session));
+                         std::move(camera), std::move(session)));
 
     return true;
   }

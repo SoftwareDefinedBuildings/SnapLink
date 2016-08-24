@@ -1,17 +1,18 @@
 #pragma once
 
+#include "data/Session.h"
 #include <QEvent>
 #include <memory>
 
 class FailureEvent : public QEvent {
 public:
-  FailureEvent(const void *session);
+  FailureEvent(std::unique_ptr<Session> &&session);
 
-  const void *getSession();
+  std::unique_ptr<Session> takeSession();
 
   static QEvent::Type type();
 
 private:
   static const QEvent::Type _type;
-  const void *_session;
+  std::unique_ptr<Session> _session;
 };

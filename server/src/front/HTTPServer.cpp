@@ -1,4 +1,4 @@
-#include "stage/HTTPServer.h"
+#include "front/HTTPServer.h"
 #include "data/CameraModel.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
@@ -6,6 +6,7 @@
 #include "stage/FeatureExtraction.h"
 #include "util/Time.h"
 #include <QCoreApplication>
+#include <boost/uuid/uuid_generators.hpp>
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
@@ -59,16 +60,21 @@ void HTTPServer::setFeatureExtraction(FeatureExtraction *feature) {
 bool HTTPServer::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
-    ConnectionInfo *connInfo = const_cast<ConnectionInfo *>(
-        static_cast<const ConnectionInfo *>(detectionEvent->getSession()));
+    std::unique_ptr<Session> session = detectionEvent->takeSession();
+    // find() const is thread-safe
+    const auto iter = _connInfoMap.find(session->id);
+    ConnectionInfo *connInfo = iter->second;
     connInfo->names = detectionEvent->takeNames();
-    connInfo->perfData = detectionEvent->takePerfData();
+    connInfo->session = std::move(session);
     connInfo->detected.release();
     return true;
   } else if (event->type() == FailureEvent::type()) {
     FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-    ConnectionInfo *connInfo = const_cast<ConnectionInfo *>(
-        static_cast<const ConnectionInfo *>(failureEvent->getSession()));
+    std::unique_ptr<Session> session = failureEvent->takeSession();
+    // find() const is thread-safe
+    const auto iter = _connInfoMap.find(session->id);
+    ConnectionInfo *connInfo = iter->second;
+    connInfo->session = std::move(session);
     connInfo->detected.release();
     return true;
   }
@@ -84,6 +90,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
   }
 
   HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
+  assert(httpServer != nullptr);
 
   if (*con_cls == nullptr) // new connection
   {
@@ -92,8 +99,16 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
     }
 
     ConnectionInfo *connInfo = new ConnectionInfo();
+    assert(connInfo != nullptr);
 
-    connInfo->perfData.reset(new PerfData());
+    connInfo->session.reset(new Session());
+    connInfo->session->id = boost::uuids::random_generator()();
+    connInfo->session->type = HTTP_POST;
+
+    httpServer->_mutex.lock();
+    httpServer->_connInfoMap.insert(
+        std::make_pair(connInfo->session->id, connInfo));
+    httpServer->_mutex.unlock();
 
     // reserve enough space for an image
     connInfo->rawData.reset(new std::vector<char>());
@@ -125,7 +140,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
   } else {
     if (!connInfo->rawData->empty()) {
       // all data are received
-      connInfo->perfData->overallStart = getTime(); // log start of processing
+      connInfo->session->overallStart = getTime(); // log start of processing
 
       double fx = connInfo->cameraInfo.fx;
       double fy = connInfo->cameraInfo.fy;
@@ -139,10 +154,10 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
         return sendPage(connection, errorpage, MHD_HTTP_BAD_REQUEST);
       }
 
-      QCoreApplication::postEvent(
-          httpServer->_feature,
-          new QueryEvent(std::move(image), std::move(camera),
-                         std::move(connInfo->perfData), connInfo));
+      QCoreApplication::postEvent(httpServer->_feature,
+                                  new QueryEvent(std::move(image),
+                                                 std::move(camera),
+                                                 std::move(connInfo->session)));
     }
 
     // wait for the result to come
@@ -165,6 +180,7 @@ int HTTPServer::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
                             const char *transfer_encoding, const char *data,
                             uint64_t off, size_t size) {
   ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(coninfo_cls);
+  assert(connInfo != nullptr);
 
   if (strcmp(key, "file") != 0 && strcmp(key, "fx") != 0 &&
       strcmp(key, "fy") != 0 && strcmp(key, "cx") != 0 &&
@@ -209,29 +225,27 @@ void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
                                   void **con_cls,
                                   enum MHD_RequestTerminationCode toe) {
   HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
+  assert(httpServer != nullptr);
   ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(*con_cls);
+  assert(connInfo != nullptr);
 
-  if (connInfo == nullptr) {
-    return;
-  }
-
-  std::unique_ptr<PerfData> perfData = std::move(connInfo->perfData);
-  if (perfData != nullptr) {
-    perfData->overallEnd = getTime(); // log processing end time
+  std::unique_ptr<Session> session = std::move(connInfo->session);
+  if (session != nullptr) {
+    session->overallEnd = getTime(); // log processing end time
 
     std::cout << "TAG_TIME overall "
-              << perfData->overallEnd - perfData->overallStart << " ms"
+              << session->overallEnd - session->overallStart << " ms"
               << std::endl;
     std::cout << "TAG_TIME features "
-              << perfData->featuresEnd - perfData->featuresStart << " ms"
+              << session->featuresEnd - session->featuresStart << " ms"
               << std::endl;
-    std::cout << "TAG_TIME words " << perfData->wordsEnd - perfData->wordsStart
+    std::cout << "TAG_TIME words " << session->wordsEnd - session->wordsStart
               << " ms" << std::endl;
     std::cout << "TAG_TIME signatures "
-              << perfData->signaturesEnd - perfData->signaturesStart << " ms"
+              << session->signaturesEnd - session->signaturesStart << " ms"
               << std::endl;
     std::cout << "TAG_TIME perspective "
-              << perfData->perspectiveEnd - perfData->perspectiveStart << " ms"
+              << session->perspectiveEnd - session->perspectiveStart << " ms"
               << std::endl;
   }
 
@@ -239,6 +253,10 @@ void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
     MHD_destroy_post_processor(connInfo->postProcessor);
     httpServer->setNumClients(httpServer->getNumClients() - 1);
   }
+
+  httpServer->_mutex.lock();
+  httpServer->_connInfoMap.erase(session->id);
+  httpServer->_mutex.unlock();
 
   delete connInfo;
   connInfo = nullptr;

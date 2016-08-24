@@ -50,11 +50,11 @@ SET(SOURCES
     "src/event/LocationEvent.cpp"
     "src/event/DetectionEvent.cpp"
     "src/event/SignatureEvent.cpp"
+    "src/front/HTTPServer.cpp"
     "src/stage/FeatureExtraction.cpp"
     "src/stage/Visibility.cpp"
     "src/stage/WordSearch.cpp"
     "src/stage/Perspective.cpp"
-    "src/stage/HTTPServer.cpp"
     "src/stage/SignatureSearch.cpp"
     "src/util/Utility.cpp"
     "src/util/Time.cpp")
