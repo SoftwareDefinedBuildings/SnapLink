@@ -5,7 +5,7 @@
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
-#include "stage/HTTPServer.h"
+#include "front/HTTPServer.h"
 #include "util/Utility.h"
 #include <QCoreApplication>
 #include <QDebug>

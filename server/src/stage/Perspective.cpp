@@ -5,7 +5,7 @@
 #include "event/FailureEvent.h"
 #include "event/LocationEvent.h"
 #include "event/SignatureEvent.h"
-#include "stage/HTTPServer.h"
+#include "front/HTTPServer.h"
 #include "stage/Visibility.h"
 #include "util/Time.h"
 #include "util/Utility.h"
