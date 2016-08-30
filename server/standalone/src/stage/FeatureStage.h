@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QObject>
 #include "algo/Feature.h"
+#include <QObject>
 
 class WordSearchStage;
 

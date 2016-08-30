@@ -35,8 +35,9 @@ void PerspectiveStage::setHTTPServer(HTTPServer *httpServer) {
 bool PerspectiveStage::event(QEvent *event) {
   if (event->type() == SignatureEvent::type()) {
     SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
-    std::unique_ptr<std::vector<int>> wordIds = signatureEvent->takeWords();
-    std::vector<cv::KeyPoint> &keyPoints = signatureEvent->takeKeyPoints();
+    std::unique_ptr<std::vector<int>> wordIds = signatureEvent->takeWordIds();
+    std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
+        signatureEvent->takeKeyPoints();
     std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
     std::unique_ptr<std::vector<int>> signatureIds =
         signatureEvent->takeSignatureIds();
@@ -45,7 +46,8 @@ bool PerspectiveStage::event(QEvent *event) {
     std::unique_ptr<Transform> pose(new Transform);
 
     session->perspectiveStart = getTime();
-    localize(*wordIds, *keyPoints, *camera, signatureIds->at(0), dbId, *pose);
+    _perspective.localize(*wordIds, *keyPoints, *camera, signatureIds->at(0),
+                          dbId, *pose);
     session->perspectiveEnd = getTime();
 
     // a null pose notify that loc could not be computed

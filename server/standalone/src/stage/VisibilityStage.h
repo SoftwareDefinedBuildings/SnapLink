@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data/Labels.h"
 #include "algo/Visibility.h"
+#include "data/Labels.h"
 #include <QEvent>
 #include <QObject>
 #include <memory>

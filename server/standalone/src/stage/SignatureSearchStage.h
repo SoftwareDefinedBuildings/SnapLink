@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data/Signatures.h"
 #include "algo/SignatureSearch.h"
+#include "data/Signatures.h"
 #include <QEvent>
 #include <QObject>
 #include <memory>

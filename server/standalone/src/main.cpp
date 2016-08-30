@@ -3,11 +3,11 @@
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
 #include "front/HTTPServer.h"
-#include "stage/FeatureExtraction.h"
-#include "stage/Perspective.h"
-#include "stage/SignatureSearch.h"
-#include "stage/Visibility.h"
-#include "stage/WordSearch.h"
+#include "stage/FeatureStage.h"
+#include "stage/PerspectiveStage.h"
+#include "stage/SignatureSearchStage.h"
+#include "stage/VisibilityStage.h"
+#include "stage/WordSearchStage.h"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QThread>
@@ -35,12 +35,6 @@ int main(int argc, char *argv[]) {
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
   std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
-  HTTPServer httpServer;
-  FeatureExtraction feature;
-  WordSearch wordSearch;
-  SignatureSearch signatureSearch;
-  Perspective perspective;
-  Visibility vis;
 
   QThread featureThread;
   QThread wordSearchThread;
@@ -54,45 +48,47 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Visibility
-  std::cout << "Initializing Visibility" << std::endl;
-  vis.putLabels(std::move(labels));
+  HTTPServer httpServer;
+  FeatureStage feature;
+  WordSearchStage wordSearch(std::move(words));
+  SignatureSearchStage signatureSearch(signatures);
+  PerspectiveStage perspective(signatures);
+  VisibilityStage vis(std::move(labels));
+
+  // VisibilityStage
+  std::cout << "Initializing VisibilityStage" << std::endl;
   vis.setHTTPServer(&httpServer);
   vis.moveToThread(&visThread);
   visThread.start();
 
-  // Perspective
-  std::cout << "Initializing Perspective" << std::endl;
-  perspective.setSignatures(signatures);
+  // PerspectiveStage
+  std::cout << "Initializing PerspectiveStage" << std::endl;
   perspective.setHTTPServer(&httpServer);
-  perspective.setVisibility(&vis);
+  perspective.setVisibilityStage(&vis);
   perspective.moveToThread(&perspectiveThread);
   perspectiveThread.start();
 
   // Signature Search
   std::cout << "Initializing Signature Search" << std::endl;
-  signatureSearch.setSignatures(signatures);
-  signatureSearch.setPerspective(&perspective);
+  signatureSearch.setPerspectiveStage(&perspective);
   signatureSearch.moveToThread(&signatureSearchThread);
   signatureSearchThread.start();
 
   // Word Search
   std::cout << "Initializing Word Search" << std::endl;
-  wordSearch.putWords(std::move(words));
-  wordSearch.setSignatureSearch(&signatureSearch);
+  wordSearch.setSignatureSearchStage(&signatureSearch);
   wordSearch.moveToThread(&wordSearchThread);
   wordSearchThread.start();
 
-  // FeatureExtraction
+  // FeatureStage
   std::cout << "Initializing feature extraction" << std::endl;
-  feature.init();
-  feature.setWordSearch(&wordSearch);
+  feature.setWordSearchStage(&wordSearch);
   feature.moveToThread(&featureThread);
   featureThread.start();
 
   // HTTPServer
   std::cout << "Initializing HTTP server" << std::endl;
-  httpServer.setFeatureExtraction(&feature);
+  httpServer.setFeatureStage(&feature);
   if (!httpServer.start()) {
     qCritical() << "Starting HTTP Server failed";
     return 1;

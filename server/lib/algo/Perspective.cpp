@@ -88,8 +88,7 @@ Perspective::createWords(const std::vector<int> &wordIds,
 Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
     const std::map<int, cv::KeyPoint> &words2B, const CameraModel &camera,
-    const Transform &guess, std::vector<int> *inliersOut,
-    size_t minInliers) {
+    const Transform &guess, std::vector<int> *inliersOut, size_t minInliers) {
   assert(!guess.isNull());
   Transform transform;
   std::vector<int> matches, inliers;

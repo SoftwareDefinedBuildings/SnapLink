@@ -10,12 +10,14 @@
 #include <QCoreApplication>
 #include <QtDebug>
 
-SignatureSearchStage::SignatureSearchStage(const std::shared_ptr<Signatures> &signatures)
+SignatureSearchStage::SignatureSearchStage(
+    const std::shared_ptr<Signatures> &signatures)
     : _perspectiveStage(nullptr), _signatureSearch(signatures) {}
 
 SignatureSearchStage::~SignatureSearchStage() { _perspectiveStage = nullptr; }
 
-void SignatureSearchStage::setPerspectiveStage(PerspectiveStage *perspectiveStage) {
+void SignatureSearchStage::setPerspectiveStage(
+    PerspectiveStage *perspectiveStage) {
   _perspectiveStage = perspectiveStage;
 }
 

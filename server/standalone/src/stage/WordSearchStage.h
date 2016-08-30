@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data/Words.h"
 #include "algo/WordSearch.h"
+#include "data/Words.h"
 #include <QEvent>
 #include <QObject>
 #include <memory>

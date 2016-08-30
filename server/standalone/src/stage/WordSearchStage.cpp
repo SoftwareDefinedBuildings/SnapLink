@@ -29,7 +29,7 @@ bool WordSearchStage::event(QEvent *event) {
     std::unique_ptr<std::vector<int>> wordIds(new std::vector<int>());
 
     session->wordsStart = getTime();
-    *wordIds = _wordSearch.searchWords(*descriptors);
+    *wordIds = _wordSearch.search(*descriptors);
     session->wordsEnd = getTime();
 
     QCoreApplication::postEvent(
