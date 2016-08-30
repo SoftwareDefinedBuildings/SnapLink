@@ -1,26 +1,19 @@
-#include "stage/FeatureExtraction.h"
+#include "stage/FeatureStage.h"
 #include "event/FeatureEvent.h"
 #include "event/QueryEvent.h"
-#include "stage/WordSearch.h"
+#include "stage/WordSearchStage.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 
-FeatureExtraction::FeatureExtraction() : _wordSearch(nullptr) {}
+FeatureStage::FeatureStage() : _wordSearchStage(nullptr) {}
 
-FeatureExtraction::~FeatureExtraction() { _wordSearch = nullptr; }
+FeatureStage::~FeatureStage() { _wordSearchStage = nullptr; }
 
-bool FeatureExtraction::init() {
-  int minHessian = 400;
-  _detector = cv::xfeatures2d::SURF::create(minHessian);
-
-  return true;
+void FeatureStage::setWordSearchStage(WordSearchStage *wordSearchStage) {
+  _wordSearchStage = wordSearchStage;
 }
 
-void FeatureExtraction::setWordSearch(WordSearch *wordSearch) {
-  _wordSearch = wordSearch;
-}
-
-bool FeatureExtraction::event(QEvent *event) {
+bool FeatureStage::event(QEvent *event) {
   if (event->type() == QueryEvent::type()) {
     QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
     std::unique_ptr<cv::Mat> image = queryEvent->takeImage();
@@ -31,21 +24,15 @@ bool FeatureExtraction::event(QEvent *event) {
         new std::vector<cv::KeyPoint>());
     std::unique_ptr<cv::Mat> descriptors(new cv::Mat());
     session->featuresStart = getTime();
-    extractFeatures(*image, *keyPoints, *descriptors);
+    _feature.extract(*image, *keyPoints, *descriptors);
     session->featuresEnd = getTime();
 
     QCoreApplication::postEvent(
-        _wordSearch,
+        _wordSearchStage,
         new FeatureEvent(std::move(keyPoints), std::move(descriptors),
                          std::move(camera), std::move(session)));
 
     return true;
   }
   return QObject::event(event);
-}
-
-void FeatureExtraction::extractFeatures(const cv::Mat &image,
-                                        std::vector<cv::KeyPoint> &keyPoints,
-                                        cv::Mat &descriptors) const {
-  _detector->detectAndCompute(image, cv::Mat(), keyPoints, descriptors);
 }

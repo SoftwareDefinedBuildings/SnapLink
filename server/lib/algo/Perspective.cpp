@@ -1,72 +1,26 @@
-#include "stage/Perspective.h"
-#include "data/Session.h"
+#include "algo/Perspective.h"
+#include "data/CameraModel.h"
 #include "data/Signature.h"
 #include "data/Transform.h"
-#include "event/FailureEvent.h"
-#include "event/LocationEvent.h"
-#include "event/SignatureEvent.h"
-#include "front/HTTPServer.h"
-#include "stage/Visibility.h"
 #include "util/Time.h"
 #include "util/Utility.h"
-#include <QCoreApplication>
 #include <QDebug>
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-Perspective::Perspective() : _vis(nullptr), _httpServer(nullptr) {}
-
-Perspective::~Perspective() {
-  _vis = nullptr;
-  _httpServer = nullptr;
-}
-
-void Perspective::setSignatures(const std::shared_ptr<Signatures> &signatures) {
+Perspective::Perspective(const std::shared_ptr<Signatures> &signatures) {
   _signatures = signatures;
 }
 
-void Perspective::setVisibility(Visibility *vis) { _vis = vis; }
-
-void Perspective::setHTTPServer(HTTPServer *httpServer) {
-  _httpServer = httpServer;
-}
-
-bool Perspective::event(QEvent *event) {
-  if (event->type() == SignatureEvent::type()) {
-    SignatureEvent *signatureEvent = static_cast<SignatureEvent *>(event);
-    std::unique_ptr<std::multimap<int, cv::KeyPoint>> words =
-        signatureEvent->takeWords();
-    std::unique_ptr<CameraModel> camera = signatureEvent->takeCameraModel();
-    std::unique_ptr<std::vector<int>> signatureIds =
-        signatureEvent->takeSignatureIds();
-    std::unique_ptr<Session> session = signatureEvent->takeSession();
-    int dbId;
-    std::unique_ptr<Transform> pose(new Transform);
-
-    session->perspectiveStart = getTime();
-    localize(*words, *camera, signatureIds->at(0), dbId, *pose);
-    session->perspectiveEnd = getTime();
-
-    // a null pose notify that loc could not be computed
-    if (pose->isNull() == false) {
-      QCoreApplication::postEvent(
-          _vis, new LocationEvent(dbId, std::move(camera), std::move(pose),
-                                  std::move(session)));
-    } else {
-      QCoreApplication::postEvent(_httpServer,
-                                  new FailureEvent(std::move(session)));
-    }
-    return true;
-  }
-  return QObject::event(event);
-}
-
-void Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
+void Perspective::localize(const std::vector<int> &wordIds,
+                           const std::vector<cv::KeyPoint> &keyPoints,
                            const CameraModel &camera, int oldSigId, int &dbId,
                            Transform &transform) const {
   size_t minInliers = 3;
 
   int inliersCount = 0;
+
+  std::multimap<int, cv::KeyPoint> words = createWords(wordIds, keyPoints);
 
   std::multimap<int, cv::Point3f> words3;
 
@@ -117,11 +71,25 @@ void Perspective::localize(const std::multimap<int, cv::KeyPoint> &words,
   qDebug() << "transform= " << transform.prettyPrint().c_str();
 }
 
+std::multimap<int, cv::KeyPoint>
+Perspective::createWords(const std::vector<int> &wordIds,
+                         const std::vector<cv::KeyPoint> &keyPoints) {
+  std::multimap<int, cv::KeyPoint> words;
+  assert(wordIds.size() == keyPoints.size());
+  unsigned int i = 0;
+  for (auto iter = wordIds.begin();
+       iter != wordIds.end() && i < keyPoints.size(); ++iter, ++i) {
+    words.insert(std::pair<int, cv::KeyPoint>(*iter, keyPoints[i]));
+  }
+
+  return words;
+}
+
 Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
     const std::map<int, cv::KeyPoint> &words2B, const CameraModel &camera,
     const Transform &guess, std::vector<int> *inliersOut,
-    size_t minInliers) const {
+    size_t minInliers) {
   assert(!guess.isNull());
   Transform transform;
   std::vector<int> matches, inliers;

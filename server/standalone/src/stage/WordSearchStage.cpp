@@ -1,26 +1,24 @@
-#include "stage/WordSearch.h"
+#include "stage/WordSearchStage.h"
 #include "data/Session.h"
 #include "data/Signature.h"
 #include "event/FeatureEvent.h"
 #include "event/WordEvent.h"
-#include "stage/SignatureSearch.h"
+#include "stage/SignatureSearchStage.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <cassert>
 
-WordSearch::WordSearch() : _imageSearch(nullptr) {}
+WordSearchStage::WordSearchStage(std::unique_ptr<Words> &&words)
+    : _signatureSearchStage(nullptr), _wordSearch(std::move(words)) {}
 
-WordSearch::~WordSearch() { _imageSearch = nullptr; }
+WordSearchStage::~WordSearchStage() { _signatureSearchStage = nullptr; }
 
-void WordSearch::putWords(std::unique_ptr<Words> &&words) {
-  _words = std::move(words);
+void WordSearchStage::setSignatureSearchStage(
+    SignatureSearchStage *signatureSearchStage) {
+  _signatureSearchStage = signatureSearchStage;
 }
 
-void WordSearch::setSignatureSearch(SignatureSearch *imageSearch) {
-  _imageSearch = imageSearch;
-}
-
-bool WordSearch::event(QEvent *event) {
+bool WordSearchStage::event(QEvent *event) {
   if (event->type() == FeatureEvent::type()) {
     FeatureEvent *featureEvent = static_cast<FeatureEvent *>(event);
     std::unique_ptr<std::vector<cv::KeyPoint>> keyPoints =
@@ -31,18 +29,14 @@ bool WordSearch::event(QEvent *event) {
     std::unique_ptr<std::vector<int>> wordIds(new std::vector<int>());
 
     session->wordsStart = getTime();
-    *wordIds = searchWords(*descriptors);
+    *wordIds = _wordSearch.searchWords(*descriptors);
     session->wordsEnd = getTime();
 
     QCoreApplication::postEvent(
-        _imageSearch, new WordEvent(std::move(wordIds), std::move(keyPoints),
-                                    std::move(camera), std::move(session)));
+        _signatureSearchStage,
+        new WordEvent(std::move(wordIds), std::move(keyPoints),
+                      std::move(camera), std::move(session)));
     return true;
   }
   return QObject::event(event);
-}
-
-std::vector<int> WordSearch::searchWords(const cv::Mat &descriptors) const {
-  assert(descriptors.rows > 0);
-  return _words->findNNs(descriptors);
 }

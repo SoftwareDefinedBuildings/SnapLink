@@ -15,7 +15,7 @@
 #define IMAGE_INIT_SIZE 100000
 
 class CameraModel;
-class FeatureExtraction;
+class FeatureStage;
 
 enum ConnectionType { POST = 0 };
 
@@ -50,7 +50,7 @@ public:
   int getNumClients() const;
   void setNumClients(int numClients);
 
-  void setFeatureExtraction(FeatureExtraction *feature);
+  void setFeatureStage(FeatureStage *featureStage);
 
 protected:
   virtual bool event(QEvent *event);
@@ -86,5 +86,5 @@ private:
   unsigned int _numClients;
   std::mutex _mutex;
   std::map<boost::uuids::uuid, ConnectionInfo *> _connInfoMap;
-  FeatureExtraction *_feature;
+  FeatureStage *_featureStage;
 };
