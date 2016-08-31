@@ -6,7 +6,6 @@
 #include "stage/FeatureStage.h"
 #include "util/Time.h"
 #include <QCoreApplication>
-#include <boost/uuid/uuid_generators.hpp>
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
@@ -16,7 +15,8 @@ const std::string HTTPServer::busypage =
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
 HTTPServer::HTTPServer()
-    : _daemon(nullptr), _numClients(0), _featureStage(nullptr) {}
+    : _daemon(nullptr), _numClients(0), _featureStage(nullptr),
+      _gen(std::random_device()()){}
 
 HTTPServer::~HTTPServer() {
   stop();
@@ -102,7 +102,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
     assert(connInfo != nullptr);
 
     connInfo->session.reset(new Session());
-    connInfo->session->id = boost::uuids::random_generator()();
+    connInfo->session->id = httpServer->_dis(httpServer->_gen);
     connInfo->session->type = HTTP_POST;
 
     httpServer->_mutex.lock();

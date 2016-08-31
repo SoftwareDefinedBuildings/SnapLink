@@ -1,12 +1,10 @@
 #pragma once
 
-#include <boost/uuid/uuid.hpp>
-
 enum SessionType { HTTP_POST = 0, BOSSWAVE = 1 };
 
 class Session {
 public:
-  boost::uuids::uuid id;
+  long id;
   SessionType type;
 
 public:
