@@ -34,43 +34,36 @@ SET(LIBRARIES
 INCLUDE_DIRECTORIES(SYSTEM ${INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${CellMate_INCLUDE_DIRS})
 
-SET(PROTO_PATH "src/message")
+SET(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
+SET(PROTO_PATH "${CMAKE_SOURCE_DIR}/src/proto")
+SET(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated")
+FILE(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
+
+SET(PROTO_FILES "${PROTO_PATH}/*.proto")
 
 SET(GENERATED_PROTO_SOURCES
-    "src/message/CameraModel.pb.h"
-    "src/message/CameraModel.pb.cc"
-    "src/message/Session.pb.h"
-    "src/message/Session.pb.cc"
-    "src/message/Query.pb.h"
-    "src/message/Query.pb.cc")
-
-SET(PROTO_FILES
-    "src/message/CameraModel.proto"
-    "src/message/Session.proto"
-    "src/message/Query.proto")
+    "${GENERATED_PROTOBUF_PATH}/Empty.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Session.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Query.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Query.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_PROTO_SOURCES}
     COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
     ARGS "--proto_path=${PROTO_PATH}"
-         "--cpp_out=${PROTO_PATH}"
+         "--cpp_out=${GENERATED_PROTOBUF_PATH}"
          "${PROTO_FILES}"
-    )
-
-SET(GENERATED_GRPC_SOURCES
-    "src/front/HTTPServer.grpc.pb.h"
-    "src/front/HTTPServer.grpc.pb.cc")
-
-SET(GPRC_FILES
-    "src/front/HTTPServer.proto")
-
-ADD_CUSTOM_COMMAND(
-    OUTPUT  ${GENERATED_GRPC_SOURCES}
     COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
     ARGS "--proto_path=${PROTO_PATH}"
-         "--grpc_out=${PROTO_PATH}"
-         "--plugin=protoc-gen-grpc=`which grpc_cpp_plugin`"
-         "${GPRC_FILES}"
+         "--grpc_out=${GENERATED_PROTOBUF_PATH}"
+         "--plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN_PATH}"
+         "${PROTO_FILES}"
     )
 
 SET(SOURCES
@@ -98,6 +91,7 @@ SET(SOURCES
     "src/message/SignatureEvent.cpp"
     "src/message/DetectionEvent.cpp"
     "src/message/FailureEvent.cpp"
+    "src/service/CellMate.cpp"
     "src/service/VisibilityStage.cpp"
     "src/service/WordSearchStage.cpp"
     "src/service/SignatureSearchStage.cpp"

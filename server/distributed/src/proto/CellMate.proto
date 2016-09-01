@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+import "Session.proto";
+import "Empty.proto";
+
+service CellMate {
+  rpc Detect(Session) returns (Empty) {}
+}

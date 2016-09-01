@@ -1,7 +1,7 @@
 syntax = "proto3";
 
-import "message/CameraModel.proto";
-import "message/Session.proto";
+import "CameraModel.proto";
+import "Session.proto";
 
 message Query {
   bytes image = 1; 
