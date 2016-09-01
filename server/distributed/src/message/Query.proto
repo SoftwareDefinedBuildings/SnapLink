@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "message/CameraModel.proto";
+import "message/Session.proto";
+
+message Query {
+  bytes image = 1; 
+  CameraModel cameraModel = 2;
+  Session session = 3;
+}

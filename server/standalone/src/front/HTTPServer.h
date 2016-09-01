@@ -86,7 +86,7 @@ private:
   unsigned int _numClients;
   std::mutex _mutex;
   std::mt19937 _gen;
-  std::uniform_int_distribution<long> _dis;
+  std::uniform_int_distribution<unsigned long long> _dis;
   std::map<long, ConnectionInfo *> _connInfoMap;
   FeatureStage *_featureStage;
 };
