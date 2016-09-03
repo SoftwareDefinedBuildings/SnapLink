@@ -12,13 +12,13 @@
 #include <QDebug>
 #include <QThread>
 #include <cstdio>
-#include <utility>
 #include <grpc++/grpc++.h>
+#include <utility>
 
 #include "service/CellMate.grpc.pb.h"
 
 class CellMateImpl final {
- public:
+public:
   ~CellMateImpl() {
     server_->Shutdown();
     // Always shutdown the completion queue after the server.
@@ -46,14 +46,14 @@ class CellMateImpl final {
     HandleRpcs();
   }
 
- private:
+private:
   // Class encompasing the state and logic needed to serve a request.
   class CallData {
-   public:
+  public:
     // Take in the "service" instance (in this case representing an asynchronous
     // server) and the completion queue "cq" used for asynchronous communication
     // with the gRPC runtime.
-    CallData(CellMate::AsyncService* service, grpc::ServerCompletionQueue* cq)
+    CallData(CellMate::AsyncService *service, grpc::ServerCompletionQueue *cq)
         : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE) {
       // Invoke the serving logic right away.
       Proceed();
@@ -69,8 +69,7 @@ class CellMateImpl final {
         // the tag uniquely identifying the request (so that different CallData
         // instances can serve different requests concurrently), in this case
         // the memory address of this CallData instance.
-        service_->RequestDetect(&ctx_, &request_, &responder_, cq_, cq_,
-                                  this);
+        service_->RequestDetect(&ctx_, &request_, &responder_, cq_, cq_, this);
       } else if (status_ == PROCESS) {
         // Spawn a new CallData instance to serve new clients while we process
         // the one for this CallData. The instance will deallocate itself as
@@ -92,12 +91,12 @@ class CellMateImpl final {
       }
     }
 
-   private:
+  private:
     // The means of communication with the gRPC runtime for an asynchronous
     // server.
-    CellMate::AsyncService* service_;
+    CellMate::AsyncService *service_;
     // The producer-consumer queue where for asynchronous server notifications.
-    grpc::ServerCompletionQueue* cq_;
+    grpc::ServerCompletionQueue *cq_;
     // Context for the rpc, allowing to tweak aspects of it such as the use
     // of compression, authentication, as well as to send metadata back to the
     // client.
@@ -113,14 +112,14 @@ class CellMateImpl final {
 
     // Let's implement a tiny state machine with the following states.
     enum CallStatus { CREATE, PROCESS, FINISH };
-    CallStatus status_;  // The current serving state.
+    CallStatus status_; // The current serving state.
   };
 
   // This can be run in multiple threads if needed.
   void HandleRpcs() {
     // Spawn a new CallData instance to serve new clients.
     new CallData(&service_, cq_.get());
-    void* tag;  // uniquely identifies a request.
+    void *tag; // uniquely identifies a request.
     bool ok;
     while (true) {
       // Block waiting to read the next event from the completion queue. The
@@ -130,7 +129,7 @@ class CellMateImpl final {
       // tells us whether there is any kind of event or cq_ is shutting down.
       GPR_ASSERT(cq_->Next(&tag, &ok));
       GPR_ASSERT(ok);
-      static_cast<CallData*>(tag)->Proceed();
+      static_cast<CallData *>(tag)->Proceed();
     }
   }
 
@@ -138,7 +137,6 @@ class CellMateImpl final {
   CellMate::AsyncService service_;
   std::unique_ptr<Server> server_;
 };
-
 
 int main(int argc, char *argv[]) {
   std::vector<std::string> dbfiles;

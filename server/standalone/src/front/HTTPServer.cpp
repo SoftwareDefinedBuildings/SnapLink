@@ -16,7 +16,7 @@ const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
 HTTPServer::HTTPServer()
     : _daemon(nullptr), _numClients(0), _featureStage(nullptr),
-      _gen(std::random_device()()){}
+      _gen(std::random_device()()) {}
 
 HTTPServer::~HTTPServer() {
   stop();

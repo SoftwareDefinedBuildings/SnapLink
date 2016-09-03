@@ -1,12 +1,11 @@
 #include "front/HTTPServer.h"
 #include "data/CameraModel.h"
-#include "message/DetectionEvent.h"
-#include "message/FailureEvent.h"
-#include "message/QueryEvent.h"
-#include "service/FeatureStage.h"
+#include "event/DetectionEvent.h"
+#include "event/FailureEvent.h"
+#include "event/QueryEvent.h"
+#include "stage/FeatureStage.h"
 #include "util/Time.h"
 #include <QCoreApplication>
-#include <boost/uuid/uuid_generators.hpp>
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
@@ -16,7 +15,10 @@ const std::string HTTPServer::busypage =
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
 HTTPServer::HTTPServer()
-    : _daemon(nullptr), _numClients(0), _featureStage(nullptr) {}
+    : _daemon(nullptr), _numClients(0), _featureStage(nullptr),
+      _gen(std::random_device()()),
+      _channel(grpc::CreateChannel("localhost:50051",
+                                   grpc::InsecureChannelCredentials())) {}
 
 HTTPServer::~HTTPServer() {
   stop();
@@ -102,7 +104,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
     assert(connInfo != nullptr);
 
     connInfo->session.reset(new Session());
-    connInfo->session->id = boost::uuids::random_generator()();
+    connInfo->session->id = httpServer->_dis(httpServer->_gen);
     connInfo->session->type = HTTP_POST;
 
     httpServer->_mutex.lock();
@@ -154,10 +156,9 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
         return sendPage(connection, errorpage, MHD_HTTP_BAD_REQUEST);
       }
 
-      QCoreApplication::postEvent(httpServer->_featureStage,
-                                  new QueryEvent(std::move(image),
-                                                 std::move(camera),
-                                                 std::move(connInfo->session)));
+      CellMateClient client(httpServer->_channel);
+      client.detect(*(connInfo->rawData), *camera, *(connInfo->session));
+      // client.finish(); // we do not care about the return
     }
 
     // wait for the result to come

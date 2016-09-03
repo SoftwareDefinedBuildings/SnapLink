@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-import "Session.proto";
+import "Query.proto";
 import "Empty.proto";
 
 service CellMate {
-  rpc Detect(Session) returns (Empty) {}
+  rpc Detect(Query) returns (Empty) {}
 }

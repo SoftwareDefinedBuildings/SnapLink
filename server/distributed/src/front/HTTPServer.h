@@ -3,11 +3,11 @@
 #include "data/Session.h"
 #include <QObject>
 #include <QSemaphore>
-#include <boost/uuid/uuid.hpp>
 #include <memory>
 #include <microhttpd.h>
 #include <mutex>
 #include <opencv2/core/core.hpp>
+#include <random>
 
 #define PORT 8080
 #define MAX_CLIENTS 10
@@ -85,6 +85,9 @@ private:
   unsigned int _maxClients;
   unsigned int _numClients;
   std::mutex _mutex;
-  std::map<boost::uuids::uuid, ConnectionInfo *> _connInfoMap;
+  std::mt19937 _gen;
+  std::uniform_int_distribution<unsigned long long> _dis;
+  std::map<long, ConnectionInfo *> _connInfoMap;
   FeatureStage *_featureStage;
+  std::shared_ptr<grpc::Channel> _channel;
 };
