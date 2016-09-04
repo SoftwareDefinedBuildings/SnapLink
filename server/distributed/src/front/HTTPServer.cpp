@@ -1,10 +1,9 @@
 #include "front/HTTPServer.h"
 #include "data/CameraModel.h"
-#include "event/DetectionEvent.h"
-#include "event/FailureEvent.h"
-#include "event/QueryEvent.h"
-#include "stage/FeatureStage.h"
 #include "util/Time.h"
+#include "message/DetectionEvent.h"
+#include "message/FailureEvent.h"
+#include "front/CellMateClient.h"
 #include <QCoreApplication>
 #include <cstdlib>
 #include <string.h>
@@ -15,7 +14,7 @@ const std::string HTTPServer::busypage =
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
 HTTPServer::HTTPServer()
-    : _daemon(nullptr), _numClients(0), _featureStage(nullptr),
+    : _daemon(nullptr), _numClients(0),
       _gen(std::random_device()()),
       _channel(grpc::CreateChannel("localhost:50051",
                                    grpc::InsecureChannelCredentials())) {}
@@ -23,7 +22,6 @@ HTTPServer::HTTPServer()
 HTTPServer::~HTTPServer() {
   stop();
   _numClients = 0;
-  _featureStage = nullptr;
 }
 
 bool HTTPServer::start(uint16_t port, unsigned int maxClients) {
@@ -54,10 +52,6 @@ int HTTPServer::getMaxClients() const { return _maxClients; }
 int HTTPServer::getNumClients() const { return _numClients; }
 
 void HTTPServer::setNumClients(int numClients) { _numClients = numClients; }
-
-void HTTPServer::setFeatureStage(FeatureStage *featureStage) {
-  _featureStage = featureStage;
-}
 
 bool HTTPServer::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {

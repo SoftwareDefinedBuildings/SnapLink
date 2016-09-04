@@ -3,6 +3,8 @@ syntax = "proto3";
 import "Query.proto";
 import "Empty.proto";
 
+package proto;
+
 service CellMate {
   rpc Detect(Query) returns (Empty) {}
 }

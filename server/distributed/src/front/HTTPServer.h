@@ -8,6 +8,7 @@
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <random>
+#include <grpc++/grpc++.h>
 
 #define PORT 8080
 #define MAX_CLIENTS 10
@@ -15,7 +16,6 @@
 #define IMAGE_INIT_SIZE 100000
 
 class CameraModel;
-class FeatureStage;
 
 enum ConnectionType { POST = 0 };
 
@@ -49,8 +49,6 @@ public:
   int getMaxClients() const;
   int getNumClients() const;
   void setNumClients(int numClients);
-
-  void setFeatureStage(FeatureStage *featureStage);
 
 protected:
   virtual bool event(QEvent *event);
@@ -88,6 +86,5 @@ private:
   std::mt19937 _gen;
   std::uniform_int_distribution<unsigned long long> _dis;
   std::map<long, ConnectionInfo *> _connInfoMap;
-  FeatureStage *_featureStage;
   std::shared_ptr<grpc::Channel> _channel;
 };

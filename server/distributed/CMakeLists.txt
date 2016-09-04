@@ -38,6 +38,7 @@ SET(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
 SET(PROTO_PATH "${CMAKE_SOURCE_DIR}/src/proto")
 SET(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated")
 FILE(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
+INCLUDE_DIRECTORIES(SYSTEM ${GENERATED_PROTOBUF_PATH})
 
 SET(PROTO_FILES "${PROTO_PATH}/*.proto")
 
@@ -91,18 +92,17 @@ SET(SOURCES
     "src/message/SignatureEvent.cpp"
     "src/message/DetectionEvent.cpp"
     "src/message/FailureEvent.cpp"
-    "src/service/CellMate.cpp"
     "src/service/VisibilityStage.cpp"
     "src/service/WordSearchStage.cpp"
     "src/service/SignatureSearchStage.cpp"
     "src/service/PerspectiveStage.cpp"
     "src/service/FeatureStage.cpp"
-    "src/main.cpp")
+    "src/front/main.cpp")
 
-ADD_EXECUTABLE(cellmate ${SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
+ADD_EXECUTABLE(httpserver ${SOURCES} ${GENERATED_PROTO_SOURCES})
 
-TARGET_LINK_LIBRARIES(cellmate ${LIBRARIES})
+TARGET_LINK_LIBRARIES(httpserver ${LIBRARIES})
 
-SET_PROPERTY(TARGET cellmate PROPERTY CXX_STANDARD 11)
+SET_PROPERTY(TARGET httpserver PROPERTY CXX_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")

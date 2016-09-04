@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+package proto;
+
 message CameraModel {
   string name = 1;
   double fx = 2;

@@ -3,6 +3,8 @@ syntax = "proto3";
 import "CameraModel.proto";
 import "Session.proto";
 
+package proto;
+
 message Query {
   bytes image = 1; 
   CameraModel cameraModel = 2;
