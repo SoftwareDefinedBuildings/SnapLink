@@ -1,12 +1,14 @@
-#include <grpc++/grpc++.h>
 #include "algo/Feature.h"
 #include "service/CellMate.grpc.pb.h"
+#include <grpc++/grpc++.h>
 
 // Take in the "service" instance (in this case representing an asynchronous
 // server) and the completion queue "cq" used for asynchronous communication
 // with the gRPC runtime.
-CallData::CallData(CellMate::AsyncService *service, grpc::ServerCompletionQueue *cq, Feature &feature)
-    : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE), _feature(feature) {
+CallData::CallData(CellMate::AsyncService *service,
+                   grpc::ServerCompletionQueue *cq, Feature &feature)
+    : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE),
+      _feature(feature) {
   // Invoke the serving logic right away.
   proceed();
 }

@@ -85,6 +85,7 @@ SET(SOURCES
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
     "src/front/HTTPServer.cpp"
+    "src/front/CellMateClient.cpp"
     "src/message/QueryEvent.cpp"
     "src/message/WordEvent.cpp"
     "src/message/FeatureEvent.cpp"
@@ -101,7 +102,7 @@ SET(SOURCES
 
 ADD_EXECUTABLE(httpserver ${SOURCES} ${GENERATED_PROTO_SOURCES})
 
-TARGET_LINK_LIBRARIES(httpserver ${LIBRARIES})
+TARGET_LINK_LIBRARIES(httpserver ${LIBRARIES} grpc++_unsecure grpc gpr)
 
 SET_PROPERTY(TARGET httpserver PROPERTY CXX_STANDARD 11)
 

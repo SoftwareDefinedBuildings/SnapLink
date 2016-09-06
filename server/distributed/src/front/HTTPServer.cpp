@@ -1,9 +1,9 @@
 #include "front/HTTPServer.h"
 #include "data/CameraModel.h"
-#include "util/Time.h"
+#include "front/CellMateClient.h"
 #include "message/DetectionEvent.h"
 #include "message/FailureEvent.h"
-#include "front/CellMateClient.h"
+#include "util/Time.h"
 #include <QCoreApplication>
 #include <cstdlib>
 #include <string.h>
@@ -14,8 +14,7 @@ const std::string HTTPServer::busypage =
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
 HTTPServer::HTTPServer()
-    : _daemon(nullptr), _numClients(0),
-      _gen(std::random_device()()),
+    : _daemon(nullptr), _numClients(0), _gen(std::random_device()()),
       _channel(grpc::CreateChannel("localhost:50051",
                                    grpc::InsecureChannelCredentials())) {}
 

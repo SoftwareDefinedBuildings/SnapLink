@@ -1,5 +1,5 @@
-#include <grpc++/grpc++.h>
 #include "service/CellMate.grpc.pb.h"
+#include <grpc++/grpc++.h>
 
 // Class encompasing the state and logic needed to serve a request.
 class CallData {
@@ -7,7 +7,8 @@ public:
   // Take in the "service" instance (in this case representing an asynchronous
   // server) and the completion queue "cq" used for asynchronous communication
   // with the gRPC runtime.
-  CallData(CellMate::AsyncService *service, grpc::ServerCompletionQueue *cq, Feature &feature);
+  CallData(CellMate::AsyncService *service, grpc::ServerCompletionQueue *cq,
+           Feature &feature);
 
   void proceed();
 
@@ -34,7 +35,7 @@ private:
   enum CallStatus { CREATE, PROCESS, FINISH };
   CallStatus status_; // The current serving state.
 
-  Feature& _feature;
+  Feature &_feature;
 };
 
 class CellMateServer final {
@@ -45,7 +46,6 @@ public:
   void run();
 
 private:
-
   // This can be run in multiple threads if needed.
   void handleRpcs();
 

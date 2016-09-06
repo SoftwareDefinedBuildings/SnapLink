@@ -1,13 +1,12 @@
+#include "front/CellMateClient.h"
 #include <iostream>
 #include <memory>
 #include <string>
 
 #include <grpc++/grpc++.h>
 
-#include "CellMate.grpc.pb.h"
-
-explicit CellMateClient::CellMateClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(CellMate::NewStub(channel)),
+CellMateClient::CellMateClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::CellMate::NewStub(channel)),
       _channel(grpc::CreateChannel("localhost:50051",
                                    grpc::InsecureChannelCredentials())) {}
 
@@ -16,7 +15,7 @@ explicit CellMateClient::CellMateClient(std::shared_ptr<grpc::Channel> channel)
 void CellMateClient::detect(const std::vector<char> &image,
                             const CameraModel &camera, const Session &session) {
   // Data we are sending to the server.
-  Query query;
+  proto::Query query;
   query.set_image(std::string(image.begin(), image.end()));
   query.mutable_cameramodel()->set_name(camera.name());
   query.mutable_cameramodel()->set_fx(camera.fx());
@@ -24,20 +23,24 @@ void CellMateClient::detect(const std::vector<char> &image,
   query.mutable_cameramodel()->set_cx(camera.cx());
   query.mutable_cameramodel()->set_cy(camera.cy());
   query.mutable_session()->set_id(session.id);
-  query.mutable_session()->set_type(session.type);
-  query.mutable_session()->set_overallStart(session.overallStart);
-  query.mutable_session()->set_overallEnd(session.overallEnd);
-  query.mutable_session()->set_featuresStart(session.featureStart);
-  query.mutable_session()->set_featuresEnd(session.featureEnd);
-  query.mutable_session()->set_wordsStart(session.wordsStart);
-  query.mutable_session()->set_wordsEnd(session.wordsEnd);
-  query.mutable_session()->set_signaturesStart(session.signaturesStart);
-  query.mutable_session()->set_signaturesEnd(session.signaturesEnd);
-  query.mutable_session()->set_perspectiveStart(session.perspectiveStart);
-  query.mutable_session()->set_perspectiveEnd(session.perspectiveEnd);
+  if (session.type == HTTP_POST) {
+    query.mutable_session()->set_type(proto::Session::HTTP_POST);
+  } else if (session.type == BOSSWAVE) {
+    query.mutable_session()->set_type(proto::Session::BOSSWAVE);
+  }
+  query.mutable_session()->set_overallstart(session.overallStart);
+  query.mutable_session()->set_overallend(session.overallEnd);
+  query.mutable_session()->set_featuresstart(session.featuresStart);
+  query.mutable_session()->set_featuresend(session.featuresEnd);
+  query.mutable_session()->set_wordsstart(session.wordsStart);
+  query.mutable_session()->set_wordsend(session.wordsEnd);
+  query.mutable_session()->set_signaturesstart(session.signaturesStart);
+  query.mutable_session()->set_signaturesend(session.signaturesEnd);
+  query.mutable_session()->set_perspectivestart(session.perspectiveStart);
+  query.mutable_session()->set_perspectiveend(session.perspectiveEnd);
 
   // Container for the data we expect from the server.
-  Empty reply;
+  proto::Empty reply;
 
   // Context for the client. It could be used to convey extra information to
   // the server and/or tweak certain RPC behaviors.
@@ -53,7 +56,7 @@ void CellMateClient::detect(const std::vector<char> &image,
   // stub_->AsyncSayHello() performs the RPC call, returning an instance we
   // store in "rpc". Because we are using the asynchronous API, we need to
   // hold on to the "rpc" instance in order to get updates on the ongoing RPC.
-  _rpc.reset(rpc(stub_->AsyncSayHello(&context, request, &cq)));
+  _rpc = stub_->AsyncDetect(&context, query, &cq);
 
   void *got_tag;
   bool ok = false;
@@ -68,16 +71,10 @@ void CellMateClient::detect(const std::vector<char> &image,
   // ... and that the request was completed successfully. Note that "ok"
   // corresponds solely to the request for updates introduced by Finish().
   GPR_ASSERT(ok);
-
-  // Act upon the status of the actual RPC.
-  if (status.ok()) {
-    return reply.message();
-  } else {
-    return "RPC failed";
-  }
 }
 
-void CellMateClient::finish(Query *reply, grpc::Status *status, void *tag) {
+void CellMateClient::finish(proto::Empty *reply, grpc::Status *status,
+                            void *tag) {
   // Request that, upon completion of the RPC, "reply" be updated with the
   // server's response; "status" with the indication of whether the operation
   // was successful. Tag the request with the integer 1.

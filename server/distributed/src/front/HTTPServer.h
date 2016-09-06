@@ -3,12 +3,12 @@
 #include "data/Session.h"
 #include <QObject>
 #include <QSemaphore>
+#include <grpc++/grpc++.h>
 #include <memory>
 #include <microhttpd.h>
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <random>
-#include <grpc++/grpc++.h>
 
 #define PORT 8080
 #define MAX_CLIENTS 10
