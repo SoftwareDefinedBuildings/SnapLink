@@ -2,7 +2,7 @@
 #include "data/CameraModel.h"
 #include "data/Session.h"
 #include "data/Transform.h"
-#include "front/HTTPServer.h"
+#include "http/HTTPServer.h"
 #include "message/DetectionEvent.h"
 #include "message/FailureEvent.h"
 #include "message/LocationEvent.h"

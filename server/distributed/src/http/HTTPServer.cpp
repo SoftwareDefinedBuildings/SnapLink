@@ -1,6 +1,6 @@
-#include "front/HTTPServer.h"
+#include "http/HTTPServer.h"
 #include "data/CameraModel.h"
-#include "front/CellMateClient.h"
+#include "http/CellMateClient.h"
 #include "message/DetectionEvent.h"
 #include "message/FailureEvent.h"
 #include "util/Time.h"
@@ -150,7 +150,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
       }
 
       CellMateClient client(httpServer->_channel);
-      client.detect(*(connInfo->rawData), *camera, *(connInfo->session));
+      client.query(*(connInfo->rawData), *camera, *(connInfo->session));
       // client.finish(); // we do not care about the return
     }
 

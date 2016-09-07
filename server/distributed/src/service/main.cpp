@@ -4,7 +4,7 @@
 #include "data/LabelsSimple.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "front/HTTPServer.h"
+#include "http/HTTPServer.h"
 #include "service/FeatureStage.h"
 #include "service/PerspectiveStage.h"
 #include "service/SignatureSearchStage.h"

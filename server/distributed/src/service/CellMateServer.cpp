@@ -37,7 +37,7 @@ void CallData::proceed() {
     // the tag uniquely identifying the request (so that different CallData
     // instances can serve different requests concurrently), in this case
     // the memory address of this CallData instance.
-    service_->RequestDetect(&ctx_, &query_, &responder_, cq_, cq_, this);
+    service_->RequestOnQuery(&ctx_, &query_, &responder_, cq_, cq_, this);
   } else if (status_ == PROCESS) {
     // Spawn a new CallData instance to serve new clients while we process
     // the one for this CallData. The instance will deallocate itself as

@@ -1,4 +1,4 @@
-#include "front/CellMateClient.h"
+#include "http/CellMateClient.h"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -12,8 +12,8 @@ CellMateClient::CellMateClient(std::shared_ptr<grpc::Channel> channel)
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-void CellMateClient::detect(const std::vector<char> &image,
-                            const CameraModel &camera, const Session &session) {
+void CellMateClient::query(const std::vector<char> &image,
+                           const CameraModel &camera, const Session &session) {
   // Data we are sending to the server.
   proto::Query query;
   query.set_image(std::string(image.begin(), image.end()));
@@ -56,7 +56,7 @@ void CellMateClient::detect(const std::vector<char> &image,
   // stub_->AsyncSayHello() performs the RPC call, returning an instance we
   // store in "rpc". Because we are using the asynchronous API, we need to
   // hold on to the "rpc" instance in order to get updates on the ongoing RPC.
-  _rpc = stub_->AsyncDetect(&context, query, &cq);
+  _rpc = stub_->AsyncOnQuery(&context, query, &cq);
 
   void *got_tag;
   bool ok = false;

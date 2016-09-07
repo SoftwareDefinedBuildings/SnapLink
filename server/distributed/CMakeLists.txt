@@ -40,7 +40,7 @@ SET(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated")
 FILE(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
 INCLUDE_DIRECTORIES(SYSTEM ${GENERATED_PROTOBUF_PATH})
 
-SET(PROTO_FILES "${PROTO_PATH}/*.proto")
+SET(PROTO_FILES "${PROTO_PATH}/*.proto") # so protoc will process all of them
 
 SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.h"
@@ -51,8 +51,12 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Query.pb.h"
     "${GENERATED_PROTOBUF_PATH}/Query.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Detection.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Detection.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.cc")
+    "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Http.grpc.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Http.grpc.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_PROTO_SOURCES}
@@ -84,8 +88,8 @@ SET(HTTPServer_SOURCES
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
-    "src/front/HTTPServer.cpp"
-    "src/front/CellMateClient.cpp"
+    "src/http/HTTPServer.cpp"
+    "src/http/CellMateClient.cpp"
     "src/message/QueryEvent.cpp"
     "src/message/WordEvent.cpp"
     "src/message/FeatureEvent.cpp"
@@ -98,7 +102,7 @@ SET(HTTPServer_SOURCES
     "src/service/SignatureSearchStage.cpp"
     "src/service/PerspectiveStage.cpp"
     "src/service/FeatureStage.cpp"
-    "src/front/main.cpp")
+    "src/http/main.cpp")
 
 SET(CellMate_SOURCES
     "../lib/util/Time.cpp"
@@ -117,8 +121,8 @@ SET(CellMate_SOURCES
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
-    "src/front/HTTPServer.cpp"
-    "src/front/CellMateClient.cpp"
+    "src/http/HTTPServer.cpp"
+    "src/http/CellMateClient.cpp"
     "src/message/QueryEvent.cpp"
     "src/message/WordEvent.cpp"
     "src/message/FeatureEvent.cpp"

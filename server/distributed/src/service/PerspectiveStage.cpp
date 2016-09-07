@@ -2,7 +2,7 @@
 #include "data/Session.h"
 #include "data/Signature.h"
 #include "data/Transform.h"
-#include "front/HTTPServer.h"
+#include "http/HTTPServer.h"
 #include "message/FailureEvent.h"
 #include "message/LocationEvent.h"
 #include "message/SignatureEvent.h"

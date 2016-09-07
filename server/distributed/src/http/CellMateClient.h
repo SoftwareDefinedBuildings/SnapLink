@@ -12,8 +12,8 @@ public:
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
-  void detect(const std::vector<char> &image, const CameraModel &camera,
-              const Session &session);
+  void query(const std::vector<char> &image, const CameraModel &camera,
+             const Session &session);
 
   void finish(proto::Empty *reply, grpc::Status *status, void *tag);
 
