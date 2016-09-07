@@ -4,12 +4,12 @@
 int main() {
   std::cout << "Initializing HTTP server" << std::endl;
   HTTPServer httpServer;
-  if (!httpServer.start()) {
+  if (!httpServer.startMHD()) {
     qCritical() << "Starting HTTP Server failed";
     return 1;
   }
 
-  (void)getchar();
+  httpServer.runGRPC();
 
   return 0;
 }

@@ -5,11 +5,6 @@
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
 #include "http/HTTPServer.h"
-#include "service/FeatureStage.h"
-#include "service/PerspectiveStage.h"
-#include "service/SignatureSearchStage.h"
-#include "service/VisibilityStage.h"
-#include "service/WordSearchStage.h"
 #include <cstdio>
 #include <grpc++/grpc++.h>
 #include <utility>

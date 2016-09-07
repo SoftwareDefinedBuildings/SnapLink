@@ -97,11 +97,6 @@ SET(HTTPServer_SOURCES
     "src/message/SignatureEvent.cpp"
     "src/message/DetectionEvent.cpp"
     "src/message/FailureEvent.cpp"
-    "src/service/VisibilityStage.cpp"
-    "src/service/WordSearchStage.cpp"
-    "src/service/SignatureSearchStage.cpp"
-    "src/service/PerspectiveStage.cpp"
-    "src/service/FeatureStage.cpp"
     "src/http/main.cpp")
 
 SET(CellMate_SOURCES
@@ -131,11 +126,6 @@ SET(CellMate_SOURCES
     "src/message/DetectionEvent.cpp"
     "src/message/FailureEvent.cpp"
     "src/service/CellMateServer.cpp"
-    "src/service/VisibilityStage.cpp"
-    "src/service/WordSearchStage.cpp"
-    "src/service/SignatureSearchStage.cpp"
-    "src/service/PerspectiveStage.cpp"
-    "src/service/FeatureStage.cpp"
     "src/service/main.cpp")
 
 ADD_EXECUTABLE(httpserver ${HTTPServer_SOURCES} ${GENERATED_PROTO_SOURCES})

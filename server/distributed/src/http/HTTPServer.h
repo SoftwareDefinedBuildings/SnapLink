@@ -1,8 +1,9 @@
 #pragma once
 
+#include "Http.grpc.pb.h"
 #include "data/Session.h"
-#include <QObject>
 #include <QSemaphore>
+#include <grpc++/grpc++.h>
 #include <grpc++/grpc++.h>
 #include <memory>
 #include <microhttpd.h>
@@ -38,23 +39,59 @@ typedef struct {
   std::unique_ptr<std::vector<char>> rawData;
 } ConnectionInfo;
 
-class HTTPServer : public QObject {
+class HTTPServer final {
 public:
   HTTPServer();
-  virtual ~HTTPServer();
+  ~HTTPServer();
 
-  bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
-  void stop();
+  bool startMHD(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
+  void runGRPC();
 
   int getMaxClients() const;
   int getNumClients() const;
   void setNumClients(int numClients);
 
-protected:
-  virtual bool event(QEvent *event);
+private:
+  // Class encompasing the state and logic needed to serve a request.
+  class CallData {
+  public:
+    // Take in the "service" instance (in this case representing an asynchronous
+    // server) and the completion queue "cq" used for asynchronous communication
+    // with the gRPC runtime.
+    CallData(proto::Http::AsyncService *service,
+             grpc::ServerCompletionQueue *cq,
+             std::map<long, ConnectionInfo *> &connInfoMap);
+
+    void proceed();
+
+  private:
+    // The means of communication with the gRPC runtime for an asynchronous
+    // server.
+    proto::Http::AsyncService *service_;
+    // The producer-consumer queue where for asynchronous server notifications.
+    grpc::ServerCompletionQueue *cq_;
+    // Context for the rpc, allowing to tweak aspects of it such as the use
+    // of compression, authentication, as well as to send metadata back to the
+    // client.
+    grpc::ServerContext ctx_;
+
+    // What we get from the client.
+    proto::Detection _detection;
+    // What we send back to the client.
+    proto::Empty reply_;
+
+    // The means to get back to the client.
+    grpc::ServerAsyncResponseWriter<proto::Empty> responder_;
+
+    // Let's implement a tiny state machine with the following states.
+    enum CallStatus { CREATE, PROCESS, FINISH };
+    CallStatus status_; // The current serving state.
+
+    std::map<long, ConnectionInfo *> &_connInfoMap;
+  };
 
 private:
-  // TODO use camelCase
+  // HTTPServer handler
   static int answerConnection(void *cls, struct MHD_Connection *connection,
                               const char *url, const char *method,
                               const char *version, const char *upload_data,
@@ -73,6 +110,10 @@ private:
                          double cx, double cy, cv::Mat &image,
                          CameraModel &camera);
 
+  // GRPC HTTPServer handler
+  // This can be run in multiple threads if needed.
+  void handleRpcs();
+
 private:
   static const std::string busypage;
   static const std::string completepage;
@@ -86,5 +127,9 @@ private:
   std::mt19937 _gen;
   std::uniform_int_distribution<unsigned long long> _dis;
   std::map<long, ConnectionInfo *> _connInfoMap;
+
   std::shared_ptr<grpc::Channel> _channel;
+  std::unique_ptr<grpc::ServerCompletionQueue> cq_;
+  proto::Http::AsyncService service_;
+  std::unique_ptr<grpc::Server> server_;
 };

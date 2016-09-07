@@ -8,17 +8,18 @@
 #include "data/WordsKdTree.h"
 #include "util/Time.h"
 #include <QDebug>
-#include <grpc++/grpc++.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
 // Take in the "service" instance (in this case representing an asynchronous
 // server) and the completion queue "cq" used for asynchronous communication
 // with the gRPC runtime.
-CallData::CallData(proto::CellMate::AsyncService *service,
-                   grpc::ServerCompletionQueue *cq, Feature &feature,
-                   WordSearch &wordSearch, SignatureSearch &signatureSearch,
-                   Perspective &perspective, Visibility &visibility)
+CellMateServer::CallData::CallData(proto::CellMate::AsyncService *service,
+                                   grpc::ServerCompletionQueue *cq,
+                                   Feature &feature, WordSearch &wordSearch,
+                                   SignatureSearch &signatureSearch,
+                                   Perspective &perspective,
+                                   Visibility &visibility)
     : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE),
       _feature(feature), _wordSearch(wordSearch),
       _signatureSearch(signatureSearch), _perspective(perspective),
@@ -27,7 +28,7 @@ CallData::CallData(proto::CellMate::AsyncService *service,
   proceed();
 }
 
-void CallData::proceed() {
+void CellMateServer::CallData::proceed() {
   if (status_ == CREATE) {
     // Make this instance progress to the PROCESS state.
     status_ = PROCESS;

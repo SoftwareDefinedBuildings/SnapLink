@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "Detection.proto";
+import "Empty.proto";
+
+package proto;
+
+service Http {
+  rpc OnDetection(Detection) returns (Empty) {}
+}
