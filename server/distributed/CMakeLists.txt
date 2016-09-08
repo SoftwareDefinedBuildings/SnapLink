@@ -90,13 +90,6 @@ SET(HTTPServer_SOURCES
     "../lib/algo/Perspective.cpp"
     "src/http/HTTPServer.cpp"
     "src/http/CellMateClient.cpp"
-    "src/message/QueryEvent.cpp"
-    "src/message/WordEvent.cpp"
-    "src/message/FeatureEvent.cpp"
-    "src/message/LocationEvent.cpp"
-    "src/message/SignatureEvent.cpp"
-    "src/message/DetectionEvent.cpp"
-    "src/message/FailureEvent.cpp"
     "src/http/main.cpp")
 
 SET(CellMate_SOURCES
@@ -116,13 +109,6 @@ SET(CellMate_SOURCES
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
-    "src/message/QueryEvent.cpp"
-    "src/message/WordEvent.cpp"
-    "src/message/FeatureEvent.cpp"
-    "src/message/LocationEvent.cpp"
-    "src/message/SignatureEvent.cpp"
-    "src/message/DetectionEvent.cpp"
-    "src/message/FailureEvent.cpp"
     "src/service/CellMateServer.cpp"
     "src/service/HTTPClient.cpp"
     "src/service/main.cpp")

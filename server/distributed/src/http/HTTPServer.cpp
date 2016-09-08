@@ -1,8 +1,6 @@
 #include "http/HTTPServer.h"
 #include "data/CameraModel.h"
 #include "http/CellMateClient.h"
-#include "message/DetectionEvent.h"
-#include "message/FailureEvent.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <cstdlib>
