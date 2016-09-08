@@ -1,4 +1,4 @@
-#include "service/HTTPClient.h"
+#include "remain/HTTPClient.h"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -6,14 +6,14 @@
 #include <grpc++/grpc++.h>
 
 HTTPClient::HTTPClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::HTTP::NewStub(channel)) {}
+    : stub_(proto::FrontService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
 bool HTTPClient::onDetection(const std::vector<std::string> &names,
                              const Session &session) {
   // Data we are sending to the server.
-  proto::Detection detection;
+  proto::DetectionMessage detection;
   for (const std::string &name : names) {
     detection.add_names(name);
   }

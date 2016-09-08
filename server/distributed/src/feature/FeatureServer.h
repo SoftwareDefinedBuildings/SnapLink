@@ -1,12 +1,12 @@
-#include "CellMate.grpc.pb.h"
+#include "FeatureService.grpc.pb.h"
 #include "algo/Feature.h"
 #include <grpc++/grpc++.h>
 
-class FeatureServer final : public proto::Feature::Service {
+class FeatureServer final : public proto::FeatureService::Service {
 public:
   bool init();
   grpc::Status onQuery(grpc::ServerContext *context,
-                       const proto::Query *request,
+                       const proto::QueryMessage *request,
                        proto::Empty *response) override;
   void run();
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HTTP.grpc.pb.h"
+#include "FrontService.grpc.pb.h"
 #include "data/Session.h"
 #include <QSemaphore>
 #include <grpc++/grpc++.h>
@@ -39,14 +39,14 @@ typedef struct {
   std::unique_ptr<std::vector<char>> rawData;
 } ConnectionInfo;
 
-class HTTPServer final : public proto::HTTP::Service {
+class HTTPServer final : public proto::FrontService::Service {
 public:
   HTTPServer();
   ~HTTPServer();
 
   bool init(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
   grpc::Status onDetection(grpc::ServerContext *context,
-                           const proto::Detection *request,
+                           const proto::DetectionMessage *request,
                            proto::Empty *response) override;
   void run();
 

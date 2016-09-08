@@ -1,18 +1,17 @@
-#include "service/FeatureServer.h"
-#include "HTTP.grpc.pb.h"
+#include "feature/FeatureServer.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "service/HTTPClient.h"
+#include "feature/RemainClient.h"
 #include "util/Time.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
-bool FeatureServer::init(std::vector<std::string> dbfiles) {
+bool FeatureServer::init() {
   _channel = grpc::CreateChannel("localhost:50052",
                                  grpc::InsecureChannelCredentials());
 
@@ -22,8 +21,8 @@ bool FeatureServer::init(std::vector<std::string> dbfiles) {
 }
 
 grpc::Status FeatureServer::onQuery(grpc::ServerContext *context,
-                                     const proto::Query *request,
-                                     proto::Empty *response) {
+                                    const proto::QueryMessage *request,
+                                    proto::Empty *response) {
   const bool copyData = false;
   std::vector<char> data(request->image().begin(), request->image().end());
   cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);

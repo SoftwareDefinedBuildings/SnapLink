@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "FeatureMessage.proto";
+import "Empty.proto";
+
+package proto;
+
+service RemainService {
+  rpc onFeature(FeatureMessage) returns (Empty) {}
+}

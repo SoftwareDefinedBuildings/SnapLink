@@ -1,20 +1,19 @@
-#include "http/CellMateClient.h"
+#include "front/FeatureClient.h"
 #include <iostream>
 #include <memory>
 #include <string>
 
 #include <grpc++/grpc++.h>
 
-CellMateClient::CellMateClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::CellMate::NewStub(channel)) {}
+FeatureClient::FeatureClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::FeatureService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool CellMateClient::onQuery(const std::vector<char> &image,
-                             const CameraModel &camera,
-                             const Session &session) {
+bool FeatureClient::onQuery(const std::vector<char> &image,
+                            const CameraModel &camera, const Session &session) {
   // Data we are sending to the server.
-  proto::Query query;
+  proto::QueryMessage query;
   query.set_image(std::string(image.begin(), image.end()));
   query.mutable_cameramodel()->set_name(camera.name());
   query.mutable_cameramodel()->set_fx(camera.fx());

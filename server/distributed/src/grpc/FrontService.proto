@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "DetectionMessage.proto";
+import "Empty.proto";
+
+package proto;
+
+service FrontService {
+  rpc onDetection(DetectionMessage) returns (Empty) {}
+}

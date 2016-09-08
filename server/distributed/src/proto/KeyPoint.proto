@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package proto;
+
+message KeyPoint {
+  float x = 1;
+  float y = 2;
+  float size = 3;
+  float angle = 4;
+  float response = 5;
+  int32 octave = 6;
+  int32 class_id = 7;
+}

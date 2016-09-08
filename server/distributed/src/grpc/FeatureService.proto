@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "QueryMessage.proto";
+import "Empty.proto";
+
+package proto;
+
+service FeatureService {
+  rpc onQuery(QueryMessage) returns (Empty) {}
+}

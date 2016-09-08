@@ -1,6 +1,6 @@
-#include "http/HTTPServer.h"
+#include "front/HTTPServer.h"
 #include "data/CameraModel.h"
-#include "http/CellMateClient.h"
+#include "front/FeatureClient.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <cstdlib>
@@ -41,7 +41,7 @@ bool HTTPServer::init(uint16_t port, unsigned int maxClients) {
 }
 
 grpc::Status HTTPServer::onDetection(grpc::ServerContext *context,
-                                     const proto::Detection *request,
+                                     const proto::DetectionMessage *request,
                                      proto::Empty *response) {
   std::vector<std::string> names;
   for (int i = 0; i < request->names_size(); i++) {
@@ -173,7 +173,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
         return sendPage(connection, errorpage, MHD_HTTP_BAD_REQUEST);
       }
 
-      CellMateClient client(httpServer->_channel);
+      FeatureClient client(httpServer->_channel);
       client.onQuery(*(connInfo->rawData), *camera, *(connInfo->session));
       // client.finish(); // we do not care about the return
     }

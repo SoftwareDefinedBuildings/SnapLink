@@ -4,7 +4,7 @@ import "Session.proto";
 
 package proto;
 
-message Detection {
+message DetectionMessage {
   repeated string names = 1; 
   Session session = 2;
 }
