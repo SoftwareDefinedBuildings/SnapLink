@@ -9,5 +9,5 @@ message KeyPoint {
   float angle = 4;
   float response = 5;
   int32 octave = 6;
-  int32 class_id = 7;
+  int32 classId = 7;
 }

@@ -14,12 +14,15 @@ bool FeatureClient::onQuery(const std::vector<char> &image,
                             const CameraModel &camera, const Session &session) {
   // Data we are sending to the server.
   proto::QueryMessage query;
+
   query.set_image(std::string(image.begin(), image.end()));
+
   query.mutable_cameramodel()->set_name(camera.name());
   query.mutable_cameramodel()->set_fx(camera.fx());
   query.mutable_cameramodel()->set_fy(camera.fy());
   query.mutable_cameramodel()->set_cx(camera.cx());
   query.mutable_cameramodel()->set_cy(camera.cy());
+
   query.mutable_session()->set_id(session.id);
   if (session.type == HTTP_POST) {
     query.mutable_session()->set_type(proto::Session::HTTP_POST);

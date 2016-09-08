@@ -53,6 +53,8 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.h"
     "${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Descriptor.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Descriptor.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.h"

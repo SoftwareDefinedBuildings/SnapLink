@@ -16,10 +16,7 @@ public:
                    const Session &session);
 
 private:
-  std::unique_ptr<grpc::ClientAsyncResponseReader<proto::Empty>> _rpc;
   // Out of the passed in Channel comes the stub, stored here, our view of the
   // server's exposed services.
   std::unique_ptr<proto::FrontService::Stub> stub_;
-
-  std::shared_ptr<grpc::Channel> _channel;
 };
