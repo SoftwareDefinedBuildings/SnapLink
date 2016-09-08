@@ -5,6 +5,6 @@ import "Empty.proto";
 
 package proto;
 
-service Http {
-  rpc OnDetection(Detection) returns (Empty) {}
+service HTTP {
+  rpc onDetection(Detection) returns (Empty) {}
 }

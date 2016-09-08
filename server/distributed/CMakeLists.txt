@@ -55,8 +55,8 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Detection.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.h"
     "${GENERATED_PROTOBUF_PATH}/CellMate.grpc.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/Http.grpc.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/Http.grpc.pb.cc")
+    "${GENERATED_PROTOBUF_PATH}/HTTP.grpc.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/HTTP.grpc.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_PROTO_SOURCES}
@@ -116,8 +116,6 @@ SET(CellMate_SOURCES
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
-    "src/http/HTTPServer.cpp"
-    "src/http/CellMateClient.cpp"
     "src/message/QueryEvent.cpp"
     "src/message/WordEvent.cpp"
     "src/message/FeatureEvent.cpp"
@@ -126,6 +124,7 @@ SET(CellMate_SOURCES
     "src/message/DetectionEvent.cpp"
     "src/message/FailureEvent.cpp"
     "src/service/CellMateServer.cpp"
+    "src/service/HTTPClient.cpp"
     "src/service/main.cpp")
 
 ADD_EXECUTABLE(httpserver ${HTTPServer_SOURCES} ${GENERATED_PROTO_SOURCES})

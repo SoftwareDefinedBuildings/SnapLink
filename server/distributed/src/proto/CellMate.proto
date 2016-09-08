@@ -6,5 +6,5 @@ import "Empty.proto";
 package proto;
 
 service CellMate {
-  rpc OnQuery(Query) returns (Empty) {}
+  rpc onQuery(Query) returns (Empty) {}
 }

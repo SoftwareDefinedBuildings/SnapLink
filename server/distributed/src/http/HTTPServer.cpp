@@ -9,87 +9,11 @@
 #include <string.h>
 #include <strings.h>
 
-// Take in the "service" instance (in this case representing an asynchronous
-// server) and the completion queue "cq" used for asynchronous communication
-// with the gRPC runtime.
-HTTPServer::CallData::CallData(proto::Http::AsyncService *service,
-                               grpc::ServerCompletionQueue *cq,
-                               std::map<long, ConnectionInfo *> &connInfoMap)
-    : service_(service), cq_(cq), responder_(&ctx_), status_(CREATE),
-      _connInfoMap(connInfoMap) {
-  // Invoke the serving logic right away.
-  proceed();
-}
-
-void HTTPServer::CallData::proceed() {
-  if (status_ == CREATE) {
-    // Make this instance progress to the PROCESS state.
-    status_ = PROCESS;
-
-    // As part of the initial CREATE state, we *request* that the system
-    // start processing SayHello requests. In this request, "this" acts are
-    // the tag uniquely identifying the request (so that different CallData
-    // instances can serve different requests concurrently), in this case
-    // the memory address of this CallData instance.
-    service_->RequestOnDetection(&ctx_, &_detection, &responder_, cq_, cq_,
-                                 this);
-  } else if (status_ == PROCESS) {
-    // Spawn a new CallData instance to serve new clients while we process
-    // the one for this CallData. The instance will deallocate itself as
-    // part of its FINISH state.
-    new CallData(service_, cq_, _connInfoMap);
-
-    // The actual processing.
-    std::vector<std::string> names;
-    for (int i = 0; i < _detection.names_size(); i++) {
-      names.emplace_back(_detection.names(i));
-    }
-
-    Session session;
-    session.id = _detection.session().id();
-    if (_detection.session().type() == proto::Session::HTTP_POST) {
-      session.type = HTTP_POST;
-    } else if (_detection.session().type() == proto::Session::BOSSWAVE) {
-      session.type = BOSSWAVE;
-    }
-    session.overallStart = _detection.session().overallstart();
-    session.overallEnd = _detection.session().overallend();
-    session.featuresStart = _detection.session().featuresstart();
-    session.featuresEnd = _detection.session().featuresend();
-    session.wordsStart = _detection.session().wordsstart();
-    session.wordsEnd = _detection.session().wordsend();
-    session.signaturesStart = _detection.session().signaturesstart();
-    session.signaturesEnd = _detection.session().signaturesend();
-    session.perspectiveStart = _detection.session().perspectivestart();
-    session.perspectiveEnd = _detection.session().perspectiveend();
-
-    // find() const is thread-safe
-    const auto iter = _connInfoMap.find(session.id);
-    ConnectionInfo *connInfo = iter->second;
-    connInfo->names.reset(new std::vector<std::string>(std::move(names)));
-    connInfo->session.reset(new Session(std::move(session)));
-    connInfo->detected.release();
-
-    // And we are done! Let the gRPC runtime know we've finished, using the
-    // memory address of this instance as the uniquely identifying tag for
-    // the event.
-    status_ = FINISH;
-    responder_.Finish(reply_, grpc::Status::OK, this);
-  } else {
-    GPR_ASSERT(status_ == FINISH);
-    // Once in the FINISH state, deallocate ourselves (CallData).
-    delete this;
-  }
-}
-
 const std::string HTTPServer::busypage =
     "This server is busy, please try again later.";
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
-HTTPServer::HTTPServer()
-    : _daemon(nullptr), _numClients(0), _gen(std::random_device()()),
-      _channel(grpc::CreateChannel("localhost:50051",
-                                   grpc::InsecureChannelCredentials())) {}
+HTTPServer::HTTPServer() : _daemon(nullptr), _numClients(0) {}
 
 HTTPServer::~HTTPServer() {
   if (_daemon != nullptr) {
@@ -97,13 +21,13 @@ HTTPServer::~HTTPServer() {
     _daemon = nullptr;
   }
   _numClients = 0;
-  server_->Shutdown();
-  // Always shutdown the completion queue after the server.
-  cq_->Shutdown();
 }
 
-bool HTTPServer::startMHD(uint16_t port, unsigned int maxClients) {
+bool HTTPServer::init(uint16_t port, unsigned int maxClients) {
+  _gen = std::mt19937(std::random_device()());
   _maxClients = maxClients;
+  _channel = grpc::CreateChannel("localhost:50051",
+                                 grpc::InsecureChannelCredentials());
 
   // start MHD daemon, listening on port
   unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;
@@ -118,24 +42,58 @@ bool HTTPServer::startMHD(uint16_t port, unsigned int maxClients) {
   return true;
 }
 
-void HTTPServer::runGRPC() {
-  std::string server_address("0.0.0.0:50051");
+grpc::Status HTTPServer::onDetection(grpc::ServerContext *context,
+                                     const proto::Detection *request,
+                                     proto::Empty *response) {
+  std::vector<std::string> names;
+  for (int i = 0; i < request->names_size(); i++) {
+    names.emplace_back(request->names(i));
+  }
+
+  Session session;
+  session.id = request->session().id();
+  if (request->session().type() == proto::Session::HTTP_POST) {
+    session.type = HTTP_POST;
+  } else if (request->session().type() == proto::Session::BOSSWAVE) {
+    session.type = BOSSWAVE;
+  }
+  session.overallStart = request->session().overallstart();
+  session.overallEnd = request->session().overallend();
+  session.featuresStart = request->session().featuresstart();
+  session.featuresEnd = request->session().featuresend();
+  session.wordsStart = request->session().wordsstart();
+  session.wordsEnd = request->session().wordsend();
+  session.signaturesStart = request->session().signaturesstart();
+  session.signaturesEnd = request->session().signaturesend();
+  session.perspectiveStart = request->session().perspectivestart();
+  session.perspectiveEnd = request->session().perspectiveend();
+
+  // find() const is thread-safe
+  const auto iter = _connInfoMap.find(session.id);
+  ConnectionInfo *connInfo = iter->second;
+  connInfo->names.reset(new std::vector<std::string>(std::move(names)));
+  connInfo->session.reset(new Session(std::move(session)));
+  connInfo->detected.release();
+
+  return grpc::Status::OK;
+}
+
+void HTTPServer::run() {
+  std::string server_address("0.0.0.0:50052");
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  // Register "service_" as the instance through which we'll communicate with
-  // clients. In this case it corresponds to an *asynchronous* service.
-  builder.RegisterService(&service_);
-  // Get hold of the completion queue used for the asynchronous communication
-  // with the gRPC runtime.
-  cq_ = builder.AddCompletionQueue();
+  // Register "service" as the instance through which we'll communicate with
+  // clients. In this case it corresponds to an *synchronous* service.
+  builder.RegisterService(this);
   // Finally assemble the server.
-  server_ = builder.BuildAndStart();
+  std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   std::cout << "Server listening on " << server_address << std::endl;
 
-  // Proceed to the server's main loop.
-  handleRpcs();
+  // Wait for the server to shutdown. Note that some other thread must be
+  // responsible for shutting down the server for this call to ever return.
+  server->Wait();
 }
 
 int HTTPServer::getMaxClients() const { return _maxClients; }
@@ -218,7 +176,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
       }
 
       CellMateClient client(httpServer->_channel);
-      client.query(*(connInfo->rawData), *camera, *(connInfo->session));
+      client.onQuery(*(connInfo->rawData), *camera, *(connInfo->session));
       // client.finish(); // we do not care about the return
     }
 
@@ -351,22 +309,4 @@ void HTTPServer::createData(const std::vector<char> &data, double fx, double fy,
   int width = image.cols;
   int height = image.rows;
   camera = CameraModel("", fx, fy, cx, cy, cv::Size(width, height));
-}
-
-// This can be run in multiple threads if needed.
-void HTTPServer::handleRpcs() {
-  // Spawn a new CallData instance to serve new clients.
-  new CallData(&service_, cq_.get(), _connInfoMap);
-  void *tag; // uniquely identifies a request.
-  bool ok;
-  while (true) {
-    // Block waiting to read the next event from the completion queue. The
-    // event is uniquely identified by its tag, which in this case is the
-    // memory address of a CallData instance.
-    // The return value of Next should always be checked. This return value
-    // tells us whether there is any kind of event or cq_ is shutting down.
-    GPR_ASSERT(cq_->Next(&tag, &ok));
-    GPR_ASSERT(ok);
-    static_cast<CallData *>(tag)->proceed();
-  }
 }
