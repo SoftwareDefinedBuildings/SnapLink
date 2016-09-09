@@ -1,8 +1,8 @@
 #include "feature/RemainClient.h"
+#include <cassert>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <cassert>
 
 #include <grpc++/grpc++.h>
 
@@ -32,10 +32,10 @@ bool RemainClient::onFeature(const std::vector<cv::KeyPoint> &keyPoints,
   assert(descriptors.type() == CV_32F);
   assert(descriptors.channels() == 1);
   for (int row = 0; row < descriptors.rows; row++) {
-    const float* p = descriptors.ptr<float>(row);
+    const float *p = descriptors.ptr<float>(row);
     proto::Descriptor *descriptor = feature.add_descriptors();
     for (int col = 0; col < descriptors.cols; col++) {
-        descriptor->add_values(p[col]);
+      descriptor->add_values(p[col]);
     }
   }
 
@@ -44,6 +44,8 @@ bool RemainClient::onFeature(const std::vector<cv::KeyPoint> &keyPoints,
   feature.mutable_cameramodel()->set_fy(camera.fy());
   feature.mutable_cameramodel()->set_cx(camera.cx());
   feature.mutable_cameramodel()->set_cy(camera.cy());
+  feature.mutable_cameramodel()->set_width(camera.getImageSize().width);
+  feature.mutable_cameramodel()->set_height(camera.getImageSize().height);
 
   feature.mutable_session()->set_id(session.id);
   if (session.type == HTTP_POST) {

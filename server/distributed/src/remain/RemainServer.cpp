@@ -36,62 +36,76 @@ bool RemainServer::init(std::vector<std::string> dbfiles) {
 grpc::Status RemainServer::onFeature(grpc::ServerContext *context,
                                      const proto::FeatureMessage *request,
                                      proto::Empty *response) {
-  //  const bool copyData = false;
-  //  std::vector<char> data(request->image().begin(), request->image().end());
-  //  cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
-  //
-  //  double fx = request->cameramodel().fx();
-  //  double fy = request->cameramodel().fy();
-  //  double cx = request->cameramodel().cx();
-  //  double cy = request->cameramodel().cy();
-  //  int width = image.cols;
-  //  int height = image.rows;
-  //  CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-  //
-  //  Session session;
-  //  session.id = request->session().id();
-  //  if (request->session().type() == proto::Session::HTTP_POST) {
-  //    session.type = HTTP_POST;
-  //  } else if (request->session().type() == proto::Session::BOSSWAVE) {
-  //    session.type = BOSSWAVE;
-  //  }
-  //  session.overallStart = request->session().overallstart();
-  //  session.overallEnd = request->session().overallend();
-  //  session.featuresStart = request->session().featuresstart();
-  //  session.featuresEnd = request->session().featuresend();
-  //  session.wordsStart = request->session().wordsstart();
-  //  session.wordsEnd = request->session().wordsend();
-  //  session.signaturesStart = request->session().signaturesstart();
-  //  session.signaturesEnd = request->session().signaturesend();
-  //  session.perspectiveStart = request->session().perspectivestart();
-  //  session.perspectiveEnd = request->session().perspectiveend();
-  //
-  //  std::vector<cv::KeyPoint> keyPoints;
-  //  cv::Mat descriptors;
-  //  session.featuresStart = getTime();
-  //  _feature->extract(image, keyPoints, descriptors);
-  //  session.featuresEnd = getTime();
-  //
-  //  session.wordsStart = getTime();
-  //  std::vector<int> wordIds = _wordSearch->search(descriptors);
-  //  session.wordsEnd = getTime();
-  //
-  //  session.signaturesStart = getTime();
-  //  std::vector<int> signatureIds = _signatureSearch->search(wordIds);
-  //  session.signaturesEnd = getTime();
-  //
-  //  int dbId;
-  //  Transform pose;
-  //  session.perspectiveStart = getTime();
-  //  _perspective->localize(wordIds, keyPoints, camera, signatureIds.at(0),
-  //  dbId,
-  //                         pose);
-  //  session.perspectiveEnd = getTime();
-  //
-  //  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
-  //
-  std::vector<std::string> names(1, "test");
+  std::vector<cv::KeyPoint> keyPoints;
+  for (int i = 0; i < request->keypoints_size(); i++) {
+    float x = request->keypoints(i).x();
+    float y = request->keypoints(i).y();
+    float size = request->keypoints(i).size();
+    float angle = request->keypoints(i).angle();
+    float response = request->keypoints(i).response();
+    int octave = request->keypoints(i).octave();
+    int classId = request->keypoints(i).classid();
+
+    keyPoints.emplace_back(x, y, size, angle, response, octave, classId);
+  }
+
+  assert(request->descriptors_size() > 0);
+  int descriptorSize = request->descriptors(0).values_size();
+  assert(descriptorSize > 0);
+  cv::Mat descriptors(request->descriptors_size(),
+                      request->descriptors(0).values_size(), CV_32F);
+  for (int row = 0; row < request->descriptors_size(); row++) {
+    assert(request->descriptors(row).values_size() == descriptorSize);
+    for (int col = 0; col < descriptorSize; col++) {
+      descriptors.at<float>(row, col) = request->descriptors(row).values(col);
+    }
+  }
+  assert(descriptors.type() == CV_32F);
+  assert(descriptors.channels() == 1);
+
+  double fx = request->cameramodel().fx();
+  double fy = request->cameramodel().fy();
+  double cx = request->cameramodel().cx();
+  double cy = request->cameramodel().cy();
+  int width = request->cameramodel().width();
+  int height = request->cameramodel().height();
+  CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
+
   Session session;
+  session.id = request->session().id();
+  if (request->session().type() == proto::Session::HTTP_POST) {
+    session.type = HTTP_POST;
+  } else if (request->session().type() == proto::Session::BOSSWAVE) {
+    session.type = BOSSWAVE;
+  }
+  session.overallStart = request->session().overallstart();
+  session.overallEnd = request->session().overallend();
+  session.featuresStart = request->session().featuresstart();
+  session.featuresEnd = request->session().featuresend();
+  session.wordsStart = request->session().wordsstart();
+  session.wordsEnd = request->session().wordsend();
+  session.signaturesStart = request->session().signaturesstart();
+  session.signaturesEnd = request->session().signaturesend();
+  session.perspectiveStart = request->session().perspectivestart();
+  session.perspectiveEnd = request->session().perspectiveend();
+
+  session.wordsStart = getTime();
+  std::vector<int> wordIds = _wordSearch->search(descriptors);
+  session.wordsEnd = getTime();
+
+  session.signaturesStart = getTime();
+  std::vector<int> signatureIds = _signatureSearch->search(wordIds);
+  session.signaturesEnd = getTime();
+
+  int dbId;
+  Transform pose;
+  session.perspectiveStart = getTime();
+  _perspective->localize(wordIds, keyPoints, camera, signatureIds.at(0), dbId,
+                         pose);
+  session.perspectiveEnd = getTime();
+
+  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
+
   HTTPClient client(_channel);
   client.onDetection(names, session);
 
