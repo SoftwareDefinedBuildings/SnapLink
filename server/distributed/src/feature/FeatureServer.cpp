@@ -5,7 +5,7 @@
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "feature/RemainClient.h"
+#include "feature/WordSearchClient.h"
 #include "util/Time.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
@@ -59,7 +59,7 @@ grpc::Status FeatureServer::onQuery(grpc::ServerContext *context,
   _feature->extract(image, keyPoints, descriptors);
   session.featuresEnd = getTime();
 
-  RemainClient client(_channel);
+  WordSearchClient client(_channel);
   client.onFeature(keyPoints, descriptors, camera, session);
 
   return grpc::Status::OK;

@@ -1,4 +1,4 @@
-#include "feature/RemainClient.h"
+#include "feature/WordSearchClient.h"
 #include <cassert>
 #include <iostream>
 #include <memory>
@@ -6,12 +6,12 @@
 
 #include <grpc++/grpc++.h>
 
-RemainClient::RemainClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::RemainService::NewStub(channel)) {}
+WordSearchClient::WordSearchClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::WordSearchService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool RemainClient::onFeature(const std::vector<cv::KeyPoint> &keyPoints,
+bool WordSearchClient::onFeature(const std::vector<cv::KeyPoint> &keyPoints,
                              const cv::Mat &descriptors,
                              const CameraModel &camera,
                              const Session &session) {

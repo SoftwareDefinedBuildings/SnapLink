@@ -1,18 +1,18 @@
-#include "remain/RemainServer.h"
+#include "wordSearch/WordSearchServer.h"
+#include "wordSearch/RemainClient.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "remain/HTTPClient.h"
 #include "util/Time.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
-bool RemainServer::init(std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel("localhost:50054",
+bool WordSearchServer::init(std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel("localhost:50053",
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -25,21 +25,14 @@ bool RemainServer::init(std::vector<std::string> dbfiles) {
     return false;
   }
 
-  _signatureSearch.reset(new SignatureSearch(signatures));
-  _perspective.reset(new Perspective(signatures));
-  _visibility.reset(new Visibility(std::move(labels)));
+  _wordSearch.reset(new WordSearch(std::move(words)));
 
   return true;
 }
 
-grpc::Status RemainServer::onWord(grpc::ServerContext *context,
-                                     const proto::WordMessage *request,
+grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
+                                     const proto::FeatureMessage *request,
                                      proto::Empty *response) {
-  std::vector<int> wordIds;
-  for (int i = 0; i < request->wordids_size(); i++) {
-    wordIds.emplace_back(request->wordids(i));
-  }
-
   std::vector<cv::KeyPoint> keyPoints;
   for (int i = 0; i < request->keypoints_size(); i++) {
     float x = request->keypoints(i).x();
@@ -52,6 +45,20 @@ grpc::Status RemainServer::onWord(grpc::ServerContext *context,
 
     keyPoints.emplace_back(x, y, size, angle, response, octave, classId);
   }
+
+  assert(request->descriptors_size() > 0);
+  int descriptorSize = request->descriptors(0).values_size();
+  assert(descriptorSize > 0);
+  cv::Mat descriptors(request->descriptors_size(),
+                      request->descriptors(0).values_size(), CV_32F);
+  for (int row = 0; row < request->descriptors_size(); row++) {
+    assert(request->descriptors(row).values_size() == descriptorSize);
+    for (int col = 0; col < descriptorSize; col++) {
+      descriptors.at<float>(row, col) = request->descriptors(row).values(col);
+    }
+  }
+  assert(descriptors.type() == CV_32F);
+  assert(descriptors.channels() == 1);
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
@@ -79,28 +86,19 @@ grpc::Status RemainServer::onWord(grpc::ServerContext *context,
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
-  session.signaturesStart = getTime();
-  std::vector<int> signatureIds = _signatureSearch->search(wordIds);
-  session.signaturesEnd = getTime();
+  session.wordsStart = getTime();
+  std::vector<int> wordIds = _wordSearch->search(descriptors);
+  session.wordsEnd = getTime();
 
-  int dbId;
-  Transform pose;
-  session.perspectiveStart = getTime();
-  _perspective->localize(wordIds, keyPoints, camera, signatureIds.at(0), dbId,
-                         pose);
-  session.perspectiveEnd = getTime();
-
-  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
-
-  HTTPClient client(_channel);
-  client.onDetection(names, session);
+  RemainClient client(_channel);
+  client.onWord(wordIds, keyPoints, camera, session);
 
   return grpc::Status::OK;
 }
 
 // There is no shutdown handling in this code.
-void RemainServer::run() {
-  std::string server_address("0.0.0.0:50053");
+void WordSearchServer::run() {
+  std::string server_address("0.0.0.0:50052");
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

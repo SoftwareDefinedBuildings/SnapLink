@@ -1,5 +1,5 @@
 #include "FeatureMessage.pb.h"
-#include "RemainService.grpc.pb.h"
+#include "WordSearchService.grpc.pb.h"
 #include "data/CameraModel.h"
 #include "data/Session.h"
 #include <grpc++/grpc++.h>
@@ -7,9 +7,9 @@
 #include <memory>
 #include <string>
 
-class RemainClient {
+class WordSearchClient {
 public:
-  explicit RemainClient(std::shared_ptr<grpc::Channel> channel);
+  explicit WordSearchClient(std::shared_ptr<grpc::Channel> channel);
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
@@ -20,5 +20,5 @@ public:
 private:
   // Out of the passed in Channel comes the stub, stored here, our view of the
   // server's exposed services.
-  std::unique_ptr<proto::RemainService::Stub> stub_;
+  std::unique_ptr<proto::WordSearchService::Stub> stub_;
 };

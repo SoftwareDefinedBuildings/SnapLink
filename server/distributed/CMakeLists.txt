@@ -60,7 +60,9 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/FeatureMessage.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/FeatureMessage.pb.cc")
+    "${GENERATED_PROTOBUF_PATH}/FeatureMessage.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_PROTO_SOURCES}
@@ -87,6 +89,10 @@ SET(GENERATED_GRPC_SOURCES
     "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.h"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/WordSearchService.pb.h"
+    "${GENERATED_GRPC_PATH}/WordSearchService.pb.cc"
+    "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.h"
+    "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/RemainService.pb.h"
     "${GENERATED_GRPC_PATH}/RemainService.pb.cc"
     "${GENERATED_GRPC_PATH}/RemainService.grpc.pb.h"
@@ -154,7 +160,7 @@ SET(Feature_SOURCES
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
     "src/feature/FeatureServer.cpp"
-    "src/feature/RemainClient.cpp"
+    "src/feature/WordSearchClient.cpp"
     "src/feature/main.cpp")
 
 ADD_EXECUTABLE(feature ${Feature_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
@@ -162,6 +168,34 @@ ADD_EXECUTABLE(feature ${Feature_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED
 TARGET_LINK_LIBRARIES(feature ${LIBRARIES} grpc++_unsecure grpc gpr)
 
 SET_PROPERTY(TARGET feature PROPERTY CXX_STANDARD 11)
+
+# WordSearch
+SET(WordSearch_SOURCES
+    "../lib/util/Time.cpp"
+    "../lib/util/Utility.cpp"
+    "../lib/adapter/RTABMapDBAdapter.cpp"
+    "../lib/data/SignaturesSimple.cpp"
+    "../lib/data/Transform.cpp"
+    "../lib/data/LabelsSimple.cpp"
+    "../lib/data/Label.cpp"
+    "../lib/data/Signature.cpp"
+    "../lib/data/Word.cpp"
+    "../lib/data/CameraModel.cpp"
+    "../lib/data/WordsKdTree.cpp"
+    "../lib/algo/SignatureSearch.cpp"
+    "../lib/algo/WordSearch.cpp"
+    "../lib/algo/Visibility.cpp"
+    "../lib/algo/Feature.cpp"
+    "../lib/algo/Perspective.cpp"
+    "src/wordSearch/WordSearchServer.cpp"
+    "src/wordSearch/RemainClient.cpp"
+    "src/wordSearch/main.cpp")
+
+ADD_EXECUTABLE(wordsearch ${WordSearch_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
+
+TARGET_LINK_LIBRARIES(wordsearch ${LIBRARIES} grpc++_unsecure grpc gpr)
+
+SET_PROPERTY(TARGET wordsearch PROPERTY CXX_STANDARD 11)
 
 # Remain
 SET(Remain_SOURCES
