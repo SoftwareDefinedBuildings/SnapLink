@@ -1,4 +1,4 @@
-#include "wordSearch/RemainClient.h"
+#include "wordSearch/SignatureSearchClient.h"
 #include "WordMessage.pb.h"
 #include <iostream>
 #include <memory>
@@ -6,15 +6,16 @@
 
 #include <grpc++/grpc++.h>
 
-RemainClient::RemainClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::RemainService::NewStub(channel)) {}
+SignatureSearchClient::SignatureSearchClient(
+    std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::SignatureSearchService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool RemainClient::onWord(const std::vector<int> &wordIds,
-                   const std::vector<cv::KeyPoint> &keyPoints,
-                   const CameraModel &camera,
-                   const Session &session) {
+bool SignatureSearchClient::onWord(const std::vector<int> &wordIds,
+                                   const std::vector<cv::KeyPoint> &keyPoints,
+                                   const CameraModel &camera,
+                                   const Session &session) {
   // Data we are sending to the server.
   proto::WordMessage word;
 

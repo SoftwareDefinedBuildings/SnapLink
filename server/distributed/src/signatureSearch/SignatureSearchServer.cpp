@@ -1,18 +1,18 @@
-#include "remain/RemainServer.h"
+#include "signatureSearch/SignatureSearchServer.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "remain/HTTPClient.h"
+#include "signatureSearch/RemainClient.h"
 #include "util/Time.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
-bool RemainServer::init(std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel("localhost:50055",
+bool SignatureSearchServer::init(std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel("localhost:50054",
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -25,15 +25,14 @@ bool RemainServer::init(std::vector<std::string> dbfiles) {
     return false;
   }
 
-  _perspective.reset(new Perspective(signatures));
-  _visibility.reset(new Visibility(std::move(labels)));
+  _signatureSearch.reset(new SignatureSearch(signatures));
 
   return true;
 }
 
-grpc::Status RemainServer::onSignature(grpc::ServerContext *context,
-                                       const proto::SignatureMessage *request,
-                                       proto::Empty *response) {
+grpc::Status SignatureSearchServer::onWord(grpc::ServerContext *context,
+                                           const proto::WordMessage *request,
+                                           proto::Empty *response) {
   std::vector<int> wordIds;
   for (int i = 0; i < request->wordids_size(); i++) {
     wordIds.emplace_back(request->wordids(i));
@@ -60,11 +59,6 @@ grpc::Status RemainServer::onSignature(grpc::ServerContext *context,
   int height = request->cameramodel().height();
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
 
-  std::vector<int> signatureIds;
-  for (int i = 0; i < request->signatureids_size(); i++) {
-    signatureIds.emplace_back(request->signatureids(i));
-  }
-
   Session session;
   session.id = request->session().id();
   if (request->session().type() == proto::Session::HTTP_POST) {
@@ -83,24 +77,19 @@ grpc::Status RemainServer::onSignature(grpc::ServerContext *context,
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
-  int dbId;
-  Transform pose;
-  session.perspectiveStart = getTime();
-  _perspective->localize(wordIds, keyPoints, camera, signatureIds.at(0), dbId,
-                         pose);
-  session.perspectiveEnd = getTime();
+  session.signaturesStart = getTime();
+  std::vector<int> signatureIds = _signatureSearch->search(wordIds);
+  session.signaturesEnd = getTime();
 
-  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
-
-  HTTPClient client(_channel);
-  client.onDetection(names, session);
+  RemainClient client(_channel);
+  client.onSignature(wordIds, keyPoints, camera, signatureIds, session);
 
   return grpc::Status::OK;
 }
 
 // There is no shutdown handling in this code.
-void RemainServer::run() {
-  std::string server_address("0.0.0.0:50054");
+void SignatureSearchServer::run() {
+  std::string server_address("0.0.0.0:50053");
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

@@ -1,5 +1,4 @@
 #include "wordSearch/WordSearchServer.h"
-#include "wordSearch/RemainClient.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
@@ -7,6 +6,7 @@
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
 #include "util/Time.h"
+#include "wordSearch/SignatureSearchClient.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
@@ -31,8 +31,8 @@ bool WordSearchServer::init(std::vector<std::string> dbfiles) {
 }
 
 grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
-                                     const proto::FeatureMessage *request,
-                                     proto::Empty *response) {
+                                         const proto::FeatureMessage *request,
+                                         proto::Empty *response) {
   std::vector<cv::KeyPoint> keyPoints;
   for (int i = 0; i < request->keypoints_size(); i++) {
     float x = request->keypoints(i).x();
@@ -90,7 +90,7 @@ grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
   std::vector<int> wordIds = _wordSearch->search(descriptors);
   session.wordsEnd = getTime();
 
-  RemainClient client(_channel);
+  SignatureSearchClient client(_channel);
   client.onWord(wordIds, keyPoints, camera, session);
 
   return grpc::Status::OK;

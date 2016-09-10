@@ -12,9 +12,9 @@ WordSearchClient::WordSearchClient(std::shared_ptr<grpc::Channel> channel)
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
 bool WordSearchClient::onFeature(const std::vector<cv::KeyPoint> &keyPoints,
-                             const cv::Mat &descriptors,
-                             const CameraModel &camera,
-                             const Session &session) {
+                                 const cv::Mat &descriptors,
+                                 const CameraModel &camera,
+                                 const Session &session) {
   // Data we are sending to the server.
   proto::FeatureMessage feature;
 

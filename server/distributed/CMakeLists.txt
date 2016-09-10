@@ -62,7 +62,9 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/FeatureMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/FeatureMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc")
+    "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_PROTO_SOURCES}
@@ -93,6 +95,10 @@ SET(GENERATED_GRPC_SOURCES
     "${GENERATED_GRPC_PATH}/WordSearchService.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.h"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.h"
+    "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
+    "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.h"
+    "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/RemainService.pb.h"
     "${GENERATED_GRPC_PATH}/RemainService.pb.cc"
     "${GENERATED_GRPC_PATH}/RemainService.grpc.pb.h"
@@ -188,7 +194,7 @@ SET(WordSearch_SOURCES
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
     "src/wordSearch/WordSearchServer.cpp"
-    "src/wordSearch/RemainClient.cpp"
+    "src/wordSearch/SignatureSearchClient.cpp"
     "src/wordSearch/main.cpp")
 
 ADD_EXECUTABLE(wordsearch ${WordSearch_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
@@ -196,6 +202,34 @@ ADD_EXECUTABLE(wordsearch ${WordSearch_SOURCES} ${GENERATED_PROTO_SOURCES} ${GEN
 TARGET_LINK_LIBRARIES(wordsearch ${LIBRARIES} grpc++_unsecure grpc gpr)
 
 SET_PROPERTY(TARGET wordsearch PROPERTY CXX_STANDARD 11)
+
+# SignatureSearch
+SET(SignatureSearch_SOURCES
+    "../lib/util/Time.cpp"
+    "../lib/util/Utility.cpp"
+    "../lib/adapter/RTABMapDBAdapter.cpp"
+    "../lib/data/SignaturesSimple.cpp"
+    "../lib/data/Transform.cpp"
+    "../lib/data/LabelsSimple.cpp"
+    "../lib/data/Label.cpp"
+    "../lib/data/Signature.cpp"
+    "../lib/data/Word.cpp"
+    "../lib/data/CameraModel.cpp"
+    "../lib/data/WordsKdTree.cpp"
+    "../lib/algo/SignatureSearch.cpp"
+    "../lib/algo/WordSearch.cpp"
+    "../lib/algo/Visibility.cpp"
+    "../lib/algo/Feature.cpp"
+    "../lib/algo/Perspective.cpp"
+    "src/signatureSearch/SignatureSearchServer.cpp"
+    "src/signatureSearch/RemainClient.cpp"
+    "src/signatureSearch/main.cpp")
+
+ADD_EXECUTABLE(signaturesearch ${SignatureSearch_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
+
+TARGET_LINK_LIBRARIES(signaturesearch ${LIBRARIES} grpc++_unsecure grpc gpr)
+
+SET_PROPERTY(TARGET signaturesearch PROPERTY CXX_STANDARD 11)
 
 # Remain
 SET(Remain_SOURCES

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "WordMessage.proto";
+import "Empty.proto";
+
+package proto;
+
+service SignatureSearchService {
+  rpc onWord(WordMessage) returns (Empty) {}
+}
