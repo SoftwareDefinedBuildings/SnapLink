@@ -1,4 +1,4 @@
-#include "signatureSearch/RemainClient.h"
+#include "signatureSearch/PerspectiveClient.h"
 #include "SignatureMessage.pb.h"
 #include <iostream>
 #include <memory>
@@ -6,16 +6,16 @@
 
 #include <grpc++/grpc++.h>
 
-RemainClient::RemainClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::RemainService::NewStub(channel)) {}
+PerspectiveClient::PerspectiveClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::PerspectiveService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool RemainClient::onSignature(const std::vector<int> &wordIds,
-                               const std::vector<cv::KeyPoint> &keyPoints,
-                               const CameraModel &camera,
-                               const std::vector<int> &signatureIds,
-                               const Session &session) {
+bool PerspectiveClient::onSignature(const std::vector<int> &wordIds,
+                                    const std::vector<cv::KeyPoint> &keyPoints,
+                                    const CameraModel &camera,
+                                    const std::vector<int> &signatureIds,
+                                    const Session &session) {
   // Data we are sending to the server.
   proto::SignatureMessage signature;
 

@@ -77,7 +77,7 @@ grpc::Status HTTPServer::onDetection(grpc::ServerContext *context,
 }
 
 void HTTPServer::run() {
-  std::string server_address("0.0.0.0:50055");
+  std::string server_address("0.0.0.0:50056");
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

@@ -5,6 +5,6 @@ import "Empty.proto";
 
 package proto;
 
-service RemainService {
+service PerspectiveService {
   rpc onSignature(SignatureMessage) returns (Empty) {}
 }

@@ -1,9 +1,9 @@
-#include "RemainService.grpc.pb.h"
+#include "PerspectiveService.grpc.pb.h"
 #include "algo/Perspective.h"
 #include "algo/Visibility.h"
 #include <grpc++/grpc++.h>
 
-class RemainServer final : public proto::RemainService::Service {
+class PerspectiveServer final : public proto::PerspectiveService::Service {
 public:
   bool init(std::vector<std::string> dbfiles);
   grpc::Status onSignature(grpc::ServerContext *context,
@@ -13,7 +13,6 @@ public:
 
 private:
   std::unique_ptr<Perspective> _perspective;
-  std::unique_ptr<Visibility> _visibility;
 
   std::shared_ptr<grpc::Channel> _channel;
 };

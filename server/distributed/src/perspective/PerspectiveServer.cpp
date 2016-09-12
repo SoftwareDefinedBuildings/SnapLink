@@ -1,17 +1,17 @@
-#include "remain/RemainServer.h"
+#include "perspective/PerspectiveServer.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "remain/HTTPClient.h"
+#include "perspective/VisibilityClient.h"
 #include "util/Time.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
-bool RemainServer::init(std::vector<std::string> dbfiles) {
+bool PerspectiveServer::init(std::vector<std::string> dbfiles) {
   _channel = grpc::CreateChannel("localhost:50055",
                                  grpc::InsecureChannelCredentials());
 
@@ -26,14 +26,14 @@ bool RemainServer::init(std::vector<std::string> dbfiles) {
   }
 
   _perspective.reset(new Perspective(signatures));
-  _visibility.reset(new Visibility(std::move(labels)));
 
   return true;
 }
 
-grpc::Status RemainServer::onSignature(grpc::ServerContext *context,
-                                       const proto::SignatureMessage *request,
-                                       proto::Empty *response) {
+grpc::Status
+PerspectiveServer::onSignature(grpc::ServerContext *context,
+                               const proto::SignatureMessage *request,
+                               proto::Empty *response) {
   std::vector<int> wordIds;
   for (int i = 0; i < request->wordids_size(); i++) {
     wordIds.emplace_back(request->wordids(i));
@@ -90,16 +90,14 @@ grpc::Status RemainServer::onSignature(grpc::ServerContext *context,
                          pose);
   session.perspectiveEnd = getTime();
 
-  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
-
-  HTTPClient client(_channel);
-  client.onDetection(names, session);
+  VisibilityClient client(_channel);
+  client.onLocation(dbId, camera, pose, session);
 
   return grpc::Status::OK;
 }
 
 // There is no shutdown handling in this code.
-void RemainServer::run() {
+void PerspectiveServer::run() {
   std::string server_address("0.0.0.0:50054");
 
   grpc::ServerBuilder builder;

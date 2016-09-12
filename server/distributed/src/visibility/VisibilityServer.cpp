@@ -1,18 +1,18 @@
-#include "signatureSearch/SignatureSearchServer.h"
+#include "visibility/VisibilityServer.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "signatureSearch/PerspectiveClient.h"
 #include "util/Time.h"
+#include "visibility/HTTPClient.h"
 #include <QDebug>
 #include <opencv2/core/core.hpp>
 #include <opencv2/opencv.hpp>
 
-bool SignatureSearchServer::init(std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel("localhost:50054",
+bool VisibilityServer::init(std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel("localhost:50056",
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -25,31 +25,15 @@ bool SignatureSearchServer::init(std::vector<std::string> dbfiles) {
     return false;
   }
 
-  _signatureSearch.reset(new SignatureSearch(signatures));
+  _visibility.reset(new Visibility(std::move(labels)));
 
   return true;
 }
 
-grpc::Status SignatureSearchServer::onWord(grpc::ServerContext *context,
-                                           const proto::WordMessage *request,
-                                           proto::Empty *response) {
-  std::vector<int> wordIds;
-  for (int i = 0; i < request->wordids_size(); i++) {
-    wordIds.emplace_back(request->wordids(i));
-  }
-
-  std::vector<cv::KeyPoint> keyPoints;
-  for (int i = 0; i < request->keypoints_size(); i++) {
-    float x = request->keypoints(i).x();
-    float y = request->keypoints(i).y();
-    float size = request->keypoints(i).size();
-    float angle = request->keypoints(i).angle();
-    float response = request->keypoints(i).response();
-    int octave = request->keypoints(i).octave();
-    int classId = request->keypoints(i).classid();
-
-    keyPoints.emplace_back(x, y, size, angle, response, octave, classId);
-  }
+grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
+                                          const proto::LocationMessage *request,
+                                          proto::Empty *response) {
+  int dbId = request->dbid();
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
@@ -58,6 +42,22 @@ grpc::Status SignatureSearchServer::onWord(grpc::ServerContext *context,
   int width = request->cameramodel().width();
   int height = request->cameramodel().height();
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
+
+  float r11 = request->pose().r11();
+  float r12 = request->pose().r12();
+  float r13 = request->pose().r13();
+  float r21 = request->pose().r21();
+  float r22 = request->pose().r22();
+  float r23 = request->pose().r23();
+  float r31 = request->pose().r31();
+  float r32 = request->pose().r32();
+  float r33 = request->pose().r33();
+  float x = request->pose().x();
+  float y = request->pose().y();
+  float z = request->pose().z();
+  Transform pose(r11, r12, r13, x, //
+                 r21, r22, r23, y, //
+                 r31, r32, r33, z);
 
   Session session;
   session.id = request->session().id();
@@ -77,19 +77,17 @@ grpc::Status SignatureSearchServer::onWord(grpc::ServerContext *context,
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
-  session.signaturesStart = getTime();
-  std::vector<int> signatureIds = _signatureSearch->search(wordIds);
-  session.signaturesEnd = getTime();
+  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
 
-  PerspectiveClient client(_channel);
-  client.onSignature(wordIds, keyPoints, camera, signatureIds, session);
+  HTTPClient client(_channel);
+  client.onDetection(names, session);
 
   return grpc::Status::OK;
 }
 
 // There is no shutdown handling in this code.
-void SignatureSearchServer::run() {
-  std::string server_address("0.0.0.0:50053");
+void VisibilityServer::run() {
+  std::string server_address("0.0.0.0:50055");
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

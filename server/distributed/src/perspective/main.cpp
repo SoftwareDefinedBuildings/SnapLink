@@ -2,7 +2,7 @@
 #include "data/LabelsSimple.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "remain/RemainServer.h"
+#include "perspective/PerspectiveServer.h"
 #include <cstdio>
 #include <grpc++/grpc++.h>
 #include <utility>
@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     dbfiles.emplace_back(argv[i]);
   }
 
-  RemainServer server;
+  PerspectiveServer server;
   if (!server.init(dbfiles)) {
     return 1;
   }

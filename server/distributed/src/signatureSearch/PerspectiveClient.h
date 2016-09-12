@@ -1,4 +1,4 @@
-#include "RemainService.grpc.pb.h"
+#include "PerspectiveService.grpc.pb.h"
 #include "data/CameraModel.h"
 #include "data/Session.h"
 #include <grpc++/grpc++.h>
@@ -6,9 +6,9 @@
 #include <memory>
 #include <string>
 
-class RemainClient {
+class PerspectiveClient {
 public:
-  explicit RemainClient(std::shared_ptr<grpc::Channel> channel);
+  explicit PerspectiveClient(std::shared_ptr<grpc::Channel> channel);
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
@@ -21,5 +21,5 @@ public:
 private:
   // Out of the passed in Channel comes the stub, stored here, our view of the
   // server's exposed services.
-  std::unique_ptr<proto::RemainService::Stub> stub_;
+  std::unique_ptr<proto::PerspectiveService::Stub> stub_;
 };

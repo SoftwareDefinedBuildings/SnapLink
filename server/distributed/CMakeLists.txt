@@ -55,6 +55,8 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Descriptor.pb.h"
     "${GENERATED_PROTOBUF_PATH}/Descriptor.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Transform.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/Transform.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.h"
@@ -64,7 +66,9 @@ SET(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc")
+    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/LocationMessage.pb.h"
+    "${GENERATED_PROTOBUF_PATH}/LocationMessage.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_PROTO_SOURCES}
@@ -99,10 +103,14 @@ SET(GENERATED_GRPC_SOURCES
     "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
     "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.h"
     "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
-    "${GENERATED_GRPC_PATH}/RemainService.pb.h"
-    "${GENERATED_GRPC_PATH}/RemainService.pb.cc"
-    "${GENERATED_GRPC_PATH}/RemainService.grpc.pb.h"
-    "${GENERATED_GRPC_PATH}/RemainService.grpc.pb.cc")
+    "${GENERATED_GRPC_PATH}/PerspectiveService.pb.h"
+    "${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
+    "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.h"
+    "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/VisibilityService.pb.h"
+    "${GENERATED_GRPC_PATH}/VisibilityService.pb.cc"
+    "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.h"
+    "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.cc")
 
 ADD_CUSTOM_COMMAND(
     OUTPUT ${GENERATED_GRPC_SOURCES}
@@ -222,7 +230,7 @@ SET(SignatureSearch_SOURCES
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
     "src/signatureSearch/SignatureSearchServer.cpp"
-    "src/signatureSearch/RemainClient.cpp"
+    "src/signatureSearch/PerspectiveClient.cpp"
     "src/signatureSearch/main.cpp")
 
 ADD_EXECUTABLE(signaturesearch ${SignatureSearch_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
@@ -231,8 +239,8 @@ TARGET_LINK_LIBRARIES(signaturesearch ${LIBRARIES} grpc++_unsecure grpc gpr)
 
 SET_PROPERTY(TARGET signaturesearch PROPERTY CXX_STANDARD 11)
 
-# Remain
-SET(Remain_SOURCES
+# Perspective
+SET(Perspective_SOURCES
     "../lib/util/Time.cpp"
     "../lib/util/Utility.cpp"
     "../lib/adapter/RTABMapDBAdapter.cpp"
@@ -249,12 +257,40 @@ SET(Remain_SOURCES
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
-    "src/remain/RemainServer.cpp"
-    "src/remain/HTTPClient.cpp"
-    "src/remain/main.cpp")
+    "src/perspective/PerspectiveServer.cpp"
+    "src/perspective/VisibilityClient.cpp"
+    "src/perspective/main.cpp")
 
-ADD_EXECUTABLE(remain ${Remain_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
+ADD_EXECUTABLE(perspective ${Perspective_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
 
-TARGET_LINK_LIBRARIES(remain ${LIBRARIES} grpc++_unsecure grpc gpr)
+TARGET_LINK_LIBRARIES(perspective ${LIBRARIES} grpc++_unsecure grpc gpr)
 
-SET_PROPERTY(TARGET remain PROPERTY CXX_STANDARD 11)
+SET_PROPERTY(TARGET perspective PROPERTY CXX_STANDARD 11)
+
+# Visibility
+SET(Visibility_SOURCES
+    "../lib/util/Time.cpp"
+    "../lib/util/Utility.cpp"
+    "../lib/adapter/RTABMapDBAdapter.cpp"
+    "../lib/data/SignaturesSimple.cpp"
+    "../lib/data/Transform.cpp"
+    "../lib/data/LabelsSimple.cpp"
+    "../lib/data/Label.cpp"
+    "../lib/data/Signature.cpp"
+    "../lib/data/Word.cpp"
+    "../lib/data/CameraModel.cpp"
+    "../lib/data/WordsKdTree.cpp"
+    "../lib/algo/SignatureSearch.cpp"
+    "../lib/algo/WordSearch.cpp"
+    "../lib/algo/Visibility.cpp"
+    "../lib/algo/Feature.cpp"
+    "../lib/algo/Perspective.cpp"
+    "src/visibility/VisibilityServer.cpp"
+    "src/visibility/HTTPClient.cpp"
+    "src/visibility/main.cpp")
+
+ADD_EXECUTABLE(visibility ${Visibility_SOURCES} ${GENERATED_PROTO_SOURCES} ${GENERATED_GRPC_SOURCES})
+
+TARGET_LINK_LIBRARIES(visibility ${LIBRARIES} grpc++_unsecure grpc gpr)
+
+SET_PROPERTY(TARGET visibility PROPERTY CXX_STANDARD 11)

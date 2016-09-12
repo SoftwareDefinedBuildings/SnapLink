@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "LocationMessage.proto";
+import "Empty.proto";
+
+package proto;
+
+service VisibilityService {
+  rpc onLocation(LocationMessage) returns (Empty) {}
+}
