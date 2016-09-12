@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "Session.proto";
+
+package proto;
+
+message DetectionMessage {
+  repeated string names = 1; 
+  Session session = 2;
+}

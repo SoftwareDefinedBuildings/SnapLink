@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "KeyPoint.proto";
+import "CameraModel.proto";
+import "Session.proto";
+
+package proto;
+
+message SignatureMessage {
+  repeated int32 wordIds = 1;
+  repeated KeyPoint keyPoints = 2;
+  CameraModel cameraModel = 3;
+  repeated int32 signatureIds = 4;
+  Session session = 5;
+}

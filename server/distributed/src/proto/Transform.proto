@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package proto;
+
+message Transform {
+  float r11 = 1;
+  float r12 = 2;
+  float r13 = 3;
+  float r21 = 4;
+  float r22 = 5;
+  float r23 = 6;
+  float r31 = 7;
+  float r32 = 8;
+  float r33 = 9;
+  float x = 10;
+  float y = 11;
+  float z = 12;
+}

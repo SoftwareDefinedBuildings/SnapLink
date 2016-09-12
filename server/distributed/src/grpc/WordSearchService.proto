@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+import "FeatureMessage.proto";
+import "Empty.proto";
+
+package proto;
+
+service WordSearchService {
+  rpc onFeature(FeatureMessage) returns (Empty) {}
+}

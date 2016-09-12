@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+import "KeyPoint.proto";
+import "Descriptor.proto";
+import "CameraModel.proto";
+import "Session.proto";
+
+package proto;
+
+message FeatureMessage {
+  repeated KeyPoint keyPoints = 1;
+  repeated Descriptor descriptors = 2;
+  CameraModel cameraModel = 3;
+  Session session = 4;
+}

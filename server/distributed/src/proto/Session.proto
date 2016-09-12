@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package proto;
+
+message Session {
+  uint64 id =1;
+
+  enum Type {
+    HTTP_POST = 0;
+    BOSSWAVE = 1;
+  }
+  Type type = 2;
+
+  uint64 overallStart = 3;
+  uint64 overallEnd = 4;
+  uint64 featuresStart = 5;
+  uint64 featuresEnd = 6;
+  uint64 wordsStart = 7;
+  uint64 wordsEnd = 8;
+  uint64 signaturesStart = 9;
+  uint64 signaturesEnd = 10;
+  uint64 perspectiveStart = 11;
+  uint64 perspectiveEnd = 12;
+}
