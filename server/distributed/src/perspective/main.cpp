@@ -7,11 +7,13 @@ int main(int argc, char *argv[]) {
   }
 
   PerspectiveServer server;
-  if (!server.init(dbfiles)) {
+  std::string visibilityServerAddr = "0.0.0.0:50055";
+  if (!server.init(visibilityServerAddr, dbfiles)) {
     return 1;
   }
 
-  server.run();
+  std::string perspectiveServerAddr = "0.0.0.0:50054";
+  server.run(perspectiveServerAddr);
 
   return 0;
 }

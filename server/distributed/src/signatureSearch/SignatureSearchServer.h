@@ -5,11 +5,12 @@
 class SignatureSearchServer final
     : public proto::SignatureSearchService::Service {
 public:
-  bool init(std::vector<std::string> dbfiles);
+  bool init(std::string perspectiveServerAddr,
+            std::vector<std::string> dbfiles);
   grpc::Status onWord(grpc::ServerContext *context,
                       const proto::WordMessage *request,
                       proto::Empty *response) override;
-  void run();
+  void run(std::string signatureSearchServerAddr);
 
 private:
   std::unique_ptr<SignatureSearch> _signatureSearch;

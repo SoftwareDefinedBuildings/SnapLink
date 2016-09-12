@@ -43,7 +43,7 @@ public:
   HTTPServer();
   ~HTTPServer();
 
-  bool init(std::string featureAddr, uint16_t port = PORT,
+  bool init(std::string featureServerAddr, uint16_t port = PORT,
             unsigned int maxClients = MAX_CLIENTS);
   grpc::Status onDetection(grpc::ServerContext *context,
                            const proto::DetectionMessage *request,

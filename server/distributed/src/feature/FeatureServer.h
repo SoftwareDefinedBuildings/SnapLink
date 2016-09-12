@@ -4,11 +4,11 @@
 
 class FeatureServer final : public proto::FeatureService::Service {
 public:
-  bool init();
+  bool init(std::string wordSearchServerAddr);
   grpc::Status onQuery(grpc::ServerContext *context,
                        const proto::QueryMessage *request,
                        proto::Empty *response) override;
-  void run();
+  void run(std::string featureServerAddr);
 
 private:
   std::unique_ptr<Feature> _feature;

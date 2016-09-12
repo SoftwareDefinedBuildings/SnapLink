@@ -4,8 +4,8 @@
 #include "data/Session.h"
 #include "util/Time.h"
 
-bool FeatureServer::init() {
-  _channel = grpc::CreateChannel("localhost:50052",
+bool FeatureServer::init(std::string wordSearchServerAddr) {
+  _channel = grpc::CreateChannel(wordSearchServerAddr,
                                  grpc::InsecureChannelCredentials());
 
   _feature.reset(new Feature());
@@ -59,8 +59,8 @@ grpc::Status FeatureServer::onQuery(grpc::ServerContext *context,
 }
 
 // There is no shutdown handling in this code.
-void FeatureServer::run() {
-  std::string server_address("0.0.0.0:50051");
+void FeatureServer::run(std::string featureServerAddr) {
+  std::string server_address(featureServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

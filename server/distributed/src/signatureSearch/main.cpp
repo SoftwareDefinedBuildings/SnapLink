@@ -7,11 +7,13 @@ int main(int argc, char *argv[]) {
   }
 
   SignatureSearchServer server;
-  if (!server.init(dbfiles)) {
+  std::string perspectiveServerAddr = "0.0.0.0:50054";
+  if (!server.init(perspectiveServerAddr, dbfiles)) {
     return 1;
   }
 
-  server.run();
+  std::string signatureSearchServerAddr = "0.0.0.0:50053";
+  server.run(signatureSearchServerAddr);
 
   return 0;
 }

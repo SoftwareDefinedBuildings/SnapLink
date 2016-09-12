@@ -4,11 +4,11 @@
 
 class VisibilityServer final : public proto::VisibilityService::Service {
 public:
-  bool init(std::vector<std::string> dbfiles);
+  bool init(std::string frontServerAddr, std::vector<std::string> dbfiles);
   grpc::Status onLocation(grpc::ServerContext *context,
                           const proto::LocationMessage *request,
                           proto::Empty *response) override;
-  void run();
+  void run(std::string visibilityServerAddr);
 
 private:
   std::unique_ptr<Visibility> _visibility;

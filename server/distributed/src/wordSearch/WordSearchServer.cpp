@@ -9,8 +9,9 @@
 #include "util/Time.h"
 #include <QDebug>
 
-bool WordSearchServer::init(std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel("localhost:50053",
+bool WordSearchServer::init(std::string signatureSearchServerAddr,
+                            std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel(signatureSearchServerAddr,
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -95,8 +96,8 @@ grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
 }
 
 // There is no shutdown handling in this code.
-void WordSearchServer::run() {
-  std::string server_address("0.0.0.0:50052");
+void WordSearchServer::run(std::string wordSearchServerAddr) {
+  std::string server_address(wordSearchServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

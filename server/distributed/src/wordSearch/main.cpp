@@ -6,12 +6,14 @@ int main(int argc, char *argv[]) {
     dbfiles.emplace_back(argv[i]);
   }
 
+  std::string signatureSearchServerAddr = "0.0.0.0:50053";
   WordSearchServer server;
-  if (!server.init(dbfiles)) {
+  if (!server.init(signatureSearchServerAddr, dbfiles)) {
     return 1;
   }
 
-  server.run();
+  std::string wordSearchServerAddr = "0.0.0.0:50052";
+  server.run(wordSearchServerAddr);
 
   return 0;
 }

@@ -4,11 +4,11 @@
 
 class WordSearchServer final : public proto::WordSearchService::Service {
 public:
-  bool init(std::vector<std::string> dbfiles);
+  bool init(std::string signatureSearchAddr, std::vector<std::string> dbfiles);
   grpc::Status onFeature(grpc::ServerContext *context,
                          const proto::FeatureMessage *request,
                          proto::Empty *response) override;
-  void run();
+  void run(std::string wordSearchAddr);
 
 private:
   std::unique_ptr<WordSearch> _wordSearch;

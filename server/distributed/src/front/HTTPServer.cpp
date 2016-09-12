@@ -19,12 +19,12 @@ HTTPServer::~HTTPServer() {
   _numClients = 0;
 }
 
-bool HTTPServer::init(std::string featureAddr, uint16_t port,
+bool HTTPServer::init(std::string featureServerAddr, uint16_t port,
                       unsigned int maxClients) {
   _gen = std::mt19937(std::random_device()());
   _maxClients = maxClients;
-  _channel =
-      grpc::CreateChannel(featureAddr, grpc::InsecureChannelCredentials());
+  _channel = grpc::CreateChannel(featureServerAddr,
+                                 grpc::InsecureChannelCredentials());
 
   // start MHD daemon, listening on port
   unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;

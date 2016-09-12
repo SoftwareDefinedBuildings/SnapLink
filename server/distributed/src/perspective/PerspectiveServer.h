@@ -4,11 +4,11 @@
 
 class PerspectiveServer final : public proto::PerspectiveService::Service {
 public:
-  bool init(std::vector<std::string> dbfiles);
+  bool init(std::string visibilityServerAddr, std::vector<std::string> dbfiles);
   grpc::Status onSignature(grpc::ServerContext *context,
                            const proto::SignatureMessage *request,
                            proto::Empty *response) override;
-  void run();
+  void run(std::string perspectiveServerAddr);
 
 private:
   std::unique_ptr<Perspective> _perspective;

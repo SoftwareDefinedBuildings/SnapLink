@@ -9,8 +9,9 @@
 #include "util/Time.h"
 #include <QDebug>
 
-bool PerspectiveServer::init(std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel("localhost:50055",
+bool PerspectiveServer::init(std::string visibilityServerAddr,
+                             std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel(visibilityServerAddr,
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -95,8 +96,8 @@ PerspectiveServer::onSignature(grpc::ServerContext *context,
 }
 
 // There is no shutdown handling in this code.
-void PerspectiveServer::run() {
-  std::string server_address("0.0.0.0:50054");
+void PerspectiveServer::run(std::string perspectiveServerAddr) {
+  std::string server_address(perspectiveServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

@@ -9,9 +9,10 @@
 #include "util/Time.h"
 #include <QDebug>
 
-bool VisibilityServer::init(std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel("localhost:50056",
-                                 grpc::InsecureChannelCredentials());
+bool VisibilityServer::init(std::string frontServerAddr,
+                            std::vector<std::string> dbfiles) {
+  _channel =
+      grpc::CreateChannel(frontServerAddr, grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
   std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
@@ -84,8 +85,8 @@ grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
 }
 
 // There is no shutdown handling in this code.
-void VisibilityServer::run() {
-  std::string server_address("0.0.0.0:50055");
+void VisibilityServer::run(std::string visibilityServerAddr) {
+  std::string server_address(visibilityServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
