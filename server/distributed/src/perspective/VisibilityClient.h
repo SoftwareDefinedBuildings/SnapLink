@@ -1,11 +1,9 @@
 #include "VisibilityService.grpc.pb.h"
-#include "data/CameraModel.h"
-#include "data/Session.h"
-#include "data/Transform.h"
 #include <grpc++/grpc++.h>
-#include <iostream>
-#include <memory>
-#include <string>
+
+class CameraModel;
+class Transform;
+class Session;
 
 class VisibilityClient {
 public:

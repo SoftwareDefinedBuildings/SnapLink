@@ -1,11 +1,4 @@
-#include "adapter/RTABMapDBAdapter.h"
-#include "data/LabelsSimple.h"
-#include "data/SignaturesSimple.h"
-#include "data/WordsKdTree.h"
-#include "visibility/VisibilityServer.h"
-#include <cstdio>
-#include <grpc++/grpc++.h>
-#include <utility>
+#include "VisibilityServer.h"
 
 int main(int argc, char *argv[]) {
   std::vector<std::string> dbfiles;

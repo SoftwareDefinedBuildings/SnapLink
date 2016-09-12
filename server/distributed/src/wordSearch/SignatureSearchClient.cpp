@@ -1,10 +1,9 @@
-#include "wordSearch/SignatureSearchClient.h"
+#include "SignatureSearchClient.h"
 #include "WordMessage.pb.h"
+#include "data/CameraModel.h"
+#include "data/Session.h"
 #include <iostream>
 #include <memory>
-#include <string>
-
-#include <grpc++/grpc++.h>
 
 SignatureSearchClient::SignatureSearchClient(
     std::shared_ptr<grpc::Channel> channel)

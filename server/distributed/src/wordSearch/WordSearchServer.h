@@ -1,8 +1,4 @@
 #include "WordSearchService.grpc.pb.h"
-#include "algo/Feature.h"
-#include "algo/Perspective.h"
-#include "algo/SignatureSearch.h"
-#include "algo/Visibility.h"
 #include "algo/WordSearch.h"
 #include <grpc++/grpc++.h>
 

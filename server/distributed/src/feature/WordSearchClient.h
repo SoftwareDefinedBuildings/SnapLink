@@ -1,11 +1,12 @@
-#include "FeatureMessage.pb.h"
 #include "WordSearchService.grpc.pb.h"
-#include "data/CameraModel.h"
-#include "data/Session.h"
 #include <grpc++/grpc++.h>
 #include <iostream>
 #include <memory>
+#include <opencv2/core/types.hpp>
 #include <string>
+
+class CameraModel;
+class Session;
 
 class WordSearchClient {
 public:

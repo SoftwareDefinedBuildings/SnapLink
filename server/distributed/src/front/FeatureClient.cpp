@@ -1,9 +1,9 @@
-#include "front/FeatureClient.h"
+#include "FeatureClient.h"
+#include "data/CameraModel.h"
+#include "data/Session.h"
 #include <iostream>
 #include <memory>
 #include <string>
-
-#include <grpc++/grpc++.h>
 
 FeatureClient::FeatureClient(std::shared_ptr<grpc::Channel> channel)
     : stub_(proto::FeatureService::NewStub(channel)) {}

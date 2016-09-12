@@ -1,8 +1,4 @@
 #include "FeatureServer.h"
-#include "adapter/RTABMapDBAdapter.h"
-#include <cstdio>
-#include <grpc++/grpc++.h>
-#include <utility>
 
 int main() {
   FeatureServer server;

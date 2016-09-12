@@ -1,15 +1,13 @@
-#include "perspective/PerspectiveServer.h"
+#include "PerspectiveServer.h"
+#include "VisibilityClient.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
-#include "perspective/VisibilityClient.h"
 #include "util/Time.h"
 #include <QDebug>
-#include <opencv2/core/core.hpp>
-#include <opencv2/opencv.hpp>
 
 bool PerspectiveServer::init(std::vector<std::string> dbfiles) {
   _channel = grpc::CreateChannel("localhost:50055",

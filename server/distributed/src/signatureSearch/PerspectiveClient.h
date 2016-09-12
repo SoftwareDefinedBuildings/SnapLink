@@ -1,10 +1,10 @@
 #include "PerspectiveService.grpc.pb.h"
-#include "data/CameraModel.h"
-#include "data/Session.h"
 #include <grpc++/grpc++.h>
-#include <iostream>
 #include <memory>
-#include <string>
+#include <opencv2/core/types.hpp>
+
+class CameraModel;
+class Session;
 
 class PerspectiveClient {
 public:

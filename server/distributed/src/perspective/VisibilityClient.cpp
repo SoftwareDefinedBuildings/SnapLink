@@ -1,9 +1,9 @@
-#include "perspective/VisibilityClient.h"
+#include "VisibilityClient.h"
+#include "data/CameraModel.h"
+#include "data/Session.h"
+#include "data/Transform.h"
 #include <iostream>
 #include <memory>
-#include <string>
-
-#include <grpc++/grpc++.h>
 
 VisibilityClient::VisibilityClient(std::shared_ptr<grpc::Channel> channel)
     : stub_(proto::VisibilityService::NewStub(channel)) {}

@@ -1,8 +1,5 @@
 #include "SignatureSearchService.grpc.pb.h"
-#include "algo/Perspective.h"
 #include "algo/SignatureSearch.h"
-#include "algo/Visibility.h"
-#include "algo/WordSearch.h"
 #include <grpc++/grpc++.h>
 
 class SignatureSearchServer final

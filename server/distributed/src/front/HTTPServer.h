@@ -4,11 +4,10 @@
 #include "data/Session.h"
 #include <QSemaphore>
 #include <grpc++/grpc++.h>
-#include <grpc++/grpc++.h>
 #include <memory>
 #include <microhttpd.h>
 #include <mutex>
-#include <opencv2/core/core.hpp>
+#include <opencv2/core/types.hpp>
 #include <random>
 
 #define PORT 8080
@@ -44,11 +43,12 @@ public:
   HTTPServer();
   ~HTTPServer();
 
-  bool init(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
+  bool init(std::string featureAddr, uint16_t port = PORT,
+            unsigned int maxClients = MAX_CLIENTS);
   grpc::Status onDetection(grpc::ServerContext *context,
                            const proto::DetectionMessage *request,
                            proto::Empty *response) override;
-  void run();
+  void run(std::string httpServerAddr);
 
   int getMaxClients() const;
   int getNumClients() const;

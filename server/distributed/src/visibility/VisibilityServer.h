@@ -1,5 +1,4 @@
 #include "VisibilityService.grpc.pb.h"
-#include "algo/Perspective.h"
 #include "algo/Visibility.h"
 #include <grpc++/grpc++.h>
 

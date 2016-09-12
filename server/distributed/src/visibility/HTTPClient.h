@@ -1,10 +1,7 @@
 #include "FrontService.grpc.pb.h"
-#include "data/CameraModel.h"
-#include "data/Session.h"
 #include <grpc++/grpc++.h>
-#include <iostream>
-#include <memory>
-#include <string>
+
+class Session;
 
 class HTTPClient {
 public:

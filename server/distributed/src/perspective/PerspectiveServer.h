@@ -1,6 +1,5 @@
 #include "PerspectiveService.grpc.pb.h"
 #include "algo/Perspective.h"
-#include "algo/Visibility.h"
 #include <grpc++/grpc++.h>
 
 class PerspectiveServer final : public proto::PerspectiveService::Service {

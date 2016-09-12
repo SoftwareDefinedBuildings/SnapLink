@@ -1,9 +1,7 @@
-#include "signatureSearch/PerspectiveClient.h"
+#include "PerspectiveClient.h"
 #include "SignatureMessage.pb.h"
-#include <iostream>
-#include <memory>
-#include <string>
-
+#include "data/CameraModel.h"
+#include "data/Session.h"
 #include <grpc++/grpc++.h>
 
 PerspectiveClient::PerspectiveClient(std::shared_ptr<grpc::Channel> channel)

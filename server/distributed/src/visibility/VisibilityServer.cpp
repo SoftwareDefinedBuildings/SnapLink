@@ -1,4 +1,5 @@
-#include "visibility/VisibilityServer.h"
+#include "VisibilityServer.h"
+#include "HTTPClient.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
@@ -6,10 +7,7 @@
 #include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
 #include "util/Time.h"
-#include "visibility/HTTPClient.h"
 #include <QDebug>
-#include <opencv2/core/core.hpp>
-#include <opencv2/opencv.hpp>
 
 bool VisibilityServer::init(std::vector<std::string> dbfiles) {
   _channel = grpc::CreateChannel("localhost:50056",

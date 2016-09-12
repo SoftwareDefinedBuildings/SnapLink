@@ -1,9 +1,5 @@
-#include "visibility/HTTPClient.h"
-#include <iostream>
-#include <memory>
-#include <string>
-
-#include <grpc++/grpc++.h>
+#include "HTTPClient.h"
+#include "data/Session.h"
 
 HTTPClient::HTTPClient(std::shared_ptr<grpc::Channel> channel)
     : stub_(proto::FrontService::NewStub(channel)) {}

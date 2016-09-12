@@ -1,11 +1,9 @@
-#include "front/HTTPServer.h"
+#include "HTTPServer.h"
+#include "FeatureClient.h"
 #include "data/CameraModel.h"
-#include "front/FeatureClient.h"
 #include "util/Time.h"
-#include <QCoreApplication>
 #include <cstdlib>
-#include <string.h>
-#include <strings.h>
+#include <cstring>
 
 const std::string HTTPServer::busypage =
     "This server is busy, please try again later.";
@@ -21,11 +19,12 @@ HTTPServer::~HTTPServer() {
   _numClients = 0;
 }
 
-bool HTTPServer::init(uint16_t port, unsigned int maxClients) {
+bool HTTPServer::init(std::string featureAddr, uint16_t port,
+                      unsigned int maxClients) {
   _gen = std::mt19937(std::random_device()());
   _maxClients = maxClients;
-  _channel = grpc::CreateChannel("localhost:50051",
-                                 grpc::InsecureChannelCredentials());
+  _channel =
+      grpc::CreateChannel(featureAddr, grpc::InsecureChannelCredentials());
 
   // start MHD daemon, listening on port
   unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;
@@ -76,8 +75,8 @@ grpc::Status HTTPServer::onDetection(grpc::ServerContext *context,
   return grpc::Status::OK;
 }
 
-void HTTPServer::run() {
-  std::string server_address("0.0.0.0:50056");
+void HTTPServer::run(std::string httpServerAddr) {
+  std::string server_address(httpServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

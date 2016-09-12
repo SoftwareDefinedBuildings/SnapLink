@@ -1,19 +1,19 @@
 cmake_minimum_required(VERSION 3.1.0)
-PROJECT(CellMate)
+project(CellMate)
 
-SET(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOMOC ON)
 
-FIND_PACKAGE(Qt5Core REQUIRED)
-FIND_PACKAGE(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
-FIND_PACKAGE(PCL 1.8 REQUIRED COMPONENTS common)
-FIND_PACKAGE(RTABMap REQUIRED)
+find_package(Qt5Core REQUIRED)
+find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
+find_package(PCL 1.8 REQUIRED COMPONENTS common)
+find_package(RTABMap REQUIRED)
 
-SET(MHD_INCLUDE_DIRS "/usr/include/")
-SET(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
+set(MHD_INCLUDE_DIRS "/usr/include/")
+set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
-SET(CellMate_INCLUDE_DIRS "../lib" "src")
+set(CellMate_INCLUDE_DIRS "../lib" "src")
 
-SET(INCLUDE_DIRS
+set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
@@ -21,7 +21,7 @@ SET(INCLUDE_DIRS
     ${MHD_INCLUDE_DIRS}
 )
 
-SET(LIBRARIES
+set(LIBRARIES
     ${Qt5Core_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
@@ -29,10 +29,10 @@ SET(LIBRARIES
     ${MHD_LIBRARIES}
 )
 
-INCLUDE_DIRECTORIES(SYSTEM ${INCLUDE_DIRS})
-INCLUDE_DIRECTORIES(${CellMate_INCLUDE_DIRS})
+include_directories(SYSTEM ${INCLUDE_DIRS})
+include_directories(${CellMate_INCLUDE_DIRS})
 
-SET(SOURCES
+set(SOURCES
     "../lib/util/Time.cpp"
     "../lib/util/Utility.cpp"
     "../lib/adapter/RTABMapDBAdapter.cpp"
@@ -64,10 +64,10 @@ SET(SOURCES
     "src/stage/FeatureStage.cpp"
     "src/main.cpp")
 
-ADD_EXECUTABLE(cellmate ${SOURCES})
+add_executable(cellmate ${SOURCES})
 
-TARGET_LINK_LIBRARIES(cellmate ${LIBRARIES})
+target_link_libraries(cellmate ${LIBRARIES})
 
-SET_PROPERTY(TARGET cellmate PROPERTY CXX_STANDARD 11)
+set_property(TARGET cellmate PROPERTY CXX_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")

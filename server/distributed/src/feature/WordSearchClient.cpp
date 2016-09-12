@@ -1,4 +1,7 @@
-#include "feature/WordSearchClient.h"
+#include "WordSearchClient.h"
+#include "FeatureMessage.pb.h"
+#include "data/CameraModel.h"
+#include "data/Session.h"
 #include <cassert>
 #include <iostream>
 #include <memory>
