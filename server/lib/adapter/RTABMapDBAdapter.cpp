@@ -135,7 +135,8 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
   for (auto &rtabmapWord : rtabmapWords) {
     int id = rtabmapWord->id();
     const cv::Mat &descriptor = rtabmapWord->getDescriptor();
-    words.emplace_back(std::unique_ptr<Word>(new Word(id, descriptor)));
+    const std::map<int, int> &references = rtabmapWord->getReferences();
+    words.emplace_back(std::unique_ptr<Word>(new Word(id, descriptor, references)));
     delete rtabmapWord;
     rtabmapWord = nullptr;
   }
@@ -305,8 +306,9 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::mergeWords(
 
       int newId = wordIdIter->second;
       const cv::Mat &descriptor = word->getDescriptor();
+      const std::map<int, int> &references = word->getReferences();
       mergedWords.emplace_back(
-          std::unique_ptr<Word>(new Word(newId, descriptor)));
+          std::unique_ptr<Word>(new Word(newId, descriptor, references)));
     }
   }
   return mergedWords;
