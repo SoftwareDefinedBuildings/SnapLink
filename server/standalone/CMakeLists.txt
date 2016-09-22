@@ -5,8 +5,12 @@ set(CMAKE_AUTOMOC ON)
 
 find_package(Qt5Core REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
-find_package(PCL 1.8 REQUIRED COMPONENTS common)
+find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
+
+#set(Qt5_INCLUDE_DIRS "/usr/include/qt5/")
+#set(Qt5Core_INCLUDE_DIRS "/usr/include/qt5/QtCore/")
+#set(Qt5Core_LIBRARIES "/usr/lib/x86_64-linux-gnu/libQt5Core.so")
 
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
@@ -14,6 +18,7 @@ set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 set(CellMate_INCLUDE_DIRS "../lib" "src")
 
 set(INCLUDE_DIRS
+    ${Qt5_INCLUDE_DIRS}
     ${Qt5Core_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}

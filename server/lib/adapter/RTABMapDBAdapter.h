@@ -9,6 +9,7 @@
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/Signature.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/VisualWord.h>
 #include <set>
 #include <typeinfo>
 
@@ -30,7 +31,7 @@ private:
   static std::list<std::unique_ptr<Word>> readWords(
       const std::string &dbPath, int dbId,
       const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-          &signatures);
+          &allSignatures);
   static std::list<std::unique_ptr<Label>> readLabels(
       const std::string &dbPath, int dbId,
       const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
@@ -43,6 +44,11 @@ private:
       const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
           &allSignatures,
       int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld);
+  static std::vector<cv::Point3f> getWordPoints3(
+      const rtabmap::VisualWord &word, int dbId,
+      const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
+          &allSignatures);
+  static std::vector<pcl::PointXYZ> clusterPoints3(const std::vector<pcl::PointXYZ> &points3);
 
   static std::map<std::pair<int, int>, int> getMergeWordsIdMap(
       const std::map<int, std::list<std::unique_ptr<Word>>> &allWords);

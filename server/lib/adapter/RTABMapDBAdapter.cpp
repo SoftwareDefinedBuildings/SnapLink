@@ -8,12 +8,14 @@
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/SensorData.h>
-#include <rtabmap/core/VisualWord.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/utilite/UStl.h>
 #include <sqlite3.h>
@@ -21,6 +23,13 @@
 bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
                                 Words &words, Signatures &signatures,
                                 Labels &labels) {
+  std::ofstream pRawFile;
+  pRawFile.open("points_raw.txt");
+  pRawFile.close();
+  std::ofstream pCookedFile;
+  pCookedFile.open("points_cooked.txt");
+  pCookedFile.close();
+
   // Read data from databases
   std::map<int, std::list<std::unique_ptr<Word>>> allWords;
   std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
@@ -108,7 +117,7 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
 std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
     const std::string &dbPath, int dbId,
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-        &signatures) {
+        &allSignatures) {
   std::list<std::unique_ptr<Word>> words;
 
   rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
@@ -121,8 +130,8 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
   // Read words from database
   qDebug() << "Read words from database...";
   std::set<int> wordIds;
-  const auto &iter = signatures.find(dbId);
-  assert(iter != signatures.end());
+  const auto &iter = allSignatures.find(dbId);
+  assert(iter != allSignatures.end());
   for (const auto &signature : iter->second) {
     const std::multimap<int, cv::KeyPoint> &signatureWords =
         signature.second->getWords();
@@ -133,10 +142,13 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
   std::list<rtabmap::VisualWord *> rtabmapWords;
   dbDriver->loadWords(wordIds, rtabmapWords);
   for (auto &rtabmapWord : rtabmapWords) {
+    assert(rtabmapWord != nullptr);
     int id = rtabmapWord->id();
     const cv::Mat &descriptor = rtabmapWord->getDescriptor();
-    const std::map<int, int> &references = rtabmapWord->getReferences();
-    words.emplace_back(std::unique_ptr<Word>(new Word(id, descriptor, references)));
+    const std::vector<cv::Point3f> &points3 =
+        getWordPoints3(*rtabmapWord, dbId, allSignatures);
+    words.emplace_back(
+        std::unique_ptr<Word>(new Word(id, descriptor, points3)));
     delete rtabmapWord;
     rtabmapWord = nullptr;
   }
@@ -258,6 +270,70 @@ bool RTABMapDBAdapter::getPoint3World(
   return true;
 }
 
+std::vector<cv::Point3f> RTABMapDBAdapter::getWordPoints3(
+    const rtabmap::VisualWord &word, int dbId,
+    const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
+        &allSignatures) {
+  std::vector<pcl::PointXYZ> points3PCL;
+
+  std::ofstream pRawFile;
+  pRawFile.open("points_raw.txt", std::ofstream::app);
+  const auto &iter = allSignatures.find(dbId);
+  assert(iter != allSignatures.end());
+  const auto &dbSignatures = iter->second;
+  for (const auto &dbSignature : dbSignatures) {
+    const rtabmap::Transform &pose = dbSignature.second->getPose();
+    const auto &range = dbSignature.second->getWords3().equal_range(word.id());
+    for (auto jter = range.first; jter != range.second; jter++) {
+      const cv::Point3f &localPointCV = jter->second;
+      pcl::PointXYZ localPointPCL(localPointCV.x, localPointCV.y,
+                                  localPointCV.z);
+      pcl::PointXYZ globalPointPCL =
+          pcl::transformPoint(localPointPCL, pose.toEigen3f());
+      pRawFile << globalPointPCL.x << " " << globalPointPCL.y << " " << globalPointPCL.z << " "  << pose.prettyPrint()  << " " << dbSignature.second->id() << std::endl;
+      points3PCL.emplace_back(std::move(globalPointPCL));
+    }
+  }
+
+  //points3PCL = clusterPoints3(points3PCL);
+
+  std::ofstream pCookedFile;
+  pCookedFile.open("points_cooked.txt", std::ofstream::app);
+  std::vector<cv::Point3f> points3CV;
+  for (const auto &point3PCL : points3PCL) {
+      cv::Point3f point3CV = cv::Point3f(point3PCL.x, point3PCL.y, point3PCL.z);
+      pCookedFile << point3CV.x << " " << point3CV.y << " " << point3CV.z << " " << std::endl;
+      points3CV.emplace_back(std::move(point3CV));
+  }
+  pCookedFile << std::endl;
+  pCookedFile.close();
+
+  return points3CV;
+}
+
+std::vector<pcl::PointXYZ> RTABMapDBAdapter::clusterPoints3(const std::vector<pcl::PointXYZ> &points3)
+{ 
+  std::cout << "test 1" << std::endl;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  for (const auto &point3 : points3) {
+    cloud->push_back(point3); 
+  }
+
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);  
+  tree->setInputCloud(cloud);
+
+  std::vector<pcl::PointIndices> cluster_indices;
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+  ec.setClusterTolerance(0.1); // 0.1m
+  ec.setMinClusterSize(1);
+  ec.setMaxClusterSize(100);
+  ec.setSearchMethod(tree);
+  ec.setInputCloud(cloud);
+  ec.extract(cluster_indices);
+
+  return points3;
+}
+
 std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(
     const std::map<int, std::list<std::unique_ptr<Word>>> &allWords) {
   std::map<std::pair<int, int>, int> mergeWordsIdMap;
@@ -306,9 +382,9 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::mergeWords(
 
       int newId = wordIdIter->second;
       const cv::Mat &descriptor = word->getDescriptor();
-      const std::map<int, int> &references = word->getReferences();
+      const std::vector<cv::Point3f> &points3 = word->getPoints3();
       mergedWords.emplace_back(
-          std::unique_ptr<Word>(new Word(newId, descriptor, references)));
+          std::unique_ptr<Word>(new Word(newId, descriptor, points3)));
     }
   }
   return mergedWords;
