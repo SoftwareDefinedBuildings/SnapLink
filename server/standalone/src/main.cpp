@@ -24,13 +24,12 @@ int main(int argc, char *argv[]) {
   // ULogger::setType(ULogger::kTypeConsole);
   // ULogger::setLevel(ULogger::kInfo);
   // ULogger::setLevel(ULogger::kDebug);
- std::cout << "test 1" << std::endl;
 
   std::vector<std::string> dbfiles;
   for (int i = 1; i < argc; i++) {
     dbfiles.emplace_back(argv[i]);
   }
-  
+
   QCoreApplication app(argc, argv);
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());

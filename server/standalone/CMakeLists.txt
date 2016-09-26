@@ -8,10 +8,6 @@ find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann x
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
 
-#set(Qt5_INCLUDE_DIRS "/usr/include/qt5/")
-#set(Qt5Core_INCLUDE_DIRS "/usr/include/qt5/QtCore/")
-#set(Qt5Core_LIBRARIES "/usr/lib/x86_64-linux-gnu/libQt5Core.so")
-
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
