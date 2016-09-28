@@ -3,7 +3,7 @@
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "stage/FeatureStage.h"
+#include "process/Identification.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <cstdlib>
@@ -15,13 +15,13 @@ const std::string HTTPServer::busypage =
 const std::string HTTPServer::errorpage = "This doesn't seem to be right.";
 
 HTTPServer::HTTPServer()
-    : _daemon(nullptr), _numClients(0), _featureStage(nullptr),
+    : _daemon(nullptr), _numClients(0), _identification(nullptr),
       _gen(std::random_device()()) {}
 
 HTTPServer::~HTTPServer() {
   stop();
   _numClients = 0;
-  _featureStage = nullptr;
+  _identification = nullptr;
 }
 
 bool HTTPServer::start(uint16_t port, unsigned int maxClients) {
@@ -53,8 +53,8 @@ int HTTPServer::getNumClients() const { return _numClients; }
 
 void HTTPServer::setNumClients(int numClients) { _numClients = numClients; }
 
-void HTTPServer::setFeatureStage(FeatureStage *featureStage) {
-  _featureStage = featureStage;
+void HTTPServer::setIdentification(Identification *identification) {
+  _identification = identification;
 }
 
 bool HTTPServer::event(QEvent *event) {
@@ -154,7 +154,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
         return sendPage(connection, errorpage, MHD_HTTP_BAD_REQUEST);
       }
 
-      QCoreApplication::postEvent(httpServer->_featureStage,
+      QCoreApplication::postEvent(httpServer->_identification,
                                   new QueryEvent(std::move(image),
                                                  std::move(camera),
                                                  std::move(connInfo->session)));

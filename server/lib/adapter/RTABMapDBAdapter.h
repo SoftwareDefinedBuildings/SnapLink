@@ -48,7 +48,8 @@ private:
       const rtabmap::VisualWord &word, int dbId,
       const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
           &allSignatures);
-  static std::vector<pcl::PointXYZ> clusterPoints3(const std::vector<pcl::PointXYZ> &points3);
+  static std::vector<pcl::PointXYZ>
+  clusterPoints3(const std::vector<pcl::PointXYZ> &points3);
 
   static std::map<std::pair<int, int>, int> getMergeWordsIdMap(
       const std::map<int, std::list<std::unique_ptr<Word>>> &allWords);

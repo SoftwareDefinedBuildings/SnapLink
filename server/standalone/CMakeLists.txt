@@ -52,17 +52,9 @@ set(SOURCES
     "../lib/algo/Perspective.cpp"
     "src/front/HTTPServer.cpp"
     "src/event/QueryEvent.cpp"
-    "src/event/WordEvent.cpp"
-    "src/event/FeatureEvent.cpp"
-    "src/event/LocationEvent.cpp"
-    "src/event/SignatureEvent.cpp"
     "src/event/DetectionEvent.cpp"
     "src/event/FailureEvent.cpp"
-    "src/stage/VisibilityStage.cpp"
-    "src/stage/WordSearchStage.cpp"
-    "src/stage/SignatureSearchStage.cpp"
-    "src/stage/PerspectiveStage.cpp"
-    "src/stage/FeatureStage.cpp"
+    "src/process/Identification.cpp"
     "src/main.cpp")
 
 add_executable(cellmate ${SOURCES})
