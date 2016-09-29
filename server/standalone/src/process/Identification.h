@@ -2,7 +2,6 @@
 
 #include "algo/Feature.h"
 #include "algo/PerspectiveDirect.h"
-#include "algo/SignatureSearch.h"
 #include "algo/Visibility.h"
 #include "algo/WordSearch.h"
 #include <QEvent>
@@ -31,7 +30,6 @@ private:
 
   Feature _feature;
   WordSearch _wordSearch;
-  SignatureSearch _signatureSearch;
   PerspectiveDirect _perspective;
   Visibility _visibility;
 };

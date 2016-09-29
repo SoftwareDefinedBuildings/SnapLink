@@ -8,14 +8,13 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-PerspectiveDirect::PerspectiveDirect(const std::shared_ptr<Signatures> &signatures) {
-  _signatures = signatures;
-}
+PerspectiveDirect::PerspectiveDirect(const std::shared_ptr<Words> &words)
+    : _words(words) {}
 
 void PerspectiveDirect::localize(const std::vector<int> &wordIds,
-                           const std::vector<cv::KeyPoint> &keyPoints,
-                           const CameraModel &camera, 
-                           Transform &transform) const {
+                                 const std::vector<cv::KeyPoint> &keyPoints,
+                                 const CameraModel &camera,
+                                 Transform &transform) const {
   size_t minInliers = 3;
 
   int inliersCount = 0;
@@ -73,7 +72,7 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
 
 std::multimap<int, cv::KeyPoint>
 PerspectiveDirect::createWords(const std::vector<int> &wordIds,
-                         const std::vector<cv::KeyPoint> &keyPoints) {
+                               const std::vector<cv::KeyPoint> &keyPoints) {
   std::multimap<int, cv::KeyPoint> words;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;

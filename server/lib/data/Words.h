@@ -16,6 +16,11 @@ public:
   virtual void putWords(std::list<std::unique_ptr<Word>> &&words) = 0;
 
   /**
+   * get all words
+   */
+  virtual const std::map<int, std::unique_ptr<Word>> &getWords() const = 0;
+
+  /**
    * find the indices of the nearst neighbors of descriptors
    */
   virtual std::vector<int> findNNs(const cv::Mat &descriptors) const = 0;

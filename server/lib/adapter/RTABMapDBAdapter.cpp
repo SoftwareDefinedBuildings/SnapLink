@@ -5,13 +5,13 @@
 #include "data/Words.h"
 #include "util/Time.h"
 #include <QDebug>
+#include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
-#include <pcl/io/pcd_io.h>
 #include <pcl/filters/extract_indices.h>
+#include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
-#include <pcl/common/centroid.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Memory.h>
@@ -279,7 +279,7 @@ std::vector<cv::Point3f> RTABMapDBAdapter::getWordPoints3(
 
   std::ofstream pRawFile;
   pRawFile.open("points_raw.txt", std::ofstream::app);
-  pRawFile << "word id: " <<  word.id() << std::endl;
+  pRawFile << "word id: " << word.id() << std::endl;
   const auto &iter = allSignatures.find(dbId);
   assert(iter != allSignatures.end());
   const auto &dbSignatures = iter->second;
@@ -292,7 +292,9 @@ std::vector<cv::Point3f> RTABMapDBAdapter::getWordPoints3(
                                   localPointCV.z);
       pcl::PointXYZ globalPointPCL =
           pcl::transformPoint(localPointPCL, pose.toEigen3f());
-      pRawFile << globalPointPCL.x << " " << globalPointPCL.y << " " << globalPointPCL.z << " "  << pose.prettyPrint()  << " " << dbSignature.second->id() << std::endl;
+      pRawFile << globalPointPCL.x << " " << globalPointPCL.y << " "
+               << globalPointPCL.z << " " << pose.prettyPrint() << " "
+               << dbSignature.second->id() << std::endl;
       points3PCL.emplace_back(std::move(globalPointPCL));
     }
   }
@@ -303,12 +305,13 @@ std::vector<cv::Point3f> RTABMapDBAdapter::getWordPoints3(
 
   std::ofstream pCookedFile;
   pCookedFile.open("points_cooked.txt", std::ofstream::app);
-  pCookedFile << "word id: " <<  word.id() << std::endl;
+  pCookedFile << "word id: " << word.id() << std::endl;
   std::vector<cv::Point3f> points3CV;
   for (const auto &point3PCL : points3PCL) {
-      cv::Point3f point3CV = cv::Point3f(point3PCL.x, point3PCL.y, point3PCL.z);
-      pCookedFile << point3CV.x << " " << point3CV.y << " " << point3CV.z << " " << std::endl;
-      points3CV.emplace_back(std::move(point3CV));
+    cv::Point3f point3CV = cv::Point3f(point3PCL.x, point3PCL.y, point3PCL.z);
+    pCookedFile << point3CV.x << " " << point3CV.y << " " << point3CV.z << " "
+                << std::endl;
+    points3CV.emplace_back(std::move(point3CV));
   }
   pCookedFile << std::endl;
   pCookedFile.close();
@@ -316,14 +319,15 @@ std::vector<cv::Point3f> RTABMapDBAdapter::getWordPoints3(
   return points3CV;
 }
 
-std::vector<pcl::PointXYZ> RTABMapDBAdapter::clusterPoints3(const std::vector<pcl::PointXYZ> &points3)
-{ 
+std::vector<pcl::PointXYZ>
+RTABMapDBAdapter::clusterPoints3(const std::vector<pcl::PointXYZ> &points3) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
   for (const auto &point3 : points3) {
-    cloud->push_back(point3); 
+    cloud->push_back(point3);
   }
 
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);  
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
   tree->setInputCloud(cloud);
 
   std::vector<pcl::PointIndices> clusterIndices;
@@ -335,10 +339,12 @@ std::vector<pcl::PointXYZ> RTABMapDBAdapter::clusterPoints3(const std::vector<pc
 
   std::vector<pcl::PointXYZ> clusteredPoints3;
   int j = 0;
-  for (std::vector<pcl::PointIndices>::const_iterator iter = clusterIndices.begin (); iter != clusterIndices.end(); iter++)
-  {
+  for (std::vector<pcl::PointIndices>::const_iterator iter =
+           clusterIndices.begin();
+       iter != clusterIndices.end(); iter++) {
     pcl::CentroidPoint<pcl::PointXYZ> cloudCluster;
-    for (std::vector<int>::const_iterator jter = iter->indices.begin(); jter != iter->indices.end(); jter++) {
+    for (std::vector<int>::const_iterator jter = iter->indices.begin();
+         jter != iter->indices.end(); jter++) {
       cloudCluster.add(cloud->points[*jter]);
     }
     pcl::PointXYZ centroid;

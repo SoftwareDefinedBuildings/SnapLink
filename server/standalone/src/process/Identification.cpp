@@ -7,11 +7,10 @@
 #include "util/Time.h"
 #include <QCoreApplication>
 
-Identification::Identification(std::unique_ptr<Words> &&words,
+Identification::Identification(const std::shared_ptr<Words> &words,
                                const std::shared_ptr<Signatures> &signatures,
                                std::unique_ptr<Labels> &&labels)
-    : _httpServer(nullptr), _wordSearch(std::move(words)),
-      _signatureSearch(signatures), _perspective(signatures),
+    : _httpServer(nullptr), _wordSearch(words), _perspective(signatures),
       _visibility(std::move(labels)) {}
 
 Identification::~Identification() { _httpServer = nullptr; }

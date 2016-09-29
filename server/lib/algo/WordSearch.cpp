@@ -1,8 +1,7 @@
 #include "algo/WordSearch.h"
 #include <cassert>
 
-WordSearch::WordSearch(std::unique_ptr<Words> &&words)
-    : _words(std::move(words)) {}
+WordSearch::WordSearch(const std::shared_ptr<Words> &words) : _words(words) {}
 
 std::vector<int> WordSearch::search(const cv::Mat &descriptors) const {
   assert(descriptors.rows > 0);
