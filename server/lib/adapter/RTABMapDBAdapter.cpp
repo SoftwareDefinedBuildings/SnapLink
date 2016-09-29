@@ -149,7 +149,7 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
     const std::vector<cv::Point3f> &points3 =
         getWordPoints3(*rtabmapWord, dbId, allSignatures);
     words.emplace_back(
-        std::unique_ptr<Word>(new Word(id, descriptor, points3)));
+        std::unique_ptr<Word>(new Word(id, descriptor, dbId, points3)));
     delete rtabmapWord;
     rtabmapWord = nullptr;
   }
@@ -398,9 +398,10 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::mergeWords(
 
       int newId = wordIdIter->second;
       const cv::Mat &descriptor = word->getDescriptor();
+      int dbId = word->getDbId();
       const std::vector<cv::Point3f> &points3 = word->getPoints3();
       mergedWords.emplace_back(
-          std::unique_ptr<Word>(new Word(newId, descriptor, points3)));
+          std::unique_ptr<Word>(new Word(newId, descriptor, dbId, points3)));
     }
   }
   return mergedWords;

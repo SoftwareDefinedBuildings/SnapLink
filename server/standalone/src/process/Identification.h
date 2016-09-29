@@ -1,7 +1,7 @@
 #pragma once
 
 #include "algo/Feature.h"
-#include "algo/Perspective.h"
+#include "algo/PerspectiveDirect.h"
 #include "algo/SignatureSearch.h"
 #include "algo/Visibility.h"
 #include "algo/WordSearch.h"
@@ -32,6 +32,6 @@ private:
   Feature _feature;
   WordSearch _wordSearch;
   SignatureSearch _signatureSearch;
-  Perspective _perspective;
+  PerspectiveDirect _perspective;
   Visibility _visibility;
 };
