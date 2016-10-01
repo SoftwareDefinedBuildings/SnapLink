@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
   HTTPServer httpServer;
 
   std::cout << "Initializing Identification Service" << std::endl;
-  Identification ident(std::move(words), signatures, std::move(labels));
+  Identification ident(std::move(words), std::move(labels));
   ident.setHTTPServer(&httpServer);
   ident.moveToThread(&identThread);
   identThread.start();

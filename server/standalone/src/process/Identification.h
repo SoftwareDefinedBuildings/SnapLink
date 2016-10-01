@@ -13,8 +13,7 @@ class Session;
 
 class Identification : public QObject {
 public:
-  Identification(std::unique_ptr<Words> &&words,
-                 const std::shared_ptr<Signatures> &signatures,
+  Identification(const std::shared_ptr<Words> &words,
                  std::unique_ptr<Labels> &&labels);
   ~Identification();
 

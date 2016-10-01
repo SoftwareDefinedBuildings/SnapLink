@@ -1,6 +1,5 @@
 #include "algo/PerspectiveDirect.h"
 #include "data/CameraModel.h"
-#include "data/Signature.h"
 #include "data/Transform.h"
 #include "util/Time.h"
 #include "util/Utility.h"
@@ -14,50 +13,49 @@ PerspectiveDirect::PerspectiveDirect(const std::shared_ptr<Words> &words)
 void PerspectiveDirect::localize(const std::vector<int> &wordIds,
                                  const std::vector<cv::KeyPoint> &keyPoints,
                                  const CameraModel &camera,
+                                 int &dbId,
                                  Transform &transform) const {
   size_t minInliers = 3;
 
   int inliersCount = 0;
 
-  std::multimap<int, cv::KeyPoint> words = createWords(wordIds, keyPoints);
+  std::multimap<int, cv::KeyPoint> words2 = createWords(wordIds, keyPoints);
 
-  std::multimap<int, cv::Point3f> words3;
-
-  const std::map<int, std::unique_ptr<Signature>> &signatures =
-      _signatures->getSignatures();
-  const auto iter = signatures.find(oldSigId);
-  assert(iter != signatures.end());
-  const std::unique_ptr<Signature> &oldSig = iter->second;
-  dbId = oldSig->getDbId();
-  const Transform &oldSigPose = oldSig->getPose();
-
-  const std::multimap<int, cv::Point3f> &sigWords3 = oldSig->getWords3();
-  std::multimap<int, cv::Point3f>::const_iterator word3Iter;
-  for (word3Iter = sigWords3.begin(); word3Iter != sigWords3.end();
-       word3Iter++) {
-    pcl::PointXYZ localPointPCL(word3Iter->second.x, word3Iter->second.y,
-                                word3Iter->second.z);
-    pcl::PointXYZ globalPointPCL =
-        pcl::transformPoint(localPointPCL, oldSigPose.toEigen3f());
-    cv::Point3f globalPointCV =
-        cv::Point3f(globalPointPCL.x, globalPointPCL.y, globalPointPCL.z);
-    words3.insert(std::pair<int, cv::Point3f>(word3Iter->first, globalPointCV));
+  const std::map<int, std::unique_ptr<Word>> &words = _words->getWords();
+  const std::map<int, std::multimap<int, pcl::Point3f>> words3Map; // dbId: words3
+  std::map<int, int> dbCounts;
+  for (int wordId : wordIds) {
+    const auto iter = words.find(wordId);
+    assert(iter != words.end());
+    const std::unique_ptr<Word> &word = iter->second;
+    int dbId = iter->second->getDbId();
+    for (const auto &point3 : word->getPoints3()) {
+      words3Map[dbId].insert(std::make_pair(wordId, point3));
+    }
+    auto jter = dbCounts.find(dbId);
+    if (jter == dbCounts.end()) {
+        dbCounts.insert(std::make_pair(dbId, 1));
+    } else {
+        jter->second++;
+    }
   }
+  auto maxCount = std::max_element(dbCounts.begin(), dbCounts.end(), [](const std::pair<int, int>& p1, const std::pair<int, int>& p2) {return p1.second < p2.second; });
+  dbId = maxCount->first;
+  std::multimap<int, pcl::Point3f> words3 = words3Map[dbId];
 
   // 3D to 2D (PnP)
-  if (words3.size() >= minInliers && words.size() >= minInliers) {
+  if (words3.size() >= minInliers && words2.size() >= minInliers) {
     std::vector<int> inliers;
 
+    // TODO lots of useful information are thrown away here
     transform = estimateMotion3DTo2D(
         Utility::MultimapToMapUnique(words3),
-        Utility::MultimapToMapUnique(words), camera,
-        oldSigPose, // use the old signature's pose as a guess
+        Utility::MultimapToMapUnique(words2), camera,
+        Transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0), // use the old signature's pose as a guess
         &inliers, minInliers);
     inliersCount = (int)inliers.size();
     if (transform.isNull()) {
-      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
-                << " between the old signature " << oldSig->getId()
-                << " and the new image" << std::endl;
+      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers << std::endl;
     }
   } else {
     std::cout << "Not enough features in images (old=" << words3.size()

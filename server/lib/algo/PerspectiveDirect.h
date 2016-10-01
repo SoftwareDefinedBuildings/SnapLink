@@ -15,7 +15,7 @@ public:
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,
-                const CameraModel &camera, Transform &transform) const;
+                const CameraModel &camera, int &dbId, Transform &transform) const;
 
 private:
   static std::multimap<int, cv::KeyPoint>

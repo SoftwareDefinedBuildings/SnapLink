@@ -1,5 +1,6 @@
 #include "process/Identification.h"
 #include "data/CameraModel.h"
+#include "data/Transform.h"
 #include "data/Session.h"
 #include "event/DetectionEvent.h"
 #include "event/QueryEvent.h"
@@ -8,9 +9,8 @@
 #include <QCoreApplication>
 
 Identification::Identification(const std::shared_ptr<Words> &words,
-                               const std::shared_ptr<Signatures> &signatures,
                                std::unique_ptr<Labels> &&labels)
-    : _httpServer(nullptr), _wordSearch(words), _perspective(signatures),
+    : _httpServer(nullptr), _wordSearch(words), _perspective(words),
       _visibility(std::move(labels)) {}
 
 Identification::~Identification() { _httpServer = nullptr; }
