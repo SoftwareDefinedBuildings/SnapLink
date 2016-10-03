@@ -12,18 +12,18 @@ PerspectiveDirect::PerspectiveDirect(const std::shared_ptr<Words> &words)
 
 void PerspectiveDirect::localize(const std::vector<int> &wordIds,
                                  const std::vector<cv::KeyPoint> &keyPoints,
-                                 const CameraModel &camera,
-                                 int &dbId,
+                                 const CameraModel &camera, int &dbId,
                                  Transform &transform) const {
   size_t minInliers = 3;
 
   int inliersCount = 0;
 
-  std::multimap<int, cv::KeyPoint> words2 = createWords(wordIds, keyPoints);
+  std::map<int, cv::KeyPoint> words2 =
+      Utility::MultimapToMapUnique(createWords(wordIds, keyPoints));
 
   const std::map<int, std::unique_ptr<Word>> &words = _words->getWords();
-  const std::map<int, std::multimap<int, pcl::Point3f>> words3Map; // dbId: words3
-  std::map<int, int> dbCounts;
+  std::map<int, std::multimap<int, cv::Point3f>> words3Map; // dbId: words3
+  std::map<int, int> dbCounts;                              // dbId: count
   for (int wordId : wordIds) {
     const auto iter = words.find(wordId);
     assert(iter != words.end());
@@ -34,28 +34,38 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
     }
     auto jter = dbCounts.find(dbId);
     if (jter == dbCounts.end()) {
-        dbCounts.insert(std::make_pair(dbId, 1));
+      dbCounts.insert(std::make_pair(dbId, 1));
     } else {
-        jter->second++;
+      jter->second++;
     }
   }
-  auto maxCount = std::max_element(dbCounts.begin(), dbCounts.end(), [](const std::pair<int, int>& p1, const std::pair<int, int>& p2) {return p1.second < p2.second; });
+  for (auto count : dbCounts) {
+    std::cout << "dbId = " << count.first << ", count = " << count.second
+              << std::endl;
+  }
+  auto maxCount = std::max_element(
+      dbCounts.begin(), dbCounts.end(),
+      [](const std::pair<int, int> &p1, const std::pair<int, int> &p2) {
+        return p1.second < p2.second;
+      });
   dbId = maxCount->first;
-  std::multimap<int, pcl::Point3f> words3 = words3Map[dbId];
+  const std::map<int, cv::Point3f> &words3 =
+      Utility::MultimapToMapUnique(words3Map[dbId]);
 
+  std::cout << "words3.size() = " << words3.size()
+            << ", words2.size() = " << words2.size() << std::endl;
   // 3D to 2D (PnP)
   if (words3.size() >= minInliers && words2.size() >= minInliers) {
     std::vector<int> inliers;
 
     // TODO lots of useful information are thrown away here
     transform = estimateMotion3DTo2D(
-        Utility::MultimapToMapUnique(words3),
-        Utility::MultimapToMapUnique(words2), camera,
-        Transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0), // use the old signature's pose as a guess
+        words3, words2, camera, Transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
         &inliers, minInliers);
     inliersCount = (int)inliers.size();
     if (transform.isNull()) {
-      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers << std::endl;
+      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
+                << std::endl;
     }
   } else {
     std::cout << "Not enough features in images (old=" << words3.size()
@@ -131,8 +141,7 @@ Transform PerspectiveDirect::estimateMotion3DTo2D(
                     (double)guess.y(), (double)guess.z());
 
     cv::solvePnPRansac(objectPoints, imagePoints, K, D, rvec, tvec, true, 100,
-                       8.0, 0.99, inliers,
-                       cv::SOLVEPNP_ITERATIVE); // cv::SOLVEPNP_EPNP
+                       8.0, 0.99, inliers, cv::SOLVEPNP_EPNP);
     // TODO check RTABMAp refine model code
 
     if (inliers.size() >= minInliers) {
@@ -146,8 +155,18 @@ Transform PerspectiveDirect::estimateMotion3DTo2D(
 
       transform = std::move(pnp);
 
-      // TODO: compute variance (like in PCL computeVariance() method of
-      // sac_model.h)
+      // compute variance, which is the rms of reprojection errors
+      std::vector<cv::Point2f> imagePointsReproj;
+      cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(),
+                        imagePointsReproj);
+      float err = 0.0f;
+      for (unsigned int i = 0; i < inliers.size(); ++i) {
+        err += std::abs(std::complex<double>(
+            imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x,
+            imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y));
+      }
+      double varianceOut = std::sqrt(err / float(inliers.size()));
+      std::cout << "variance = " << varianceOut << std::endl;
     }
   }
 

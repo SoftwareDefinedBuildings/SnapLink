@@ -16,10 +16,8 @@ Visibility::Visibility(std::unique_ptr<Labels> &&labels)
 std::vector<std::string> Visibility::process(int dbId,
                                              const CameraModel &camera,
                                              const Transform &pose) const {
-  std::cout << "test 1" << std::endl;
   const std::list<std::unique_ptr<Label>> &labels =
       _labels->getLabels().at(dbId);
-  std::cout << "test 2" << std::endl;
   std::vector<cv::Point3f> points;
   std::vector<std::string> names;
   for (auto &label : labels) {

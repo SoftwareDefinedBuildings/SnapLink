@@ -268,7 +268,7 @@ int HTTPServer::sendPage(struct MHD_Connection *connection,
   struct MHD_Response *response = MHD_create_response_from_buffer(
       page.length(),
       const_cast<void *>(static_cast<const void *>(page.c_str())),
-      MHD_RESPMEM_PERSISTENT);
+      MHD_RESPMEM_MUST_COPY);
   if (!response) {
     return MHD_NO;
   }

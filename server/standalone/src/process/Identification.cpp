@@ -1,7 +1,7 @@
 #include "process/Identification.h"
 #include "data/CameraModel.h"
-#include "data/Transform.h"
 #include "data/Session.h"
+#include "data/Transform.h"
 #include "event/DetectionEvent.h"
 #include "event/QueryEvent.h"
 #include "front/HTTPServer.h"
@@ -57,7 +57,7 @@ std::vector<std::string> Identification::identify(const cv::Mat &image,
   int dbId;
   Transform pose;
   session.perspectiveStart = getTime();
-  _perspective.localize(wordIds, keyPoints, camera, pose);
+  _perspective.localize(wordIds, keyPoints, camera, dbId, pose);
   session.perspectiveEnd = getTime();
 
   // visibility

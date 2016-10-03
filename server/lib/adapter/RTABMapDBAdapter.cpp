@@ -332,7 +332,7 @@ RTABMapDBAdapter::clusterPoints3(const std::vector<pcl::PointXYZ> &points3) {
 
   std::vector<pcl::PointIndices> clusterIndices;
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance(0.3); // in meter
+  ec.setClusterTolerance(0.1); // in meter
   ec.setSearchMethod(tree);
   ec.setInputCloud(cloud);
   ec.extract(clusterIndices);
