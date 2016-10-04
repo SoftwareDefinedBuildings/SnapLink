@@ -45,7 +45,6 @@ set(SOURCES
     "../lib/data/Word.cpp"
     "../lib/data/CameraModel.cpp"
     "../lib/data/WordsKdTree.cpp"
-    "../lib/algo/SignatureSearch.cpp"
     "../lib/algo/WordSearch.cpp"
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
