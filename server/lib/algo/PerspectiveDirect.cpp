@@ -21,13 +21,15 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
   std::map<int, cv::KeyPoint> words2 =
       Utility::MultimapToMapUnique(createWords(wordIds, keyPoints));
 
-  const std::map<int, std::unique_ptr<Word>> &words = _words->getWords();
-  std::map<int, std::multimap<int, cv::Point3f>> words3Map; // dbId: words3
-  std::map<int, int> dbCounts;                              // dbId: count
+  const std::map<int, std::shared_ptr<Word>> &wordsById =
+      _words->getWordsById();
+  std::map<int, std::multimap<int, cv::Point3f>>
+      words3Map;               // dbId: wordId: point3
+  std::map<int, int> dbCounts; // dbId: count
   for (int wordId : wordIds) {
-    const auto iter = words.find(wordId);
-    assert(iter != words.end());
-    const std::unique_ptr<Word> &word = iter->second;
+    const auto iter = wordsById.find(wordId);
+    assert(iter != wordsById.end());
+    const std::shared_ptr<Word> &word = iter->second;
     int dbId = iter->second->getDbId();
     for (const auto &point3 : word->getPoints3()) {
       words3Map[dbId].insert(std::make_pair(wordId, point3));
@@ -39,16 +41,20 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
       jter->second++;
     }
   }
+  std::map<int, double> dbCountsNorm;
   for (auto count : dbCounts) {
-    std::cout << "dbId = " << count.first << ", count = " << count.second
-              << std::endl;
+    dbCountsNorm[count.first] =
+        (float)count.second / _words->getWordsByDb().at(count.first).size();
+    std::cout << "dbId = " << count.first
+              << ", norm count = " << dbCountsNorm[count.first] << std::endl;
   }
-  auto maxCount = std::max_element(
-      dbCounts.begin(), dbCounts.end(),
-      [](const std::pair<int, int> &p1, const std::pair<int, int> &p2) {
-        return p1.second < p2.second;
-      });
+  auto maxCount = std::max_element(dbCountsNorm.begin(), dbCountsNorm.end(),
+                                   [](const std::pair<double, double> &p1,
+                                      const std::pair<double, double> &p2) {
+                                     return p1.second < p2.second;
+                                   });
   dbId = maxCount->first;
+  std::cout << "max dbId = " << dbId << std::endl;
   const std::map<int, cv::Point3f> &words3 =
       Utility::MultimapToMapUnique(words3Map[dbId]);
 
@@ -69,7 +75,7 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
     }
   } else {
     std::cout << "Not enough features in images (old=" << words3.size()
-              << ", new=" << words.size() << ", min=" << minInliers << ")"
+              << ", new=" << words2.size() << ", min=" << minInliers << ")"
               << std::endl;
   }
 
