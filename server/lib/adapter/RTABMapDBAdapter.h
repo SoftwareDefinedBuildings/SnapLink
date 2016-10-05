@@ -37,6 +37,10 @@ private:
       const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
           &allSignatures);
 
+  static std::list<std::unique_ptr<Word>> getWords(
+      const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
+          &allSignatures);
+
   static std::map<int, rtabmap::Transform>
   getOptimizedPoseMap(const std::string &dbPath);
 

@@ -8,6 +8,8 @@ public:
   Word(int id, const cv::Mat &descriptor, int dbId,
        const std::vector<cv::Point3f> &points3);
 
+  void addPoints3(const std::vector<cv::Point3f> &points3);
+
   int getId() const;
   const cv::Mat &getDescriptor() const;
   int getDbId() const;
