@@ -30,14 +30,16 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
     const auto iter = wordsById.find(wordId);
     assert(iter != wordsById.end());
     const std::shared_ptr<Word> &word = iter->second;
-    int dbId = iter->second->getDbId();
-    for (const auto &point3 : word->getPoints3()) {
-      words3Map[dbId].insert(std::make_pair(wordId, point3));
-    }
-    auto jter = dbCounts.find(dbId);
-    if (jter == dbCounts.end()) {
-      dbCounts.insert(std::make_pair(dbId, 1));
-    } else {
+    for (auto &points3 : word->getPoints3Map()) {
+      int dbId = points3.first;
+      for (const auto &point3 : points3.second) {
+        words3Map[dbId].insert(std::make_pair(wordId, point3));
+      }
+      auto jter = dbCounts.find(dbId);
+      if (jter == dbCounts.end()) {
+        auto ret = dbCounts.insert(std::make_pair(dbId, 1));
+        jter = ret.first;
+      }
       jter->second++;
     }
   }

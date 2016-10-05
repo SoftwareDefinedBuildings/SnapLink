@@ -4,13 +4,15 @@
 WordsKdTree::WordsKdTree() : _type(-1), _dim(-1) {}
 
 void WordsKdTree::putWords(std::list<std::unique_ptr<Word>> &&words) {
-  for (auto &word : words) {
-    assert(word != nullptr);
-    int wordId = word->getId();
-    int dbId = word->getDbId();
-    std::shared_ptr<Word> tempPtr(std::move(word));
-    _wordsById[wordId] = tempPtr;
-    _wordsByDb[dbId][wordId] = tempPtr;
+  for (auto &uniqueWord : words) {
+    assert(uniqueWord != nullptr);
+    std::shared_ptr<Word> sharedWord(std::move(uniqueWord));
+    int wordId = sharedWord->getId();
+    _wordsById[wordId] = sharedWord;
+    for (auto &points3 : sharedWord->getPoints3Map()) {
+      int dbId = points3.first;
+      _wordsByDb[dbId][wordId] = sharedWord;
+    }
   }
   build();
 }
@@ -62,7 +64,8 @@ void WordsKdTree::build() {
   if (_wordsById.size()) {
     // use the first word to define the type and dim
     if (_type < 0 || _dim < 0) {
-      const cv::Mat &descriptor = _wordsById.begin()->second->getDescriptor();
+      const cv::Mat &descriptor =
+          _wordsById.begin()->second->getMeanDescriptor();
       _type = descriptor.type();
       _dim = descriptor.cols;
     }
@@ -71,7 +74,7 @@ void WordsKdTree::build() {
     _dataMat = cv::Mat(_wordsById.size(), _dim, _type);
     int i = 0;
     for (const auto &word : _wordsById) {
-      const cv::Mat &descriptor = word.second->getDescriptor();
+      const cv::Mat &descriptor = word.second->getMeanDescriptor();
 
       assert(descriptor.type() == _type);
       assert(descriptor.cols == _dim);

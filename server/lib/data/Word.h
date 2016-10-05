@@ -5,19 +5,23 @@
 
 class Word {
 public:
-  Word(int id, const cv::Mat &descriptor, int dbId,
-       const std::vector<cv::Point3f> &points3);
+  Word(int id);
 
-  void addPoints3(const std::vector<cv::Point3f> &points3);
+  /*
+   * Add points and their descriptors in a database
+   */
+  void addPoints3(int dbId, const std::vector<cv::Point3f> &points3,
+                  const cv::Mat &descriptors);
 
   int getId() const;
-  const cv::Mat &getDescriptor() const;
-  int getDbId() const;
-  const std::vector<cv::Point3f> &getPoints3() const;
+  const cv::Mat &getMeanDescriptor() const;
+  const std::map<int, std::vector<cv::Point3f>> &getPoints3Map() const;
+  const std::map<int, cv::Mat> &getDescriptorsByDb() const;
 
 private:
   int _id;
-  cv::Mat _descriptor;
-  int _dbId;
-  std::vector<cv::Point3f> _points3;
+  cv::Mat _meanDescriptor;
+  cv::Mat _allDescriptors;
+  std::map<int, std::vector<cv::Point3f>> _points3Map; // dbId : points3
+  std::map<int, cv::Mat> _descriptorsByDb;             // dbId : descriptors
 };
