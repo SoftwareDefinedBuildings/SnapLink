@@ -46,7 +46,7 @@ set(SOURCES
     "../lib/algo/WordSearch.cpp"
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
-    "../lib/algo/PerspectiveDirect.cpp"
+    "../lib/algo/Perspective.cpp"
     "src/front/HTTPServer.cpp"
     "src/event/QueryEvent.cpp"
     "src/event/DetectionEvent.cpp"

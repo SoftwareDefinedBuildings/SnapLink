@@ -1,7 +1,7 @@
 #pragma once
 
 #include "algo/Feature.h"
-#include "algo/PerspectiveDirect.h"
+#include "algo/Perspective.h"
 #include "algo/Visibility.h"
 #include "algo/WordSearch.h"
 #include <QEvent>
@@ -29,6 +29,6 @@ private:
 
   Feature _feature;
   WordSearch _wordSearch;
-  PerspectiveDirect _perspective;
+  Perspective _perspective;
   Visibility _visibility;
 };

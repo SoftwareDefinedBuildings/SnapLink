@@ -1,4 +1,4 @@
-#include "algo/PerspectiveDirect.h"
+#include "algo/Perspective.h"
 #include "data/CameraModel.h"
 #include "data/Transform.h"
 #include "util/Time.h"
@@ -7,10 +7,10 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-PerspectiveDirect::PerspectiveDirect(const std::shared_ptr<Words> &words)
+Perspective::Perspective(const std::shared_ptr<Words> &words)
     : _words(words) {}
 
-void PerspectiveDirect::localize(const std::vector<int> &wordIds,
+void Perspective::localize(const std::vector<int> &wordIds,
                                  const std::vector<cv::KeyPoint> &keyPoints,
                                  const CameraModel &camera, int &dbId,
                                  Transform &transform) const {
@@ -87,7 +87,7 @@ void PerspectiveDirect::localize(const std::vector<int> &wordIds,
 }
 
 std::multimap<int, cv::KeyPoint>
-PerspectiveDirect::createWords(const std::vector<int> &wordIds,
+Perspective::createWords(const std::vector<int> &wordIds,
                                const std::vector<cv::KeyPoint> &keyPoints) {
   std::multimap<int, cv::KeyPoint> words;
   assert(wordIds.size() == keyPoints.size());
@@ -100,7 +100,7 @@ PerspectiveDirect::createWords(const std::vector<int> &wordIds,
   return words;
 }
 
-Transform PerspectiveDirect::estimateMotion3DTo2D(
+Transform Perspective::estimateMotion3DTo2D(
     const std::map<int, cv::Point3f> &words3A,
     const std::map<int, cv::KeyPoint> &words2B, const CameraModel &camera,
     const Transform &guess, std::vector<int> *inliersOut, size_t minInliers) {
