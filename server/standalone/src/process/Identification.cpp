@@ -3,6 +3,7 @@
 #include "data/Session.h"
 #include "data/Transform.h"
 #include "event/DetectionEvent.h"
+#include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
 #include "front/HTTPServer.h"
 #include "util/Time.h"
@@ -28,19 +29,25 @@ bool Identification::event(QEvent *event) {
 
     std::unique_ptr<std::vector<std::string>> names(
         new std::vector<std::string>);
-    *names = identify(*image, *camera, *session);
+    bool success = identify(*image, *camera, *names, *session);
 
-    QCoreApplication::postEvent(
-        _httpServer, new DetectionEvent(std::move(names), std::move(session)));
+    if (success) {
+      QCoreApplication::postEvent(
+          _httpServer,
+          new DetectionEvent(std::move(names), std::move(session)));
+    } else {
+      QCoreApplication::postEvent(_httpServer,
+                                  new FailureEvent(std::move(session)));
+    }
 
     return true;
   }
   return QObject::event(event);
 }
 
-std::vector<std::string> Identification::identify(const cv::Mat &image,
-                                                  const CameraModel &camera,
-                                                  Session &session) {
+bool Identification::identify(const cv::Mat &image, const CameraModel &camera,
+                              std::vector<std::string> &names,
+                              Session &session) {
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;
@@ -60,8 +67,12 @@ std::vector<std::string> Identification::identify(const cv::Mat &image,
   _perspective.localize(wordIds, keyPoints, camera, dbId, pose);
   session.perspectiveEnd = getTime();
 
-  // visibility
-  std::vector<std::string> names = _visibility.process(dbId, camera, pose);
+  if (pose.isNull()) {
+    return false;
+  }
 
-  return names;
+  // visibility
+  names = _visibility.process(dbId, camera, pose);
+
+  return true;
 }

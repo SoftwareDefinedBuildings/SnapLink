@@ -18,8 +18,8 @@ public:
   ~Identification();
 
   void setHTTPServer(HTTPServer *httpServer);
-  std::vector<std::string>
-  identify(const cv::Mat &image, const CameraModel &camera, Session &session);
+  bool identify(const cv::Mat &image, const CameraModel &camera,
+                std::vector<std::string> &names, Session &session);
 
 protected:
   virtual bool event(QEvent *event);

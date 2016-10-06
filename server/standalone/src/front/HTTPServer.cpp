@@ -241,9 +241,6 @@ void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
               << std::endl;
     std::cout << "TAG_TIME words " << session->wordsEnd - session->wordsStart
               << " ms" << std::endl;
-    std::cout << "TAG_TIME signatures "
-              << session->signaturesEnd - session->signaturesStart << " ms"
-              << std::endl;
     std::cout << "TAG_TIME perspective "
               << session->perspectiveEnd - session->perspectiveStart << " ms"
               << std::endl;

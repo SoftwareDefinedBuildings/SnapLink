@@ -38,10 +38,12 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
     dbId++;
   }
 
-  std::list<std::unique_ptr<Word>> allWords = getWords(allSignatures);
+  qDebug() << "Building Index for Words";
+  std::list<std::unique_ptr<Word>> allWords = createWords(allSignatures);
   allWords = clusterPointsInWords(allWords);
   words.putWords(std::move(allWords));
 
+  qDebug() << "Building Index for Labels";
   labels.putLabels(std::move(allLabels));
 
   return true;
@@ -130,8 +132,7 @@ std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
       const std::unique_ptr<rtabmap::Signature> &signature = jter->second;
       if (getPoint3World(*signature, x, y, pWorld)) {
         labels.emplace_back(std::unique_ptr<Label>(
-            new Label(dbId, imageId, cv::Point2f(x, y),
-                      cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name)));
+            new Label(dbId, cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name)));
         std::cout << "Read point (" << pWorld.x << "," << pWorld.y << ","
                   << pWorld.z << ") with label " << name << " in database "
                   << dbPath << std::endl;
@@ -176,7 +177,7 @@ RTABMapDBAdapter::getOptimizedPoseMap(const std::string &dbPath) {
   return optimizedPoseMap;
 }
 
-std::list<std::unique_ptr<Word>> RTABMapDBAdapter::getWords(
+std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
         &allSignatures) {
   std::map<int, std::unique_ptr<Word>> wordsMap; // wordId: word pointer
@@ -186,6 +187,7 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::getWords(
       cv::xfeatures2d::SURF::create(minHessian);
   for (const auto &dbSignatures : allSignatures) {
     int dbId = dbSignatures.first;
+    qDebug() << "Creating words for signatures in DB " << dbId;
     for (const auto &dbSignature : dbSignatures.second) {
       int sigId = dbSignature.second->id();
       const cv::Mat &image = dbSignature.second->sensorData().imageRaw();

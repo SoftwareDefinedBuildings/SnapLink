@@ -14,8 +14,6 @@ public:
   unsigned long long featuresEnd;
   unsigned long long wordsStart;
   unsigned long long wordsEnd;
-  unsigned long long signaturesStart;
-  unsigned long long signaturesEnd;
   unsigned long long perspectiveStart;
   unsigned long long perspectiveEnd;
 };
