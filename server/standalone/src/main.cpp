@@ -1,6 +1,5 @@
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/LabelsSimple.h"
-#include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
 #include "front/HTTPServer.h"
 #include "process/Identification.h"
@@ -29,13 +28,12 @@ int main(int argc, char *argv[]) {
   QCoreApplication app(argc, argv);
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
-  std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
   QThread identThread;
 
   std::cout << "Reading data" << std::endl;
-  if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels)) {
+  if (!RTABMapDBAdapter::readData(dbfiles, *words, *labels)) {
     qCritical() << "Reading data failed";
     return 1;
   }
