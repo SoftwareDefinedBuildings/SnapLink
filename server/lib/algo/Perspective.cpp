@@ -7,13 +7,12 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-Perspective::Perspective(const std::shared_ptr<Words> &words)
-    : _words(words) {}
+Perspective::Perspective(const std::shared_ptr<Words> &words) : _words(words) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
-                                 const std::vector<cv::KeyPoint> &keyPoints,
-                                 const CameraModel &camera, int &dbId,
-                                 Transform &transform) const {
+                           const std::vector<cv::KeyPoint> &keyPoints,
+                           const CameraModel &camera, int &dbId,
+                           Transform &transform) const {
   size_t minInliers = 3;
 
   int inliersCount = 0;
@@ -88,7 +87,7 @@ void Perspective::localize(const std::vector<int> &wordIds,
 
 std::multimap<int, cv::KeyPoint>
 Perspective::createWords(const std::vector<int> &wordIds,
-                               const std::vector<cv::KeyPoint> &keyPoints) {
+                         const std::vector<cv::KeyPoint> &keyPoints) {
   std::multimap<int, cv::KeyPoint> words;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;

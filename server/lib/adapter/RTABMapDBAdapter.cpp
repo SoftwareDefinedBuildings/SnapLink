@@ -40,6 +40,14 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
 
   qDebug() << "Building Index for Words";
   std::list<std::unique_ptr<Word>> allWords = createWords(allSignatures);
+  qDebug() << "Total Number of words: " << allWords.size();
+  long count = 0;
+  for (const auto &word : allWords) {
+    for (const auto &desc : word->getDescriptorsByDb()) {
+      count += desc.second.rows;
+    }
+  }
+  qDebug() << "Total Number of descriptors: " << count;
   allWords = clusterPointsInWords(allWords);
   words.putWords(std::move(allWords));
 
