@@ -4,15 +4,33 @@
 WordsKdTree::WordsKdTree() : _type(-1), _dim(-1) {}
 
 void WordsKdTree::putWords(std::list<std::unique_ptr<Word>> &&words) {
-  std::move(words.begin(), words.end(), std::back_inserter(_words));
+  for (auto &uniqueWord : words) {
+    assert(uniqueWord != nullptr);
+    std::shared_ptr<Word> sharedWord(std::move(uniqueWord));
+    int wordId = sharedWord->getId();
+    _wordsById[wordId] = sharedWord;
+    for (auto &points3 : sharedWord->getPoints3Map()) {
+      int dbId = points3.first;
+      _wordsByDb[dbId][wordId] = sharedWord;
+    }
+  }
   build();
+}
+
+const std::map<int, std::shared_ptr<Word>> &WordsKdTree::getWordsById() const {
+  return _wordsById;
+}
+
+const std::map<int, std::map<int, std::shared_ptr<Word>>> &
+WordsKdTree::getWordsByDb() const {
+  return _wordsByDb;
 }
 
 std::vector<int> WordsKdTree::findNNs(const cv::Mat &descriptors) const {
   int k = 1;
   std::vector<int> resultIds(descriptors.rows, 0);
 
-  if (_words.size() && descriptors.rows) {
+  if (_wordsById.size() && descriptors.rows) {
     // verify we have the same features
     assert(_type == descriptors.type());
     assert(_dim == descriptors.cols);
@@ -43,25 +61,26 @@ void WordsKdTree::build() {
   _mapIndexId.clear();
   _dataMat = cv::Mat();
 
-  if (_words.size()) {
+  if (_wordsById.size()) {
     // use the first word to define the type and dim
     if (_type < 0 || _dim < 0) {
-      const cv::Mat &descriptor = (*_words.begin())->getDescriptor();
+      const cv::Mat &descriptor =
+          _wordsById.begin()->second->getMeanDescriptor();
       _type = descriptor.type();
       _dim = descriptor.cols;
     }
 
     // Create the data matrix
-    _dataMat = cv::Mat(_words.size(), _dim, _type);
+    _dataMat = cv::Mat(_wordsById.size(), _dim, _type);
     int i = 0;
-    for (const auto &word : _words) {
-      const cv::Mat &descriptor = word->getDescriptor();
+    for (const auto &word : _wordsById) {
+      const cv::Mat &descriptor = word.second->getMeanDescriptor();
 
       assert(descriptor.type() == _type);
       assert(descriptor.cols == _dim);
 
       descriptor.copyTo(_dataMat.row(i));
-      _mapIndexId.insert(_mapIndexId.end(), std::make_pair(i, word->getId()));
+      _mapIndexId.insert(_mapIndexId.end(), std::make_pair(i, word.first));
       i++;
     }
 

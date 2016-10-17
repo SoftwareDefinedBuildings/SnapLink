@@ -15,7 +15,7 @@
 #define IMAGE_INIT_SIZE 100000
 
 class CameraModel;
-class FeatureStage;
+class Identification;
 
 enum ConnectionType { POST = 0 };
 
@@ -50,7 +50,7 @@ public:
   int getNumClients() const;
   void setNumClients(int numClients);
 
-  void setFeatureStage(FeatureStage *featureStage);
+  void setIdentification(Identification *identification);
 
 protected:
   virtual bool event(QEvent *event);
@@ -88,5 +88,5 @@ private:
   std::mt19937 _gen;
   std::uniform_int_distribution<unsigned long long> _dis;
   std::map<long, ConnectionInfo *> _connInfoMap;
-  FeatureStage *_featureStage;
+  Identification *_identification;
 };

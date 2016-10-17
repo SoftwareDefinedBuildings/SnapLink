@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::string wordSearchServerAddr(argv[1]);// = "0.0.0.0:50052";
+  std::string wordSearchServerAddr(argv[1]); // = "0.0.0.0:50052";
   server.run(wordSearchServerAddr);
 
   return 0;

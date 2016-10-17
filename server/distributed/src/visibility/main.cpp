@@ -7,12 +7,12 @@ int main(int argc, char *argv[]) {
   }
 
   VisibilityServer server;
-  std::string frontServerAddr(argv[2]);// = "0.0.0.0:50056";
+  std::string frontServerAddr(argv[2]); // = "0.0.0.0:50056";
   if (!server.init(frontServerAddr, dbfiles)) {
     return 1;
   }
 
-  std::string visibilityServerAddr(argv[1]);// = "0.0.0.0:50055";
+  std::string visibilityServerAddr(argv[1]); // = "0.0.0.0:50055";
   server.run(visibilityServerAddr);
 
   return 0;

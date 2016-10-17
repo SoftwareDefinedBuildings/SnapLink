@@ -5,10 +5,10 @@
 
 class WordSearch {
 public:
-  WordSearch(std::unique_ptr<Words> &&words);
+  WordSearch(const std::shared_ptr<Words> &words);
 
   std::vector<int> search(const cv::Mat &descriptors) const;
 
 private:
-  std::unique_ptr<Words> _words;
+  std::shared_ptr<Words> _words;
 };

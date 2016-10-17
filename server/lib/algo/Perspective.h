@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/Signatures.h"
+#include "data/Words.h"
 #include <memory>
 #include <opencv2/core/core.hpp>
 
@@ -11,11 +11,11 @@ class HTTPServer;
 
 class Perspective {
 public:
-  Perspective(const std::shared_ptr<Signatures> &signatures);
+  Perspective(const std::shared_ptr<Words> &words);
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,
-                const CameraModel &camera, int oldSigId, int &dbId,
+                const CameraModel &camera, int &dbId,
                 Transform &transform) const;
 
 private:
@@ -29,5 +29,5 @@ private:
                        std::vector<int> *inliersOut, size_t minInliers);
 
 private:
-  std::shared_ptr<Signatures> _signatures;
+  std::shared_ptr<Words> _words;
 };

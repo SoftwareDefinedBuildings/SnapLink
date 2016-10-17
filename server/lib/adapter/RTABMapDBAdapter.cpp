@@ -1,28 +1,29 @@
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/Labels.h"
-#include "data/Signatures.h"
 #include "data/Transform.h"
 #include "data/Words.h"
 #include "util/Time.h"
 #include <QDebug>
+#include <opencv2/xfeatures2d.hpp>
+#include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Link.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/SensorData.h>
-#include <rtabmap/core/VisualWord.h>
+#include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/utilite/UStl.h>
 #include <sqlite3.h>
 
 bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
-                                Words &words, Signatures &signatures,
-                                Labels &labels) {
+                                Words &words, Labels &labels) {
   // Read data from databases
-  std::map<int, std::list<std::unique_ptr<Word>>> allWords;
   std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
       allSignatures;
   std::list<std::unique_ptr<Label>> allLabels;
@@ -31,27 +32,26 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
     auto dbSignatures = readSignatures(dbPath);
     allSignatures.insert(std::make_pair(dbId, std::move(dbSignatures)));
 
-    auto dbWords = readWords(dbPath, dbId, allSignatures);
-    allWords.insert(std::make_pair(dbId, std::move(dbWords)));
-
     auto dbLabels = readLabels(dbPath, dbId, allSignatures);
     std::move(dbLabels.begin(), dbLabels.end(), std::back_inserter(allLabels));
 
     dbId++;
   }
 
-  // merge data from all databases
-  auto mergeWordsIdMap = getMergeWordsIdMap(allWords);
-  auto mergeSignaturesIdMap = getMergeSignaturesIdMap(allSignatures);
+  qDebug() << "Building Index for Words";
+  std::list<std::unique_ptr<Word>> allWords = createWords(allSignatures);
+  qDebug() << "Total Number of words: " << allWords.size();
+  long count = 0;
+  for (const auto &word : allWords) {
+    for (const auto &desc : word->getDescriptorsByDb()) {
+      count += desc.second.rows;
+    }
+  }
+  qDebug() << "Total Number of descriptors: " << count;
+  allWords = clusterPointsInWords(allWords);
+  words.putWords(std::move(allWords));
 
-  auto mergedSignatures = mergeSignatures(
-      std::move(allSignatures), mergeSignaturesIdMap, mergeWordsIdMap);
-  signatures.putSignatures(std::move(mergedSignatures));
-
-  auto mergedWords =
-      mergeWords(std::move(allWords), mergeWordsIdMap, mergeSignaturesIdMap);
-  words.putWords(std::move(mergedWords));
-
+  qDebug() << "Building Index for Labels";
   labels.putLabels(std::move(allLabels));
 
   return true;
@@ -105,50 +105,6 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
   return signatures;
 }
 
-std::list<std::unique_ptr<Word>> RTABMapDBAdapter::readWords(
-    const std::string &dbPath, int dbId,
-    const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-        &signatures) {
-  std::list<std::unique_ptr<Word>> words;
-
-  rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
-  if (!dbDriver->openConnection(dbPath)) {
-    qDebug() << "Connecting to database " << dbPath.c_str()
-             << ", path is invalid!";
-    return words;
-  }
-
-  // Read words from database
-  qDebug() << "Read words from database...";
-  std::set<int> wordIds;
-  const auto &iter = signatures.find(dbId);
-  assert(iter != signatures.end());
-  for (const auto &signature : iter->second) {
-    const std::multimap<int, cv::KeyPoint> &signatureWords =
-        signature.second->getWords();
-    for (const auto &word : signatureWords) {
-      wordIds.insert(word.first);
-    }
-  }
-  std::list<rtabmap::VisualWord *> rtabmapWords;
-  dbDriver->loadWords(wordIds, rtabmapWords);
-  for (auto &rtabmapWord : rtabmapWords) {
-    int id = rtabmapWord->id();
-    const cv::Mat &descriptor = rtabmapWord->getDescriptor();
-    words.emplace_back(std::unique_ptr<Word>(new Word(id, descriptor)));
-    delete rtabmapWord;
-    rtabmapWord = nullptr;
-  }
-
-  qDebug() << "Closing database " << dbDriver->getUrl().c_str() << "...";
-  dbDriver->closeConnection();
-  dbDriver->join();
-  delete dbDriver;
-  dbDriver = nullptr;
-
-  return words;
-}
-
 std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
     const std::string &dbPath, int dbId,
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
@@ -175,10 +131,16 @@ std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
       int x = sqlite3_column_int(stmt, 2);
       int y = sqlite3_column_int(stmt, 3);
       pcl::PointXYZ pWorld;
-      if (getPoint3World(allSignatures, dbId, imageId, x, y, pWorld)) {
+
+      const auto &iter = allSignatures.find(dbId);
+      assert(iter != allSignatures.end());
+      const auto &dbSignatures = iter->second;
+      const auto &jter = dbSignatures.find(imageId);
+      assert(jter != dbSignatures.end());
+      const std::unique_ptr<rtabmap::Signature> &signature = jter->second;
+      if (getPoint3World(*signature, x, y, pWorld)) {
         labels.emplace_back(std::unique_ptr<Label>(
-            new Label(dbId, imageId, cv::Point2f(x, y),
-                      cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name)));
+            new Label(dbId, cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name)));
         std::cout << "Read point (" << pWorld.x << "," << pWorld.y << ","
                   << pWorld.z << ") with label " << name << " in database "
                   << dbPath << std::endl;
@@ -223,19 +185,106 @@ RTABMapDBAdapter::getOptimizedPoseMap(const std::string &dbPath) {
   return optimizedPoseMap;
 }
 
-bool RTABMapDBAdapter::getPoint3World(
+std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-        &allSignatures,
-    int dbId, int imageId, int x, int y, pcl::PointXYZ &pWorld) {
-  // TODO: Use map of map for both signature and words
-  const auto &iter = allSignatures.find(dbId);
-  assert(iter != allSignatures.end());
-  const auto &dbSignatures = iter->second;
-  const auto &jter = dbSignatures.find(imageId);
-  assert(jter != dbSignatures.end());
-  const std::unique_ptr<rtabmap::Signature> &signature = jter->second;
-  rtabmap::SensorData data = signature->sensorData();
-  rtabmap::Transform poseWorld = signature->getPose();
+        &allSignatures) {
+  std::map<int, std::unique_ptr<Word>> wordsMap; // wordId: word pointer
+  rtabmap::VWDictionary vwd;
+  int minHessian = 400;
+  cv::Ptr<cv::xfeatures2d::SURF> detector =
+      cv::xfeatures2d::SURF::create(minHessian);
+  for (const auto &dbSignatures : allSignatures) {
+    int dbId = dbSignatures.first;
+    qDebug() << "Creating words for signatures in DB " << dbId;
+    for (const auto &dbSignature : dbSignatures.second) {
+      int sigId = dbSignature.second->id();
+      const cv::Mat &image = dbSignature.second->sensorData().imageRaw();
+      std::vector<cv::KeyPoint> keyPoints;
+      cv::Mat descriptors;
+      detector->detectAndCompute(image, cv::Mat(), keyPoints, descriptors);
+      int dummySigId = 1;
+      std::list<int> wordIds = vwd.addNewWords(descriptors, dummySigId);
+      size_t i = 0;
+      for (int wordId : wordIds) {
+        cv::KeyPoint point2CV = keyPoints.at(i);
+        cv::Mat descriptor = descriptors.row(i).clone();
+        pcl::PointXYZ point3PCL;
+        if (getPoint3World(*dbSignature.second, point2CV.pt.x, point2CV.pt.y,
+                           point3PCL)) {
+          cv::Point3f point3CV(point3PCL.x, point3PCL.y, point3PCL.z);
+
+          auto iter = wordsMap.find(wordId);
+          if (iter == wordsMap.end()) {
+            auto ret = wordsMap.insert(std::make_pair(
+                wordId, std::unique_ptr<Word>(new Word(wordId))));
+            iter = ret.first;
+          }
+          iter->second->addPoints3(dbId, std::vector<cv::Point3f>(1, point3CV),
+                                   descriptor);
+        }
+        i++;
+      }
+    }
+  }
+
+  std::list<std::unique_ptr<Word>> words;
+  for (auto &word : wordsMap) {
+    words.emplace_back(std::move(word.second));
+  }
+
+  return words;
+}
+
+std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
+    std::list<std::unique_ptr<Word>> &words) {
+  std::list<std::unique_ptr<Word>> newWords;
+  for (auto &word : words) {
+    std::unique_ptr<Word> newWord =
+        std::unique_ptr<Word>(new Word(word->getId()));
+    // cluster points and calculate mean descriptor for every cluster
+    for (auto points3 : word->getPoints3Map()) {
+      int dbId = points3.first;
+      std::vector<pcl::PointXYZ> points3PCL;
+      for (auto point3 : points3.second) {
+        points3PCL.emplace_back(point3.x, point3.y, point3.z);
+      }
+      std::vector<pcl::PointIndices> clusterIndices;
+      points3PCL = clusterPoints3(points3PCL, &clusterIndices);
+      std::vector<cv::Point3f> points3CV;
+      for (auto point3PCL : points3PCL) {
+        points3CV.emplace_back(point3PCL.x, point3PCL.y, point3PCL.z);
+      }
+
+      // create new descriptors based on indices
+      cv::Mat oldDescriptors = word->getDescriptorsByDb().at(dbId);
+      cv::Mat newDescriptors; // descriptors of clustered points
+      int j = 0;
+      for (std::vector<pcl::PointIndices>::const_iterator iter =
+               clusterIndices.begin();
+           iter != clusterIndices.end(); iter++) {
+        cv::Mat clusterDescriptors;
+        cv::Mat meanDescriptor;
+        for (std::vector<int>::const_iterator jter = iter->indices.begin();
+             jter != iter->indices.end(); jter++) {
+          clusterDescriptors.push_back(oldDescriptors.row(*jter));
+        }
+        cv::reduce(clusterDescriptors, meanDescriptor, 0, CV_REDUCE_AVG);
+        newDescriptors.push_back(meanDescriptor);
+        j++;
+      }
+      newWord->addPoints3(dbId, points3CV, newDescriptors);
+    }
+
+    newWords.emplace_back(std::move(newWord));
+  }
+
+  return newWords;
+}
+
+bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
+                                      int x, int y, pcl::PointXYZ &pWorld) {
+  rtabmap::SensorData data = signature.sensorData();
+  rtabmap::Transform poseWorld = signature.getPose();
   assert(!poseWorld.isNull());
 
   const rtabmap::CameraModel &camera = data.cameraModels()[0];
@@ -245,7 +294,7 @@ bool RTABMapDBAdapter::getPoint3World(
       data.depthRaw(), x, y, camera.cx(), camera.cy(), camera.fx(), camera.fy(),
       smoothing);
   if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
-    qWarning() << "Depth value not valid";
+    // qWarning() << "Depth value not valid";
     return false;
   }
   if (poseWorld.isNull()) {
@@ -257,101 +306,44 @@ bool RTABMapDBAdapter::getPoint3World(
   return true;
 }
 
-std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeWordsIdMap(
-    const std::map<int, std::list<std::unique_ptr<Word>>> &allWords) {
-  std::map<std::pair<int, int>, int> mergeWordsIdMap;
-  int nextWordId = 1;
-  for (const auto &dbWords : allWords) {
-    int dbId = dbWords.first;
-    for (const auto &word : dbWords.second) {
-      int wordId = word->getId();
-      mergeWordsIdMap.insert(
-          std::make_pair(std::make_pair(dbId, wordId), nextWordId));
-      nextWordId++;
-    }
-  }
-  return mergeWordsIdMap;
-}
-
-std::map<std::pair<int, int>, int> RTABMapDBAdapter::getMergeSignaturesIdMap(
-    const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-        &allSignatures) {
-  std::map<std::pair<int, int>, int> mergeSignaturesIdMap;
-  int nextSignatureId = 1;
-  for (const auto &dbSignatures : allSignatures) {
-    int dbId = dbSignatures.first;
-    for (const auto &signature : dbSignatures.second) {
-      int signatureId = signature.second->id();
-      mergeSignaturesIdMap.insert(
-          std::make_pair(std::make_pair(dbId, signatureId), nextSignatureId));
-      nextSignatureId++;
-    }
-  }
-  return mergeSignaturesIdMap;
-}
-
-std::list<std::unique_ptr<Word>> RTABMapDBAdapter::mergeWords(
-    std::map<int, std::list<std::unique_ptr<Word>>> &&allWords,
-    const std::map<std::pair<int, int>, int> &mergeWordsIdMap,
-    const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap) {
-  std::list<std::unique_ptr<Word>> mergedWords;
-
-  for (const auto &dbWords : allWords) {
-    int dbId = dbWords.first;
-    for (const auto &word : dbWords.second) {
-      int wordId = word->getId();
-      auto wordIdIter = mergeWordsIdMap.find(std::make_pair(dbId, wordId));
-      assert(wordIdIter != mergeWordsIdMap.end());
-
-      int newId = wordIdIter->second;
-      const cv::Mat &descriptor = word->getDescriptor();
-      mergedWords.emplace_back(
-          std::unique_ptr<Word>(new Word(newId, descriptor)));
-    }
-  }
-  return mergedWords;
-}
-
-std::list<std::unique_ptr<Signature>> RTABMapDBAdapter::mergeSignatures(
-    std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-        &&allSignatures,
-    const std::map<std::pair<int, int>, int> &mergeSignaturesIdMap,
-    const std::map<std::pair<int, int>, int> &mergeWordsIdMap) {
-  std::list<std::unique_ptr<Signature>> mergedSignatures;
-
-  for (const auto &dbSignatures : allSignatures) {
-    int dbId = dbSignatures.first;
-    for (const auto &signature : dbSignatures.second) {
-      int signatureId = signature.second->id();
-      auto signatureIdIter =
-          mergeSignaturesIdMap.find(std::make_pair(dbId, signatureId));
-      assert(signatureIdIter != mergeSignaturesIdMap.end());
-
-      int newId = signatureIdIter->second;
-      int mapId = signature.second->mapId();
-      Transform pose =
-          Transform::fromEigen4f(signature.second->getPose().toEigen4f());
-
-      std::multimap<int, cv::KeyPoint> words;
-      for (const auto &word : signature.second->getWords()) {
-        auto wordIdIter =
-            mergeWordsIdMap.find(std::make_pair(dbId, word.first));
-        assert(wordIdIter != mergeWordsIdMap.end());
-        words.insert(std::make_pair(wordIdIter->second, word.second));
-      }
-
-      std::multimap<int, cv::Point3f> words3;
-      for (const auto &word3 : signature.second->getWords3()) {
-        auto wordIdIter =
-            mergeWordsIdMap.find(std::make_pair(dbId, word3.first));
-        assert(wordIdIter != mergeWordsIdMap.end());
-        words3.insert(std::make_pair(wordIdIter->second, word3.second));
-      }
-      mergedSignatures.emplace_back(std::unique_ptr<Signature>(
-          new Signature(newId, mapId, dbId, std::move(pose), std::move(words),
-                        std::move(words3))));
-    }
+std::vector<pcl::PointXYZ> RTABMapDBAdapter::clusterPoints3(
+    const std::vector<pcl::PointXYZ> &points3,
+    std::vector<pcl::PointIndices> *clusterIndicesOut) {
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  for (const auto &point3 : points3) {
+    cloud->push_back(point3);
   }
 
-  return mergedSignatures;
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+      new pcl::search::KdTree<pcl::PointXYZ>);
+  tree->setInputCloud(cloud);
+
+  std::vector<pcl::PointIndices> clusterIndices;
+  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+  ec.setClusterTolerance(0.1); // in meter
+  ec.setSearchMethod(tree);
+  ec.setInputCloud(cloud);
+  ec.extract(clusterIndices);
+
+  std::vector<pcl::PointXYZ> clusteredPoints3;
+  int j = 0;
+  for (std::vector<pcl::PointIndices>::const_iterator iter =
+           clusterIndices.begin();
+       iter != clusterIndices.end(); iter++) {
+    pcl::CentroidPoint<pcl::PointXYZ> cloudCluster;
+    for (std::vector<int>::const_iterator jter = iter->indices.begin();
+         jter != iter->indices.end(); jter++) {
+      cloudCluster.add(cloud->points[*jter]);
+    }
+    pcl::PointXYZ centroid;
+    cloudCluster.get(centroid);
+    clusteredPoints3.emplace_back(std::move(centroid));
+    j++;
+  }
+
+  if (clusterIndicesOut != nullptr) {
+    *clusterIndicesOut = clusterIndices;
+  }
+
+  return clusteredPoints3;
 }
