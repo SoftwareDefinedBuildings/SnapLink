@@ -58,3 +58,5 @@ SOURCES += src/process/Identification.cpp
 SOURCES += src/main.cpp
 
 TARGET = cellmate
+
+include(../third_party/qtlibbw/bosswave.pri)
