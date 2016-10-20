@@ -1,11 +1,7 @@
 CONFIG += qt
 QT -= gui
-QT += core
 CONFIG += c++11
-CONFIG += console
-CONFIG -= app_bundle
 
-TEMPLATE = app
 # /usr/include must be before /usr/local/include/opencv2 because they both contain flann/flann.cpp that are used
 INCLUDEPATH += /usr/include/
 LIBS += -L/usr/lib/x86_64-linux-gnu
@@ -62,7 +58,5 @@ SOURCES += src/main.cpp
 
 TARGET = cellmate
 
-#INCLUDEPATH += ../third_party/qtlibbw
 
-#include(../third_party/qtlibbw/bosswave.pri)
 
