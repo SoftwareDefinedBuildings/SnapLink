@@ -1,3 +1,8 @@
+#include <iostream>
+#include <libbw.h>
+#include <allocations.h>
+#include <sstream>
+#include <string>
 class BWServer : public QObject
 {
   friend class BWWorker;
@@ -15,34 +20,29 @@ private:
   BW *_bw;
   QByteArray _entity;
 
-}
+};
 
 BWServer::BWServer(){
   startRun();
 }
 
 void BWServer::startRun() {
-  bw = BW::instance();
-  QObject::connect(bw, &BW::agentChanged, &agentChanged);
+    qDebug()<<"starting run";
+  _bw = BW::instance();
+  QObject::connect(_bw, &BW::agentChanged,this, &BWServer::agentChanged);
   _entity = mustGetEntity();
-  bw->connectAgent(entity);
-  bw->setEntity(entity,[](QString err, QString vk){});
+  _bw->connectAgent(_entity);
+  _bw->setEntity(_entity,[](QString err, QString vk){});
 }
 
 void BWServer::agentChanged() {
-  bw->subscribe("scratch.ns/*",QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,[](PMessage msg){
+  _bw->subscribe("scratch.ns/tongli",QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,[](PMessage msg){
            //Executed when a message arrives
            qDebug() << "got message from" << msg->getHeaderS("from");
            foreach(auto po, msg->POs()) {
                qDebug() << "PO"<< po->ponum()
-                        << " length " << po->length();
-               if(msg->getHeaderS("from") ==  QString("txa_ex9yFXVzzJkS0dtPafnRYX_DdkZ5-DQMMICXBzY=")) {
-                   std::ofstream fout("output.png", std::ios::binary);
-                   // fout<<"message is " << po->content();
-                   fout.write(po->content(), po->length());
-                   fout.close();
-               }
-
+                        << " length " << po->length(); 
+               qDebug() << "contents" << po->content();
            }
        });
 }
