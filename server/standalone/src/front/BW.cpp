@@ -99,14 +99,14 @@ BWServer::~BWServer() {
 }
 
 Q_OBJECT
-void BWServer::run() Q_DECL_OVERRIDE {
-    QCoreApplication a(argc, argv);
+void BWServer::startRun(){
+    //QCoreApplication a(argc, argv);
     bw = BW::instance();
     QObject::connect(bw, &BW::agentChanged, &agentChanged);
     entity = mustGetEntity();
     bw->connectAgent(entity);
     bw->setEntity(entity,[](QString err, QString vk){});
-    return a.exec();
+    //return a.exec();
 }
 
 int BWServer::getMaxClients() const { return _maxClients; }

@@ -51,6 +51,7 @@ SOURCES += ../lib/algo/Visibility.cpp
 SOURCES += ../lib/algo/Feature.cpp
 SOURCES += ../lib/algo/Perspective.cpp
 SOURCES += src/front/HTTPServer.cpp
+SOURCES += src/front/BW.cpp
 SOURCES += src/event/QueryEvent.cpp
 SOURCES += src/event/DetectionEvent.cpp
 SOURCES += src/event/FailureEvent.cpp
@@ -58,3 +59,4 @@ SOURCES += src/process/Identification.cpp
 SOURCES += src/main.cpp
 
 TARGET = cellmate
+
