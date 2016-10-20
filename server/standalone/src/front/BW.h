@@ -8,7 +8,7 @@
 #include <opencv2/core/core.hpp>
 #include <random>
 #include <QCoreApplication>
-#include <libbw.h>
+#include </root/workspace/CellMate/server/third_party/qtlibbw/libbw.h>
 #include <allocations.h>
 #include <fstream>
 #include <iostream>
@@ -99,4 +99,4 @@ private:
   std::uniform_int_distribution<unsigned long long> _dis;
   std::map<long, ConnectionInfo *> _connInfoMap;
   FeatureStage *_featureStage;
-}
+};

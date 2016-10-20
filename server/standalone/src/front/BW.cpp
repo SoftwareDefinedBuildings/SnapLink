@@ -1,4 +1,4 @@
-
+#include <front/BW.h>
 
 void BWWorker::doWork(const PMessage &msg, BWServer *server) {
   try {
@@ -89,8 +89,13 @@ void BWWorker::workComplete(BWServer *server, ConnectionInfo *connInfo) {
 }
 
 BWServer::BWServer()
-  :_bw(nullptr), _numClients(0), _featureStage(nullptr), _maxClients(MAX_CLIENTS)
-  _gen(std::random_device()()) {}
+{
+    _numClients = 0;
+    _featureStage = nullptr;
+    _maxClients = MAX_CLIENTS;
+    _gen = std::random_device()();
+    startRun();
+}  
 
 BWServer::~BWServer() {
   _bw = nullptr;
@@ -98,14 +103,13 @@ BWServer::~BWServer() {
   _featureStage = nullptr;
 }
 
-Q_OBJECT
 void BWServer::startRun(){
     //QCoreApplication a(argc, argv);
-    bw = BW::instance();
-    QObject::connect(bw, &BW::agentChanged, &agentChanged);
+    _bw = BW::instance();
+    QObject::connect(_bw, &BW::agentChanged, &agentChanged);
     entity = mustGetEntity();
-    bw->connectAgent(entity);
-    bw->setEntity(entity,[](QString err, QString vk){});
+    _bw->connectAgent(entity);
+    _bw->setEntity(entity,[](QString err, QString vk){});
     //return a.exec();
 }
 
@@ -123,7 +127,7 @@ void BWServer::publishResult(std::string result, std::string identity) {
   auto ponum = bwpo::num::Text;
   QString msg(result);
   QString
-  bw->publishText(DEFAULT_CHANNEL+ "/" + identity,QString(),true,QList<RoutingObject*>(),ponum,msg,QDateTime(),-1,"partial",false,false,[](QString err) {
+  _bw->publishText(DEFAULT_CHANNEL+ "/" + identity,QString(),true,QList<RoutingObject*>(),ponum,msg,QDateTime(),-1,"partial",false,false,[](QString err) {
       if (!err.isEmpty()) {
           qDebug() << "publish error: " << err;
       } else {
@@ -158,7 +162,7 @@ bool BWServer::event(QEvent *event) {
 
 void BWServer::agentChanged()
 {
-    bw->subscribe(DEFAULT_CHANNEL,QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,BWServer::parseMessage);
+    _bw->subscribe(DEFAULT_CHANNEL,QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,BWServer::parseMessage);
 }
 
 QByteArray BWServer::mustGetEntity() {
