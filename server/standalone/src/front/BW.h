@@ -65,14 +65,14 @@ signals:
 };
 
 
-class BWServer : public QThread
+class BWServer : public QObject
 {
   friend class BWWorker;
 public:
   BWServer();
   virtual ~BWServer();
-  Q_OBJECT
-    void run() Q_DECL_OVERRIDE;
+
+  void startRun();
   int getMaxClients() const;
   int getNumClients() const;
   void setNumClients(int numClients);
