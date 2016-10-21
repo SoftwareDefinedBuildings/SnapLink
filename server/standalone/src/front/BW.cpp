@@ -1,11 +1,10 @@
-
-
-void BWWorker::doWork(const PMessage &msg, BWServer *server) {
-  try {
-    assert(msg->POs().length() == BW_MSG_LENGTH)
-  } catch (exception& e) {
-    std::cout<<"It's not a standard BW input\n";
-    return;
+#include <front/BW.h>
+/*
+void BWWorker::doWork(const PMessage &msg, BWServer *server) { 
+  if(msg->POs().length() != BW_MSG_LENGTH)
+  {
+     std::cout<<"It's not a standard BW input\n";
+     return;
   }
   ConnectionInfo *connInfo = new ConnectionInfo();
   assert(connInfo != nullptr);
@@ -20,7 +19,7 @@ void BWWorker::doWork(const PMessage &msg, BWServer *server) {
   server->setNumClients(server->getNumClients() + 1);
   server->_mutex.unlock();
 
-  std::vector<char*> contents;
+  std::vector<const char*> contents;
   std::vector<int> lens;
 
   foreach(auto po, msg->POs()) {
@@ -30,7 +29,7 @@ void BWWorker::doWork(const PMessage &msg, BWServer *server) {
   double fx, fy, cx, cy;
   int wdith, height;
   std::stringstream ss;
-  for(int i = 5, i <= 8; i++) {
+  for(int i = 5; i <= 8; i++) {
     ss<<contents[i]<<" ";
   }
   ss>>fx>>fy>>cx>>cy;
@@ -40,14 +39,12 @@ void BWWorker::doWork(const PMessage &msg, BWServer *server) {
   rawData.reset(new std::vector<char>());
   rawData->reserve(IMAGE_INIT_SIZE);
   rawData->insert(rawData->end(), contents[2], contents[2] + lens[2]);
-  createData(*rawData, fx, fy, cx, cy, *image, *camera);
-  try {
-    assert(!image->empty())
-  } catch (exception& e) {
+  server->createData(*rawData, fx, fy, cx, cy, *image, *camera); 
+  if(!image->empty()) {
     std::cout<<"Creating image failed\n";
     return;
   }
-  QCoreApplication::postEvent(server->_featureStage,
+  QCoreApplication::postEvent((QObject*)server->_featureStage,
                               new QueryEvent(std::move(image),
                                              std::move(camera),
                                              std::move(connInfo->session)));
@@ -57,7 +54,7 @@ void BWWorker::doWork(const PMessage &msg, BWServer *server) {
     answer = std::move(connInfo->names->at(0));
   }
   workComplete(server, connInfo);
-  emit void doneWork(answer, std::string(contents[1],lens[1]));
+  emit doneWork(answer, std::string(contents[1],lens[1]));
 }
 
 void BWWorker::workComplete(BWServer *server, ConnectionInfo *connInfo) {
@@ -73,9 +70,6 @@ void BWWorker::workComplete(BWServer *server, ConnectionInfo *connInfo) {
               << std::endl;
     std::cout << "TAG_TIME words " << session->wordsEnd - session->wordsStart
               << " ms" << std::endl;
-    std::cout << "TAG_TIME signatures "
-              << session->signaturesEnd - session->signaturesStart << " ms"
-              << std::endl;
     std::cout << "TAG_TIME perspective "
               << session->perspectiveEnd - session->perspectiveStart << " ms"
               << std::endl;
@@ -87,10 +81,16 @@ void BWWorker::workComplete(BWServer *server, ConnectionInfo *connInfo) {
   server->_mutex.unlock();
   delete connInfo;
 }
-
+*/
 BWServer::BWServer()
-  :_bw(nullptr), _numClients(0), _featureStage(nullptr), _maxClients(MAX_CLIENTS)
-  _gen(std::random_device()()) {}
+{
+    _numClients = 0;
+    _bw = BW::instance();
+    _featureStage = nullptr;
+    _maxClients = MAX_CLIENTS;
+    _gen = std::mt19937(std::random_device()());
+    startRun();
+}  
 
 BWServer::~BWServer() {
   _bw = nullptr;
@@ -98,15 +98,13 @@ BWServer::~BWServer() {
   _featureStage = nullptr;
 }
 
-Q_OBJECT
-void BWServer::run() Q_DECL_OVERRIDE {
-    QCoreApplication a(argc, argv);
-    bw = BW::instance();
-    QObject::connect(bw, &BW::agentChanged, &agentChanged);
-    entity = mustGetEntity();
-    bw->connectAgent(entity);
-    bw->setEntity(entity,[](QString err, QString vk){});
-    return a.exec();
+void BWServer::startRun(){
+    //QCoreApplication a(argc, argv);
+    QObject::connect(_bw, SIGNAL(BW::agentChanged(bool connected, QString msg)),this, SLOT(BWServer::agentChanged()));
+    _entity = mustGetEntity();
+    _bw->connectAgent(_entity);
+    _bw->setEntity(_entity,[](QString err, QString vk){});
+    //return a.exec();
 }
 
 int BWServer::getMaxClients() const { return _maxClients; }
@@ -121,9 +119,9 @@ void BWServer::setFeatureStage(FeatureStage *featureStage) {
 
 void BWServer::publishResult(std::string result, std::string identity) {
   auto ponum = bwpo::num::Text;
-  QString msg(result);
-  QString
-  bw->publishText(DEFAULT_CHANNEL+ "/" + identity,QString(),true,QList<RoutingObject*>(),ponum,msg,QDateTime(),-1,"partial",false,false,[](QString err) {
+  QString msg = QString::fromStdString(result);
+  std::string channel = DEFAULT_CHANNEL;
+  _bw->publishText(QString::fromStdString(channel) + "/" + QString::fromStdString(identity),QString(),true,QList<RoutingObject*>(),ponum,msg,QDateTime(),-1,"partial",false,false,[](QString err) {
       if (!err.isEmpty()) {
           qDebug() << "publish error: " << err;
       } else {
@@ -158,7 +156,8 @@ bool BWServer::event(QEvent *event) {
 
 void BWServer::agentChanged()
 {
-    bw->subscribe(DEFAULT_CHANNEL,QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,BWServer::parseMessage);
+   // _bw->subscribe(DEFAULT_CHANNEL,QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,BWServer::parseMessage);
+    _bw->subscribe(DEFAULT_CHANNEL,QString(),true,QList<RoutingObject*>(),QDateTime(),-1,QString(),false,false,[&](PMessage msg){this->parseMessage(msg);});
 }
 
 QByteArray BWServer::mustGetEntity() {
@@ -183,11 +182,11 @@ QByteArray BWServer::mustGetEntity() {
 
 void BWServer::parseMessage(PMessage msg) {
     QThread workerThread;
-    BWWorker *worker = new BWWorker;
+    BWWorker *worker = new BWWorker();
     worker->moveToThread(&workerThread);
-    connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
-    connect(this, &BWServer::askWorkerDoWork, worker, &BWWorker::doWork);
-    connect(worker, &Worker::doneWork, this, &BWServer::publishResult);
+    QObject::connect(&workerThread, &QThread::finished, worker, &QObject::deleteLater);
+    QObject::connect(this, SIGNAL(BWServer::askWorkerDoWork(const PMessage &msg, BWServer *server)), worker, SLOT(BWWorker::doWork(const PMessage &msg, BWServer *server)));
+    QObject::connect(worker, SIGNAL(BWWorker::doneWork(std::string result, std::string identity)), this, SLOT(BWServer::publishResult(std::string result, std::string identity)));
     workerThread.start();
     emit askWorkerDoWork(msg, this);
 }

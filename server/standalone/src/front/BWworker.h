@@ -1,6 +1,4 @@
-#pragma once
-#include "front/BWworker.h"
-/*
+#include "front/BW.h"
 #include "data/CameraModel.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
@@ -26,21 +24,7 @@
 #include <vector>
 #include <sstream>
 #include <QThread>
-#define MAX_CLIENTS 10
-#define IMAGE_INIT_SIZE 100000
-*/
 
-/* BW_MSG have format:
-    "Cellmate Image"
-    str(identity)
-    str(image contents)
-    str(height)
-    str(width)
-    str(fx)
-    str(fy)
-    str(cx)
-    str(cy)
-*/
 
 #define BW_MSG_LENGTH 9
 #define DEFAULT_CHANNEL "scratch.ns/cellmate"
@@ -81,39 +65,3 @@ signals:
 };
 
 
-
-class BWServer : public QObject
-{
-  friend class BWWorker;
-public:
-  BWServer();
-  virtual ~BWServer();
-
-  void startRun();
-  int getMaxClients() const;
-  int getNumClients() const;
-  void setNumClients(int numClients);
-  void setFeatureStage(FeatureStage *featureStage);
-public slots:
-  void publishResult(std::string result, std::string identity);
-signals:
-  void askWorkerDoWork(const PMessage &msg, BWServer *server){};
-protected:
-  virtual bool event(QEvent *event);
-  void agentChanged();
-  QByteArray mustGetEntity();
-  void parseMessage(PMessage msg);
-private:
-  static void createData(const std::vector<char> &data, double fx, double fy,
-                         double cx, double cy, cv::Mat &image,
-                         CameraModel &camera);
-  BW *_bw;
-  QByteArray _entity;
-  unsigned int _maxClients;
-  int _numClients;
-  std::mutex _mutex;
-  std::mt19937 _gen;
-  std::uniform_int_distribution<unsigned long long> _dis;
-  std::map<long, ConnectionInfo *> _connInfoMap;
-  FeatureStage *_featureStage;
-};
