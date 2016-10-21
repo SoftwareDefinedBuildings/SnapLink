@@ -1,8 +1,9 @@
 CONFIG += qt
 QT -= gui
-
+QT += core
 CONFIG += c++11
-
+CONFIG += console
+CONFIG -= app_bundle
 # /usr/include must be before /usr/local/include/opencv2 because they both contain flann/flann.cpp that are used
 INCLUDEPATH += /usr/include/
 LIBS += -L/usr/lib/x86_64-linux-gnu
@@ -51,6 +52,7 @@ SOURCES += ../lib/algo/Visibility.cpp
 SOURCES += ../lib/algo/Feature.cpp
 SOURCES += ../lib/algo/Perspective.cpp
 SOURCES += src/front/HTTPServer.cpp
+SOURCES += src/front/BW.cpp
 SOURCES += src/event/QueryEvent.cpp
 SOURCES += src/event/DetectionEvent.cpp
 SOURCES += src/event/FailureEvent.cpp
@@ -58,5 +60,5 @@ SOURCES += src/process/Identification.cpp
 SOURCES += src/main.cpp
 
 TARGET = cellmate
-
+INCLUDEPATH += ../third_party/qtlibbw
 include(../third_party/qtlibbw/bosswave.pri)
