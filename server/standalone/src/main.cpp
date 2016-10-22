@@ -2,6 +2,7 @@
 #include "data/LabelsSimple.h"
 #include "data/WordsKdTree.h"
 #include "front/HTTPServer.h"
+#include "front/BWServer.h"
 #include "process/Identification.h"
 #include <QCoreApplication>
 #include <QDebug>
@@ -45,7 +46,14 @@ int main(int argc, char *argv[]) {
   ident.setHTTPServer(&httpServer);
   ident.moveToThread(&identThread);
   identThread.start();
-
+  //BWServer
+  std::cout << "Initializing BW server" << std::endl;
+  BWServer bw, bwSignal; 
+  QThread bwThread;
+  bw.moveToThread(&bwThread);
+  QObject::connect(&bwSignal,&BWServer::signalBW,&bw,&BWServer::startRun);
+  bwThread.start();
+  emit bwSignal.signalBW();
   // HTTPServer
   std::cout << "Initializing HTTP server" << std::endl;
   httpServer.setIdentification(&ident);
