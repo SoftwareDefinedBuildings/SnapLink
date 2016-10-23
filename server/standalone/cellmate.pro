@@ -41,6 +41,7 @@ INCLUDEPATH += ../lib
 INCLUDEPATH += src
 
 HEADERS += src/front/BWServer.h
+HEADERS += src/front/BWWorker.h
 SOURCES += ../lib/util/Time.cpp
 SOURCES += ../lib/util/Utility.cpp
 SOURCES += ../lib/adapter/RTABMapDBAdapter.cpp
@@ -56,6 +57,7 @@ SOURCES += ../lib/algo/Feature.cpp
 SOURCES += ../lib/algo/Perspective.cpp
 SOURCES += src/front/HTTPServer.cpp
 SOURCES += src/front/BWServer.cpp
+SOURCES += src/front/BWWorker.cpp
 SOURCES += src/event/QueryEvent.cpp
 SOURCES += src/event/DetectionEvent.cpp
 SOURCES += src/event/FailureEvent.cpp

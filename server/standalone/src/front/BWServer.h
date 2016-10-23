@@ -4,6 +4,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
+#include <front/BWWorker.h>
 class BWServer : public QObject
 {
   Q_OBJECT
@@ -16,7 +17,10 @@ public:
   void startRun();
 signals:
   void signalBW();
-
+  //void askWorkerDoWork();
+  //void askWorkerDoWork(std::vector<const char*> *contents, std::vector<int> *lens);
+  void askWorkerDoWork();
+  
 private:
   void parseMessage(PMessage msg);
   BW *_bw;
