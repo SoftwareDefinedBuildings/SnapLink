@@ -71,13 +71,14 @@ def test_file(filename):
 
     #modification from here
     identity = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(IDENTITY_LENGTH))
-    done = []
+    done = [0, "default"]
     def onMessage(bw_message): #send next picture here
-        done += [1]
+        done[0] = 1
         assert(len(bw_message.payload_objects)==1)
         for po in bw_message.payload_objects:
             if po.type_dotted == ponames.PODFText:
-                done += [po.content]
+                print("the result get in Onmessage is " + str(po.content))
+                done[1] = po.content
     bw_client.subscribe(DEFAULT_CHANNEL + "/" + identity, onMessage)
     contents =  jpg.tostring()
     width = str(width)
@@ -99,18 +100,18 @@ def test_file(filename):
     t0 = time.time()
     bw_client.publish(DEFAULT_CHANNEL, payload_objects=(po_header,po_identity ,po_contents,po_height,po_width,po_fx,po_fy,po_cx,po_cy))
 
-    while len(done)==0:
-        time.sleep(10)
+    while done[0] == 0:
+        time.sleep(1)
     t1 = time.time()
 
     elapsed_time = round((t1 - t0)*1000, 2)
     assert(len(done) == 2)
     if done[1] != obj_name:
-       text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
+       text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(done[1], obj_name, elapsed_time)
        print text
        return RESULT_FAIL, elapsed_time
     else:
-       print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
+       print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(done[1], obj_name, elapsed_time)
        return RESULT_PASS, elapsed_time
 
     return RESULT_PASS, elapsed_time

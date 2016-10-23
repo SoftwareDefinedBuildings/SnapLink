@@ -40,18 +40,20 @@ int main(int argc, char *argv[]) {
   }
 
   HTTPServer httpServer;
-
+  BWServer bwServer;
   std::cout << "Initializing Identification Service" << std::endl;
   Identification ident(std::move(words), std::move(labels));
   ident.setHTTPServer(&httpServer);
+  ident.setBWServer(&bwServer);
   ident.moveToThread(&identThread);
   identThread.start();
   //BWServer
   std::cout << "Initializing BW server" << std::endl;
-  BWServer bw, bwSignal; 
+  bwServer.setIdentification(&ident);
+  BWServer bwSignal; 
   QThread bwThread;
-  bw.moveToThread(&bwThread);
-  QObject::connect(&bwSignal,&BWServer::signalBW,&bw,&BWServer::startRun);
+  bwServer.moveToThread(&bwThread);
+  QObject::connect(&bwSignal, &BWServer::signalBW, &bwServer, &BWServer::startRun);
   bwThread.start();
   emit bwSignal.signalBW();
   // HTTPServer
