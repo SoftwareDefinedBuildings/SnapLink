@@ -1,6 +1,11 @@
 #include "BWServer.h"
-BWServer::BWServer()
-  :_numClients(0), _identification(nullptr), _gen(std::random_device()()) {}
+BWServer::BWServer() {
+  _numClients = 0;
+  _bw = BW::instance();
+  _identification = nullptr;
+//  _gen = std::random_device()();
+}
+
 
 BWServer::~BWServer() {
   _numClients = 0;
@@ -15,7 +20,9 @@ void BWServer::setIdentification(Identification *identification) {
 void BWServer::startRun() {
   qDebug()<<"starting run";
   _maxClients = MAX_CLIENTS;
-  _bw = BW::instance();
+  //_bw = BW::instance();
+  qDebug()<<"this thread "<<this->thread();
+  qDebug()<<"core application "<< QCoreApplication::instance()->thread();
   QObject::connect(_bw, &BW::agentChanged,this, &BWServer::agentChanged);
   _entity = mustGetEntity();
   _bw->connectAgent(_entity);

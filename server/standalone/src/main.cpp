@@ -25,7 +25,6 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     dbfiles.emplace_back(argv[i]);
   }
-
   QCoreApplication app(argc, argv);
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -50,12 +49,11 @@ int main(int argc, char *argv[]) {
   //BWServer
   std::cout << "Initializing BW server" << std::endl;
   bwServer.setIdentification(&ident);
-  BWServer bwSignal; 
   QThread bwThread;
-  bwServer.moveToThread(&bwThread);
-  QObject::connect(&bwSignal, &BWServer::signalBW, &bwServer, &BWServer::startRun);
   bwThread.start();
-  emit bwSignal.signalBW();
+  bwServer.moveToThread(&bwThread); 
+  QObject::connect(&bwServer, &BWServer::signalBW, &bwServer, &BWServer::startRun);
+  emit bwServer.signalBW();
   // HTTPServer
   std::cout << "Initializing HTTP server" << std::endl;
   httpServer.setIdentification(&ident);

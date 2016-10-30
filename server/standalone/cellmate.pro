@@ -1,3 +1,4 @@
+CONFIG += qt debug
 CONFIG += qt
 QT -= gui
 QT += core
