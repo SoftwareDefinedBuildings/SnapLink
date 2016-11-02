@@ -19,12 +19,16 @@ public:
                 Transform &transform) const;
 
 private:
-  std::map<int, int> countWords(const std::map<int, std::vector<cv::KeyPoint>> &words2, const std::map<int, std::vector<cv::Point3f>> &words3) const;
-  std::map<int, std::vector<cv::Point3f>> getWords3(const std::vector<int> &wordIds,
-                                       int &dbId) const;
   static std::map<int, std::vector<cv::KeyPoint>>
   getWords2(const std::vector<int> &wordIds,
             const std::vector<cv::KeyPoint> &keyPoints);
+  std::map<int, std::vector<cv::Point3f>>
+  getWords3(const std::vector<int> &wordIds, int &dbId) const;
+  std::map<int, int>
+  countWords(const std::map<int, std::vector<cv::KeyPoint>> &words2,
+             const std::map<int, std::vector<cv::Point3f>> &words3) const;
+  void getMatchPoints(std::vector<cv::Point3f> &objectPoints,
+                      std::vector<cv::Point2f> &imagePoints);
   static Transform
   estimateMotion3DTo2D(const std::map<int, cv::Point3f> &words3A,
                        const std::map<int, cv::KeyPoint> &words2B,
