@@ -27,13 +27,13 @@ private:
   std::map<int, int>
   countWords(const std::map<int, std::vector<cv::KeyPoint>> &words2,
              const std::map<int, std::vector<cv::Point3f>> &words3) const;
-  void getMatchPoints(std::vector<cv::Point3f> &objectPoints,
-                      std::vector<cv::Point2f> &imagePoints);
-  static Transform
-  estimateMotion3DTo2D(const std::map<int, cv::Point3f> &words3A,
-                       const std::map<int, cv::KeyPoint> &words2B,
-                       const CameraModel &camera, const Transform &guess,
-                       std::vector<int> *inliersOut, size_t minInliers);
+  void getMatchPoints(const std::map<int, std::vector<cv::KeyPoint>> &words2,
+                      const std::map<int, std::vector<cv::Point3f>> &words3,
+                      std::vector<cv::Point2f> &imagePoints,
+                      std::vector<cv::Point3f> &objectPoints) const;
+  static Transform solvePnP(const std::vector<cv::Point2f> &imagePoints,
+                            const std::vector<cv::Point3f> &objectPoints,
+                            const CameraModel &camera);
 
 private:
   std::shared_ptr<Words> _words;
