@@ -17,9 +17,37 @@ void Perspective::localize(const std::vector<int> &wordIds,
 
   int inliersCount = 0;
 
-  std::map<int, cv::KeyPoint> words2 =
-      Utility::MultimapToMapUnique(createWords(wordIds, keyPoints));
+  std::map<int, cv::KeyPoint> words2 = getWords2(wordIds, keyPoints);
+  std::map<int, cv::Point3f> words3 = getWords3(wordIds, dbId);
 
+  std::cout << "words3.size() = " << words3.size()
+            << ", words2.size() = " << words2.size() << std::endl;
+  // 3D to 2D (PnP)
+  if (words3.size() >= minInliers && words2.size() >= minInliers) {
+    std::vector<int> inliers;
+
+    // TODO lots of useful information are thrown away here
+    transform = estimateMotion3DTo2D(
+        words3, words2, camera, Transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
+        &inliers, minInliers);
+    inliersCount = (int)inliers.size();
+    if (transform.isNull()) {
+      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
+                << std::endl;
+    }
+  } else {
+    std::cout << "Not enough features in images (old=" << words3.size()
+              << ", new=" << words2.size() << ", min=" << minInliers << ")"
+              << std::endl;
+  }
+
+  // TODO check RegistrationVis.cpp to see whether rotation check is necessary
+
+  qDebug() << "transform= " << transform.prettyPrint().c_str();
+}
+
+std::map<int, cv::Point3f>
+Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
   std::map<int, std::multimap<int, cv::Point3f>>
@@ -56,38 +84,13 @@ void Perspective::localize(const std::vector<int> &wordIds,
                                    });
   dbId = maxCount->first;
   std::cout << "max dbId = " << dbId << std::endl;
-  const std::map<int, cv::Point3f> &words3 =
-      Utility::MultimapToMapUnique(words3Map[dbId]);
 
-  std::cout << "words3.size() = " << words3.size()
-            << ", words2.size() = " << words2.size() << std::endl;
-  // 3D to 2D (PnP)
-  if (words3.size() >= minInliers && words2.size() >= minInliers) {
-    std::vector<int> inliers;
-
-    // TODO lots of useful information are thrown away here
-    transform = estimateMotion3DTo2D(
-        words3, words2, camera, Transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
-        &inliers, minInliers);
-    inliersCount = (int)inliers.size();
-    if (transform.isNull()) {
-      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
-                << std::endl;
-    }
-  } else {
-    std::cout << "Not enough features in images (old=" << words3.size()
-              << ", new=" << words2.size() << ", min=" << minInliers << ")"
-              << std::endl;
-  }
-
-  // TODO check RegistrationVis.cpp to see whether rotation check is necessary
-
-  qDebug() << "transform= " << transform.prettyPrint().c_str();
+  return Utility::MultimapToMapUnique(words3Map[dbId]);
 }
 
-std::multimap<int, cv::KeyPoint>
-Perspective::createWords(const std::vector<int> &wordIds,
-                         const std::vector<cv::KeyPoint> &keyPoints) {
+std::map<int, cv::KeyPoint>
+Perspective::getWords2(const std::vector<int> &wordIds,
+                       const std::vector<cv::KeyPoint> &keyPoints) {
   std::multimap<int, cv::KeyPoint> words;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;
@@ -96,7 +99,7 @@ Perspective::createWords(const std::vector<int> &wordIds,
     words.insert(std::pair<int, cv::KeyPoint>(*iter, keyPoints[i]));
   }
 
-  return words;
+  return Utility::MultimapToMapUnique(words);
 }
 
 Transform Perspective::estimateMotion3DTo2D(

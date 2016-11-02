@@ -19,9 +19,11 @@ public:
                 Transform &transform) const;
 
 private:
-  static std::multimap<int, cv::KeyPoint>
-  createWords(const std::vector<int> &wordIds,
-              const std::vector<cv::KeyPoint> &keyPoints);
+  std::map<int, cv::Point3f> getWords3(const std::vector<int> &wordIds,
+                                       int &dbId) const;
+  static std::map<int, cv::KeyPoint>
+  getWords2(const std::vector<int> &wordIds,
+            const std::vector<cv::KeyPoint> &keyPoints);
   static Transform
   estimateMotion3DTo2D(const std::map<int, cv::Point3f> &words3A,
                        const std::map<int, cv::KeyPoint> &words2B,
