@@ -17,11 +17,18 @@ void Perspective::localize(const std::vector<int> &wordIds,
 
   int inliersCount = 0;
 
-  std::map<int, cv::KeyPoint> words2 = getWords2(wordIds, keyPoints);
-  std::map<int, cv::Point3f> words3 = getWords3(wordIds, dbId);
-
+  std::map<int, std::vector<cv::KeyPoint>> words2 = getWords2(wordIds, keyPoints);
+  std::map<int, std::vector<cv::Point3f>> words3 = getWords3(wordIds, dbId);
   std::cout << "words3.size() = " << words3.size()
             << ", words2.size() = " << words2.size() << std::endl;
+
+  std::map<int, int> wordCounts = countWords(words2, words3); // wrod id -> count of both words2 and words3
+  std::vector<std::pair<int, int>> inverseCounts;
+  for (const auto count : wordCounts) {
+    inverseCounts.emplace_back(count);
+  }
+  std::sort(inverseCounts.begin(), inverseCounts.end());
+
   // 3D to 2D (PnP)
   if (words3.size() >= minInliers && words2.size() >= minInliers) {
     std::vector<int> inliers;
@@ -46,11 +53,24 @@ void Perspective::localize(const std::vector<int> &wordIds,
   qDebug() << "transform= " << transform.prettyPrint().c_str();
 }
 
-std::map<int, cv::Point3f>
+std::map<int, int> Perspective::countWords(const std::map<int, std::vector<cv::KeyPoint>> &words2, const std::map<int, std::vector<cv::Point3f>> &words3) const {
+  std::map<int, int> counts;
+
+  for (const auto word : words2) {
+    counts.emplace(word.first, word.second.size());
+  }
+  for (const auto word : words3) {
+    counts.at(word.first) += word.second.size();
+  }
+
+  return counts;
+}
+
+std::map<int, std::vector<cv::Point3f>>
 Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
-  std::map<int, std::multimap<int, cv::Point3f>>
+  std::map<int, std::map<int, std::vector<cv::Point3f>>>
       words3Map;               // dbId: wordId: point3
   std::map<int, int> dbCounts; // dbId: count
   for (int wordId : wordIds) {
@@ -60,7 +80,8 @@ Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
     for (auto &points3 : word->getPoints3Map()) {
       int dbId = points3.first;
       for (const auto &point3 : points3.second) {
-        words3Map[dbId].insert(std::make_pair(wordId, point3));
+        // an empty vector is ceated if wordId is not in words3Map[dbId]
+        words3Map[dbId][wordId].emplace_back(point3); 
       }
       auto jter = dbCounts.find(dbId);
       if (jter == dbCounts.end()) {
@@ -85,21 +106,22 @@ Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
   dbId = maxCount->first;
   std::cout << "max dbId = " << dbId << std::endl;
 
-  return Utility::MultimapToMapUnique(words3Map[dbId]);
+  return words3Map[dbId];
 }
 
-std::map<int, cv::KeyPoint>
+std::map<int, std::vector<cv::KeyPoint>>
 Perspective::getWords2(const std::vector<int> &wordIds,
                        const std::vector<cv::KeyPoint> &keyPoints) {
-  std::multimap<int, cv::KeyPoint> words;
+  std::map<int, cv::KeyPoint> words;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;
-  for (auto iter = wordIds.begin();
-       iter != wordIds.end() && i < keyPoints.size(); ++iter, ++i) {
-    words.insert(std::pair<int, cv::KeyPoint>(*iter, keyPoints[i]));
+  for (const auto wordId : wordIds) {
+    // an empty vector is ceated if wordId is not in words3Map[dbId]
+    words[wordId].emplace(keyPoints[i]);
+    i++;
   }
 
-  return Utility::MultimapToMapUnique(words);
+  return words;
 }
 
 Transform Perspective::estimateMotion3DTo2D(

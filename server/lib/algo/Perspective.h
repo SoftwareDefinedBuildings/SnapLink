@@ -19,9 +19,10 @@ public:
                 Transform &transform) const;
 
 private:
-  std::map<int, cv::Point3f> getWords3(const std::vector<int> &wordIds,
+  std::map<int, int> countWords(const std::map<int, std::vector<cv::KeyPoint>> &words2, const std::map<int, std::vector<cv::Point3f>> &words3) const;
+  std::map<int, std::vector<cv::Point3f>> getWords3(const std::vector<int> &wordIds,
                                        int &dbId) const;
-  static std::map<int, cv::KeyPoint>
+  static std::map<int, std::vector<cv::KeyPoint>>
   getWords2(const std::vector<int> &wordIds,
             const std::vector<cv::KeyPoint> &keyPoints);
   static Transform
