@@ -1,0 +1,8 @@
+/root/data/buildsys16/7th_kitchen/test/7th_kitchen_sink.03.jpg width: 640 height: 480
+/root/data/buildsys16/410_demo/test/410_demo_light.02.jpg width: 480 height: 640
+/root/data/buildsys16/ITU_kitchen_side1/test/ITU_kitchen_side1_dustbin.04.JPG width: 480 height: 640
+/root/data/buildsys16/410_michael/test/410_michael_monitor.02.jpg width: 480 height: 640
+/root/data/buildsys16/347/test/347_speaker.01.jpg width: 640 height: 480
+/root/data/buildsys16/445/test/445_othermonitor.11.jpg width: 640 height: 480
+/root/data/buildsys16/ASPIRE_arch/test/ASPIRE_arch_monitor.09.jpg width: 640 height: 480
+/root/data/buildsys16/Cory_545K/test/Cory_545K_monitor3.01.jpg width: 480 height: 640

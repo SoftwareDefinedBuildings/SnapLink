@@ -3,6 +3,7 @@
 #include "data/Words.h"
 #include <memory>
 #include <opencv2/core/core.hpp>
+#include <set>
 
 #define MAX_MATCH 50
 #define DIST_RATIO 0.7
@@ -28,7 +29,7 @@ private:
             const cv::Mat &descriptors);
 
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
-  getWords3(const std::vector<int> &wordIds, int &dbId) const;
+  getWords3(const std::set<int> &wordIds, int &dbId) const;
 
   std::map<int, int>
   countWords(const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
@@ -43,10 +44,10 @@ private:
       std::vector<cv::Point2f> &imagePoints,
       std::vector<cv::Point3f> &objectPoints) const;
 
-  static bool
-  findMatchPoint3(const cv::Mat &descriptor,
-                  const std::pair<std::vector<cv::Point3f>, cv::Mat> &words3,
-                  cv::Point3f &point3);
+  static bool findMatchPoint3(
+      const cv::Mat &descriptor, int wordId,
+      const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
+      cv::Point3f &point3);
 
   static Transform solvePnP(const std::vector<cv::Point2f> &imagePoints,
                             const std::vector<cv::Point3f> &objectPoints,

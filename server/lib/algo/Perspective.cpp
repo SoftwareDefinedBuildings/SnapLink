@@ -17,7 +17,7 @@ void Perspective::localize(const std::vector<int> &wordIds,
   std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
       getWords2(wordIds, keyPoints, descriptors);
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> words3 =
-      getWords3(wordIds, dbId);
+      getWords3(std::set<int>(wordIds.begin(), wordIds.end()), dbId);
 
   std::vector<cv::Point2f> imagePoints;
   std::vector<cv::Point3f> objectPoints;
@@ -54,7 +54,7 @@ Perspective::getWords2(const std::vector<int> &wordIds,
 }
 
 std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
-Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
+Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
   std::map<int, std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>>
@@ -137,7 +137,7 @@ void Perspective::getMatchPoints(
     for (const auto &point2 : words2.at(wordId).first) {
       cv::Point3f point3;
       cv::Mat desc = words2.at(wordId).second.row(i);
-      if (findMatchPoint3(desc, words3.at(wordId), point3)) {
+      if (findMatchPoint3(desc, wordId, words3, point3)) {
         imagePoints.emplace_back(point2.pt);
         objectPoints.emplace_back(point3);
         matchCount++;
@@ -151,23 +151,30 @@ void Perspective::getMatchPoints(
 }
 
 bool Perspective::findMatchPoint3(
-    const cv::Mat &descriptor,
-    const std::pair<std::vector<cv::Point3f>, cv::Mat> &words3,
+    const cv::Mat &descriptor, int wordId,
+    const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
     cv::Point3f &point3) {
   assert(descriptor.rows == 1);
-  if (words3.first.size() == 1) {
-    point3 = words3.first.at(0);
+
+  const auto &iter = words3.find(wordId);
+  if (iter == words3.end()) {
+    return false;
+  }
+
+  if (words3.at(wordId).first.size() == 1) {
+    point3 = words3.at(wordId).first.at(0);
     return true;
   }
 
   std::vector<std::pair<double, int>> dists;
   for (int i = 0; i < descriptor.rows; i++) {
-    double dist = cv::norm(descriptor, words3.second.row(i), cv::NORM_L2);
+    double dist =
+        cv::norm(descriptor, words3.at(wordId).second.row(i), cv::NORM_L2);
     dists.emplace_back(dist, i);
   }
   std::partial_sort(dists.begin(), dists.begin() + 2, dists.end());
   if (dists.at(0).first / dists.at(1).first <= DIST_RATIO) {
-    point3 = words3.first.at(dists.at(0).second);
+    point3 = words3.at(wordId).first.at(dists.at(0).second);
     return true;
   }
 
