@@ -64,7 +64,7 @@ bool Identification::identify(const cv::Mat &image, const CameraModel &camera,
   int dbId;
   Transform pose;
   session.perspectiveStart = getTime();
-  _perspective.localize(wordIds, keyPoints, camera, dbId, pose);
+  _perspective.localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
   session.perspectiveEnd = getTime();
 
   if (pose.isNull()) {

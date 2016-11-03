@@ -11,13 +11,13 @@ Perspective::Perspective(const std::shared_ptr<Words> &words) : _words(words) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
+                           const cv::Mat &descriptors,
                            const CameraModel &camera, int &dbId,
                            Transform &transform) const {
-  std::map<int, std::vector<cv::KeyPoint>> words2 =
-      getWords2(wordIds, keyPoints);
-  std::map<int, std::vector<cv::Point3f>> words3 = getWords3(wordIds, dbId);
-  std::cout << "words2.size() = " << words2.size()
-            << ", words3.size() = " << words3.size() << std::endl;
+  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
+      getWords2(wordIds, keyPoints, descriptors);
+  std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> words3 =
+      getWords3(wordIds, dbId);
 
   std::vector<cv::Point2f> imagePoints;
   std::vector<cv::Point3f> objectPoints;
@@ -36,37 +36,43 @@ void Perspective::localize(const std::vector<int> &wordIds,
   qDebug() << "transform= " << transform.prettyPrint().c_str();
 }
 
-std::map<int, std::vector<cv::KeyPoint>>
+std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
 Perspective::getWords2(const std::vector<int> &wordIds,
-                       const std::vector<cv::KeyPoint> &keyPoints) {
-  std::map<int, std::vector<cv::KeyPoint>> words;
+                       const std::vector<cv::KeyPoint> &keyPoints,
+                       const cv::Mat &descriptors) {
+  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;
   for (const auto wordId : wordIds) {
     // an empty vector is ceated if wordId is not in words3Map[dbId]
-    words[wordId].emplace_back(keyPoints[i]);
+    words[wordId].first.emplace_back(keyPoints[i]);
+    words[wordId].second.push_back(descriptors.row(i));
     i++;
   }
 
   return words;
 }
 
-std::map<int, std::vector<cv::Point3f>>
+std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
 Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
-  std::map<int, std::map<int, std::vector<cv::Point3f>>>
+  std::map<int, std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>>
       words3Map;               // dbId: wordId: point3
   std::map<int, int> dbCounts; // dbId: count
   for (int wordId : wordIds) {
     const auto iter = wordsById.find(wordId);
     assert(iter != wordsById.end());
     const std::shared_ptr<Word> &word = iter->second;
+    const std::map<int, cv::Mat> &desc = word->getDescriptorsByDb();
+    unsigned int i = 0;
     for (auto &points3 : word->getPoints3Map()) {
       int dbId = points3.first;
       for (const auto &point3 : points3.second) {
         // an empty vector is ceated if wordId is not in words3Map[dbId]
-        words3Map[dbId][wordId].emplace_back(point3);
+        words3Map[dbId][wordId].first.emplace_back(point3);
+        words3Map[dbId][wordId].second.push_back(desc.at(dbId).row(i));
+        i++;
       }
       auto jter = dbCounts.find(dbId);
       if (jter == dbCounts.end()) {
@@ -95,41 +101,60 @@ Perspective::getWords3(const std::vector<int> &wordIds, int &dbId) const {
 }
 
 std::map<int, int> Perspective::countWords(
-    const std::map<int, std::vector<cv::KeyPoint>> &words2,
-    const std::map<int, std::vector<cv::Point3f>> &words3) const {
+    const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> &words2,
+    const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3)
+    const {
   std::map<int, int> counts;
 
   for (const auto word : words2) {
-    counts.emplace(word.first, word.second.size());
+    counts.emplace(word.first, word.second.first.size());
   }
   for (const auto word : words3) {
-    counts.at(word.first) += word.second.size();
+    counts.at(word.first) += word.second.first.size();
   }
 
   return counts;
 }
 
 void Perspective::getMatchPoints(
-    const std::map<int, std::vector<cv::KeyPoint>> &words2,
-    const std::map<int, std::vector<cv::Point3f>> &words3,
+    const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> &words2,
+    const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
     std::vector<cv::Point2f> &imagePoints,
     std::vector<cv::Point3f> &objectPoints) const {
   std::map<int, int> wordCounts =
-      countWords(words2, words3); // wrod id -> count of both words2 and words3
+      countWords(words2, words3); // word id -> count of both words2 and words3
   std::vector<std::pair<int, int>> inverseCounts;
   for (const auto &count : wordCounts) {
     inverseCounts.emplace_back(count.second, count.first);
   }
   std::sort(inverseCounts.begin(), inverseCounts.end());
 
+  // iterate from word with less points
   for (const auto &count : inverseCounts) {
     int wordId = count.second;
-    if (count.first == 2) {
-      imagePoints.emplace_back(words2.at(wordId).at(0).pt);
-      objectPoints.emplace_back(words3.at(wordId).at(0));
+    unsigned int i = 0;
+    for (const auto &point2 : words2.at(wordId).first) {
+      cv::Point3f point3;
+      cv::Mat desc = words2.at(wordId).second.row(i);
+      if (findMatchPoint3(desc, words3.at(wordId), point3)) {
+        imagePoints.emplace_back(point2.pt);
+        objectPoints.emplace_back(point3);
+      }
+      i++;
     }
-    // TODO: VPS
   }
+}
+
+bool Perspective::findMatchPoint3(
+    const cv::Mat &desciptor,
+    const std::pair<std::vector<cv::Point3f>, cv::Mat> &words3,
+    cv::Point3f &point3) {
+  if (words3.first.size() == 1) {
+    point3 = words3.first.at(0);
+    return true;
+  }
+
+  return false;
 }
 
 Transform Perspective::solvePnP(const std::vector<cv::Point2f> &imagePoints,
