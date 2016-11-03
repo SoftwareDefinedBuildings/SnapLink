@@ -129,6 +129,7 @@ void Perspective::getMatchPoints(
   }
   std::sort(inverseCounts.begin(), inverseCounts.end());
 
+  int matchCount = 0;
   // iterate from word with less points
   for (const auto &count : inverseCounts) {
     int wordId = count.second;
@@ -139,6 +140,10 @@ void Perspective::getMatchPoints(
       if (findMatchPoint3(desc, words3.at(wordId), point3)) {
         imagePoints.emplace_back(point2.pt);
         objectPoints.emplace_back(point3);
+        matchCount++;
+        if (matchCount >= MAX_MATCH) {
+          return;
+        }
       }
       i++;
     }
@@ -146,11 +151,23 @@ void Perspective::getMatchPoints(
 }
 
 bool Perspective::findMatchPoint3(
-    const cv::Mat &desciptor,
+    const cv::Mat &descriptor,
     const std::pair<std::vector<cv::Point3f>, cv::Mat> &words3,
     cv::Point3f &point3) {
+  assert(descriptor.rows == 1);
   if (words3.first.size() == 1) {
     point3 = words3.first.at(0);
+    return true;
+  }
+
+  std::vector<std::pair<double, int>> dists;
+  for (int i = 0; i < descriptor.rows; i++) {
+    double dist = cv::norm(descriptor, words3.second.row(i), cv::NORM_L2);
+    dists.emplace_back(dist, i);
+  }
+  std::partial_sort(dists.begin(), dists.begin() + 2, dists.end());
+  if (dists.at(0).first / dists.at(1).first <= DIST_RATIO) {
+    point3 = words3.first.at(dists.at(0).second);
     return true;
   }
 

@@ -4,6 +4,9 @@
 #include <memory>
 #include <opencv2/core/core.hpp>
 
+#define MAX_MATCH 50
+#define DIST_RATIO 0.7
+
 class CameraModel;
 class Transform;
 class Visibility;
@@ -41,7 +44,7 @@ private:
       std::vector<cv::Point3f> &objectPoints) const;
 
   static bool
-  findMatchPoint3(const cv::Mat &desciptor,
+  findMatchPoint3(const cv::Mat &descriptor,
                   const std::pair<std::vector<cv::Point3f>, cv::Mat> &words3,
                   cv::Point3f &point3);
 
