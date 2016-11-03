@@ -134,6 +134,12 @@ void Perspective::getMatchPoints(
   for (const auto &count : inverseCounts) {
     int wordId = count.second;
     unsigned int i = 0;
+
+    assert(words2.find(wordId) != words2.end());
+    if (words3.find(wordId) == words3.end()) {
+      continue;
+    }
+
     for (const auto &point2 : words2.at(wordId).first) {
       cv::Point3f point3;
       cv::Mat desc = words2.at(wordId).second.row(i);
@@ -156,8 +162,7 @@ bool Perspective::findMatchPoint3(
     cv::Point3f &point3) {
   assert(descriptor.rows == 1);
 
-  const auto &iter = words3.find(wordId);
-  if (iter == words3.end()) {
+  if (words3.find(wordId) == words3.end()) {
     return false;
   }
 
@@ -167,7 +172,7 @@ bool Perspective::findMatchPoint3(
   }
 
   std::vector<std::pair<double, int>> dists;
-  for (int i = 0; i < descriptor.rows; i++) {
+  for (int i = 0; i < words3.at(wordId).second.rows; i++) {
     double dist =
         cv::norm(descriptor, words3.at(wordId).second.row(i), cv::NORM_L2);
     dists.emplace_back(dist, i);
