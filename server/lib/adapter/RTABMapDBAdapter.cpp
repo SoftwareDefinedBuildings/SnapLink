@@ -49,6 +49,13 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
   }
   qDebug() << "Total Number of descriptors: " << count;
   allWords = clusterPointsInWords(allWords);
+  count = 0;
+  for (const auto &word : allWords) {
+    for (const auto &desc : word->getDescriptorsByDb()) {
+      count += desc.second.rows;
+    }
+  }
+  qDebug() << "Total Number of points: " << count;
   words.putWords(std::move(allWords));
 
   qDebug() << "Building Index for Labels";
