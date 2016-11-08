@@ -204,7 +204,6 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
     int dbId = dbSignatures.first;
     qDebug() << "Creating words for signatures in DB " << dbId;
     for (const auto &dbSignature : dbSignatures.second) {
-      int sigId = dbSignature.second->id();
       const cv::Mat &image = dbSignature.second->sensorData().imageRaw();
       std::vector<cv::KeyPoint> keyPoints;
       cv::Mat descriptors;

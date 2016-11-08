@@ -55,16 +55,28 @@ bool Identification::identify(const cv::Mat &image, const CameraModel &camera,
   _feature.extract(image, keyPoints, descriptors);
   session.featuresEnd = getTime();
 
+  std::vector<unsigned int> indices(keyPoints.size());
+  std::iota(indices.begin(), indices.end(), 0);
+  std::random_shuffle(indices.begin(), indices.end());
+  std::vector<cv::KeyPoint> subKeyPoints;
+  cv::Mat subDescriptors;
+  unsigned int sampleSize = SAMPLE_SIZE;
+  for (int i = 0; i < sampleSize && i < indices.size(); i++) {
+    subKeyPoints.emplace_back(keyPoints[i]);
+    subDescriptors.push_back(descriptors.row(i));
+  }
+
   // word search
   session.wordsStart = getTime();
-  std::vector<int> wordIds = _wordSearch.search(descriptors);
+  std::vector<int> subWordIds = _wordSearch.search(subDescriptors);
   session.wordsEnd = getTime();
 
   // PnP
   int dbId;
   Transform pose;
   session.perspectiveStart = getTime();
-  _perspective.localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
+  _perspective.localize(subWordIds, subKeyPoints, subDescriptors, camera, dbId,
+                        pose);
   session.perspectiveEnd = getTime();
 
   if (pose.isNull()) {

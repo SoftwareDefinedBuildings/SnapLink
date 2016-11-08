@@ -7,6 +7,8 @@
 #include <QEvent>
 #include <QObject>
 
+#define SAMPLE_SIZE 2
+
 class HTTPServer;
 class CameraModel;
 class Session;
