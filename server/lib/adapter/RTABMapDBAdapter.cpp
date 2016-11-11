@@ -30,7 +30,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
   int dbId = 0;
   for (const auto &dbPath : dbPaths) {
     auto dbSignatures = readSignatures(dbPath);
-    allSignatures.insert(std::make_pair(dbId, std::move(dbSignatures)));
+    allSignatures.emplace(dbId, std::move(dbSignatures));
 
     auto dbLabels = readLabels(dbPath, dbId, allSignatures);
     std::move(dbLabels.begin(), dbLabels.end(), std::back_inserter(allLabels));
@@ -98,8 +98,7 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
     if (!signature->sensorData().imageCompressed().empty()) {
       signature->sensorData().uncompressData();
     }
-    signatures.insert(
-        std::make_pair(id, std::unique_ptr<rtabmap::Signature>(signature)));
+    signatures.emplace(id, std::unique_ptr<rtabmap::Signature>(signature));
     signature = nullptr;
   }
 
@@ -145,7 +144,7 @@ std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
       const auto &jter = dbSignatures.find(imageId);
       assert(jter != dbSignatures.end());
       const std::unique_ptr<rtabmap::Signature> &signature = jter->second;
-      if (getPoint3World(*signature, x, y, pWorld)) {
+      if (getPoint3World(*signature, cv::Point2f(x, y), pWorld)) {
         labels.emplace_back(std::unique_ptr<Label>(
             new Label(dbId, cv::Point3f(pWorld.x, pWorld.y, pWorld.z), name)));
         std::cout << "Read point (" << pWorld.x << "," << pWorld.y << ","
@@ -197,18 +196,26 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
         &allSignatures) {
   std::map<int, std::unique_ptr<Word>> wordsMap; // wordId: word pointer
   rtabmap::VWDictionary vwd;
-  int minHessian = 400;
-  cv::Ptr<cv::xfeatures2d::SURF> detector =
-      cv::xfeatures2d::SURF::create(minHessian);
+  cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
   for (const auto &dbSignatures : allSignatures) {
     int dbId = dbSignatures.first;
     qDebug() << "Creating words for signatures in DB " << dbId;
     for (const auto &dbSignature : dbSignatures.second) {
+      // get image normal vector
+      const rtabmap::Transform &poseWorld = dbSignature.second->getPose();
+      assert(!poseWorld.isNull());
+      pcl::PointXYZ normalPCL = pcl::transformPoint(
+          pcl::PointXYZ(0, 0, 1), poseWorld.rotation().toEigen3f());
+      cv::Point3f normalCV(normalPCL.x, normalPCL.y, normalPCL.z);
+
+      // compute 2D features
       int sigId = dbSignature.second->id();
       const cv::Mat &image = dbSignature.second->sensorData().imageRaw();
       std::vector<cv::KeyPoint> keyPoints;
       cv::Mat descriptors;
       detector->detectAndCompute(image, cv::Mat(), keyPoints, descriptors);
+
+      // convert them to 3D points in words
       int dummySigId = 1;
       std::list<int> wordIds = vwd.addNewWords(descriptors, dummySigId);
       size_t i = 0;
@@ -216,17 +223,17 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
         cv::KeyPoint point2CV = keyPoints.at(i);
         cv::Mat descriptor = descriptors.row(i).clone();
         pcl::PointXYZ point3PCL;
-        if (getPoint3World(*dbSignature.second, point2CV.pt.x, point2CV.pt.y,
-                           point3PCL)) {
+        if (getPoint3World(*dbSignature.second, point2CV.pt, point3PCL)) {
           cv::Point3f point3CV(point3PCL.x, point3PCL.y, point3PCL.z);
 
           auto iter = wordsMap.find(wordId);
           if (iter == wordsMap.end()) {
-            auto ret = wordsMap.insert(std::make_pair(
-                wordId, std::unique_ptr<Word>(new Word(wordId))));
+            auto ret = wordsMap.emplace(
+                wordId, std::unique_ptr<Word>(new Word(wordId)));
             iter = ret.first;
           }
           iter->second->addPoints3(dbId, std::vector<cv::Point3f>(1, point3CV),
+                                   std::vector<cv::Point3f>(1, normalCV),
                                    descriptor);
         }
         i++;
@@ -252,13 +259,13 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
     for (auto points3 : word->getPoints3Map()) {
       int dbId = points3.first;
       std::vector<pcl::PointXYZ> points3PCL;
-      for (auto point3 : points3.second) {
+      for (const auto &point3 : points3.second) {
         points3PCL.emplace_back(point3.x, point3.y, point3.z);
       }
       std::vector<pcl::PointIndices> clusterIndices;
       points3PCL = clusterPoints3(points3PCL, &clusterIndices);
       std::vector<cv::Point3f> points3CV;
-      for (auto point3PCL : points3PCL) {
+      for (const auto &point3PCL : points3PCL) {
         points3CV.emplace_back(point3PCL.x, point3PCL.y, point3PCL.z);
       }
 
@@ -279,7 +286,9 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
         newDescriptors.push_back(meanDescriptor);
         j++;
       }
-      newWord->addPoints3(dbId, points3CV, newDescriptors);
+      newWord->addPoints3(dbId, points3CV,
+                          /*TODO: temporarily use point as normal*/ points3CV,
+                          newDescriptors);
     }
 
     newWords.emplace_back(std::move(newWord));
@@ -289,7 +298,8 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
 }
 
 bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
-                                      int x, int y, pcl::PointXYZ &pWorld) {
+                                      const cv::Point2f &point2,
+                                      pcl::PointXYZ &point3) {
   rtabmap::SensorData data = signature.sensorData();
   rtabmap::Transform poseWorld = signature.getPose();
   assert(!poseWorld.isNull());
@@ -298,8 +308,8 @@ bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
   bool smoothing = false;
   assert(!data.depthRaw().empty());
   pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(
-      data.depthRaw(), x, y, camera.cx(), camera.cy(), camera.fx(), camera.fy(),
-      smoothing);
+      data.depthRaw(), point2.x, point2.y, camera.cx(), camera.cy(),
+      camera.fx(), camera.fy(), smoothing);
   if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
     // qWarning() << "Depth value not valid";
     return false;
@@ -309,7 +319,7 @@ bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
     return false;
   }
   poseWorld = poseWorld * camera.localTransform();
-  pWorld = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
+  point3 = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
   return true;
 }
 
