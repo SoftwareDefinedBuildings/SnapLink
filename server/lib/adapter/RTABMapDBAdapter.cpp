@@ -209,7 +209,6 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
       cv::Point3f normalCV(normalPCL.x, normalPCL.y, normalPCL.z);
 
       // compute 2D features
-      int sigId = dbSignature.second->id();
       const cv::Mat &image = dbSignature.second->sensorData().imageRaw();
       std::vector<cv::KeyPoint> keyPoints;
       cv::Mat descriptors;
@@ -252,43 +251,48 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
 std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
     std::list<std::unique_ptr<Word>> &words) {
   std::list<std::unique_ptr<Word>> newWords;
-  for (auto &word : words) {
+  for (const auto &word : words) {
     std::unique_ptr<Word> newWord =
         std::unique_ptr<Word>(new Word(word->getId()));
     // cluster points and calculate mean descriptor for every cluster
-    for (auto points3 : word->getPoints3Map()) {
-      int dbId = points3.first;
-      std::vector<pcl::PointXYZ> points3PCL;
-      for (const auto &point3 : points3.second) {
-        points3PCL.emplace_back(point3.x, point3.y, point3.z);
+    for (const auto &oldPoints3CV : word->getPoints3Map()) {
+      int dbId = oldPoints3CV.first;
+      std::vector<pcl::PointXYZ> oldPoints3PCL;
+      for (const auto &oldPoint3CV : oldPoints3CV.second) {
+        oldPoints3PCL.emplace_back(oldPoint3CV.x, oldPoint3CV.y, oldPoint3CV.z);
       }
       std::vector<pcl::PointIndices> clusterIndices;
-      points3PCL = clusterPoints3(points3PCL, &clusterIndices);
-      std::vector<cv::Point3f> points3CV;
-      for (const auto &point3PCL : points3PCL) {
-        points3CV.emplace_back(point3PCL.x, point3PCL.y, point3PCL.z);
+      std::vector<pcl::PointXYZ> newPoints3PCL =
+          clusterPoints3(oldPoints3PCL, &clusterIndices);
+      std::vector<cv::Point3f> newPoints3CV;
+      for (const auto &newPoint3PCL : newPoints3PCL) {
+        newPoints3CV.emplace_back(newPoint3PCL.x, newPoint3PCL.y,
+                                  newPoint3PCL.z);
       }
 
       // create new descriptors based on indices
       cv::Mat oldDescriptors = word->getDescriptorsByDb().at(dbId);
       cv::Mat newDescriptors; // descriptors of clustered points
-      int j = 0;
-      for (std::vector<pcl::PointIndices>::const_iterator iter =
-               clusterIndices.begin();
-           iter != clusterIndices.end(); iter++) {
+      const auto &oldNormals = word->getNormalsMap().at(dbId);
+      std::vector<cv::Point3f> newNormals;
+      for (const auto &clusterIndice : clusterIndices) {
         cv::Mat clusterDescriptors;
         cv::Mat meanDescriptor;
-        for (std::vector<int>::const_iterator jter = iter->indices.begin();
-             jter != iter->indices.end(); jter++) {
-          clusterDescriptors.push_back(oldDescriptors.row(*jter));
+        std::vector<cv::Point3f> clusterNormals;
+        for (int index : clusterIndice.indices) {
+          clusterDescriptors.push_back(oldDescriptors.row(index));
+          clusterNormals.emplace_back(oldNormals.at(index));
         }
         cv::reduce(clusterDescriptors, meanDescriptor, 0, CV_REDUCE_AVG);
+        cv::Point3f sum = std::accumulate(
+            clusterNormals.begin(), clusterNormals.end(), cv::Point3f(0, 0, 0));
         newDescriptors.push_back(meanDescriptor);
-        j++;
+        newNormals.emplace_back(sum.x / clusterNormals.size(),
+                                sum.y / clusterNormals.size(),
+                                sum.z / clusterNormals.size());
       }
-      newWord->addPoints3(dbId, points3CV,
-                          /*TODO: temporarily use point as normal*/ points3CV,
-                          newDescriptors);
+
+      newWord->addPoints3(dbId, newPoints3CV, newNormals, newDescriptors);
     }
 
     newWords.emplace_back(std::move(newWord));
