@@ -1,11 +1,12 @@
 #include "BWServer.h"
-BWServer::BWServer() {
-  _numClients = 0;
-  _bw = BW::instance();
-  _identification = nullptr;
-//  _gen = std::random_device()();
+//BWServer::BWServer() 
+//    :_numClients(0), _identification(nullptr), _gen(std::random_device()()) {}
+BWServer::BWServer(){ 
+    _numClients = 0;
+    _identification = nullptr; 
+    _gen = std::mt19937(std::random_device()());
+    _bw = BW::instance();
 }
-
 
 BWServer::~BWServer() {
   _numClients = 0;
