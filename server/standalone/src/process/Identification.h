@@ -6,6 +6,9 @@
 #include "algo/WordSearch.h"
 #include <QEvent>
 #include <QObject>
+
+#define SAMPLE_SIZE 200
+
 class BWServer;
 class HTTPServer;
 class CameraModel;
