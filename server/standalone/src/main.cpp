@@ -2,6 +2,7 @@
 #include "data/LabelsSimple.h"
 #include "data/WordsKdTree.h"
 #include "front/HTTPServer.h"
+#include "front/BWServer.h"
 #include "process/Identification.h"
 #include <QCoreApplication>
 #include <QDebug>
@@ -24,7 +25,6 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     dbfiles.emplace_back(argv[i]);
   }
-
   QCoreApplication app(argc, argv);
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -39,13 +39,21 @@ int main(int argc, char *argv[]) {
   }
 
   HTTPServer httpServer;
-
+  BWServer bwServer;
   std::cout << "Initializing Identification Service" << std::endl;
   Identification ident(std::move(words), std::move(labels));
   ident.setHTTPServer(&httpServer);
+  ident.setBWServer(&bwServer);
   ident.moveToThread(&identThread);
   identThread.start();
-
+  //BWServer
+  std::cout << "Initializing BW server" << std::endl;
+  bwServer.setIdentification(&ident);
+  QThread bwThread;
+  bwThread.start();
+  bwServer.moveToThread(&bwThread); 
+  QObject::connect(&bwServer, &BWServer::signalBW, &bwServer, &BWServer::startRun);
+  emit bwServer.signalBW();
   // HTTPServer
   std::cout << "Initializing HTTP server" << std::endl;
   httpServer.setIdentification(&ident);
