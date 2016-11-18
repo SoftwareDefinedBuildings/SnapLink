@@ -57,6 +57,12 @@ const float *Transform::data() const { return (const float *)_data.data; }
 
 int Transform::size() const { return 12; }
 
+Transform Transform::rotation() const {
+  return Transform(data()[0], data()[1], data()[2], 0, //
+                   data()[4], data()[5], data()[6], 0, //
+                   data()[8], data()[9], data()[10], 0);
+}
+
 std::string Transform::prettyPrint() const {
   if (this->isNull()) {
     return "xyz=[null] rpy=[null]";

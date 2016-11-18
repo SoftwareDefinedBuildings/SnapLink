@@ -11,39 +11,80 @@ Perspective::Perspective(const std::shared_ptr<Words> &words) : _words(words) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
+                           const cv::Mat &descriptors,
                            const CameraModel &camera, int &dbId,
                            Transform &transform) const {
-  size_t minInliers = 3;
+  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
+      getWords2(wordIds, keyPoints, descriptors);
+  std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> words3 =
+      getWords3(std::set<int>(wordIds.begin(), wordIds.end()), dbId);
 
-  int inliersCount = 0;
+  std::vector<cv::Point2f> imagePoints;
+  std::vector<cv::Point3f> objectPoints;
+  getMatchPoints(words2, words3, imagePoints, objectPoints);
+  std::cout << "imagePoints.size() = " << imagePoints.size()
+            << ", objectPoints.size() = " << objectPoints.size() << std::endl;
 
-  std::map<int, cv::KeyPoint> words2 =
-      Utility::MultimapToMapUnique(createWords(wordIds, keyPoints));
+  // 3D to 2D (PnP)
+  transform = solvePnP(imagePoints, objectPoints, camera);
+  if (transform.isNull()) {
+    std::cout << "Localization failed" << std::endl;
+  }
 
+  // TODO check RegistrationVis.cpp to see whether rotation check is necessary
+
+  qDebug() << "transform= " << transform.prettyPrint().c_str();
+}
+
+std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
+Perspective::getWords2(const std::vector<int> &wordIds,
+                       const std::vector<cv::KeyPoint> &keyPoints,
+                       const cv::Mat &descriptors) {
+  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words;
+  assert(wordIds.size() == keyPoints.size());
+  unsigned int i = 0;
+  for (const auto wordId : wordIds) {
+    // an empty vector is ceated if wordId is not in words3Map[dbId]
+    words[wordId].first.emplace_back(keyPoints[i]);
+    words[wordId].second.push_back(descriptors.row(i));
+    i++;
+  }
+
+  return words;
+}
+
+std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
+Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
-  std::map<int, std::multimap<int, cv::Point3f>>
+  std::map<int, std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>>
       words3Map;               // dbId: wordId: point3
   std::map<int, int> dbCounts; // dbId: count
   for (int wordId : wordIds) {
     const auto iter = wordsById.find(wordId);
     assert(iter != wordsById.end());
     const std::shared_ptr<Word> &word = iter->second;
+    const std::map<int, cv::Mat> &descriptors = word->getDescriptorsByDb();
     for (auto &points3 : word->getPoints3Map()) {
       int dbId = points3.first;
+      cv::Mat desc = descriptors.at(dbId);
+      unsigned int i = 0;
       for (const auto &point3 : points3.second) {
-        words3Map[dbId].insert(std::make_pair(wordId, point3));
+        // an empty vector is ceated if wordId is not in words3Map[dbId]
+        words3Map[dbId][wordId].first.emplace_back(point3);
+        words3Map[dbId][wordId].second.push_back(desc.row(i));
+        i++;
       }
       auto jter = dbCounts.find(dbId);
       if (jter == dbCounts.end()) {
-        auto ret = dbCounts.insert(std::make_pair(dbId, 1));
+        auto ret = dbCounts.emplace(dbId, 0);
         jter = ret.first;
       }
-      jter->second++;
+      jter->second++; // TODO: +1 or +points3.size() ?
     }
   }
   std::map<int, double> dbCountsNorm;
-  for (auto count : dbCounts) {
+  for (const auto &count : dbCounts) {
     dbCountsNorm[count.first] =
         (float)count.second / _words->getWordsByDb().at(count.first).size();
     std::cout << "dbId = " << count.first
@@ -56,132 +97,138 @@ void Perspective::localize(const std::vector<int> &wordIds,
                                    });
   dbId = maxCount->first;
   std::cout << "max dbId = " << dbId << std::endl;
-  const std::map<int, cv::Point3f> &words3 =
-      Utility::MultimapToMapUnique(words3Map[dbId]);
 
-  std::cout << "words3.size() = " << words3.size()
-            << ", words2.size() = " << words2.size() << std::endl;
-  // 3D to 2D (PnP)
-  if (words3.size() >= minInliers && words2.size() >= minInliers) {
-    std::vector<int> inliers;
-
-    // TODO lots of useful information are thrown away here
-    transform = estimateMotion3DTo2D(
-        words3, words2, camera, Transform(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0),
-        &inliers, minInliers);
-    inliersCount = (int)inliers.size();
-    if (transform.isNull()) {
-      std::cout << "Not enough inliers " << inliersCount << "/" << minInliers
-                << std::endl;
-    }
-  } else {
-    std::cout << "Not enough features in images (old=" << words3.size()
-              << ", new=" << words2.size() << ", min=" << minInliers << ")"
-              << std::endl;
-  }
-
-  // TODO check RegistrationVis.cpp to see whether rotation check is necessary
-
-  qDebug() << "transform= " << transform.prettyPrint().c_str();
+  return words3Map[dbId];
 }
 
-std::multimap<int, cv::KeyPoint>
-Perspective::createWords(const std::vector<int> &wordIds,
-                         const std::vector<cv::KeyPoint> &keyPoints) {
-  std::multimap<int, cv::KeyPoint> words;
-  assert(wordIds.size() == keyPoints.size());
-  unsigned int i = 0;
-  for (auto iter = wordIds.begin();
-       iter != wordIds.end() && i < keyPoints.size(); ++iter, ++i) {
-    words.insert(std::pair<int, cv::KeyPoint>(*iter, keyPoints[i]));
+std::map<int, int> Perspective::countWords(
+    const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> &words2,
+    const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3)
+    const {
+  std::map<int, int> counts;
+
+  for (const auto word : words2) {
+    counts.emplace(word.first, word.second.first.size());
+  }
+  for (const auto word : words3) {
+    counts.at(word.first) += word.second.first.size();
   }
 
-  return words;
+  return counts;
 }
 
-Transform Perspective::estimateMotion3DTo2D(
-    const std::map<int, cv::Point3f> &words3A,
-    const std::map<int, cv::KeyPoint> &words2B, const CameraModel &camera,
-    const Transform &guess, std::vector<int> *inliersOut, size_t minInliers) {
-  assert(!guess.isNull());
-  Transform transform;
-  std::vector<int> matches, inliers;
-
-  // find correspondences
-  std::vector<int> ids = Utility::Keys(words2B);
-  std::vector<cv::Point3f> objectPoints(ids.size());
-  std::vector<cv::Point2f> imagePoints(ids.size());
-  int oi = 0;
-  matches.resize(ids.size());
-  for (unsigned int i = 0; i < ids.size(); ++i) {
-    std::map<int, cv::Point3f>::const_iterator iter = words3A.find(ids[i]);
-    if (iter != words3A.end()) {
-      const cv::Point3f &pt = iter->second;
-      objectPoints[oi].x = pt.x;
-      objectPoints[oi].y = pt.y;
-      objectPoints[oi].z = pt.z;
-      imagePoints[oi] = words2B.find(ids[i])->second.pt;
-      matches[oi++] = ids[i];
-    }
+void Perspective::getMatchPoints(
+    const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> &words2,
+    const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
+    std::vector<cv::Point2f> &imagePoints,
+    std::vector<cv::Point3f> &objectPoints) const {
+  std::map<int, int> wordCounts =
+      countWords(words2, words3); // word id -> count of both words2 and words3
+  std::vector<std::pair<int, int>> inverseCounts;
+  for (const auto &count : wordCounts) {
+    inverseCounts.emplace_back(count.second, count.first);
   }
+  std::sort(inverseCounts.begin(), inverseCounts.end());
 
-  objectPoints.resize(oi);
-  imagePoints.resize(oi);
-  matches.resize(oi);
+  int matchCount = 0;
+  // iterate from word with less points
+  for (const auto &count : inverseCounts) {
+    int wordId = count.second;
+    unsigned int i = 0;
 
-  qDebug() << "words3A=" << words3A.size() << " words2B= " << words2B.size()
-           << " matches=" << matches.size();
+    assert(words2.find(wordId) != words2.end());
+    if (words3.find(wordId) == words3.end()) {
+      continue;
+    }
 
-  if (matches.size() >= minInliers) {
-    // PnPRansac
-    cv::Mat K = camera.K();
-    cv::Mat D = camera.D();
-    cv::Mat R =
-        (cv::Mat_<double>(3, 3) << (double)guess.r11(), (double)guess.r12(),
-         (double)guess.r13(),                                           //
-         (double)guess.r21(), (double)guess.r22(), (double)guess.r23(), //
-         (double)guess.r31(), (double)guess.r32(), (double)guess.r33());
-
-    cv::Mat rvec(1, 3, CV_64FC1);
-    cv::Rodrigues(R, rvec);
-    cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)guess.x(),
-                    (double)guess.y(), (double)guess.z());
-
-    cv::solvePnPRansac(objectPoints, imagePoints, K, D, rvec, tvec, true, 100,
-                       8.0, 0.99, inliers, cv::SOLVEPNP_EPNP);
-    // TODO check RTABMAp refine model code
-
-    if (inliers.size() >= minInliers) {
-      cv::Rodrigues(rvec, R);
-      Transform pnp(R.at<double>(0, 0), R.at<double>(0, 1), R.at<double>(0, 2),
-                    tvec.at<double>(0), //
-                    R.at<double>(1, 0), R.at<double>(1, 1), R.at<double>(1, 2),
-                    tvec.at<double>(1), //
-                    R.at<double>(2, 0), R.at<double>(2, 1), R.at<double>(2, 2),
-                    tvec.at<double>(2));
-
-      transform = std::move(pnp);
-
-      // compute variance, which is the rms of reprojection errors
-      std::vector<cv::Point2f> imagePointsReproj;
-      cv::projectPoints(objectPoints, rvec, tvec, K, cv::Mat(),
-                        imagePointsReproj);
-      float err = 0.0f;
-      for (unsigned int i = 0; i < inliers.size(); ++i) {
-        err += std::abs(std::complex<double>(
-            imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x,
-            imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y));
+    for (const auto &point2 : words2.at(wordId).first) {
+      cv::Point3f point3;
+      cv::Mat desc = words2.at(wordId).second.row(i);
+      if (findMatchPoint3(desc, wordId, words3, point3)) {
+        imagePoints.emplace_back(point2.pt);
+        objectPoints.emplace_back(point3);
+        matchCount++;
+        if (matchCount >= MAX_MATCH) {
+          return;
+        }
       }
-      double varianceOut = std::sqrt(err / float(inliers.size()));
-      std::cout << "variance = " << varianceOut << std::endl;
+      i++;
     }
   }
+}
 
-  if (inliersOut) {
-    inliersOut->resize(inliers.size());
-    for (unsigned int i = 0; i < inliers.size(); ++i) {
-      inliersOut->at(i) = matches[inliers[i]];
-    }
+bool Perspective::findMatchPoint3(
+    const cv::Mat &descriptor, int wordId,
+    const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
+    cv::Point3f &point3) {
+  assert(descriptor.rows == 1);
+
+  if (words3.find(wordId) == words3.end()) {
+    return false;
+  }
+
+  if (words3.at(wordId).first.size() == 1) {
+    point3 = words3.at(wordId).first.at(0);
+    return true;
+  }
+
+  std::vector<std::pair<double, int>> dists;
+  for (int i = 0; i < words3.at(wordId).second.rows; i++) {
+    double dist =
+        cv::norm(descriptor, words3.at(wordId).second.row(i), cv::NORM_L2);
+    dists.emplace_back(dist, i);
+  }
+  std::partial_sort(dists.begin(), dists.begin() + 2, dists.end());
+  if (dists.at(0).first / dists.at(1).first <= DIST_RATIO) {
+    point3 = words3.at(wordId).first.at(dists.at(0).second);
+    return true;
+  }
+
+  return false;
+}
+
+Transform Perspective::solvePnP(const std::vector<cv::Point2f> &imagePoints,
+                                const std::vector<cv::Point3f> &objectPoints,
+                                const CameraModel &camera) {
+  Transform transform;
+
+  assert(imagePoints.size() == objectPoints.size());
+  if (imagePoints.size() == 0 || objectPoints.size() == 0) {
+    return transform;
+  }
+
+  // PnPRansac
+  cv::Mat K = camera.K();
+  cv::Mat D = camera.D();
+  cv::Mat rvec(1, 3, CV_64FC1);
+  cv::Mat tvec;
+
+  bool useExtrinsicGuess = false;
+  int iterationsCount = 100;
+  float reprojectionError = 8.0;
+  double confidence = 0.99;
+  std::vector<int> inliers;
+
+  bool success =
+      cv::solvePnPRansac(objectPoints, imagePoints, K, D, rvec, tvec,
+                         useExtrinsicGuess, iterationsCount, reprojectionError,
+                         confidence, inliers, cv::SOLVEPNP_EPNP);
+  // TODO check RTABMap refine model code
+
+  if (success) {
+    cv::Mat R;
+    cv::Rodrigues(rvec, R);
+    Transform pnp(R.at<double>(0, 0), R.at<double>(0, 1), R.at<double>(0, 2),
+                  tvec.at<double>(0), //
+                  R.at<double>(1, 0), R.at<double>(1, 1), R.at<double>(1, 2),
+                  tvec.at<double>(1), //
+                  R.at<double>(2, 0), R.at<double>(2, 1), R.at<double>(2, 2),
+                  tvec.at<double>(2));
+
+    transform = std::move(pnp);
+
+    // compute variance, which is the rms of reprojection errors
+    // TODO
   }
 
   return transform;
