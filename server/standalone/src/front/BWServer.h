@@ -24,8 +24,6 @@ public:
   void workerReturnError();
 signals:
   void signalBW();
-  //void askWorkerDoWork();
-  //void askWorkerDoWork(std::vector<const char*> *contents, std::vector<int> *lens);
   void askWorkerDoWork();
 public:
   int getMaxClients() const;

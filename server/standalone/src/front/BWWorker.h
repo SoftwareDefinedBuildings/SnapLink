@@ -19,12 +19,6 @@
 #define BW_MSG_LENGTH 9
 class CameraModel;
 class FeatureStage;
-/*typedef struct {
-  double fx;
-  double fy;
-  double cx;
-  double cy;
-}BWCameraInfo;*/
 typedef struct {
   QSemaphore detected;
   std::unique_ptr<std::vector<std::string>> names;
@@ -48,7 +42,8 @@ signals:
            std::map<long, BWConnectionInfo *> *map,
            std::uniform_int_distribution<unsigned long long> *dis,
            std::mt19937 *gen,
-           std::mutex *mutex
+           std::mutex *mutex,
+           unsigned int *numClients
            );
 
   private:
@@ -62,4 +57,5 @@ signals:
   std::uniform_int_distribution<unsigned long long> *_dis;
   std::mt19937 *_gen;
   std::mutex *_mutex;
+  unsigned int *_numClients;
 };

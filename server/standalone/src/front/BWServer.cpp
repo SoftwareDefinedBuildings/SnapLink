@@ -1,6 +1,4 @@
 #include "BWServer.h"
-//BWServer::BWServer() 
-//    :_numClients(0), _identification(nullptr), _gen(std::random_device()()) {}
 BWServer::BWServer(){ 
     _numClients = 0;
     _identification = nullptr; 
@@ -21,7 +19,6 @@ void BWServer::setIdentification(Identification *identification) {
 void BWServer::startRun() {
   qDebug()<<"starting run";
   _maxClients = MAX_CLIENTS;
-  //_bw = BW::instance();
   qDebug()<<"this thread "<<this->thread();
   qDebug()<<"core application "<< QCoreApplication::instance()->thread();
   QObject::connect(_bw, &BW::agentChanged,this, &BWServer::agentChanged);
@@ -31,9 +28,8 @@ void BWServer::startRun() {
   qDebug()<<"starting run2"; 
 }
 void BWServer::parseMessage(PMessage msg) {
-  //qDebug()<<"get into parseMessage";
   QThread *workerThread = new QThread();
-  BWWorker *worker = new BWWorker(msg, _identification, &_connInfoMap, &_dis, &_gen, &_mutex);
+  BWWorker *worker = new BWWorker(msg, _identification, &_connInfoMap, &_dis, &_gen, &_mutex, &_numClients);
   worker->moveToThread(workerThread);
   QObject::connect(this,&BWServer::askWorkerDoWork,worker,&BWWorker::doWork);
   QObject::connect(worker, &BWWorker::doneWork, workerThread, &QThread::quit);
@@ -43,11 +39,6 @@ void BWServer::parseMessage(PMessage msg) {
   QObject::connect(worker, &BWWorker::error, worker, &BWWorker::deleteLater);
   QObject::connect(worker, &BWWorker::error, this, &BWServer::workerReturnError);
   QObject::connect(worker, &BWWorker::doneWork, this, &BWServer::publishResult);
- // QObject::connect();
- // QObject::connect();
- // QObject::connect();
- // QObject::connect();
- // QObject::connect();
   workerThread->start();
   setNumClients(getNumClients() + 1); 
   emit this->askWorkerDoWork(); 

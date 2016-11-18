@@ -6,7 +6,8 @@ BWWorker::BWWorker(PMessage message,
            std::map<long, BWConnectionInfo *> *map,
            std::uniform_int_distribution<unsigned long long> *dis,
            std::mt19937 *gen,
-           std::mutex *mutex
+           std::mutex *mutex,
+           unsigned int *numClients 
            ) {
     _msg = message;
     _identification = id;
@@ -14,11 +15,10 @@ BWWorker::BWWorker(PMessage message,
     _dis = dis;
     _gen = gen;
     _mutex = mutex;
-
+    _numClients = numClients;
 
 }
 void BWWorker::doWork(){
-  //qDebug()<<"get into doWork";
   if(_msg->POs().length() != BW_MSG_LENGTH)
   {
     qDebug()<<"It's now a standard BW message\n";
@@ -33,7 +33,7 @@ void BWWorker::doWork(){
   connInfo->session->overallStart = getTime(); // log start of processing
   _mutex->lock();
   _connInfoMap->insert(std::make_pair(connInfo->session->id, connInfo));
-  //server->setNumClients(server->getNumClients() + 1);
+  *_numClients = *_numClients + 1;
   _mutex->unlock();
   std::vector<const char*> contents;
   std::vector<int> lens;
@@ -47,14 +47,9 @@ void BWWorker::doWork(){
   int wdith, height;
   std::stringstream ss;
   for(int i = 5; i <= 8; i++) {
-    //qDebug()<<i<<" th data is "<<contents[i];
     ss<<std::string(contents[i], lens[i])<<" ";
   }
   ss>>fx>>fy>>cx>>cy;
-  //qDebug()<<"fx is "<<fx;
-  //qDebug()<<"fy is "<<fy;
-  //qDebug()<<"cx is "<<cx;
-  //qDebug()<<"cy is "<<cy;
   std::unique_ptr<cv::Mat> image(new cv::Mat());
   std::unique_ptr<CameraModel> camera(new CameraModel());
   std::unique_ptr<std::vector<char>> rawData;
@@ -94,8 +89,6 @@ void BWWorker::workComplete(BWConnectionInfo *connInfo) {
   std::unique_ptr<Session> session = std::move(connInfo->session);
   if (session != nullptr) {
     session->overallEnd = getTime(); // log processing end time
-    //qDebug()<<"overall start" << session->overallStart;
-    //qDebug()<<"overall end" << session->overallEnd;
     std::cout << "TAG_TIME overall "
               << session->overallEnd - session->overallStart << " ms"
               << std::endl;
@@ -109,18 +102,11 @@ void BWWorker::workComplete(BWConnectionInfo *connInfo) {
               << std::endl;
   }
 
-  /* server->_mutex.lock();
-  server->setNumClients(server->getNumClients() - 1);
-  server->_connInfoMap.erase(session->id);
-  server->_mutex.unlock();*/
+  _mutex->lock();
+  *_numClients -= 1;
+  _connInfoMap->erase(session->id);
+  _mutex->unlock();
   delete connInfo;
 }
 
 
-/*void BWWorker::doWork(){
-   
-   foreach(auto po, msg->POs()) {
-     qDebug() << "PO"<<po->content() << " length " << po->length();
-   }
-   emit finished();
-}*/
