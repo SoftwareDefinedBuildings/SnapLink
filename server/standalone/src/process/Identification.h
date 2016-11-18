@@ -7,8 +7,9 @@
 #include <QEvent>
 #include <QObject>
 
-#define SAMPLE_SIZE 2
+#define SAMPLE_SIZE 200
 
+class BWServer;
 class HTTPServer;
 class CameraModel;
 class Session;
@@ -20,6 +21,7 @@ public:
   ~Identification();
 
   void setHTTPServer(HTTPServer *httpServer);
+  void setBWServer(BWServer *bwServer);
   bool identify(const cv::Mat &image, const CameraModel &camera,
                 std::vector<std::string> &names, Session &session);
 
@@ -28,7 +30,7 @@ protected:
 
 private:
   HTTPServer *_httpServer;
-
+  BWServer *_bwServer;
   Feature _feature;
   WordSearch _wordSearch;
   Perspective _perspective;
