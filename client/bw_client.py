@@ -31,7 +31,6 @@ IDENTITY_LENGTH = 10
 
 def test_file(filename):
     obj_name = os.path.basename(filename).split(".")[0]
-
     img = Image.open(filename)
     width, height = img.size
     if height/width == 480/640:
