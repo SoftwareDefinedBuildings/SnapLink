@@ -41,8 +41,8 @@ private:
   static std::list<std::unique_ptr<Word>>
   clusterPointsInWords(std::list<std::unique_ptr<Word>> &words);
 
-  static bool getPoint3World(const rtabmap::Signature &signature, int x, int y,
-                             pcl::PointXYZ &pWorld);
+  static bool getPoint3World(const rtabmap::Signature &signature,
+                             const cv::Point2f &point2, pcl::PointXYZ &point3);
   static std::vector<pcl::PointXYZ>
   clusterPoints3(const std::vector<pcl::PointXYZ> &points3,
                  std::vector<pcl::PointIndices> *clusterIndicesOut = nullptr);

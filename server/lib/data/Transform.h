@@ -32,6 +32,8 @@ public:
   const float *data() const;
   int size() const;
 
+  Transform rotation() const;
+
   std::string prettyPrint() const;
 
   Transform operator*(const Transform &t) const;

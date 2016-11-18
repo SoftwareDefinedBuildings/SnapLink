@@ -64,14 +64,15 @@ Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
     const auto iter = wordsById.find(wordId);
     assert(iter != wordsById.end());
     const std::shared_ptr<Word> &word = iter->second;
-    const std::map<int, cv::Mat> &desc = word->getDescriptorsByDb();
-    unsigned int i = 0;
+    const std::map<int, cv::Mat> &descriptors = word->getDescriptorsByDb();
     for (auto &points3 : word->getPoints3Map()) {
       int dbId = points3.first;
+      cv::Mat desc = descriptors.at(dbId);
+      unsigned int i = 0;
       for (const auto &point3 : points3.second) {
         // an empty vector is ceated if wordId is not in words3Map[dbId]
         words3Map[dbId][wordId].first.emplace_back(point3);
-        words3Map[dbId][wordId].second.push_back(desc.at(dbId).row(i));
+        words3Map[dbId][wordId].second.push_back(desc.row(i));
         i++;
       }
       auto jter = dbCounts.find(dbId);
