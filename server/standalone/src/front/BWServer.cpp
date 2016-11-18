@@ -19,13 +19,10 @@ void BWServer::setIdentification(Identification *identification) {
 void BWServer::startRun() {
   qDebug()<<"starting run";
   _maxClients = MAX_CLIENTS;
-  qDebug()<<"this thread "<<this->thread();
-  qDebug()<<"core application "<< QCoreApplication::instance()->thread();
   QObject::connect(_bw, &BW::agentChanged,this, &BWServer::agentChanged);
   _entity = mustGetEntity();
   _bw->connectAgent(_entity);
   _bw->setEntity(_entity,[](QString err, QString vk){});
-  qDebug()<<"starting run2"; 
 }
 void BWServer::parseMessage(PMessage msg) {
   QThread *workerThread = new QThread();
