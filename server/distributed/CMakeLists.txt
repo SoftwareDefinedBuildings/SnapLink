@@ -68,8 +68,8 @@ set(GENERATED_PROTO_SOURCES
     "${GENERATED_PROTOBUF_PATH}/FeatureMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.h"
+    #"${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/LocationMessage.pb.h"
     "${GENERATED_PROTOBUF_PATH}/LocationMessage.pb.cc")
 
@@ -104,10 +104,10 @@ set(GENERATED_GRPC_SOURCES
     "${GENERATED_GRPC_PATH}/WordSearchService.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.h"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.h"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.h"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.pb.h"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.h"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.pb.h"
     "${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.h"
@@ -188,11 +188,11 @@ set(WordSearch_SOURCES
     "../lib/util/Time.cpp"
     "../lib/util/Utility.cpp"
     "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/SignaturesSimple.cpp"
+    #"../lib/data/SignaturesSimple.cpp"
     "../lib/data/Transform.cpp"
     "../lib/data/LabelsSimple.cpp"
     "../lib/data/Label.cpp"
-    "../lib/data/Signature.cpp"
+    #"../lib/data/Signature.cpp"
     "../lib/data/Word.cpp"
     "../lib/data/CameraModel.cpp"
     "../lib/data/WordsKdTree.cpp"
@@ -206,10 +206,10 @@ set(WordSearch_SOURCES
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
     "src/wordSearch/WordSearchServer.cpp"
-    "src/wordSearch/SignatureSearchClient.cpp"
+    "src/wordSearch/PerspectiveClient.cpp"
     "src/wordSearch/main.cpp")
 
 add_executable(wordsearch ${WordSearch_SOURCES})
@@ -219,49 +219,49 @@ target_link_libraries(wordsearch ${LIBRARIES})
 set_property(TARGET wordsearch PROPERTY CXX_STANDARD 11)
 
 # SignatureSearch
-set(SignatureSearch_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/util/Utility.cpp"
-    "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/SignaturesSimple.cpp"
-    "../lib/data/Transform.cpp"
-    "../lib/data/LabelsSimple.cpp"
-    "../lib/data/Label.cpp"
-    "../lib/data/Signature.cpp"
-    "../lib/data/Word.cpp"
-    "../lib/data/CameraModel.cpp"
-    "../lib/data/WordsKdTree.cpp"
-    "../lib/algo/SignatureSearch.cpp"
-    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
-    "${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
-    "${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
-    "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
-    "src/signatureSearch/SignatureSearchServer.cpp"
-    "src/signatureSearch/PerspectiveClient.cpp"
-    "src/signatureSearch/main.cpp")
+#set(SignatureSearch_SOURCES
+#"../lib/util/Time.cpp"
+    #"../lib/util/Utility.cpp"
+    #"../lib/adapter/RTABMapDBAdapter.cpp"
+    #"../lib/data/SignaturesSimple.cpp"
+    #"../lib/data/Transform.cpp"
+    #"../lib/data/LabelsSimple.cpp"
+    #"../lib/data/Label.cpp"
+    #"../lib/data/Signature.cpp"
+    #"../lib/data/Word.cpp"
+    #"../lib/data/CameraModel.cpp"
+    #"../lib/data/WordsKdTree.cpp"
+    #"../lib/algo/SignatureSearch.cpp"
+    #"${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.pb.cc"
+    #"${GENERATED_GRPC_PATH}/SignatureSearchService.grpc.pb.cc"
+    #"${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
+    #"${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
+    #"src/signatureSearch/SignatureSearchServer.cpp"
+    #"src/signatureSearch/PerspectiveClient.cpp"
+    #"src/signatureSearch/main.cpp")
 
-add_executable(signaturesearch ${SignatureSearch_SOURCES})
+    #add_executable(signaturesearch ${SignatureSearch_SOURCES})
 
-target_link_libraries(signaturesearch ${LIBRARIES})
+    #target_link_libraries(signaturesearch ${LIBRARIES})
 
-set_property(TARGET signaturesearch PROPERTY CXX_STANDARD 11)
+    #set_property(TARGET signaturesearch PROPERTY CXX_STANDARD 11)
 
 # Perspective
 set(Perspective_SOURCES
     "../lib/util/Time.cpp"
     "../lib/util/Utility.cpp"
     "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/SignaturesSimple.cpp"
+    #"../lib/data/SignaturesSimple.cpp"
     "../lib/data/Transform.cpp"
     "../lib/data/LabelsSimple.cpp"
     "../lib/data/Label.cpp"
-    "../lib/data/Signature.cpp"
+    #"../lib/data/Signature.cpp"
     "../lib/data/Word.cpp"
     "../lib/data/CameraModel.cpp"
     "../lib/data/WordsKdTree.cpp"
@@ -271,7 +271,8 @@ set(Perspective_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Transform.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
+    #"${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/LocationMessage.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
@@ -292,11 +293,11 @@ set(Visibility_SOURCES
     "../lib/util/Time.cpp"
     "../lib/util/Utility.cpp"
     "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/SignaturesSimple.cpp"
+    #"../lib/data/SignaturesSimple.cpp"
     "../lib/data/Transform.cpp"
     "../lib/data/LabelsSimple.cpp"
     "../lib/data/Label.cpp"
-    "../lib/data/Signature.cpp"
+    #"../lib/data/Signature.cpp"
     "../lib/data/Word.cpp"
     "../lib/data/CameraModel.cpp"
     "../lib/data/WordsKdTree.cpp"

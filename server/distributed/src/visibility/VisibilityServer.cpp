@@ -4,8 +4,8 @@
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
-#include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
+#include "data/Transform.h"
 #include "util/Time.h"
 #include <QDebug>
 
@@ -15,11 +15,10 @@ bool VisibilityServer::init(std::string frontServerAddr,
       grpc::CreateChannel(frontServerAddr, grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
-  std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
   std::cout << "Reading data" << std::endl;
-  if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels)) {
+  if (!RTABMapDBAdapter::readData(dbfiles, *words, *labels)) {
     qCritical() << "Reading data failed";
     return false;
   }
@@ -71,8 +70,6 @@ grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
   session.featuresEnd = request->session().featuresend();
   session.wordsStart = request->session().wordsstart();
   session.wordsEnd = request->session().wordsend();
-  session.signaturesStart = request->session().signaturesstart();
-  session.signaturesEnd = request->session().signaturesend();
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 

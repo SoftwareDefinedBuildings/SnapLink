@@ -12,10 +12,9 @@ public:
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
-  bool onSignature(const std::vector<int> &wordIds,
+  bool onWord(const std::vector<int> &wordIds,
                    const std::vector<cv::KeyPoint> &keyPoints,
                    const CameraModel &camera,
-                   const std::vector<int> &signatureIds,
                    const Session &session);
 
 private:

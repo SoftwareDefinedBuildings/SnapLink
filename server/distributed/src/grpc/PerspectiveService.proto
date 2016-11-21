@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-import "SignatureMessage.proto";
+import "WordMessage.proto";
 import "Empty.proto";
 
 package proto;
 
 service PerspectiveService {
-  rpc onSignature(SignatureMessage) returns (Empty) {}
+  rpc onWord(WordMessage) returns (Empty) {}
 }

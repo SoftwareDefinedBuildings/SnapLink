@@ -35,8 +35,6 @@ bool FeatureClient::onQuery(const std::vector<char> &image,
   query.mutable_session()->set_featuresend(session.featuresEnd);
   query.mutable_session()->set_wordsstart(session.wordsStart);
   query.mutable_session()->set_wordsend(session.wordsEnd);
-  query.mutable_session()->set_signaturesstart(session.signaturesStart);
-  query.mutable_session()->set_signaturesend(session.signaturesEnd);
   query.mutable_session()->set_perspectivestart(session.perspectiveStart);
   query.mutable_session()->set_perspectiveend(session.perspectiveEnd);
 

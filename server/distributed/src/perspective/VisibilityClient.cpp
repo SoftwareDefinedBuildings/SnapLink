@@ -51,8 +51,6 @@ bool VisibilityClient::onLocation(int dbId, const CameraModel &camera,
   location.mutable_session()->set_featuresend(session.featuresEnd);
   location.mutable_session()->set_wordsstart(session.wordsStart);
   location.mutable_session()->set_wordsend(session.wordsEnd);
-  location.mutable_session()->set_signaturesstart(session.signaturesStart);
-  location.mutable_session()->set_signaturesend(session.signaturesEnd);
   location.mutable_session()->set_perspectivestart(session.perspectiveStart);
   location.mutable_session()->set_perspectiveend(session.perspectiveEnd);
 

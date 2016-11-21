@@ -1,25 +1,23 @@
 #include "WordSearchServer.h"
-#include "SignatureSearchClient.h"
+#include "PerspectiveClient.h"
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
-#include "data/SignaturesSimple.h"
 #include "data/WordsKdTree.h"
 #include "util/Time.h"
 #include <QDebug>
 
-bool WordSearchServer::init(std::string signatureSearchServerAddr,
+bool WordSearchServer::init(std::string perspectiveServerAddr,
                             std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel(signatureSearchServerAddr,
+  _channel = grpc::CreateChannel(perspectiveServerAddr,
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
-  std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
   std::cout << "Reading data" << std::endl;
-  if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels)) {
+  if (!RTABMapDBAdapter::readData(dbfiles, *words, *labels)) {
     qCritical() << "Reading data failed";
     return false;
   }
@@ -80,18 +78,14 @@ grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
   session.featuresEnd = request->session().featuresend();
   session.wordsStart = request->session().wordsstart();
   session.wordsEnd = request->session().wordsend();
-  session.signaturesStart = request->session().signaturesstart();
-  session.signaturesEnd = request->session().signaturesend();
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
   session.wordsStart = getTime();
   std::vector<int> wordIds = _wordSearch->search(descriptors);
   session.wordsEnd = getTime();
-
-  SignatureSearchClient client(_channel);
-  client.onWord(wordIds, keyPoints, camera, session);
-
+  PerspectiveClient client(_channel);
+  client.onWord(wordIds, keyPoints, camera, session);  
   return grpc::Status::OK;
 }
 
