@@ -14,6 +14,7 @@ public:
   // from the server.
   bool onWord(const std::vector<int> &wordIds,
                    const std::vector<cv::KeyPoint> &keyPoints,
+                   const cv::Mat &descriptors,
                    const CameraModel &camera,
                    const Session &session);
 

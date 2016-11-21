@@ -11,6 +11,7 @@ PerspectiveClient::PerspectiveClient(std::shared_ptr<grpc::Channel> channel)
 // from the server.
 bool PerspectiveClient::onWord(const std::vector<int> &wordIds,
                                     const std::vector<cv::KeyPoint> &keyPoints,
+                                    const cv::Mat &descriptors,
                                     const CameraModel &camera,
                                     const Session &session) {
   // Data we are sending to the server.
@@ -28,6 +29,16 @@ bool PerspectiveClient::onWord(const std::vector<int> &wordIds,
     protoKeyPoint->set_response(keyPoint.response);
     protoKeyPoint->set_octave(keyPoint.octave);
     protoKeyPoint->set_classid(keyPoint.class_id);
+  }
+
+  assert(descriptors.type() == CV_32F);
+  assert(descriptors.channels() == 1);
+  for (int row = 0; row < descriptors.rows; row++) {
+    const float *p = descriptors.ptr<float>(row);
+    proto::Descriptor *descriptor = word.add_descriptors();
+    for (int col = 0; col < descriptors.cols; col++) {
+      descriptor->add_values(p[col]);
+    }
   }
 
   word.mutable_cameramodel()->set_name(camera.name());

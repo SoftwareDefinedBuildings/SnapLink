@@ -23,7 +23,7 @@ bool PerspectiveServer::init(std::string visibilityServerAddr,
     return false;
   }
 
-  _perspective.reset(new Perspective(words));
+  _perspective.reset(new Perspective(std::move(words)));
 
   return true;
 }
@@ -49,6 +49,18 @@ PerspectiveServer::onWord(grpc::ServerContext *context,
 
     keyPoints.emplace_back(x, y, size, angle, response, octave, classId);
   }
+
+  assert(request->descriptors_size() > 0);
+  int descriptorSize = request->descriptors(0).values_size();
+  assert(descriptorSize > 0);
+  cv::Mat descriptors(request->descriptors_size(),
+                      request->descriptors(0).values_size(), CV_32F);
+  for (int row = 0; row < request->descriptors_size(); row++) {
+    assert(request->descriptors(row).values_size() == descriptorSize);
+    for (int col = 0; col < descriptorSize; col++) {
+      descriptors.at<float>(row, col) = request->descriptors(row).values(col);
+    }
+  }  
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
@@ -78,7 +90,7 @@ PerspectiveServer::onWord(grpc::ServerContext *context,
   int dbId;
   Transform pose;
   session.perspectiveStart = getTime();
-  _perspective->localize(wordIds, keyPoints, camera, dbId,
+  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId,
                          pose);
   session.perspectiveEnd = getTime();
 
