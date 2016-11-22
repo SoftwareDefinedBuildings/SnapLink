@@ -271,6 +271,7 @@ set(Perspective_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/KeyPoint.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Transform.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Descriptor.pb.cc"
     #"${GENERATED_PROTOBUF_PATH}/SignatureMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/WordMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/LocationMessage.pb.cc"

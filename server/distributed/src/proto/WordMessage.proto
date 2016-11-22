@@ -9,7 +9,7 @@ package proto;
 message WordMessage {
   repeated int32 wordIds = 1;
   repeated KeyPoint keyPoints = 2;
-  CameraModel cameraModel = 3;
-  Session session = 4;
-  repeated Descriptor descriptors = 5;
+  repeated Descriptor descriptors = 3;
+  CameraModel cameraModel = 4;
+  Session session = 5;
 }
