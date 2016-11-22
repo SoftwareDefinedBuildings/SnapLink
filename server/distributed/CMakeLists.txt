@@ -9,7 +9,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
-find_package(PCL 1.8 REQUIRED COMPONENTS common)
+find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
 
 set(MHD_INCLUDE_DIRS "/usr/include/")
