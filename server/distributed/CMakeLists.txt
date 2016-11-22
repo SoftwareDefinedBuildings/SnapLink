@@ -128,6 +128,12 @@ add_custom_command(
          "${GRPC_FILES}"
     )
 
+# bwFront
+set(BWServer_SOURCES
+    "src/front/BWServer.cpp"
+    "src/front/main2.cpp")
+add_executable(bwfront ${BWServer_SOURCES})
+set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 # Front
 set(HTTPServer_SOURCES
     "../lib/util/Time.cpp"
