@@ -8,6 +8,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 
 find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
+find_package(Qt5Qml REQUIRED)
+find_package(Qt5Quick REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
@@ -15,21 +17,36 @@ find_package(RTABMap REQUIRED)
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
+# BW2
+add_definitions(-DED25519_REFHASH=1)
+add_definitions(-DED25519_CUSTOMRANDOM=1)
+add_definitions(-DMSGPACK_MAKE_LIB)
+set(BW_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw")
+set(BW_PATH "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw")
+set(QMS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw/vendor/qmsgpack/src")
+set(QMS_PATH "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw/vendor/qmsgpack/src")
+
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
-set(CellMate_INCLUDE_DIRS "../lib" "src")
+set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../lib" "src")
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Qml_INCLUDE_DIRS}
+    ${Qt5Quick_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     ${RTABMap_INCLUDE_DIRS}
     ${MHD_INCLUDE_DIRS}
+    ${BW_INCLUDE_DIRS}
+    ${QMS_INCLUDE_DIRS}
 )
 
 set(LIBRARIES
     ${PROTOBUF_LIBRARY}
     ${Qt5Core_LIBRARIES}
+    ${Qt5Qml_LIBRARIES}
+    ${Qt5Quick_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
     ${RTABMap_LIBRARIES}
@@ -129,34 +146,50 @@ add_custom_command(
     )
 
 # bwFront
-#set(BWServer_SOURCES
-#    "src/front/BWServer.cpp"
-#    "src/front/main2.cpp")
-#add_executable(bwfront ${BWServer_SOURCES})
-#set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
+set(BWServer_SOURCES
+    "${BW_PATH}/bosswave_plugin.cpp"
+    "${BW_PATH}/bosswave.cpp"
+    "${BW_PATH}/libbw.cpp"
+    "${BW_PATH}/agentconnection.cpp"
+    "${BW_PATH}/message.cpp"
+    "${BW_PATH}/crypto.cpp"
+    "${BW_PATH}/ed25519/ed25519.c"
+    "${QMS_PATH}/msgpack.cpp"
+    "${QMS_PATH}/msgpackcommon.cpp"
+    "${QMS_PATH}/private/pack_p.cpp"
+    "${QMS_PATH}/private/unpack_p.cpp"
+    "${QMS_PATH}/private/qt_types_p.cpp"
+    "${QMS_PATH}/msgpackstream.cpp"
+    "${QMS_PATH}/stream/time.cpp"
+    "${QMS_PATH}/stream/geometry.cpp"
+    "${QMS_PATH}/stream/location.cpp"
+    "src/front/main3.cpp")
+add_executable(bwfront ${BWServer_SOURCES})
+target_link_libraries(bwfront ${LIBRARIES})
+set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 
 # bwFront
-set(BWServer_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/data/CameraModel.cpp"
-    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
-    "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
-    "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
-    "src/front/BWServer.cpp"
-    "src/front/FeatureClient.cpp"
-    "src/front/main2.cpp")
+#set(BWServer_SOURCES
+#    "../lib/util/Time.cpp"
+#    "../lib/data/CameraModel.cpp"
+#    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
+#    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
+#    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
+#    "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
+#    "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
+#    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
+#    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
+#    "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
+#    "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
+#    "src/front/BWServer.cpp"
+#    "src/front/FeatureClient.cpp"
+#    "src/front/main2.cpp")
 
-add_executable(bwfront ${BWServer_SOURCES})
+#add_executable(bwfront ${BWServer_SOURCES})
 
-target_link_libraries(bwfront ${LIBRARIES})
+#target_link_libraries(bwfront ${LIBRARIES})
 
-set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
+#set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 
 
 
