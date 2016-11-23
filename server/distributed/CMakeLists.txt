@@ -129,11 +129,37 @@ add_custom_command(
     )
 
 # bwFront
+#set(BWServer_SOURCES
+#    "src/front/BWServer.cpp"
+#    "src/front/main2.cpp")
+#add_executable(bwfront ${BWServer_SOURCES})
+#set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
+
+# bwFront
 set(BWServer_SOURCES
+    "../lib/util/Time.cpp"
+    "../lib/data/CameraModel.cpp"
+    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
     "src/front/BWServer.cpp"
+    "src/front/FeatureClient.cpp"
     "src/front/main2.cpp")
+
 add_executable(bwfront ${BWServer_SOURCES})
+
+target_link_libraries(bwfront ${LIBRARIES})
+
 set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
+
+
+
 # Front
 set(HTTPServer_SOURCES
     "../lib/util/Time.cpp"
