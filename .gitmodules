@@ -1,3 +1,0 @@
-[submodule "server/third_party/qtlibbw"]
-	path = server/third_party/qtlibbw
-	url = https://github.com/immesys/qtlibbw

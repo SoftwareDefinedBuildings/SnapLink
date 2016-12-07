@@ -1,0 +1,5 @@
+#ifndef QTLIBBW_BOSSWAVE_PLUGIN_H
+#define QTLIBBW_BOSSWAVE_PLUGIN_H
+
+#include <QQmlExtensionPlugin>
+#endif // QTLIBBW_BOSSWAVE_PLUGIN_H
