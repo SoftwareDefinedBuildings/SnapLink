@@ -41,8 +41,6 @@ grpc::Status FeatureServer::onQuery(grpc::ServerContext *context,
   session.featuresEnd = request->session().featuresend();
   session.wordsStart = request->session().wordsstart();
   session.wordsEnd = request->session().wordsend();
-  session.signaturesStart = request->session().signaturesstart();
-  session.signaturesEnd = request->session().signaturesend();
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 

@@ -25,8 +25,6 @@ bool HTTPClient::onDetection(const std::vector<std::string> &names,
   detection.mutable_session()->set_featuresend(session.featuresEnd);
   detection.mutable_session()->set_wordsstart(session.wordsStart);
   detection.mutable_session()->set_wordsend(session.wordsEnd);
-  detection.mutable_session()->set_signaturesstart(session.signaturesStart);
-  detection.mutable_session()->set_signaturesend(session.signaturesEnd);
   detection.mutable_session()->set_perspectivestart(session.perspectiveStart);
   detection.mutable_session()->set_perspectiveend(session.perspectiveEnd);
 

@@ -60,8 +60,6 @@ grpc::Status HTTPServer::onDetection(grpc::ServerContext *context,
   session.featuresEnd = request->session().featuresend();
   session.wordsStart = request->session().wordsstart();
   session.wordsEnd = request->session().wordsend();
-  session.signaturesStart = request->session().signaturesstart();
-  session.signaturesEnd = request->session().signaturesend();
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
@@ -258,9 +256,6 @@ void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
               << std::endl;
     std::cout << "TAG_TIME words " << session->wordsEnd - session->wordsStart
               << " ms" << std::endl;
-    std::cout << "TAG_TIME signatures "
-              << session->signaturesEnd - session->signaturesStart << " ms"
-              << std::endl;
     std::cout << "TAG_TIME perspective "
               << session->perspectiveEnd - session->perspectiveStart << " ms"
               << std::endl;

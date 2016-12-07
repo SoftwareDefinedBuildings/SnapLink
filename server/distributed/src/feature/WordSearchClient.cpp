@@ -62,8 +62,6 @@ bool WordSearchClient::onFeature(const std::vector<cv::KeyPoint> &keyPoints,
   feature.mutable_session()->set_featuresend(session.featuresEnd);
   feature.mutable_session()->set_wordsstart(session.wordsStart);
   feature.mutable_session()->set_wordsend(session.wordsEnd);
-  feature.mutable_session()->set_signaturesstart(session.signaturesStart);
-  feature.mutable_session()->set_signaturesend(session.signaturesEnd);
   feature.mutable_session()->set_perspectivestart(session.perspectiveStart);
   feature.mutable_session()->set_perspectiveend(session.perspectiveEnd);
 

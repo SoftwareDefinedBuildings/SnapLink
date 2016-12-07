@@ -4,7 +4,7 @@
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
-#include "data/SignaturesSimple.h"
+#include "data/Transform.h"
 #include "data/WordsKdTree.h"
 #include "util/Time.h"
 #include <QDebug>
@@ -15,23 +15,22 @@ bool PerspectiveServer::init(std::string visibilityServerAddr,
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
-  std::shared_ptr<SignaturesSimple> signatures(new SignaturesSimple());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
   std::cout << "Reading data" << std::endl;
-  if (!RTABMapDBAdapter::readData(dbfiles, *words, *signatures, *labels)) {
+  if (!RTABMapDBAdapter::readData(dbfiles, *words, *labels)) {
     qCritical() << "Reading data failed";
     return false;
   }
 
-  _perspective.reset(new Perspective(signatures));
+  _perspective.reset(new Perspective(std::move(words)));
 
   return true;
 }
 
 grpc::Status
-PerspectiveServer::onSignature(grpc::ServerContext *context,
-                               const proto::SignatureMessage *request,
+PerspectiveServer::onWord(grpc::ServerContext *context,
+                               const proto::WordMessage *request,
                                proto::Empty *response) {
   std::vector<int> wordIds;
   for (int i = 0; i < request->wordids_size(); i++) {
@@ -51,6 +50,18 @@ PerspectiveServer::onSignature(grpc::ServerContext *context,
     keyPoints.emplace_back(x, y, size, angle, response, octave, classId);
   }
 
+  assert(request->descriptors_size() > 0);
+  int descriptorSize = request->descriptors(0).values_size();
+  assert(descriptorSize > 0);
+  cv::Mat descriptors(request->descriptors_size(),
+                      request->descriptors(0).values_size(), CV_32F);
+  for (int row = 0; row < request->descriptors_size(); row++) {
+    assert(request->descriptors(row).values_size() == descriptorSize);
+    for (int col = 0; col < descriptorSize; col++) {
+      descriptors.at<float>(row, col) = request->descriptors(row).values(col);
+    }
+  }  
+
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
   double cx = request->cameramodel().cx();
@@ -59,10 +70,6 @@ PerspectiveServer::onSignature(grpc::ServerContext *context,
   int height = request->cameramodel().height();
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
 
-  std::vector<int> signatureIds;
-  for (int i = 0; i < request->signatureids_size(); i++) {
-    signatureIds.emplace_back(request->signatureids(i));
-  }
 
   Session session;
   session.id = request->session().id();
@@ -77,15 +84,13 @@ PerspectiveServer::onSignature(grpc::ServerContext *context,
   session.featuresEnd = request->session().featuresend();
   session.wordsStart = request->session().wordsstart();
   session.wordsEnd = request->session().wordsend();
-  session.signaturesStart = request->session().signaturesstart();
-  session.signaturesEnd = request->session().signaturesend();
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
   int dbId;
   Transform pose;
   session.perspectiveStart = getTime();
-  _perspective->localize(wordIds, keyPoints, camera, signatureIds.at(0), dbId,
+  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId,
                          pose);
   session.perspectiveEnd = getTime();
 

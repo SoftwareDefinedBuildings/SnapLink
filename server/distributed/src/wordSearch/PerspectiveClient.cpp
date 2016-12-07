@@ -1,23 +1,21 @@
-#include "SignatureSearchClient.h"
+#include "PerspectiveClient.h"
 #include "WordMessage.pb.h"
 #include "data/CameraModel.h"
 #include "data/Session.h"
-#include <iostream>
-#include <memory>
+#include <grpc++/grpc++.h>
 
-SignatureSearchClient::SignatureSearchClient(
-    std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::SignatureSearchService::NewStub(channel)) {}
+PerspectiveClient::PerspectiveClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::PerspectiveService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool SignatureSearchClient::onWord(const std::vector<int> &wordIds,
-                                   const std::vector<cv::KeyPoint> &keyPoints,
-                                   const CameraModel &camera,
-                                   const Session &session) {
+bool PerspectiveClient::onWord(const std::vector<int> &wordIds,
+                                    const std::vector<cv::KeyPoint> &keyPoints,
+                                    const cv::Mat &descriptors,
+                                    const CameraModel &camera,
+                                    const Session &session) {
   // Data we are sending to the server.
   proto::WordMessage word;
-
   for (int wordId : wordIds) {
     word.add_wordids(wordId);
   }
@@ -33,6 +31,16 @@ bool SignatureSearchClient::onWord(const std::vector<int> &wordIds,
     protoKeyPoint->set_classid(keyPoint.class_id);
   }
 
+  assert(descriptors.type() == CV_32F);
+  assert(descriptors.channels() == 1);
+  for (int row = 0; row < descriptors.rows; row++) {
+    const float *p = descriptors.ptr<float>(row);
+    proto::Descriptor *descriptor = word.add_descriptors();
+    for (int col = 0; col < descriptors.cols; col++) {
+      descriptor->add_values(p[col]);
+    }
+  }
+
   word.mutable_cameramodel()->set_name(camera.name());
   word.mutable_cameramodel()->set_fx(camera.fx());
   word.mutable_cameramodel()->set_fy(camera.fy());
@@ -40,6 +48,7 @@ bool SignatureSearchClient::onWord(const std::vector<int> &wordIds,
   word.mutable_cameramodel()->set_cy(camera.cy());
   word.mutable_cameramodel()->set_width(camera.getImageSize().width);
   word.mutable_cameramodel()->set_height(camera.getImageSize().height);
+
 
   word.mutable_session()->set_id(session.id);
   if (session.type == HTTP_POST) {
@@ -53,8 +62,6 @@ bool SignatureSearchClient::onWord(const std::vector<int> &wordIds,
   word.mutable_session()->set_featuresend(session.featuresEnd);
   word.mutable_session()->set_wordsstart(session.wordsStart);
   word.mutable_session()->set_wordsend(session.wordsEnd);
-  word.mutable_session()->set_signaturesstart(session.signaturesStart);
-  word.mutable_session()->set_signaturesend(session.signaturesEnd);
   word.mutable_session()->set_perspectivestart(session.perspectiveStart);
   word.mutable_session()->set_perspectiveend(session.perspectiveEnd);
 
