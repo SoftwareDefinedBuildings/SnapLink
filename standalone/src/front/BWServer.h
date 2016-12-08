@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <libbw.h>
 #include <allocations.h>
