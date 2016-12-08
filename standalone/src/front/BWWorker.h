@@ -1,3 +1,5 @@
+#pragma once
+
 #include <libbw.h>
 #include <QSemaphore>
 #include <string.h>
