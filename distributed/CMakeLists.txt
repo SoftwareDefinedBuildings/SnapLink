@@ -8,7 +8,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")
 
 find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
-find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
@@ -17,41 +16,34 @@ find_package(RTABMap REQUIRED)
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
-# BW2
-add_definitions(-DED25519_REFHASH=1)
-add_definitions(-DED25519_CUSTOMRANDOM=1)
-add_definitions(-DMSGPACK_MAKE_LIB)
-set(BW_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw")
-set(BW_PATH "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw")
-set(QMS_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw/vendor/qmsgpack/src")
-set(QMS_PATH "${CMAKE_SOURCE_DIR}/../third_party/qtlibbw/vendor/qmsgpack/src")
+set(BW_INCLUDE_DIRS "/root/workspace/qtlibbw/")
+set(BW_LIBRARIES "/usr/local/Qt-5.7.1/qml/io/bw2/libbosswave.so")
 
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
-set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../lib" "src")
+set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../src" "src")
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
-    ${Qt5Qml_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     ${RTABMap_INCLUDE_DIRS}
     ${MHD_INCLUDE_DIRS}
     ${BW_INCLUDE_DIRS}
-    ${QMS_INCLUDE_DIRS}
+    ${BW_INCLUDE_DIRS}
 )
 
 set(LIBRARIES
     ${PROTOBUF_LIBRARY}
     ${Qt5Core_LIBRARIES}
-    ${Qt5Qml_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
     ${RTABMap_LIBRARIES}
     ${MHD_LIBRARIES}
     ${GRPC_LIBRARIES}
+    ${BW_LIBRARIES}
 )
 
 include_directories(SYSTEM ${INCLUDE_DIRS})
@@ -147,22 +139,6 @@ add_custom_command(
 
 # bwFront
 set(BWServer_SOURCES
-    "${BW_PATH}/bosswave_plugin.cpp"
-    "${BW_PATH}/bosswave.cpp"
-    "${BW_PATH}/libbw.cpp"
-    "${BW_PATH}/agentconnection.cpp"
-    "${BW_PATH}/message.cpp"
-    "${BW_PATH}/crypto.cpp"
-    "${BW_PATH}/ed25519/ed25519.c"
-    "${QMS_PATH}/msgpack.cpp"
-    "${QMS_PATH}/msgpackcommon.cpp"
-    "${QMS_PATH}/private/pack_p.cpp"
-    "${QMS_PATH}/private/unpack_p.cpp"
-    "${QMS_PATH}/private/qt_types_p.cpp"
-    "${QMS_PATH}/msgpackstream.cpp"
-    "${QMS_PATH}/stream/time.cpp"
-    "${QMS_PATH}/stream/geometry.cpp"
-    "${QMS_PATH}/stream/location.cpp"
     "src/front/main3.cpp")
 add_executable(bwfront ${BWServer_SOURCES})
 target_link_libraries(bwfront ${LIBRARIES})
@@ -170,8 +146,8 @@ set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 
 # bwFront
 #set(BWServer_SOURCES
-#    "../lib/util/Time.cpp"
-#    "../lib/data/CameraModel.cpp"
+#    "../src/util/Time.cpp"
+#    "../src/data/CameraModel.cpp"
 #    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
 #    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
 #    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -195,8 +171,8 @@ set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 
 # Front
 set(HTTPServer_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/data/CameraModel.cpp"
+    "../src/util/Time.cpp"
+    "../src/data/CameraModel.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -218,9 +194,9 @@ set_property(TARGET front PROPERTY CXX_STANDARD 11)
 
 # Feature
 set(Feature_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/data/CameraModel.cpp"
-    "../lib/algo/Feature.cpp"
+    "../src/util/Time.cpp"
+    "../src/data/CameraModel.cpp"
+    "../src/algo/Feature.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -244,16 +220,16 @@ set_property(TARGET feature PROPERTY CXX_STANDARD 11)
 
 # WordSearch
 set(WordSearch_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/util/Utility.cpp"
-    "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/Transform.cpp"
-    "../lib/data/LabelsSimple.cpp"
-    "../lib/data/Label.cpp"
-    "../lib/data/Word.cpp"
-    "../lib/data/CameraModel.cpp"
-    "../lib/data/WordsKdTree.cpp"
-    "../lib/algo/WordSearch.cpp"
+    "../src/util/Time.cpp"
+    "../src/util/Utility.cpp"
+    "../src/adapter/RTABMapDBAdapter.cpp"
+    "../src/data/Transform.cpp"
+    "../src/data/LabelsSimple.cpp"
+    "../src/data/Label.cpp"
+    "../src/data/Word.cpp"
+    "../src/data/CameraModel.cpp"
+    "../src/data/WordsKdTree.cpp"
+    "../src/algo/WordSearch.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -278,16 +254,16 @@ set_property(TARGET wordsearch PROPERTY CXX_STANDARD 11)
 
 # Perspective
 set(Perspective_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/util/Utility.cpp"
-    "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/Transform.cpp"
-    "../lib/data/LabelsSimple.cpp"
-    "../lib/data/Label.cpp"
-    "../lib/data/Word.cpp"
-    "../lib/data/CameraModel.cpp"
-    "../lib/data/WordsKdTree.cpp"
-    "../lib/algo/Perspective.cpp"
+    "../src/util/Time.cpp"
+    "../src/util/Utility.cpp"
+    "../src/adapter/RTABMapDBAdapter.cpp"
+    "../src/data/Transform.cpp"
+    "../src/data/LabelsSimple.cpp"
+    "../src/data/Label.cpp"
+    "../src/data/Word.cpp"
+    "../src/data/CameraModel.cpp"
+    "../src/data/WordsKdTree.cpp"
+    "../src/algo/Perspective.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -312,16 +288,16 @@ set_property(TARGET perspective PROPERTY CXX_STANDARD 11)
 
 # Visibility
 set(Visibility_SOURCES
-    "../lib/util/Time.cpp"
-    "../lib/util/Utility.cpp"
-    "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/Transform.cpp"
-    "../lib/data/LabelsSimple.cpp"
-    "../lib/data/Label.cpp"
-    "../lib/data/Word.cpp"
-    "../lib/data/CameraModel.cpp"
-    "../lib/data/WordsKdTree.cpp"
-    "../lib/algo/Visibility.cpp"
+    "../src/util/Time.cpp"
+    "../src/util/Utility.cpp"
+    "../src/adapter/RTABMapDBAdapter.cpp"
+    "../src/data/Transform.cpp"
+    "../src/data/LabelsSimple.cpp"
+    "../src/data/Label.cpp"
+    "../src/data/Word.cpp"
+    "../src/data/CameraModel.cpp"
+    "../src/data/WordsKdTree.cpp"
+    "../src/algo/Visibility.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Transform.pb.cc"
