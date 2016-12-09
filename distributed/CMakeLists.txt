@@ -16,7 +16,7 @@ find_package(RTABMap REQUIRED)
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
-set(BW_INCLUDE_DIRS "/root/workspace/qtlibbw/")
+set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
