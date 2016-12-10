@@ -4,6 +4,14 @@
 ## What is CellMate? 
 CellMate is a system that allows you to interact with smart building appliances by taking pictures of them.
 
+### What Does This Repository do?
+This is the server part of CellMate. Use this only if you want to deploy your own CellMate Server.
+
+### What Other Repositories do you have?
+* [Android Client](https://github.com/SoftwareDefinedBuildings/CellMate_Android): an Android app that allows you to take an image to identify appliances and interact with them.
+* [Web Client](https://github.com/SoftwareDefinedBuildings/CellMate_Web_Client): a web client that allows you to upload an image to identify appliances.
+* [Labeling Tool](https://github.com/SoftwareDefinedBuildings/CellMate_Labeling_Tool): a GUI tool that allows you label appliances in a 3D model. We currently only support [RTABMap](https://github.com/introlab/rtabmap) databases.
+
 
 ## How to Run CellMate server?
 
@@ -115,7 +123,7 @@ Return data is a string of the ID of the identified appliance. It is published t
 
 
 ## Do you have CellMate client?
-Yes! There is an Android client https://github.com/SoftwareDefinedBuildings/CellMate_Android
+Yes! There is an [Android client](https://github.com/SoftwareDefinedBuildings/CellMate_Android). 
 There are also python clients for both BOSSWAVE and HTTP in the [test/](test) folder.
 
 
