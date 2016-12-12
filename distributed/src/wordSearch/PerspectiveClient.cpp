@@ -10,10 +10,10 @@ PerspectiveClient::PerspectiveClient(std::shared_ptr<grpc::Channel> channel)
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
 bool PerspectiveClient::onWord(const std::vector<int> &wordIds,
-                                    const std::vector<cv::KeyPoint> &keyPoints,
-                                    const cv::Mat &descriptors,
-                                    const CameraModel &camera,
-                                    const Session &session) {
+                               const std::vector<cv::KeyPoint> &keyPoints,
+                               const cv::Mat &descriptors,
+                               const CameraModel &camera,
+                               const Session &session) {
   // Data we are sending to the server.
   proto::WordMessage word;
   for (int wordId : wordIds) {
@@ -48,7 +48,6 @@ bool PerspectiveClient::onWord(const std::vector<int> &wordIds,
   word.mutable_cameramodel()->set_cy(camera.cy());
   word.mutable_cameramodel()->set_width(camera.getImageSize().width);
   word.mutable_cameramodel()->set_height(camera.getImageSize().height);
-
 
   word.mutable_session()->set_id(session.id);
   if (session.type == HTTP_POST) {

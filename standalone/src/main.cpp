@@ -1,8 +1,8 @@
 #include "adapter/RTABMapDBAdapter.h"
 #include "data/LabelsSimple.h"
 #include "data/WordsKdTree.h"
-#include "front/HTTPServer.h"
 #include "front/BWServer.h"
+#include "front/HTTPServer.h"
 #include "process/Identification.h"
 #include <QCoreApplication>
 #include <QDebug>
@@ -46,13 +46,14 @@ int main(int argc, char *argv[]) {
   ident.setBWServer(&bwServer);
   ident.moveToThread(&identThread);
   identThread.start();
-  //BWServer
+  // BWServer
   std::cout << "Initializing BW server" << std::endl;
   bwServer.setIdentification(&ident);
   QThread bwThread;
   bwThread.start();
-  bwServer.moveToThread(&bwThread); 
-  QObject::connect(&bwServer, &BWServer::signalBW, &bwServer, &BWServer::startRun);
+  bwServer.moveToThread(&bwThread);
+  QObject::connect(&bwServer, &BWServer::signalBW, &bwServer,
+                   &BWServer::startRun);
   emit bwServer.signalBW();
   // HTTPServer
   std::cout << "Initializing HTTP server" << std::endl;

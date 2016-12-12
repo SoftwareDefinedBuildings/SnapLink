@@ -4,8 +4,8 @@
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
-#include "data/WordsKdTree.h"
 #include "data/Transform.h"
+#include "data/WordsKdTree.h"
 #include "util/Time.h"
 #include <QDebug>
 

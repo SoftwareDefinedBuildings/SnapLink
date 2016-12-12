@@ -1,10 +1,5 @@
 #include "BWServer.h"
 
-BWServer::BWServer() {
-  run();
+BWServer::BWServer() { run(); }
 
-}
-
-void BWServer::run() {
-  std::cout<<"happy runnning !!!!!!!!!!!!!\n";
-}
+void BWServer::run() { std::cout << "happy runnning !!!!!!!!!!!!!\n"; }

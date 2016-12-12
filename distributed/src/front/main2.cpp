@@ -2,7 +2,7 @@
 #include <QDebug>
 
 int main(int argc, char *argv[]) {
-  std::cout <<"Initializing BW server" << std::endl;
+  std::cout << "Initializing BW server" << std::endl;
   BWServer bwServer;
   std::string featureServerAddr(argv[2]); // = "0.0.0.0:50051";
   if (!bwServer.init(featureServerAddr)) {
@@ -15,4 +15,3 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
-

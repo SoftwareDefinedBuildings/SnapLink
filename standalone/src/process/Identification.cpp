@@ -5,24 +5,22 @@
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "front/HTTPServer.h"
 #include "front/BWServer.h"
+#include "front/HTTPServer.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 
 Identification::Identification(const std::shared_ptr<Words> &words,
                                std::unique_ptr<Labels> &&labels)
-    : _httpServer(nullptr), _bwServer(nullptr), _wordSearch(words), _perspective(words),
-      _visibility(std::move(labels)) {}
+    : _httpServer(nullptr), _bwServer(nullptr), _wordSearch(words),
+      _perspective(words), _visibility(std::move(labels)) {}
 
 Identification::~Identification() {
   _httpServer = nullptr;
   _bwServer = nullptr;
 }
 
-void Identification::setBWServer(BWServer *bwServer) {
-  _bwServer = bwServer;
-}
+void Identification::setBWServer(BWServer *bwServer) { _bwServer = bwServer; }
 
 void Identification::setHTTPServer(HTTPServer *httpServer) {
   _httpServer = httpServer;
@@ -40,22 +38,24 @@ bool Identification::event(QEvent *event) {
     bool success = identify(*image, *camera, *names, *session);
 
     if (success) {
-        if(session->type == BOSSWAVE) {
-               QCoreApplication::postEvent(_bwServer,
-                                  new DetectionEvent(std::move(names), std::move(session)));
-        } else {
-               QCoreApplication::postEvent(_httpServer,
-                                  new DetectionEvent(std::move(names), std::move(session)));
-        }
+      if (session->type == BOSSWAVE) {
+        QCoreApplication::postEvent(
+            _bwServer,
+            new DetectionEvent(std::move(names), std::move(session)));
+      } else {
+        QCoreApplication::postEvent(
+            _httpServer,
+            new DetectionEvent(std::move(names), std::move(session)));
+      }
     } else {
-       if(session->type == BOSSWAVE) {
-               QCoreApplication::postEvent(_bwServer,
-                                  new FailureEvent(std::move(session)));
-        } else {
-               QCoreApplication::postEvent(_httpServer,
-                                  new FailureEvent(std::move(session)));  
-        }   
-   }
+      if (session->type == BOSSWAVE) {
+        QCoreApplication::postEvent(_bwServer,
+                                    new FailureEvent(std::move(session)));
+      } else {
+        QCoreApplication::postEvent(_httpServer,
+                                    new FailureEvent(std::move(session)));
+      }
+    }
     return true;
   }
   return QObject::event(event);

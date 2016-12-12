@@ -28,10 +28,9 @@ bool PerspectiveServer::init(std::string visibilityServerAddr,
   return true;
 }
 
-grpc::Status
-PerspectiveServer::onWord(grpc::ServerContext *context,
-                               const proto::WordMessage *request,
-                               proto::Empty *response) {
+grpc::Status PerspectiveServer::onWord(grpc::ServerContext *context,
+                                       const proto::WordMessage *request,
+                                       proto::Empty *response) {
   std::vector<int> wordIds;
   for (int i = 0; i < request->wordids_size(); i++) {
     wordIds.emplace_back(request->wordids(i));
@@ -60,7 +59,7 @@ PerspectiveServer::onWord(grpc::ServerContext *context,
     for (int col = 0; col < descriptorSize; col++) {
       descriptors.at<float>(row, col) = request->descriptors(row).values(col);
     }
-  }  
+  }
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
@@ -69,7 +68,6 @@ PerspectiveServer::onWord(grpc::ServerContext *context,
   int width = request->cameramodel().width();
   int height = request->cameramodel().height();
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-
 
   Session session;
   session.id = request->session().id();
@@ -90,8 +88,7 @@ PerspectiveServer::onWord(grpc::ServerContext *context,
   int dbId;
   Transform pose;
   session.perspectiveStart = getTime();
-  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId,
-                         pose);
+  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
   session.perspectiveEnd = getTime();
 
   VisibilityClient client(_channel);
