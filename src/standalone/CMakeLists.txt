@@ -9,6 +9,7 @@ find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann x
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
 
+# TODO make these parameters
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
@@ -41,22 +42,23 @@ include_directories(SYSTEM ${INCLUDE_DIRS})
 include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
-    "../src/util/Time.cpp"
-    "../src/util/Utility.cpp"
-    "../src/adapter/RTABMapDBAdapter.cpp"
-    "../src/data/Transform.cpp"
-    "../src/data/LabelsSimple.cpp"
-    "../src/data/Label.cpp"
-    "../src/data/Word.cpp"
-    "../src/data/CameraModel.cpp"
-    "../src/data/WordsKdTree.cpp"
-    "../src/algo/WordSearch.cpp"
-    "../src/algo/Visibility.cpp"
-    "../src/algo/Feature.cpp"
-    "../src/algo/Perspective.cpp"
-    "src/front/BWServer.cpp"
-    "src/front/BWWorker.cpp"
-    "src/front/HTTPServer.cpp"
+    "../lib/frontend/HTTPServer.cpp"
+    "../lib/util/Time.cpp"
+    "../lib/util/Utility.cpp"
+    "../lib/adapter/RTABMapDBAdapter.cpp"
+    "../lib/data/Transform.cpp"
+    "../lib/data/LabelsSimple.cpp"
+    "../lib/data/Label.cpp"
+    "../lib/data/Word.cpp"
+    "../lib/data/CameraModel.cpp"
+    "../lib/data/WordsKdTree.cpp"
+    "../lib/algo/WordSearch.cpp"
+    "../lib/algo/Visibility.cpp"
+    "../lib/algo/Feature.cpp"
+    "../lib/algo/Perspective.cpp"
+    "src/frontend/BWServer.cpp"
+    "src/frontend/BWWorker.cpp"
+    "src/frontend/HTTPServer.cpp"
     "src/event/QueryEvent.cpp"
     "src/event/DetectionEvent.cpp"
     "src/event/FailureEvent.cpp"
