@@ -42,7 +42,7 @@ include_directories(SYSTEM ${INCLUDE_DIRS})
 include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
-    "../lib/frontend/HTTPServer.cpp"
+    "../lib/http/HTTPServer.cpp"
     "../lib/util/Time.cpp"
     "../lib/util/Utility.cpp"
     "../lib/adapter/RTABMapDBAdapter.cpp"
@@ -56,9 +56,9 @@ set(SOURCES
     "../lib/algo/Visibility.cpp"
     "../lib/algo/Feature.cpp"
     "../lib/algo/Perspective.cpp"
-    "src/frontend/BWServer.cpp"
-    "src/frontend/BWWorker.cpp"
-    "src/frontend/HTTPServer.cpp"
+    "src/bosswave/BWServer.cpp"
+    "src/bosswave/BWWorker.cpp"
+    "src/http/HTTPServer.cpp"
     "src/event/QueryEvent.cpp"
     "src/event/DetectionEvent.cpp"
     "src/event/FailureEvent.cpp"
