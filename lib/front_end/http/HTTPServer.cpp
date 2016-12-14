@@ -1,8 +1,8 @@
-#include "front/HTTPServer.h"
 #include "data/CameraModel.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
+#include "lib/front_end/http/HTTPFrontEnd.h"
 #include "process/Identification.h"
 #include "util/Time.h"
 #include <QCoreApplication>
@@ -10,17 +10,17 @@
 #include <string.h>
 #include <strings.h>
 
-const std::string HTTPServer::none = "None";
+const std::string HTTPFrontEnd::none = "None";
 
-HTTPServer::HTTPServer()
+HTTPFrontEnd::HTTPFrontEnd()
     : _daemon(nullptr), _numClients(0), _gen(std::random_device()()) {}
 
-HTTPServer::~HTTPServer() {
+HTTPFrontEnd::~HTTPFrontEnd() {
   stop();
   _numClients = 0;
 }
 
-bool HTTPServer::start(uint16_t port, unsigned int maxClients) {
+bool HTTPFrontEnd::start(uint16_t port, unsigned int maxClients) {
   _maxClients = maxClients;
 
   // start MHD daemon, listening on port
@@ -41,50 +41,26 @@ bool HTTPServer::start(uint16_t port, unsigned int maxClients) {
   return true;
 }
 
-void HTTPServer::stop() {
+void HTTPFrontEnd::stop() {
   if (_daemon != nullptr) {
     MHD_stop_daemon(_daemon);
     _daemon = nullptr;
   }
 }
 
-void HTTPServer::registerOnQuery(OnQueryFunction onQuery) {
+void HTTPFrontEnd::registerOnQuery(OnQueryFunction onQuery) {
   _onQuery = onQuery;
 }
 
-// bool HTTPServer::event(QEvent *event) {
-//   if (event->type() == DetectionEvent::type()) {
-//     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
-//     std::unique_ptr<Session> session = detectionEvent->takeSession();
-//     // find() const is thread-safe
-//     const auto iter = _connInfoMap.find(session->id);
-//     ConnectionInfo *connInfo = iter->second;
-//     connInfo->names = detectionEvent->takeNames();
-//     connInfo->session = std::move(session);
-//     connInfo->detected.release();
-//     return true;
-//   } else if (event->type() == FailureEvent::type()) {
-//     FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-//     std::unique_ptr<Session> session = failureEvent->takeSession();
-//     // find() const is thread-safe
-//     const auto iter = _connInfoMap.find(session->id);
-//     ConnectionInfo *connInfo = iter->second;
-//     connInfo->session = std::move(session);
-//     connInfo->detected.release();
-//     return true;
-//   }
-//   return QObject::event(event);
-// }
-//
-int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
-                                 const char *url, const char *method,
-                                 const char *version, const char *uploadData,
-                                 size_t *uploadDataSize, void **conCls) {
+int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
+                                   const char *url, const char *method,
+                                   const char *version, const char *uploadData,
+                                   size_t *uploadDataSize, void **conCls) {
   if (strcasecmp(method, MHD_HTTP_METHOD_POST) != 0) {
     return respond(connection, none, MHD_HTTP_BAD_REQUEST);
   }
 
-  HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
+  HTTPFrontEnd *httpServer = static_cast<HTTPFrontEnd *>(cls);
   assert(httpServer != nullptr);
 
   if (*conCls == nullptr) // new connection
@@ -104,8 +80,7 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
     connInfo->session->type = HTTP_POST;
 
     // reserve enough space for an image
-    connInfo->rawData.reset(new std::vector<char>());
-    connInfo->rawData->reserve(IMAGE_INIT_SIZE);
+    connInfo->imageRaw.reserve(IMAGE_INIT_SIZE);
 
     connInfo->postProcessor =
         MHD_create_post_processor(connection, POST_BUFFER_SIZE, iteratePost,
@@ -121,8 +96,6 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
         std::make_pair(connInfo->session->id, connInfo));
     httpServer->_mutex.unlock();
 
-    connInfo->sessionType = POST;
-
     *conCls = static_cast<void *>(connInfo);
 
     return MHD_YES;
@@ -136,30 +109,32 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
 
     return MHD_YES;
   } else {
+    std::vector<std::string> names;
+
     // all data are received
-    if (!connInfo->rawData->empty()) {
+    if (!connInfo->imageRaw.empty()) {
       connInfo->session->overallStart = getTime(); // log start of processing
 
-      double fx = connInfo->cameraInfo.fx;
-      double fy = connInfo->cameraInfo.fy;
-      double cx = connInfo->cameraInfo.cx;
-      double cy = connInfo->cameraInfo.cy;
+      double fx = connInfo->fx;
+      double fy = connInfo->fy;
+      double cx = connInfo->cx;
+      double cy = connInfo->cy;
       std::unique_ptr<cv::Mat> image(new cv::Mat());
       std::unique_ptr<CameraModel> camera(new CameraModel());
-      createData(*(connInfo->rawData), fx, fy, cx, cy, *image, *camera);
+      createData(connInfo->imageRaw, fx, fy, cx, cy, *image, *camera);
       if (image->empty()) {
         // TODO do I need to free anything here?
         return respond(connection, none, MHD_HTTP_BAD_REQUEST);
       }
 
       // blocking wait
-      connInfo->names = _onQuery(std::move(image), std::move(camera),
-                                 std::move(connInfo->session));
+      names = http->_onQuery(std::move(image), std::move(camera),
+                                          std::move(connInfo->session));
     }
 
     std::string answer = none;
-    if (connInfo->names != nullptr && !connInfo->names->empty()) {
-      answer = std::move(connInfo->names->at(0));
+    if (!names->empty()) {
+      answer = std::move(names.at(0));
     }
 
     return respond(connection, answer, MHD_HTTP_OK);
@@ -168,11 +143,11 @@ int HTTPServer::answerConnection(void *cls, struct MHD_Connection *connection,
   return respond(connection, none, MHD_HTTP_BAD_REQUEST);
 }
 
-int HTTPServer::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
-                            const char *key, const char *filename,
-                            const char *contentType,
-                            const char *transferEncoding, const char *data,
-                            uint64_t off, size_t size) {
+int HTTPFrontEnd::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
+                              const char *key, const char *filename,
+                              const char *contentType,
+                              const char *transferEncoding, const char *data,
+                              uint64_t off, size_t size) {
   ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(coninfo_cls);
   assert(connInfo != nullptr);
 
@@ -184,30 +159,31 @@ int HTTPServer::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
 
   if (size > 0) {
     if (strcmp(key, "file") == 0) {
-      connInfo->rawData->insert(connInfo->rawData->end(), data, data + size);
+      connInfo->imageRaw.insert(connInfo->imageRaw.end(), data, data + size);
     } else if (strcmp(key, "fx") == 0) {
+      // TODO copy to string or vector first
       char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
-      connInfo->cameraInfo.fx = atof(buf);
+      connInfo->fx = atof(buf);
       delete[] buf;
     } else if (strcmp(key, "fy") == 0) {
       char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
-      connInfo->cameraInfo.fy = atof(buf);
+      connInfo->fy = atof(buf);
       delete[] buf;
     } else if (strcmp(key, "cx") == 0) {
       char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
-      connInfo->cameraInfo.cx = atof(buf);
+      connInfo->cx = atof(buf);
       delete[] buf;
     } else if (strcmp(key, "cy") == 0) {
       char *buf = new char[size + 1];
       memcpy(buf, data, size);
       buf[size] = 0;
-      connInfo->cameraInfo.cy = atof(buf);
+      connInfo->cy = atof(buf);
       delete[] buf;
     }
   }
@@ -215,10 +191,11 @@ int HTTPServer::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
   return MHD_YES;
 }
 
-void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
-                                  void **conCls,
-                                  enum MHD_RequestTerminationCode toe) {
-  HTTPServer *httpServer = static_cast<HTTPServer *>(cls);
+void HTTPFrontEnd::requestCompleted(void *cls,
+                                    struct MHD_Connection *connection,
+                                    void **conCls,
+                                    enum MHD_RequestTerminationCode toe) {
+  HTTPFrontEnd *httpServer = static_cast<HTTPFrontEnd *>(cls);
   assert(httpServer != nullptr);
   ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(*conCls);
   assert(connInfo != nullptr);
@@ -254,8 +231,8 @@ void HTTPServer::requestCompleted(void *cls, struct MHD_Connection *connection,
   *conCls = nullptr;
 }
 
-int HTTPServer::respond(struct MHD_Connection *connection,
-                        const std::string &message, int status_code) {
+int HTTPFrontEnd::respond(struct MHD_Connection *connection,
+                          const std::string &message, int status_code) {
   struct MHD_Response *response = MHD_create_response_from_buffer(
       message.length(),
       const_cast<void *>(static_cast<const void *>(message.c_str())),
@@ -270,9 +247,9 @@ int HTTPServer::respond(struct MHD_Connection *connection,
   return ret;
 }
 
-void HTTPServer::createData(const std::vector<char> &data, double fx, double fy,
-                            double cx, double cy, cv::Mat &image,
-                            CameraModel &camera) {
+void HTTPFrontEnd::createData(const std::vector<char> &data, double fx,
+                              double fy, double cx, double cy, cv::Mat &image,
+                              CameraModel &camera) {
   // no data copy is needed because conn info
   const bool copyData = false;
   image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);

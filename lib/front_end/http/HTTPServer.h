@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/Session.h"
+#include "lib/data/Session.h"
 #include <QObject>
 #include <QSemaphore>
 #include <memory>
@@ -9,26 +9,22 @@
 #include <opencv2/core/core.hpp>
 #include <random>
 
-#define PORT 8080
-#define MAX_CLIENTS 10
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
 
 class CameraModel;
 
-enum ConnectionType { POST = 0 };
-typedef std::function<std::unique_ptr<std::vector<std::string>>(std::unique_ptr<cv::Mat> &&image,
+typedef std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera,
              std::unique_ptr<Session> &&session)> OnQueryFunction;
 
 typedef struct {
-  enum ConnectionType sessionType;
   struct MHD_PostProcessor *postProcessor;
-  QSemaphore detected;
-  std::string answerString;
-  std::unique_ptr<std::vector<std::string>> names;
-  std::unique_ptr<Session> session;
-  std::unique_ptr<std::vector<char>> rawData;
+  std::vector<char> imageRaw;
+  double fx;
+  double fy;
+  double cx;
+  double cy;
 } ConnectionInfo;
 
 class HTTPServer : public QObject {
@@ -66,8 +62,6 @@ private:
   OnQueryFunction _onQuery; 
   std::atomic<unsigned int> _maxClients;
   std::atomic<unsigned int> _numClients;
-  std::mutex _mutex;
   std::mt19937 _gen;
   std::uniform_int_distribution<unsigned long long> _dis;
-  std::map<long, ConnectionInfo *> _connInfoMap;
 };
