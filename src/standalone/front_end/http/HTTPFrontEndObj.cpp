@@ -2,7 +2,7 @@
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
 #include "lib/data/CameraModel.h"
-#include "lib/front_end/http/HTTPFrontEndWrapper.h"
+#include "lib/front_end/http/HTTPFrontEndObj.h"
 #include "lib/util/Time.h"
 #include "process/Identification.h"
 #include <QCoreApplication>
@@ -10,33 +10,33 @@
 #include <cstring>
 #include <strings.h>
 
-HTTPFrontEndWrapper::HTTPFrontEndWrapper()
+HTTPFrontEndObj::HTTPFrontEndObj()
     : _httpFront(new HTTPFrontEnd()), _identification(nullptr) {}
 
-HTTPFrontEndWrapper::~HTTPFrontEndWrapper() {
+HTTPFrontEndObj::~HTTPFrontEndObj() {
   stop();
   _identification = nullptr;
 }
 
-bool HTTPFrontEndWrapper::start(uint16_t port, unsigned int maxClients) {
+bool HTTPFrontEndObj::start(uint16_t port, unsigned int maxClients) {
   if (_httpFront != nullptr) {
     return false;
   }
   return _httpFront->start(port, maxClients);
 }
 
-void HTTPFrontEndWrapper::stop() {
+void HTTPFrontEndObj::stop() {
   if (_httpFront != nullptr) {
     _httpFront->stop();
   }
 }
 
-void HTTPFrontEndWrapper::setIdentification(
+void HTTPFrontEndObj::setIdentification(
     std::shared_ptr<Identification> identification) {
   _identification = identification;
 }
 
-bool HTTPFrontEndWrapper::event(QEvent *event) {
+bool HTTPFrontEndObj::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
     std::unique_ptr<Session> session = detectionEvent->takeSession();
@@ -61,7 +61,7 @@ bool HTTPFrontEndWrapper::event(QEvent *event) {
 }
 
 std::vector<std::string>
-HTTPFrontEndWrapper::onQuery(std::unique_ptr<cv::Mat> &&image,
+HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
                              std::unique_ptr<CameraModel> &&camera,
                              std::unique_ptr<Session> &&session) {
   std::shared_ptr<SessionInfo> sessionInfo(new SessionInfo());

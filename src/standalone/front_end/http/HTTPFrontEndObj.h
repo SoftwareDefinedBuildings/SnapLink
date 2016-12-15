@@ -14,10 +14,10 @@ typedef struct {
   std::unique_ptr<std::vector<std::string>> names;
 } SessionInfo;
 
-class HTTPFrontEndWrapper : public QObject {
+class HTTPFrontEndObj : public QObject {
 public:
-  HTTPFrontEndWrapper();
-  virtual ~HTTPFrontEndWrapper();
+  HTTPFrontEndObj();
+  virtual ~HTTPFrontEndObj();
 
   bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
   void stop();
