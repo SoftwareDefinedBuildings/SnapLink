@@ -11,7 +11,7 @@
 #include <strings.h>
 
 HTTPFrontEndObj::HTTPFrontEndObj()
-    : _httpFront(new HTTPFrontEnd()), _identification(nullptr) {}
+    : _httpFront(new HTTPFrontEnd()), _identification(nullptr), _gen(std::random_device()()) {}
 
 HTTPFrontEndObj::~HTTPFrontEndObj() {
   stop();
@@ -39,22 +39,16 @@ void HTTPFrontEndObj::setIdentification(
 bool HTTPFrontEndObj::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
-    std::unique_ptr<Session> session = detectionEvent->takeSession();
-    // find() const is thread-safe
-    const auto iter = _sessionInfo.find(session->id);
-    ConnectionInfo *connInfo = iter->second;
-    connInfo->names = detectionEvent->takeNames();
-    connInfo->session = std::move(session);
-    connInfo->detected.release();
+    std::shared_ptr<Session> session = detectionEvent->takeSession();
+    session->names = detectionEvent->takeNames();
+    session->detected.release();
+    session.reset();
     return true;
   } else if (event->type() == FailureEvent::type()) {
     FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-    std::unique_ptr<Session> session = failureEvent->takeSession();
-    // find() const is thread-safe
-    const auto iter = _sessionInfo.find(session->id);
-    ConnectionInfo *connInfo = iter->second;
-    connInfo->session = std::move(session);
-    connInfo->detected.release();
+    std::shared_ptr<Session> session = failureEvent->getSession();
+    session->detected.release();
+    session.reset();
     return true;
   }
   return QObject::event(event);
@@ -62,18 +56,20 @@ bool HTTPFrontEndObj::event(QEvent *event) {
 
 std::vector<std::string>
 HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
-                             std::unique_ptr<CameraModel> &&camera,
-                             std::unique_ptr<Session> &&session) {
-  std::shared_ptr<SessionInfo> sessionInfo(new SessionInfo());
-
-  httpServer->_mutex.lock();
-  connInfo->session->id = httpServer->_dis(httpServer->_gen);
-  httpServer->_connInfoMap.insert(
-      std::make_pair(connInfo->session->id, connInfo));
-  httpServer->_mutex.unlock();
+                             std::unique_ptr<CameraModel> &&camera) {
+  std::shared_ptr<SessionInfo> session(new Session());
 
   QCoreApplication::postEvent(httpServer->_identification,
                               new QueryEvent(std::move(image),
                                              std::move(camera),
-                                             std::move(connInfo->session)));
+                                             session));
+
+  // TODO use condition variable?
+  session->detected.acquire();
+
+  _mutex.lock();
+  std::vector<std::string> names = std::move(session->names);
+  _mutex.unlock();
+
+  return names;
 }

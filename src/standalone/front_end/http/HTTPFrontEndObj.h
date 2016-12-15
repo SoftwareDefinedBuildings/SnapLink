@@ -9,11 +9,6 @@
 class CameraModel;
 class Identification;
 
-typedef struct {
-  QSemaphore detected;
-  std::unique_ptr<std::vector<std::string>> names;
-} SessionInfo;
-
 class HTTPFrontEndObj : public QObject {
 public:
   HTTPFrontEndObj();
@@ -38,5 +33,4 @@ private:
   std::unique_ptr<HTTPFrontEnd> _httpFront;
   std::shared_ptr<Identification> _identification;
   std::mutex _mutex; // protect _sessionInfoMap accesses from onQuery
-  std::map<long, SessionInfo *> _sessionInfoMap;
 };

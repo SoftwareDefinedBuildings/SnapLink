@@ -13,7 +13,7 @@
 const std::string HTTPFrontEnd::none = "None";
 
 HTTPFrontEnd::HTTPFrontEnd()
-    : _daemon(nullptr), _numClients(0), _gen(std::random_device()()) {}
+    : _daemon(nullptr), _numClients(0) {}
 
 HTTPFrontEnd::~HTTPFrontEnd() {
   stop();
@@ -89,12 +89,6 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       httpServer->_numClients--; // _numClients is atomic
       return MHD_NO;
     }
-
-    httpServer->_mutex.lock();
-    connInfo->session->id = httpServer->_dis(httpServer->_gen);
-    httpServer->_connInfoMap.insert(
-        std::make_pair(connInfo->session->id, connInfo));
-    httpServer->_mutex.unlock();
 
     *conCls = static_cast<void *>(connInfo);
 

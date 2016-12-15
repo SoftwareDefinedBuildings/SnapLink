@@ -32,7 +32,7 @@ public:
   HTTPServer();
   virtual ~HTTPServer();
 
-  bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
+  bool start(uint16_t port, unsigned int maxClients);
   void stop();
   void registerOnQuery(OnQueryFunction onQuery); 
 
@@ -62,6 +62,4 @@ private:
   OnQueryFunction _onQuery; 
   std::atomic<unsigned int> _maxClients;
   std::atomic<unsigned int> _numClients;
-  std::mt19937 _gen;
-  std::uniform_int_distribution<unsigned long long> _dis;
 };

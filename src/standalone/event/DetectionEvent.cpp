@@ -13,8 +13,10 @@ std::unique_ptr<std::vector<std::string>> DetectionEvent::takeNames() {
   return std::move(_names);
 }
 
-std::unique_ptr<Session> DetectionEvent::takeSession() {
-  return std::move(_session);
+std::shared_ptr<Session> DetectionEvent::takeSession() {
+  std::shared_ptr<Session> sesion = _session;
+  _session.reset();
+  return session;
 }
 
 QEvent::Type DetectionEvent::type() { return _type; }
