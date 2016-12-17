@@ -4,6 +4,7 @@ enum SessionType { HTTP_POST = 0, BOSSWAVE = 1 };
 
 class Session {
 public:
+  long id;
   SessionType type;
   QSemaphore detected;
   std::vector<std::string> names;

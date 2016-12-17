@@ -16,7 +16,7 @@ set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
-set(CellMate_INCLUDE_DIRS "../src" "src")
+set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}" "src")
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
@@ -42,28 +42,28 @@ include_directories(SYSTEM ${INCLUDE_DIRS})
 include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
-    "../lib/http/HTTPServer.cpp"
-    "../lib/util/Time.cpp"
-    "../lib/util/Utility.cpp"
-    "../lib/adapter/RTABMapDBAdapter.cpp"
-    "../lib/data/Transform.cpp"
-    "../lib/data/LabelsSimple.cpp"
-    "../lib/data/Label.cpp"
-    "../lib/data/Word.cpp"
-    "../lib/data/CameraModel.cpp"
-    "../lib/data/WordsKdTree.cpp"
-    "../lib/algo/WordSearch.cpp"
-    "../lib/algo/Visibility.cpp"
-    "../lib/algo/Feature.cpp"
-    "../lib/algo/Perspective.cpp"
-    "src/bosswave/BWServer.cpp"
-    "src/bosswave/BWWorker.cpp"
-    "src/http/HTTPServer.cpp"
-    "src/event/QueryEvent.cpp"
-    "src/event/DetectionEvent.cpp"
-    "src/event/FailureEvent.cpp"
-    "src/process/Identification.cpp"
-    "src/main.cpp")
+    "${CMAKE_SOURCE_DIR}/../../lib/front_end/http/HTTPFrontEnd.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/util/Time.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/util/Utility.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/adapter/RTABMapDBAdapter.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/data/Transform.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/data/LabelsSimple.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/data/Label.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/data/Word.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/data/CameraModel.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/data/WordsKdTree.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/algo/WordSearch.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/algo/Visibility.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/algo/Feature.cpp"
+    "${CMAKE_SOURCE_DIR}/../../lib/algo/Perspective.cpp"
+    "${CMAKE_SOURCE_DIR}/front_end/bosswave/BWServer.cpp"
+    "${CMAKE_SOURCE_DIR}/front_end/bosswave/BWWorker.cpp"
+    "${CMAKE_SOURCE_DIR}/front_end/http/HTTPFrontEndObj.cpp"
+    "${CMAKE_SOURCE_DIR}/event/QueryEvent.cpp"
+    "${CMAKE_SOURCE_DIR}/event/DetectionEvent.cpp"
+    "${CMAKE_SOURCE_DIR}/event/FailureEvent.cpp"
+    "${CMAKE_SOURCE_DIR}/process/Identification.cpp"
+    "${CMAKE_SOURCE_DIR}/main.cpp")
 
 add_executable(cellmate ${SOURCES})
 

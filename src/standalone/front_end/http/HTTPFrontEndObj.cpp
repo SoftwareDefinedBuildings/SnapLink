@@ -1,28 +1,34 @@
+#include "lib/front_end/http/HTTPFrontEndObj.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
 #include "lib/data/CameraModel.h"
-#include "lib/front_end/http/HTTPFrontEndObj.h"
 #include "lib/util/Time.h"
-#include "process/Identification.h"
+#include "process/IdentObj.h"
 #include <QCoreApplication>
 #include <cstdlib>
 #include <cstring>
 #include <strings.h>
 
 HTTPFrontEndObj::HTTPFrontEndObj()
-    : _httpFront(new HTTPFrontEnd()), _identification(nullptr), _gen(std::random_device()()) {}
+    : _httpFront(new HTTPFrontEnd()), _identObj(nullptr),
+      _gen(std::random_device()()) {}
 
 HTTPFrontEndObj::~HTTPFrontEndObj() {
   stop();
-  _identification = nullptr;
+  _identObj = nullptr;
 }
 
-bool HTTPFrontEndObj::start(uint16_t port, unsigned int maxClients) {
+bool HTTPFrontEndObj::init(uint16_t port, unsigned int maxClients) {
   if (_httpFront != nullptr) {
     return false;
   }
-  return _httpFront->start(port, maxClients);
+  bool success = _httpFront->start(port, maxClients);
+  if (success) {
+    _httpFront->registerOnQuery(std::bind(&HTTPFrontEndObj::onQuery, this));
+  }
+
+  return success;
 }
 
 void HTTPFrontEndObj::stop() {
@@ -31,24 +37,35 @@ void HTTPFrontEndObj::stop() {
   }
 }
 
-void HTTPFrontEndObj::setIdentification(
-    std::shared_ptr<Identification> identification) {
-  _identification = identification;
+void HTTPFrontEndObj::setIdentObj(std::shared_ptr<IdentObj> identObj) {
+  _identObj = identObj;
 }
 
 bool HTTPFrontEndObj::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
-    std::shared_ptr<Session> session = detectionEvent->takeSession();
+    std::unique_ptr<Session> session = detectionEvent->takeSession();
     session->names = detectionEvent->takeNames();
-    session->detected.release();
-    session.reset();
+    QSemaphore detected = session->detected;
+
+    _mutex.lock();
+    auto iter = _sessionMap.find(session->id);
+    iter->second = std::move(session);
+    _mutex.unlock();
+
+    detected.release();
     return true;
   } else if (event->type() == FailureEvent::type()) {
     FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-    std::shared_ptr<Session> session = failureEvent->getSession();
-    session->detected.release();
-    session.reset();
+    std::shared_ptr<Session> session = failureEvent->takeSession();
+    QSemaphore detected = session->detected;
+
+    _mutex.lock();
+    auto iter = _sessionMap.find(session->id);
+    iter->second = std::move(session);
+    _mutex.unlock();
+
+    detected.release();
     return true;
   }
   return QObject::event(event);
@@ -56,20 +73,46 @@ bool HTTPFrontEndObj::event(QEvent *event) {
 
 std::vector<std::string>
 HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
-                             std::unique_ptr<CameraModel> &&camera) {
-  std::shared_ptr<SessionInfo> session(new Session());
-
-  QCoreApplication::postEvent(httpServer->_identification,
-                              new QueryEvent(std::move(image),
-                                             std::move(camera),
-                                             session));
-
-  // TODO use condition variable?
-  session->detected.acquire();
+                         std::unique_ptr<CameraModel> &&camera) {
+  std::unique_ptr<Session> session(new Session);
+  session->overallStart = getTime(); // log start of processing
+  session->type = HTTP_POST;
 
   _mutex.lock();
-  std::vector<std::string> names = std::move(session->names);
+  long id = _gen(_dis); // this is not thread safe
+  _sessionMap.emplace(id, std::unique_ptr<Session>());
   _mutex.unlock();
 
-  return names;
+  session->id = id;
+  QSemaphore detected = session->detected;
+
+  QCoreApplication::postEvent(
+      _identObj,
+      new QueryEvent(std::move(image), std::move(camera), std::move(session)));
+
+  // TODO use condition variable?
+  detected.acquire();
+
+  _mutex.lock();
+  auto iter = _sessionMap.find(id);
+  session = std::move(iter->second);
+  _sessionMap.erase(id);
+  _mutex.unlock();
+
+  assert(session != nullptr);
+
+  // print time
+  session->overallEnd = getTime(); // log processing end time
+  std::cout << "Time overall: " << session->overallEnd - session->overallStart
+            << " ms" << std::endl;
+  std::cout << "Time features: "
+            << session->featuresEnd - session->featuresStart << " ms"
+            << std::endl;
+  std::cout << "Time words: " << session->wordsEnd - session->wordsStart
+            << " ms" << std::endl;
+  std::cout << "Time perspective: "
+            << session->perspectiveEnd - session->perspectiveStart << " ms"
+            << std::endl;
+
+  return std::move(session->names);
 }

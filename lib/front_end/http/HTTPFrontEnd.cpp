@@ -1,8 +1,8 @@
+#include "lib/front_end/http/HTTPFrontEnd.h"
 #include "data/CameraModel.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "lib/front_end/http/HTTPFrontEnd.h"
 #include "process/Identification.h"
 #include "util/Time.h"
 #include <QCoreApplication>
@@ -12,8 +12,7 @@
 
 const std::string HTTPFrontEnd::none = "None";
 
-HTTPFrontEnd::HTTPFrontEnd()
-    : _daemon(nullptr), _numClients(0) {}
+HTTPFrontEnd::HTTPFrontEnd() : _daemon(nullptr), _numClients(0) {}
 
 HTTPFrontEnd::~HTTPFrontEnd() {
   stop();
@@ -76,9 +75,6 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
     ConnectionInfo *connInfo = new ConnectionInfo();
     assert(connInfo != nullptr);
 
-    connInfo->session.reset(new Session());
-    connInfo->session->type = HTTP_POST;
-
     // reserve enough space for an image
     connInfo->imageRaw.reserve(IMAGE_INIT_SIZE);
 
@@ -107,8 +103,6 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
 
     // all data are received
     if (!connInfo->imageRaw.empty()) {
-      connInfo->session->overallStart = getTime(); // log start of processing
-
       double fx = connInfo->fx;
       double fy = connInfo->fy;
       double cx = connInfo->cx;
@@ -122,8 +116,7 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       }
 
       // blocking wait
-      names = http->_onQuery(std::move(image), std::move(camera),
-                                          std::move(connInfo->session));
+      names = http->_onQuery(std::move(image), std::move(camera));
     }
 
     std::string answer = none;
@@ -194,31 +187,10 @@ void HTTPFrontEnd::requestCompleted(void *cls,
   ConnectionInfo *connInfo = static_cast<ConnectionInfo *>(*conCls);
   assert(connInfo != nullptr);
 
-  std::unique_ptr<Session> session = std::move(connInfo->session);
-  if (session != nullptr) {
-    session->overallEnd = getTime(); // log processing end time
-
-    std::cout << "TAG_TIME overall "
-              << session->overallEnd - session->overallStart << " ms"
-              << std::endl;
-    std::cout << "TAG_TIME features "
-              << session->featuresEnd - session->featuresStart << " ms"
-              << std::endl;
-    std::cout << "TAG_TIME words " << session->wordsEnd - session->wordsStart
-              << " ms" << std::endl;
-    std::cout << "TAG_TIME perspective "
-              << session->perspectiveEnd - session->perspectiveStart << " ms"
-              << std::endl;
-  }
-
   if (connInfo->postProcessor != nullptr) {
     MHD_destroy_post_processor(connInfo->postProcessor);
     httpServer->_numClients--; // _numClients is atomic
   }
-
-  httpServer->_mutex.lock();
-  httpServer->_connInfoMap.erase(session->id);
-  httpServer->_mutex.unlock();
 
   delete connInfo;
   connInfo = nullptr;
