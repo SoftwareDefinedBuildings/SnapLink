@@ -1,13 +1,10 @@
 #pragma once
 
-#include "lib/data/Session.h"
-#include <QObject>
-#include <QSemaphore>
 #include <memory>
+#include <atomic>
 #include <microhttpd.h>
 #include <mutex>
 #include <opencv2/core/core.hpp>
-#include <random>
 
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
@@ -15,8 +12,7 @@
 class CameraModel;
 
 typedef std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera,
-             std::unique_ptr<Session> &&session)> OnQueryFunction;
+             std::unique_ptr<CameraModel> &&camera)> OnQueryFunction;
 
 typedef struct {
   struct MHD_PostProcessor *postProcessor;
@@ -27,10 +23,10 @@ typedef struct {
   double cy;
 } ConnectionInfo;
 
-class HTTPServer : public QObject {
+class HTTPFrontEnd {
 public:
-  HTTPServer();
-  virtual ~HTTPServer();
+  HTTPFrontEnd();
+  virtual ~HTTPFrontEnd();
 
   bool start(uint16_t port, unsigned int maxClients);
   void stop();
@@ -60,6 +56,7 @@ private:
 
   struct MHD_Daemon *_daemon;
   OnQueryFunction _onQuery; 
+  std::mutex _mutex;
   std::atomic<unsigned int> _maxClients;
   std::atomic<unsigned int> _numClients;
 };

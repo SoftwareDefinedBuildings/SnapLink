@@ -1,12 +1,12 @@
-#include "BWWorker.h"
+#include "front_end/bosswave/BWWorker.h"
 
-BWWorker::BWWorker(PMessage message, Identification *id,
+BWWorker::BWWorker(PMessage message, IdentificationObj *id,
                    std::map<long, BWConnectionInfo *> *map,
                    std::uniform_int_distribution<unsigned long long> *dis,
                    std::mt19937 *gen, std::mutex *mutex,
                    unsigned int *numClients) {
   _msg = message;
-  _identification = id;
+  _identObj = id;
   _connInfoMap = map;
   _dis = dis;
   _gen = gen;
@@ -58,8 +58,8 @@ void BWWorker::doWork() {
   }
 
   QCoreApplication::postEvent(
-      _identification, new QueryEvent(std::move(image), std::move(camera),
-                                      std::move(connInfo->session)));
+      _identObj, new QueryEvent(std::move(image), std::move(camera),
+                                std::move(connInfo->session)));
   connInfo->detected.acquire();
   std::string answer = "None";
   if (connInfo->names != nullptr && !connInfo->names->empty()) {

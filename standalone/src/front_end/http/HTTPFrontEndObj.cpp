@@ -1,10 +1,9 @@
-#include "lib/front_end/http/HTTPFrontEndObj.h"
+#include "front_end/http/HTTPFrontEndObj.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "lib/data/CameraModel.h"
 #include "lib/util/Time.h"
-#include "process/IdentObj.h"
+#include "process/IdentificationObj.h"
 #include <QCoreApplication>
 #include <cstdlib>
 #include <cstring>
@@ -37,7 +36,8 @@ void HTTPFrontEndObj::stop() {
   }
 }
 
-void HTTPFrontEndObj::setIdentObj(std::shared_ptr<IdentObj> identObj) {
+void HTTPFrontEndObj::setIdentificationObj(
+    std::shared_ptr<IdentificationObj> identObj) {
   _identObj = identObj;
 }
 

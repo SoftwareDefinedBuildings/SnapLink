@@ -1,21 +1,27 @@
-#include "BWServer.h"
+#include "front_end/bosswave/BWServer.h"
+
 BWServer::BWServer() {
   _numClients = 0;
-  _identification = nullptr;
+  _identObj = nullptr;
   _gen = std::mt19937(std::random_device()());
   _bw = BW::instance();
 }
 
 BWServer::~BWServer() {
   _numClients = 0;
-  _identification = nullptr;
+  _identObj = nullptr;
 }
+
 int BWServer::getMaxClients() const { return _maxClients; }
+
 int BWServer::getNumClients() const { return _numClients; }
+
 void BWServer::setNumClients(int numClients) { _numClients = numClients; }
-void BWServer::setIdentification(Identification *identification) {
-  _identification = identification;
+
+void BWServer::setIdentificationObj(IdentificationObj *identObj) {
+  _identObj = identObj;
 }
+
 void BWServer::startRun() {
   qDebug() << "starting run";
   _maxClients = MAX_CLIENTS;
@@ -24,10 +30,11 @@ void BWServer::startRun() {
   _bw->connectAgent(_entity);
   _bw->setEntity(_entity, [](QString err, QString vk) {});
 }
+
 void BWServer::parseMessage(PMessage msg) {
   QThread *workerThread = new QThread();
-  BWWorker *worker = new BWWorker(msg, _identification, &_connInfoMap, &_dis,
-                                  &_gen, &_mutex, &_numClients);
+  BWWorker *worker = new BWWorker(msg, _identObj, &_connInfoMap, &_dis, &_gen,
+                                  &_mutex, &_numClients);
   worker->moveToThread(workerThread);
   QObject::connect(this, &BWServer::askWorkerDoWork, worker, &BWWorker::doWork);
   QObject::connect(worker, &BWWorker::doneWork, workerThread, &QThread::quit);
@@ -43,8 +50,8 @@ void BWServer::parseMessage(PMessage msg) {
   setNumClients(getNumClients() + 1);
   emit this->askWorkerDoWork();
 }
-void BWServer::agentChanged() {
 
+void BWServer::agentChanged() {
   _bw->subscribe(DEFAULT_CHANNEL, QString(), true, QList<RoutingObject *>(),
                  QDateTime(), -1, QString(), false, false,
                  [&](PMessage msg) { this->parseMessage(msg); });
@@ -68,6 +75,7 @@ QByteArray BWServer::mustGetEntity() {
   QByteArray contents = f.readAll().mid(1);
   return contents;
 }
+
 void BWServer::publishResult(QString result, QString identity) {
   auto ponum = bwpo::num::Text;
   QString msg = result;

@@ -3,7 +3,7 @@
 #include "data/WordsKdTree.h"
 #include "front/BWServer.h"
 #include "front/HTTPServer.h"
-#include "process/Identification.h"
+#include "process/IdentificationObj.h"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QThread>
@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
-  QThread identThread;
+  QThread identObjThread;
 
   std::cout << "Reading data" << std::endl;
   if (!RTABMapDBAdapter::readData(dbfiles, *words, *labels)) {
@@ -40,15 +40,15 @@ int main(int argc, char *argv[]) {
 
   HTTPServer httpServer;
   BWServer bwServer;
-  std::cout << "Initializing Identification Service" << std::endl;
-  Identification ident(std::move(words), std::move(labels));
-  ident.setHTTPServer(&httpServer);
-  ident.setBWServer(&bwServer);
-  ident.moveToThread(&identThread);
-  identThread.start();
+  std::cout << "Initializing IdentificationObj Service" << std::endl;
+  IdentificationObj identObj(std::move(words), std::move(labels));
+  identObj.setHTTPServer(&httpServer);
+  identObj.setBWServer(&bwServer);
+  identObj.moveToThread(&identObjThread);
+  identObjThread.start();
   // BWServer
   std::cout << "Initializing BW server" << std::endl;
-  bwServer.setIdentification(&ident);
+  bwServer.setIdentificationObj(&identObj);
   QThread bwThread;
   bwThread.start();
   bwServer.moveToThread(&bwThread);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
   emit bwServer.signalBW();
   // HTTPServer
   std::cout << "Initializing HTTP server" << std::endl;
-  httpServer.setIdentification(&ident);
+  httpServer.setIdentificationObj(&identObj);
   if (!httpServer.start()) {
     qCritical() << "Starting HTTP Server failed";
     return 1;

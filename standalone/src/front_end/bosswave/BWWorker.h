@@ -13,20 +13,22 @@
 #include <QCoreApplication>
 #include "util/Time.h"
 #include "event/QueryEvent.h"
-#include "process/Identification.h"
+#include "process/IdentificationObj.h"
 #include "data/CameraModel.h"
 #include <cstdlib>
 #include <strings.h>
+
 #define IMAGE_INIT_SIZE 100000
 #define BW_MSG_LENGTH 9
+
 class CameraModel;
 class FeatureStage;
+
 typedef struct {
   QSemaphore detected;
   std::unique_ptr<std::vector<std::string>> names;
   std::unique_ptr<Session> session;
 } BWConnectionInfo;
-
 
 
 class BWWorker : public QObject
@@ -40,7 +42,7 @@ signals:
   void doneWork(QString result, QString identity);
   public:
   BWWorker(PMessage message,
-           Identification * id, 
+           IdentificationObj * id, 
            std::map<long, BWConnectionInfo *> *map,
            std::uniform_int_distribution<unsigned long long> *dis,
            std::mt19937 *gen,
@@ -54,7 +56,7 @@ signals:
                                       double cx, double cy, cv::Mat &image,
                                       CameraModel &camera);
   PMessage _msg;
-  Identification *_identification;
+  IdentificationObj *_identObj;
   std::map<long, BWConnectionInfo *> *_connInfoMap;
   std::uniform_int_distribution<unsigned long long> *_dis;
   std::mt19937 *_gen;

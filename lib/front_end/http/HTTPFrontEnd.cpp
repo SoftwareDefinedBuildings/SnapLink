@@ -1,9 +1,8 @@
-#include "lib/front_end/http/HTTPFrontEnd.h"
+#include "front_end/http/HTTPFrontEnd.h"
 #include "data/CameraModel.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "process/Identification.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 #include <cstdlib>
@@ -26,9 +25,11 @@ bool HTTPFrontEnd::start(uint16_t port, unsigned int maxClients) {
   unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;
   struct MHD_OptionItem ops[] = {
       {MHD_OPTION_THREAD_POOL_SIZE, _maxClients, nullptr},
-      {MHD_OPTION_NOTIFY_COMPLETED, &requestCompleted,
+      // TODO use a real C++11 HTTP framework
+      {MHD_OPTION_NOTIFY_COMPLETED,
+       reinterpret_cast<intptr_t>(&requestCompleted),
        static_cast<void *>(this)},
-      {MHD_OPTION_END, 0, NULL}};
+      {MHD_OPTION_END, 0, nullptr}};
   _daemon = MHD_start_daemon(flags, port, nullptr, nullptr,                //
                              &answerConnection, static_cast<void *>(this), //
                              MHD_OPTION_ARRAY, ops,                        //
@@ -116,11 +117,11 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       }
 
       // blocking wait
-      names = http->_onQuery(std::move(image), std::move(camera));
+      names = httpServer->_onQuery(std::move(image), std::move(camera));
     }
 
     std::string answer = none;
-    if (!names->empty()) {
+    if (!names.empty()) {
       answer = std::move(names.at(0));
     }
 

@@ -16,7 +16,7 @@ set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
-set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}" "src")
+set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../" "${CMAKE_SOURCE_DIR}/src/")
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
@@ -42,28 +42,28 @@ include_directories(SYSTEM ${INCLUDE_DIRS})
 include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
-    "${CMAKE_SOURCE_DIR}/../../lib/front_end/http/HTTPFrontEnd.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/util/Time.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/util/Utility.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/adapter/RTABMapDBAdapter.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/data/Transform.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/data/LabelsSimple.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/data/Label.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/data/Word.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/data/CameraModel.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/data/WordsKdTree.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/algo/WordSearch.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/algo/Visibility.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/algo/Feature.cpp"
-    "${CMAKE_SOURCE_DIR}/../../lib/algo/Perspective.cpp"
-    "${CMAKE_SOURCE_DIR}/front_end/bosswave/BWServer.cpp"
-    "${CMAKE_SOURCE_DIR}/front_end/bosswave/BWWorker.cpp"
-    "${CMAKE_SOURCE_DIR}/front_end/http/HTTPFrontEndObj.cpp"
-    "${CMAKE_SOURCE_DIR}/event/QueryEvent.cpp"
-    "${CMAKE_SOURCE_DIR}/event/DetectionEvent.cpp"
-    "${CMAKE_SOURCE_DIR}/event/FailureEvent.cpp"
-    "${CMAKE_SOURCE_DIR}/process/Identification.cpp"
-    "${CMAKE_SOURCE_DIR}/main.cpp")
+    "${CMAKE_SOURCE_DIR}/../lib/front_end/http/HTTPFrontEnd.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/util/Time.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/util/Utility.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/adapter/rtabmap/RTABMapDBAdapter.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/data/Transform.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/data/LabelsSimple.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/data/Label.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/data/Word.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/data/CameraModel.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/data/WordsKdTree.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/algo/WordSearch.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/algo/Visibility.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/algo/Feature.cpp"
+    "${CMAKE_SOURCE_DIR}/../lib/algo/Perspective.cpp"
+    "${CMAKE_SOURCE_DIR}/src/front_end/bosswave/BWServer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/front_end/bosswave/BWWorker.cpp"
+    "${CMAKE_SOURCE_DIR}/src/front_end/http/HTTPFrontEndObj.cpp"
+    "${CMAKE_SOURCE_DIR}/src/event/QueryEvent.cpp"
+    "${CMAKE_SOURCE_DIR}/src/event/DetectionEvent.cpp"
+    "${CMAKE_SOURCE_DIR}/src/event/FailureEvent.cpp"
+    "${CMAKE_SOURCE_DIR}/src/process/IdentificationObj.cpp"
+    "${CMAKE_SOURCE_DIR}/src/main.cpp")
 
 add_executable(cellmate ${SOURCES})
 

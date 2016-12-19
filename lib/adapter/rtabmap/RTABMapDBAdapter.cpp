@@ -1,4 +1,4 @@
-#include "adapter/RTABMapDBAdapter.h"
+#include "adapter/rtabmap/RTABMapDBAdapter.h"
 #include "data/Labels.h"
 #include "data/Transform.h"
 #include "data/Words.h"

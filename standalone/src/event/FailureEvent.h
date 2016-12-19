@@ -6,13 +6,13 @@
 
 class FailureEvent : public QEvent {
 public:
-  FailureEvent(std::shared_ptr<Session> session);
+  FailureEvent(std::unique_ptr<Session> session);
 
-  std::shared_ptr<Session> takeSession();
+  std::unique_ptr<Session> takeSession();
 
   static QEvent::Type type();
 
 private:
   static const QEvent::Type _type;
-  std::shared_ptr<Session> _session;
+  std::unique_ptr<Session> _session;
 };

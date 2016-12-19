@@ -1,4 +1,4 @@
-#include "process/Identification.h"
+#include "process/IdentificationObj.h"
 #include "data/CameraModel.h"
 #include "data/Session.h"
 #include "data/Transform.h"
@@ -10,23 +10,25 @@
 #include "util/Time.h"
 #include <QCoreApplication>
 
-Identification::Identification(const std::shared_ptr<Words> &words,
-                               std::unique_ptr<Labels> &&labels)
+IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
+                                     std::unique_ptr<Labels> &&labels)
     : _httpServer(nullptr), _bwServer(nullptr), _wordSearch(words),
       _perspective(words), _visibility(std::move(labels)) {}
 
-Identification::~Identification() {
+IdentificationObj::~IdentificationObj() {
   _httpServer = nullptr;
   _bwServer = nullptr;
 }
 
-void Identification::setBWServer(BWServer *bwServer) { _bwServer = bwServer; }
+void IdentificationObj::setBWServer(BWServer *bwServer) {
+  _bwServer = bwServer;
+}
 
-void Identification::setHTTPServer(HTTPServer *httpServer) {
+void IdentificationObj::setHTTPServer(HTTPServer *httpServer) {
   _httpServer = httpServer;
 }
 
-bool Identification::event(QEvent *event) {
+bool IdentificationObj::event(QEvent *event) {
   if (event->type() == QueryEvent::type()) {
     QueryEvent *queryEvent = static_cast<QueryEvent *>(event);
     std::unique_ptr<cv::Mat> image = queryEvent->takeImage();
@@ -61,9 +63,10 @@ bool Identification::event(QEvent *event) {
   return QObject::event(event);
 }
 
-bool Identification::identify(const cv::Mat &image, const CameraModel &camera,
-                              std::vector<std::string> &names,
-                              Session &session) {
+bool IdentificationObj::identify(const cv::Mat &image,
+                                 const CameraModel &camera,
+                                 std::vector<std::string> &names,
+                                 Session &session) {
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;

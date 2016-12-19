@@ -2,12 +2,15 @@
 
 #include <QObject>
 #include <memory>
+#include <opencv2/core/types.hpp>
+#include "lib/front_end/http/HTTPFrontEnd.h"
+#include "lib/data/CameraModel.h"
+#include "data/Session.h"
 
 #define PORT 8080
 #define MAX_CLIENTS 10
 
-class CameraModel;
-class IdentObj;
+class IdentificationObj;
 
 class HTTPFrontEndObj : public QObject {
 public:
@@ -17,7 +20,7 @@ public:
   bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
   void stop();
 
-  void setIdentObj(std::shared_ptr<IdentObj> identObj);
+  void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);
 
 protected:
   virtual bool event(QEvent *event);
@@ -30,8 +33,8 @@ private:
 
 private:
   std::unique_ptr<HTTPFrontEnd> _httpFront;
-  std::shared_ptr<IdentObj> _identObj;
-  std::mutex _mutex; // protect _sessionInfoMap accesses from onQuery
+  std::shared_ptr<IdentificationObj> _identObj;
+  std::mutex _mutex; // protect _sessionMap accesses from onQuery
   std::mt19937 _gen;
   std::uniform_int_distribution<long> _dis;
   std::map<long, std::unique_ptr<Session>> _sessionMap;

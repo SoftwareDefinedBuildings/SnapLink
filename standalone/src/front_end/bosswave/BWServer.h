@@ -6,33 +6,39 @@
 #include <sstream>
 #include <string>
 #include <fstream>
-#include <front/BWWorker.h>
+#include "front_end/bosswave/BWWorker.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
+
 #define MAX_CLIENTS 10
 #define DEFAULT_CHANNEL "scratch.ns/cellmate"
 
 class BWServer : public QObject
 {
   Q_OBJECT
+
 public:
   BWServer();
   virtual ~BWServer();
   void agentChanged();
   QByteArray mustGetEntity();
-  public slots:
+  
+public slots:
   void publishResult(QString result, QString identity);
   void startRun();
   void workerReturnError();
+
 signals:
   void signalBW();
   void askWorkerDoWork();
+
 public:
   int getMaxClients() const;
   int getNumClients() const;
   void setNumClients(int numClients);
-  void setIdentification(Identification *identification);
-   protected:
+  void setIdentificationObj(IdentificationObj *identObj);
+
+protected:
   virtual bool event(QEvent *event);
 
 private:
@@ -45,7 +51,6 @@ private:
   std::mt19937 _gen;
   std::uniform_int_distribution<unsigned long long> _dis;
   std::map<long, BWConnectionInfo *> _connInfoMap;
-  Identification *_identification;
+  IdentificationObj *_identObj;
 };
-
 
