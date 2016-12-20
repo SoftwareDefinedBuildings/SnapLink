@@ -20,7 +20,7 @@ HTTPFrontEndObj::~HTTPFrontEndObj() {
 }
 
 bool HTTPFrontEndObj::init(uint16_t port, unsigned int maxClients) {
-  if (_httpFront != nullptr) {
+  if (_httpFront == nullptr) {
     return false;
   }
   bool success = _httpFront->start(port, maxClients);
