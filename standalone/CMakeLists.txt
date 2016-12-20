@@ -9,6 +9,8 @@ find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann x
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
 
+set(MHD_INCLUDE_DIRS "/usr/include/")
+
 # TODO Move BW to library
 set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")

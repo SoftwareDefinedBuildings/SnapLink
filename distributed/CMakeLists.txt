@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1.0)
 
-project(CellMate)
+project(CellMate_Distributed)
 
 set(CMAKE_AUTOMOC ON)
 
@@ -21,7 +21,9 @@ set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
-set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../src" "src")
+set(CellMate_LIB_PATH "${PROJECT_SOURCE_DIR}/../lib/")
+set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} "${PROJECT_SOURCE_DIR}/src/")
+set(CellMate_LIBRARIES cellmate)
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
@@ -44,13 +46,14 @@ set(LIBRARIES
     ${MHD_LIBRARIES}
     ${GRPC_LIBRARIES}
     ${BW_LIBRARIES}
+    ${CellMate_LIBRARIES}
 )
 
-include_directories(SYSTEM ${INCLUDE_DIRS})
+include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries
 include_directories(${CellMate_INCLUDE_DIRS})
 
 # Protobuf
-set(PROTO_PATH "${CMAKE_SOURCE_DIR}/src/proto")
+set(PROTO_PATH "${PROJECT_SOURCE_DIR}/src/proto")
 set(PROTO_FILES "${PROTO_PATH}/*.proto")
 
 set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated/proto")
@@ -92,7 +95,7 @@ add_custom_command(
 
 # GRPC
 set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
-set(GRPC_PATH "${CMAKE_SOURCE_DIR}/src/grpc")
+set(GRPC_PATH "${PROJECT_SOURCE_DIR}/src/grpc")
 set(GRPC_FILES "${GRPC_PATH}/*.proto")
 
 set(GENERATED_GRPC_PATH "${CMAKE_BINARY_DIR}/generated/grpc")
@@ -139,7 +142,7 @@ add_custom_command(
 
 # bwFront
 set(BWServer_SOURCES
-    "src/front/main3.cpp")
+    "${PROJECT_SOURCE_DIR}/src/front/main3.cpp")
 add_executable(bwfront ${BWServer_SOURCES})
 target_link_libraries(bwfront ${LIBRARIES})
 set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
@@ -157,9 +160,9 @@ set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 #    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
 #    "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
 #    "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
-#    "src/front/BWServer.cpp"
-#    "src/front/FeatureClient.cpp"
-#    "src/front/main2.cpp")
+#    "${PROJECT_SOURCE_DIR}/src/front/BWServer.cpp"
+#    "${PROJECT_SOURCE_DIR}/src/front/FeatureClient.cpp"
+#    "${PROJECT_SOURCE_DIR}/src/front/main2.cpp")
 
 #add_executable(bwfront ${BWServer_SOURCES})
 
@@ -171,8 +174,6 @@ set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 
 # Front
 set(HTTPServer_SOURCES
-    "../src/util/Time.cpp"
-    "../src/data/CameraModel.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -182,9 +183,9 @@ set(HTTPServer_SOURCES
     "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
-    "src/front/HTTPServer.cpp"
-    "src/front/FeatureClient.cpp"
-    "src/front/main.cpp")
+    "${PROJECT_SOURCE_DIR}/src/front/HTTPServer.cpp"
+    "${PROJECT_SOURCE_DIR}/src/front/FeatureClient.cpp"
+    "${PROJECT_SOURCE_DIR}/src/front/main.cpp")
 
 add_executable(front ${HTTPServer_SOURCES})
 
@@ -194,9 +195,6 @@ set_property(TARGET front PROPERTY CXX_STANDARD 11)
 
 # Feature
 set(Feature_SOURCES
-    "../src/util/Time.cpp"
-    "../src/data/CameraModel.cpp"
-    "../src/algo/Feature.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -208,9 +206,9 @@ set(Feature_SOURCES
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
-    "src/feature/FeatureServer.cpp"
-    "src/feature/WordSearchClient.cpp"
-    "src/feature/main.cpp")
+    "${PROJECT_SOURCE_DIR}/src/feature/FeatureServer.cpp"
+    "${PROJECT_SOURCE_DIR}/src/feature/WordSearchClient.cpp"
+    "${PROJECT_SOURCE_DIR}/src/feature/main.cpp")
 
 add_executable(feature ${Feature_SOURCES})
 
@@ -220,16 +218,6 @@ set_property(TARGET feature PROPERTY CXX_STANDARD 11)
 
 # WordSearch
 set(WordSearch_SOURCES
-    "../src/util/Time.cpp"
-    "../src/util/Utility.cpp"
-    "../src/adapter/RTABMapDBAdapter.cpp"
-    "../src/data/Transform.cpp"
-    "../src/data/LabelsSimple.cpp"
-    "../src/data/Label.cpp"
-    "../src/data/Word.cpp"
-    "../src/data/CameraModel.cpp"
-    "../src/data/WordsKdTree.cpp"
-    "../src/algo/WordSearch.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -241,9 +229,9 @@ set(WordSearch_SOURCES
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
-    "src/wordSearch/WordSearchServer.cpp"
-    "src/wordSearch/PerspectiveClient.cpp"
-    "src/wordSearch/main.cpp")
+    "${PROJECT_SOURCE_DIR}/src/wordSearch/WordSearchServer.cpp"
+    "${PROJECT_SOURCE_DIR}/src/wordSearch/PerspectiveClient.cpp"
+    "${PROJECT_SOURCE_DIR}/src/wordSearch/main.cpp")
 
 add_executable(wordsearch ${WordSearch_SOURCES})
 
@@ -254,16 +242,6 @@ set_property(TARGET wordsearch PROPERTY CXX_STANDARD 11)
 
 # Perspective
 set(Perspective_SOURCES
-    "../src/util/Time.cpp"
-    "../src/util/Utility.cpp"
-    "../src/adapter/RTABMapDBAdapter.cpp"
-    "../src/data/Transform.cpp"
-    "../src/data/LabelsSimple.cpp"
-    "../src/data/Label.cpp"
-    "../src/data/Word.cpp"
-    "../src/data/CameraModel.cpp"
-    "../src/data/WordsKdTree.cpp"
-    "../src/algo/Perspective.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
@@ -276,9 +254,9 @@ set(Perspective_SOURCES
     "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/VisibilityService.pb.cc"
     "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.cc"
-    "src/perspective/PerspectiveServer.cpp"
-    "src/perspective/VisibilityClient.cpp"
-    "src/perspective/main.cpp")
+    "${PROJECT_SOURCE_DIR}/src/perspective/PerspectiveServer.cpp"
+    "${PROJECT_SOURCE_DIR}/src/perspective/VisibilityClient.cpp"
+    "${PROJECT_SOURCE_DIR}/src/perspective/main.cpp")
 
 add_executable(perspective ${Perspective_SOURCES})
 
@@ -288,16 +266,6 @@ set_property(TARGET perspective PROPERTY CXX_STANDARD 11)
 
 # Visibility
 set(Visibility_SOURCES
-    "../src/util/Time.cpp"
-    "../src/util/Utility.cpp"
-    "../src/adapter/RTABMapDBAdapter.cpp"
-    "../src/data/Transform.cpp"
-    "../src/data/LabelsSimple.cpp"
-    "../src/data/Label.cpp"
-    "../src/data/Word.cpp"
-    "../src/data/CameraModel.cpp"
-    "../src/data/WordsKdTree.cpp"
-    "../src/algo/Visibility.cpp"
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Transform.pb.cc"
@@ -308,9 +276,9 @@ set(Visibility_SOURCES
     "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
     "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
-    "src/visibility/VisibilityServer.cpp"
-    "src/visibility/HTTPClient.cpp"
-    "src/visibility/main.cpp")
+    "${PROJECT_SOURCE_DIR}/src/visibility/VisibilityServer.cpp"
+    "${PROJECT_SOURCE_DIR}/src/visibility/HTTPClient.cpp"
+    "${PROJECT_SOURCE_DIR}/src/visibility/main.cpp")
 
 add_executable(visibility ${Visibility_SOURCES})
 
