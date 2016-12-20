@@ -11,9 +11,6 @@
 
 class CameraModel;
 
-typedef std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> OnQueryFunction;
-
 typedef struct {
   struct MHD_PostProcessor *postProcessor;
   std::vector<char> imageRaw;
@@ -30,7 +27,8 @@ public:
 
   bool start(uint16_t port, unsigned int maxClients);
   void stop();
-  void registerOnQuery(OnQueryFunction onQuery); 
+  void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
+             std::unique_ptr<CameraModel> &&camera)> onQuery);
 
 private:
   static int answerConnection(void *cls, struct MHD_Connection *connection,
@@ -55,7 +53,8 @@ private:
   static const std::string none;
 
   struct MHD_Daemon *_daemon;
-  OnQueryFunction _onQuery; 
+  std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
+             std::unique_ptr<CameraModel> &&camera)> _onQuery; 
   std::mutex _mutex;
   std::atomic<unsigned int> _maxClients;
   std::atomic<unsigned int> _numClients;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <QSemaphore>
 
 enum SessionType { HTTP_POST = 0, BOSSWAVE = 1 };
@@ -9,7 +10,7 @@ public:
   long id;
   SessionType type;
   QSemaphore detected;
-  std::vector<std::string> names;
+  std::unique_ptr<std::vector<std::string>> names;
 
 public:
   unsigned long long overallStart;

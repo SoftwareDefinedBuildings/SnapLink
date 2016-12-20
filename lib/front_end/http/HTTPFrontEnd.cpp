@@ -48,7 +48,10 @@ void HTTPFrontEnd::stop() {
   }
 }
 
-void HTTPFrontEnd::registerOnQuery(OnQueryFunction onQuery) {
+void HTTPFrontEnd::registerOnQuery(std::function<std::vector<std::string>(
+                                       std::unique_ptr<cv::Mat> &&image,
+                                       std::unique_ptr<CameraModel> &&camera)>
+                                       onQuery) {
   _onQuery = onQuery;
 }
 

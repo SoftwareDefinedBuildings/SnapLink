@@ -3,8 +3,8 @@
 #include <QObject>
 #include <memory>
 #include <opencv2/core/types.hpp>
-#include "lib/front_end/http/HTTPFrontEnd.h"
-#include "lib/data/CameraModel.h"
+#include "front_end/http/HTTPFrontEnd.h"
+#include "data/CameraModel.h"
 #include "data/Session.h"
 
 #define PORT 8080
@@ -17,7 +17,7 @@ public:
   HTTPFrontEndObj();
   virtual ~HTTPFrontEndObj();
 
-  bool start(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
+  bool init(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);
@@ -28,8 +28,7 @@ protected:
 private:
   // this method must be thread safe, because it will be called from other threads
   std::vector<std::string> onQuery(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera,
-             std::unique_ptr<Session> &&session);
+             std::unique_ptr<CameraModel> &&camera);
 
 private:
   std::unique_ptr<HTTPFrontEnd> _httpFront;

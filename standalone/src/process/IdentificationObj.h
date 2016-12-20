@@ -10,7 +10,7 @@
 #define SAMPLE_SIZE 200
 
 class BWServer;
-class HTTPServer;
+class HTTPFrontEndObj;
 class CameraModel;
 class Session;
 
@@ -20,7 +20,7 @@ public:
                  std::unique_ptr<Labels> &&labels);
   ~IdentificationObj();
 
-  void setHTTPServer(HTTPServer *httpServer);
+  void setHTTPFrontEndObj(std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj);
   void setBWServer(BWServer *bwServer);
   bool identify(const cv::Mat &image, const CameraModel &camera,
                 std::vector<std::string> &names, Session &session);
@@ -29,7 +29,7 @@ protected:
   virtual bool event(QEvent *event);
 
 private:
-  HTTPServer *_httpServer;
+  std::shared_ptr<HTTPFrontEndObj> _httpFrontEndObj;
   BWServer *_bwServer;
   Feature _feature;
   WordSearch _wordSearch;

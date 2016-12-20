@@ -1,8 +1,8 @@
-#include "adapter/RTABMapDBAdapter.h"
+#include "adapter/rtabmap/RTABMapDBAdapter.h"
 #include "data/LabelsSimple.h"
 #include "data/WordsKdTree.h"
-#include "front/BWServer.h"
-#include "front/HTTPServer.h"
+#include "front_end/bosswave/BWServer.h"
+#include "front_end/http/HTTPFrontEndObj.h"
 #include "process/IdentificationObj.h"
 #include <QCoreApplication>
 #include <QDebug>
@@ -38,30 +38,36 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  HTTPServer httpServer;
-  BWServer bwServer;
   std::cout << "Initializing IdentificationObj Service" << std::endl;
-  IdentificationObj identObj(std::move(words), std::move(labels));
-  identObj.setHTTPServer(&httpServer);
-  identObj.setBWServer(&bwServer);
-  identObj.moveToThread(&identObjThread);
+  std::shared_ptr<IdentificationObj> identObj(
+      new IdentificationObj(std::move(words), std::move(labels)));
+  identObj->moveToThread(&identObjThread);
   identObjThread.start();
+
   // BWServer
   std::cout << "Initializing BW server" << std::endl;
-  bwServer.setIdentificationObj(&identObj);
+  // TODO use shared_ptr
+  BWServer bwServer;
+  identObj->setBWServer(&bwServer);
+  bwServer.setIdentificationObj(identObj.get());
   QThread bwThread;
   bwThread.start();
   bwServer.moveToThread(&bwThread);
   QObject::connect(&bwServer, &BWServer::signalBW, &bwServer,
                    &BWServer::startRun);
   emit bwServer.signalBW();
-  // HTTPServer
-  std::cout << "Initializing HTTP server" << std::endl;
-  httpServer.setIdentificationObj(&identObj);
-  if (!httpServer.start()) {
-    qCritical() << "Starting HTTP Server failed";
+
+  // HTTPFrontEndObj
+  std::cout << "Initializing HTTP Front End" << std::endl;
+  std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj(new HTTPFrontEndObj());
+  identObj->setHTTPFrontEndObj(httpFrontEndObj);
+  httpFrontEndObj->setIdentificationObj(identObj);
+  if (!httpFrontEndObj->init()) {
+    qCritical() << "Starting HTTP Front End Failed";
     return 1;
   }
+
+  std::cout << "Initialization Done" << std::endl;
 
   return app.exec();
 }

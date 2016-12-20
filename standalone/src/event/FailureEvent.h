@@ -6,7 +6,7 @@
 
 class FailureEvent : public QEvent {
 public:
-  FailureEvent(std::unique_ptr<Session> session);
+  FailureEvent(std::unique_ptr<Session> &&session);
 
   std::unique_ptr<Session> takeSession();
 

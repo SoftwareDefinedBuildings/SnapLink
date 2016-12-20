@@ -16,7 +16,7 @@ set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
-set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../" "${CMAKE_SOURCE_DIR}/src/")
+set(CellMate_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/../lib/" "${CMAKE_SOURCE_DIR}/src/")
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}

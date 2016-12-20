@@ -2,9 +2,10 @@
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "lib/util/Time.h"
 #include "process/IdentificationObj.h"
+#include "util/Time.h"
 #include <QCoreApplication>
+#include <QSemaphore>
 #include <cstdlib>
 #include <cstring>
 #include <strings.h>
@@ -24,7 +25,9 @@ bool HTTPFrontEndObj::init(uint16_t port, unsigned int maxClients) {
   }
   bool success = _httpFront->start(port, maxClients);
   if (success) {
-    _httpFront->registerOnQuery(std::bind(&HTTPFrontEndObj::onQuery, this));
+    _httpFront->registerOnQuery(std::bind(&HTTPFrontEndObj::onQuery, this,
+                                          std::placeholders::_1,
+                                          std::placeholders::_2));
   }
 
   return success;
@@ -46,7 +49,7 @@ bool HTTPFrontEndObj::event(QEvent *event) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
     std::unique_ptr<Session> session = detectionEvent->takeSession();
     session->names = detectionEvent->takeNames();
-    QSemaphore detected = session->detected;
+    QSemaphore &detected = session->detected;
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
@@ -57,8 +60,8 @@ bool HTTPFrontEndObj::event(QEvent *event) {
     return true;
   } else if (event->type() == FailureEvent::type()) {
     FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
-    std::shared_ptr<Session> session = failureEvent->takeSession();
-    QSemaphore detected = session->detected;
+    std::unique_ptr<Session> session = failureEvent->takeSession();
+    QSemaphore &detected = session->detected;
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
@@ -79,15 +82,15 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
   session->type = HTTP_POST;
 
   _mutex.lock();
-  long id = _gen(_dis); // this is not thread safe
+  long id = _dis(_gen); // this is not thread safe
   _sessionMap.emplace(id, std::unique_ptr<Session>());
   _mutex.unlock();
 
   session->id = id;
-  QSemaphore detected = session->detected;
+  QSemaphore &detected = session->detected;
 
   QCoreApplication::postEvent(
-      _identObj,
+      _identObj.get(),
       new QueryEvent(std::move(image), std::move(camera), std::move(session)));
 
   // TODO use condition variable?
@@ -114,5 +117,5 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
             << session->perspectiveEnd - session->perspectiveStart << " ms"
             << std::endl;
 
-  return std::move(session->names);
+  return *(session->names);
 }
