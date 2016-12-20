@@ -2,9 +2,6 @@
 #include "data/CameraModel.h"
 #include "data/Transform.h"
 #include "util/Utility.h"
-#include <QDebug>
-#include <QDirIterator>
-#include <QTextStream>
 #include <fstream>
 #include <iostream>
 #include <opencv/cv.h>
@@ -27,7 +24,7 @@ std::vector<std::string> Visibility::process(int dbId,
 
   std::vector<std::string> results;
 
-  qDebug() << "processing transform = " << pose.prettyPrint().c_str();
+  std::cout << "processing transform = " << pose.prettyPrint() << std::endl;
 
   std::vector<cv::Point2f> planePoints;
   std::vector<std::string> visibleLabels;
@@ -62,16 +59,16 @@ std::vector<std::string> Visibility::process(int dbId,
         double dist = cv::norm(planePoints[i] - center);
         distances[name].emplace_back(dist);
         labelPoints[name].emplace_back(planePoints[i]);
-        qDebug() << "Find label " << name.c_str() << " at (" << planePoints[i].x
-                 << "," << planePoints[i].y << ")";
+        std::cout << "Find label " << name << " at (" << planePoints[i].x << ","
+                  << planePoints[i].y << ")" << std::endl;
       } else {
-        qDebug() << "Label " << name.c_str() << " invalid at ("
-                 << planePoints[i].x << "," << planePoints[i].y << ")"
-                 << " because it is from the back of the camera";
+        std::cout << "Label " << name << " invalid at (" << planePoints[i].x
+                  << "," << planePoints[i].y << ")"
+                  << " because it is from the back of the camera" << std::endl;
       }
     } else {
-      qDebug() << "label " << name.c_str() << " invalid at ("
-               << planePoints[i].x << "," << planePoints[i].y << ")";
+      std::cout << "label " << name << " invalid at (" << planePoints[i].x
+                << "," << planePoints[i].y << ")" << std::endl;
     }
   }
 

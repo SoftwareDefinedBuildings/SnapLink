@@ -3,7 +3,6 @@
 #include "data/Transform.h"
 #include "util/Time.h"
 #include "util/Utility.h"
-#include <QDebug>
 #include <cassert>
 #include <pcl/common/transforms.h>
 
@@ -33,7 +32,7 @@ void Perspective::localize(const std::vector<int> &wordIds,
 
   // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
-  qDebug() << "transform= " << transform.prettyPrint().c_str();
+  std::cout << "transform= " << transform.prettyPrint() << std::endl;
 }
 
 std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>

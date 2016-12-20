@@ -3,7 +3,6 @@
 #include "data/Transform.h"
 #include "data/Words.h"
 #include "util/Time.h"
-#include <QDebug>
 #include <opencv2/xfeatures2d.hpp>
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
@@ -38,16 +37,16 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
     dbId++;
   }
 
-  qDebug() << "Building Index for Words";
+  std::cout << "Building Index for Words" << std::endl;
   std::list<std::unique_ptr<Word>> allWords = createWords(allSignatures);
-  qDebug() << "Total Number of words: " << allWords.size();
+  std::cout << "Total Number of words: " << allWords.size() << std::endl;
   long count = 0;
   for (const auto &word : allWords) {
     for (const auto &desc : word->getDescriptorsByDb()) {
       count += desc.second.rows;
     }
   }
-  qDebug() << "Total Number of descriptors: " << count;
+  std::cout << "Total Number of descriptors: " << count << std::endl;
   allWords = clusterPointsInWords(allWords);
   count = 0;
   for (const auto &word : allWords) {
@@ -55,10 +54,10 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
       count += desc.second.rows;
     }
   }
-  qDebug() << "Total Number of points: " << count;
+  std::cout << "Total Number of points: " << count << std::endl;
   words.putWords(std::move(allWords));
 
-  qDebug() << "Building Index for Labels";
+  std::cout << "Building Index for Labels" << std::endl;
   labels.putLabels(std::move(allLabels));
 
   return true;
@@ -69,19 +68,19 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
   std::map<int, std::unique_ptr<rtabmap::Signature>> signatures;
 
   // get optimized poses of signatures
-  qDebug() << "Optimize poses of signatures...";
+  std::cout << "Optimize poses of signatures..." << std::endl;
   const std::map<int, rtabmap::Transform> &optimizedPoseMap =
       getOptimizedPoseMap(dbPath);
 
   rtabmap::DBDriver *dbDriver = rtabmap::DBDriver::create();
   if (!dbDriver->openConnection(dbPath)) {
-    qDebug() << "Connecting to database " << dbPath.c_str()
-             << ", path is invalid!";
+    std::cout << "Connecting to database " << dbPath << ", path is invalid!"
+              << std::endl;
     return signatures;
   }
 
   // Read signatures from database
-  qDebug() << "Read signatures from database...";
+  std::cout << "Read signatures from database..." << std::endl;
   std::list<rtabmap::Signature *> rtabmapSignatures;
   std::set<int> sigIds;
   dbDriver->getAllNodeIds(sigIds, true);
@@ -102,7 +101,7 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
     signature = nullptr;
   }
 
-  qDebug() << "Closing database " << dbDriver->getUrl().c_str() << "...";
+  std::cout << "Closing database " << dbDriver->getUrl() << "..." << std::endl;
   dbDriver->closeConnection();
   dbDriver->join();
   delete dbDriver;
@@ -122,7 +121,7 @@ std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
 
   rc = sqlite3_open(dbPath.c_str(), &db);
   if (rc != SQLITE_OK) {
-    qCritical() << "Could not open database " << sqlite3_errmsg(db);
+    std::cout << "Could not open database " << sqlite3_errmsg(db) << std::endl;
     sqlite3_close(db);
     return labels;
   }
@@ -153,8 +152,8 @@ std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
       }
     }
   } else {
-    qWarning() << "Could not read database " << dbPath.c_str() << ":"
-               << sqlite3_errmsg(db);
+    std::cout << "Could not read database " << dbPath << ":"
+              << sqlite3_errmsg(db) << std::endl;
   }
 
   sqlite3_finalize(stmt);
@@ -199,7 +198,7 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
   cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
   for (const auto &dbSignatures : allSignatures) {
     int dbId = dbSignatures.first;
-    qDebug() << "Creating words for signatures in DB " << dbId;
+    std::cout << "Creating words for signatures in DB " << dbId << std::endl;
     for (const auto &dbSignature : dbSignatures.second) {
       // get image normal vector
       const rtabmap::Transform &poseWorld = dbSignature.second->getPose();
@@ -317,11 +316,11 @@ bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
       data.depthRaw(), point2.x, point2.y, camera.cx(), camera.cy(),
       camera.fx(), camera.fy(), smoothing);
   if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
-    // qWarning() << "Depth value not valid";
+    // std::cout << "Depth value not valid" << std::endl;
     return false;
   }
   if (poseWorld.isNull()) {
-    qWarning() << "Image pose is Null";
+    std::cout << "Image pose is Null" << std::endl;
     return false;
   }
   poseWorld = poseWorld * camera.localTransform();

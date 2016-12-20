@@ -1,10 +1,6 @@
 #include "front_end/http/HTTPFrontEnd.h"
 #include "data/CameraModel.h"
-#include "event/DetectionEvent.h"
-#include "event/FailureEvent.h"
-#include "event/QueryEvent.h"
 #include "util/Time.h"
-#include <QCoreApplication>
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
