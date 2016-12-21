@@ -16,7 +16,7 @@ set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
 set(CellMate_LIB_PATH "${PROJECT_SOURCE_DIR}/../lib/")
-set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} "${PROJECT_SOURCE_DIR}/src/")
+set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} ${PROJECT_SOURCE_DIR})
 set(CellMate_LIBRARIES cellmate)
 
 set(INCLUDE_DIRS
@@ -39,14 +39,14 @@ include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libra
 include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
-    "${PROJECT_SOURCE_DIR}/src/front_end/bosswave/BWServer.cpp"
-    "${PROJECT_SOURCE_DIR}/src/front_end/bosswave/BWWorker.cpp"
-    "${PROJECT_SOURCE_DIR}/src/front_end/http/HTTPFrontEndObj.cpp"
-    "${PROJECT_SOURCE_DIR}/src/event/QueryEvent.cpp"
-    "${PROJECT_SOURCE_DIR}/src/event/DetectionEvent.cpp"
-    "${PROJECT_SOURCE_DIR}/src/event/FailureEvent.cpp"
-    "${PROJECT_SOURCE_DIR}/src/process/IdentificationObj.cpp"
-    "${PROJECT_SOURCE_DIR}/src/main.cpp")
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWServer.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWWorker.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/http/HTTPFrontEndObj.cpp"
+    "${PROJECT_SOURCE_DIR}/event/QueryEvent.cpp"
+    "${PROJECT_SOURCE_DIR}/event/DetectionEvent.cpp"
+    "${PROJECT_SOURCE_DIR}/event/FailureEvent.cpp"
+    "${PROJECT_SOURCE_DIR}/process/IdentificationObj.cpp"
+    "${PROJECT_SOURCE_DIR}/main.cpp")
 
 add_executable(cellmate_standalone ${SOURCES})
 

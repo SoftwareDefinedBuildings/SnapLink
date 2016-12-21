@@ -22,7 +22,7 @@ set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
 set(CellMate_LIB_PATH "${PROJECT_SOURCE_DIR}/../lib/")
-set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} "${PROJECT_SOURCE_DIR}/src/")
+set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} ${PROJECT_SOURCE_DIR})
 set(CellMate_LIBRARIES cellmate)
 
 set(INCLUDE_DIRS
@@ -40,10 +40,6 @@ set(LIBRARIES
     ${PROTOBUF_LIBRARY}
     ${Qt5Core_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
-    ${OpenCV_LIBRARIES}
-    ${PCL_LIBRARIES}
-    ${RTABMap_LIBRARIES}
-    ${MHD_LIBRARIES}
     ${GRPC_LIBRARIES}
     ${BW_LIBRARIES}
     ${CellMate_LIBRARIES}
@@ -53,7 +49,7 @@ include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libra
 include_directories(${CellMate_INCLUDE_DIRS})
 
 # Protobuf
-set(PROTO_PATH "${PROJECT_SOURCE_DIR}/src/proto")
+set(PROTO_PATH "${PROJECT_SOURCE_DIR}/proto")
 set(PROTO_FILES "${PROTO_PATH}/*.proto")
 
 set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated/proto")
@@ -95,7 +91,7 @@ add_custom_command(
 
 # GRPC
 set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
-set(GRPC_PATH "${PROJECT_SOURCE_DIR}/src/grpc")
+set(GRPC_PATH "${PROJECT_SOURCE_DIR}/grpc")
 set(GRPC_FILES "${GRPC_PATH}/*.proto")
 
 set(GENERATED_GRPC_PATH "${CMAKE_BINARY_DIR}/generated/grpc")
@@ -142,10 +138,10 @@ add_custom_command(
 
 # bwFront
 set(BWServer_SOURCES
-    "${PROJECT_SOURCE_DIR}/src/front/main3.cpp")
-add_executable(bwfront ${BWServer_SOURCES})
-target_link_libraries(bwfront ${LIBRARIES})
-set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/main3.cpp")
+add_executable(bw_front ${BWServer_SOURCES})
+target_link_libraries(bw_front ${LIBRARIES})
+set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
 
 # bwFront
 #set(BWServer_SOURCES
@@ -183,15 +179,15 @@ set(HTTPServer_SOURCES
     "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
-    "${PROJECT_SOURCE_DIR}/src/front/HTTPServer.cpp"
-    "${PROJECT_SOURCE_DIR}/src/front/FeatureClient.cpp"
-    "${PROJECT_SOURCE_DIR}/src/front/main.cpp")
+    "${PROJECT_SOURCE_DIR}/front_end/http/HTTPServer.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/http/FeatureClient.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/http/main.cpp")
 
-add_executable(front ${HTTPServer_SOURCES})
+add_executable(http_front ${HTTPServer_SOURCES})
 
-target_link_libraries(front ${LIBRARIES})
+target_link_libraries(http_front ${LIBRARIES})
 
-set_property(TARGET front PROPERTY CXX_STANDARD 11)
+set_property(TARGET http_front PROPERTY CXX_STANDARD 11)
 
 # Feature
 set(Feature_SOURCES
@@ -206,9 +202,9 @@ set(Feature_SOURCES
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.pb.cc"
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
-    "${PROJECT_SOURCE_DIR}/src/feature/FeatureServer.cpp"
-    "${PROJECT_SOURCE_DIR}/src/feature/WordSearchClient.cpp"
-    "${PROJECT_SOURCE_DIR}/src/feature/main.cpp")
+    "${PROJECT_SOURCE_DIR}/process/feature/FeatureServer.cpp"
+    "${PROJECT_SOURCE_DIR}/process/feature/WordSearchClient.cpp"
+    "${PROJECT_SOURCE_DIR}/process/feature/main.cpp")
 
 add_executable(feature ${Feature_SOURCES})
 
@@ -229,9 +225,9 @@ set(WordSearch_SOURCES
     "${GENERATED_GRPC_PATH}/WordSearchService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.pb.cc"
     "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
-    "${PROJECT_SOURCE_DIR}/src/wordSearch/WordSearchServer.cpp"
-    "${PROJECT_SOURCE_DIR}/src/wordSearch/PerspectiveClient.cpp"
-    "${PROJECT_SOURCE_DIR}/src/wordSearch/main.cpp")
+    "${PROJECT_SOURCE_DIR}/process/wordSearch/WordSearchServer.cpp"
+    "${PROJECT_SOURCE_DIR}/process/wordSearch/PerspectiveClient.cpp"
+    "${PROJECT_SOURCE_DIR}/process/wordSearch/main.cpp")
 
 add_executable(wordsearch ${WordSearch_SOURCES})
 
@@ -254,9 +250,9 @@ set(Perspective_SOURCES
     "${GENERATED_GRPC_PATH}/PerspectiveService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/VisibilityService.pb.cc"
     "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.cc"
-    "${PROJECT_SOURCE_DIR}/src/perspective/PerspectiveServer.cpp"
-    "${PROJECT_SOURCE_DIR}/src/perspective/VisibilityClient.cpp"
-    "${PROJECT_SOURCE_DIR}/src/perspective/main.cpp")
+    "${PROJECT_SOURCE_DIR}/process/perspective/PerspectiveServer.cpp"
+    "${PROJECT_SOURCE_DIR}/process/perspective/VisibilityClient.cpp"
+    "${PROJECT_SOURCE_DIR}/process/perspective/main.cpp")
 
 add_executable(perspective ${Perspective_SOURCES})
 
@@ -276,9 +272,9 @@ set(Visibility_SOURCES
     "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
     "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
-    "${PROJECT_SOURCE_DIR}/src/visibility/VisibilityServer.cpp"
-    "${PROJECT_SOURCE_DIR}/src/visibility/HTTPClient.cpp"
-    "${PROJECT_SOURCE_DIR}/src/visibility/main.cpp")
+    "${PROJECT_SOURCE_DIR}/process/visibility/VisibilityServer.cpp"
+    "${PROJECT_SOURCE_DIR}/process/visibility/HTTPClient.cpp"
+    "${PROJECT_SOURCE_DIR}/process/visibility/main.cpp")
 
 add_executable(visibility ${Visibility_SOURCES})
 

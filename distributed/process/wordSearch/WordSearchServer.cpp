@@ -1,17 +1,16 @@
-#include "PerspectiveServer.h"
-#include "VisibilityClient.h"
-#include "adapter/RTABMapDBAdapter.h"
+#include "WordSearchServer.h"
+#include "PerspectiveClient.h"
+#include "adapter/rtabmap/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
-#include "data/Transform.h"
 #include "data/WordsKdTree.h"
 #include "util/Time.h"
 #include <QDebug>
 
-bool PerspectiveServer::init(std::string visibilityServerAddr,
-                             std::vector<std::string> dbfiles) {
-  _channel = grpc::CreateChannel(visibilityServerAddr,
+bool WordSearchServer::init(std::string perspectiveServerAddr,
+                            std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel(perspectiveServerAddr,
                                  grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -23,19 +22,14 @@ bool PerspectiveServer::init(std::string visibilityServerAddr,
     return false;
   }
 
-  _perspective.reset(new Perspective(std::move(words)));
+  _wordSearch.reset(new WordSearch(std::move(words)));
 
   return true;
 }
 
-grpc::Status PerspectiveServer::onWord(grpc::ServerContext *context,
-                                       const proto::WordMessage *request,
-                                       proto::Empty *response) {
-  std::vector<int> wordIds;
-  for (int i = 0; i < request->wordids_size(); i++) {
-    wordIds.emplace_back(request->wordids(i));
-  }
-
+grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
+                                         const proto::FeatureMessage *request,
+                                         proto::Empty *response) {
   std::vector<cv::KeyPoint> keyPoints;
   for (int i = 0; i < request->keypoints_size(); i++) {
     float x = request->keypoints(i).x();
@@ -60,6 +54,8 @@ grpc::Status PerspectiveServer::onWord(grpc::ServerContext *context,
       descriptors.at<float>(row, col) = request->descriptors(row).values(col);
     }
   }
+  assert(descriptors.type() == CV_32F);
+  assert(descriptors.channels() == 1);
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
@@ -85,21 +81,17 @@ grpc::Status PerspectiveServer::onWord(grpc::ServerContext *context,
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
-  int dbId;
-  Transform pose;
-  session.perspectiveStart = getTime();
-  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
-  session.perspectiveEnd = getTime();
-
-  VisibilityClient client(_channel);
-  client.onLocation(dbId, camera, pose, session);
-
+  session.wordsStart = getTime();
+  std::vector<int> wordIds = _wordSearch->search(descriptors);
+  session.wordsEnd = getTime();
+  PerspectiveClient client(_channel);
+  client.onWord(wordIds, keyPoints, descriptors, camera, session);
   return grpc::Status::OK;
 }
 
 // There is no shutdown handling in this code.
-void PerspectiveServer::run(std::string perspectiveServerAddr) {
-  std::string server_address(perspectiveServerAddr);
+void WordSearchServer::run(std::string wordSearchServerAddr) {
+  std::string server_address(wordSearchServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

@@ -1,6 +1,6 @@
-#include "VisibilityServer.h"
-#include "HTTPClient.h"
-#include "adapter/RTABMapDBAdapter.h"
+#include "PerspectiveServer.h"
+#include "VisibilityClient.h"
+#include "adapter/rtabmap/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
@@ -9,10 +9,10 @@
 #include "util/Time.h"
 #include <QDebug>
 
-bool VisibilityServer::init(std::string frontServerAddr,
-                            std::vector<std::string> dbfiles) {
-  _channel =
-      grpc::CreateChannel(frontServerAddr, grpc::InsecureChannelCredentials());
+bool PerspectiveServer::init(std::string visibilityServerAddr,
+                             std::vector<std::string> dbfiles) {
+  _channel = grpc::CreateChannel(visibilityServerAddr,
+                                 grpc::InsecureChannelCredentials());
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
@@ -23,15 +23,43 @@ bool VisibilityServer::init(std::string frontServerAddr,
     return false;
   }
 
-  _visibility.reset(new Visibility(std::move(labels)));
+  _perspective.reset(new Perspective(std::move(words)));
 
   return true;
 }
 
-grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
-                                          const proto::LocationMessage *request,
-                                          proto::Empty *response) {
-  int dbId = request->dbid();
+grpc::Status PerspectiveServer::onWord(grpc::ServerContext *context,
+                                       const proto::WordMessage *request,
+                                       proto::Empty *response) {
+  std::vector<int> wordIds;
+  for (int i = 0; i < request->wordids_size(); i++) {
+    wordIds.emplace_back(request->wordids(i));
+  }
+
+  std::vector<cv::KeyPoint> keyPoints;
+  for (int i = 0; i < request->keypoints_size(); i++) {
+    float x = request->keypoints(i).x();
+    float y = request->keypoints(i).y();
+    float size = request->keypoints(i).size();
+    float angle = request->keypoints(i).angle();
+    float response = request->keypoints(i).response();
+    int octave = request->keypoints(i).octave();
+    int classId = request->keypoints(i).classid();
+
+    keyPoints.emplace_back(x, y, size, angle, response, octave, classId);
+  }
+
+  assert(request->descriptors_size() > 0);
+  int descriptorSize = request->descriptors(0).values_size();
+  assert(descriptorSize > 0);
+  cv::Mat descriptors(request->descriptors_size(),
+                      request->descriptors(0).values_size(), CV_32F);
+  for (int row = 0; row < request->descriptors_size(); row++) {
+    assert(request->descriptors(row).values_size() == descriptorSize);
+    for (int col = 0; col < descriptorSize; col++) {
+      descriptors.at<float>(row, col) = request->descriptors(row).values(col);
+    }
+  }
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();
@@ -40,22 +68,6 @@ grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
   int width = request->cameramodel().width();
   int height = request->cameramodel().height();
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-
-  float r11 = request->pose().r11();
-  float r12 = request->pose().r12();
-  float r13 = request->pose().r13();
-  float r21 = request->pose().r21();
-  float r22 = request->pose().r22();
-  float r23 = request->pose().r23();
-  float r31 = request->pose().r31();
-  float r32 = request->pose().r32();
-  float r33 = request->pose().r33();
-  float x = request->pose().x();
-  float y = request->pose().y();
-  float z = request->pose().z();
-  Transform pose(r11, r12, r13, x, //
-                 r21, r22, r23, y, //
-                 r31, r32, r33, z);
 
   Session session;
   session.id = request->session().id();
@@ -73,17 +85,21 @@ grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
-  std::vector<std::string> names = _visibility->process(dbId, camera, pose);
+  int dbId;
+  Transform pose;
+  session.perspectiveStart = getTime();
+  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
+  session.perspectiveEnd = getTime();
 
-  HTTPClient client(_channel);
-  client.onDetection(names, session);
+  VisibilityClient client(_channel);
+  client.onLocation(dbId, camera, pose, session);
 
   return grpc::Status::OK;
 }
 
 // There is no shutdown handling in this code.
-void VisibilityServer::run(std::string visibilityServerAddr) {
-  std::string server_address(visibilityServerAddr);
+void PerspectiveServer::run(std::string perspectiveServerAddr) {
+  std::string server_address(perspectiveServerAddr);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
