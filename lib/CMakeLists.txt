@@ -8,6 +8,8 @@ find_package(RTABMap REQUIRED)
 # TODO make these parameters
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
+set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
+set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
 set(CellMate_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}")
 
@@ -24,6 +26,7 @@ set(LIBRARIES
     ${PCL_LIBRARIES}
     ${RTABMap_LIBRARIES}
     ${MHD_LIBRARIES}
+    ${BW_LIBRARIES}
 )
 
 include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries
@@ -31,6 +34,8 @@ include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
     "${PROJECT_SOURCE_DIR}/front_end/http/HTTPFrontEnd.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWFrontEnd.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWWorker.cpp"
     "${PROJECT_SOURCE_DIR}/util/Time.cpp"
     "${PROJECT_SOURCE_DIR}/util/Utility.cpp"
     "${PROJECT_SOURCE_DIR}/adapter/rtabmap/RTABMapDBAdapter.cpp"

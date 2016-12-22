@@ -39,8 +39,7 @@ include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libra
 include_directories(${CellMate_INCLUDE_DIRS})
 
 set(SOURCES
-    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWServer.cpp"
-    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWWorker.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWFrontEndObj.cpp"
     "${PROJECT_SOURCE_DIR}/front_end/http/HTTPFrontEndObj.cpp"
     "${PROJECT_SOURCE_DIR}/event/QueryEvent.cpp"
     "${PROJECT_SOURCE_DIR}/event/DetectionEvent.cpp"
