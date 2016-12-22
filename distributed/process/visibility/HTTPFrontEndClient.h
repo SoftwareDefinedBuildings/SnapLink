@@ -3,9 +3,9 @@
 
 class Session;
 
-class HTTPClient {
+class HTTPFrontEndClient {
 public:
-  explicit HTTPClient(std::shared_ptr<grpc::Channel> channel);
+  explicit HTTPFrontEndClient(std::shared_ptr<grpc::Channel> channel);
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.

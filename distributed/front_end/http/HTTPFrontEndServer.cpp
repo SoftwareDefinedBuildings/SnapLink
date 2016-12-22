@@ -1,6 +1,5 @@
 #include "HTTPFrontEndServer.h"
 #include "FeatureClient.h"
-#include "data/CameraModel.h"
 #include "util/Time.h"
 #include <cstdlib>
 #include <cstring>
@@ -40,9 +39,10 @@ HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
   session->perspectiveStart = request->session().perspectivestart();
   session->perspectiveEnd = request->session().perspectiveend();
 
-  std::unique_ptr<std::vector<std::string>> names(request->names());
-
-  QSemaphore &detected = session->detected;
+  std::unique_ptr<std::vector<std::string>> names(new std::vector<std::string>());
+  for (auto name : request->names()) {
+    names->emplace_back(name);
+  }
 
   _mutex.lock();
   auto iter = _sessionMap.find(session->id);
@@ -82,28 +82,32 @@ HTTPFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
   session->overallStart = getTime(); // log start of processing
   session->type = HTTP_POST;
 
+  std::unique_ptr<SessionData> sessionData(new SessionData);
+  QSemaphore &detected = sessionData->detected;
+
   _mutex.lock();
   long id = _dis(_gen); // this is not thread safe
-  _sessionMap.emplace(id, std::unique_ptr<Session>());
+  _sessionMap.emplace(id, std::move(sessionData));
   _mutex.unlock();
 
   session->id = id;
-  QSemaphore &detected = session->detected;
 
-  QCoreApplication::postEvent(
-      _identObj.get(),
-      new QueryEvent(std::move(image), std::move(camera), std::move(session)));
+  FeatureClient client(_channel);        
+  client.onQuery(*image, *camera, *session);
 
   // TODO use condition variable?
   detected.acquire();
 
   _mutex.lock();
   auto iter = _sessionMap.find(id);
-  session = std::move(iter->second);
+  sessionData = std::move(iter->second);
   _sessionMap.erase(id);
   _mutex.unlock();
 
-  assert(session != nullptr);
+  assert(sessionData != nullptr);
+  assert(sessionData->session != nullptr);
+
+  session = std::move(sessionData->session);
 
   // print time
   session->overallEnd = getTime(); // log processing end time

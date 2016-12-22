@@ -2,6 +2,8 @@
 
 #include "FrontService.grpc.pb.h"
 #include "data/Session.h"
+#include "data/CameraModel.h"
+#include "front_end/http/HTTPFrontEnd.h"
 #include <QSemaphore>
 #include <grpc++/grpc++.h>
 #include <memory>
