@@ -26,30 +26,33 @@ grpc::Status
 HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
                                 const proto::DetectionMessage *request,
                                 proto::Empty *response) {
-  Session session;
-  session.id = request->session().id();
-  if (request->session().type() == proto::Session::HTTP_POST) {
-    session.type = HTTP_POST;
-  } else if (request->session().type() == proto::Session::BOSSWAVE) {
-    session.type = BOSSWAVE;
-  }
-  session.names = request->names();
-  session.overallStart = request->session().overallstart();
-  session.overallEnd = request->session().overallend();
-  session.featuresStart = request->session().featuresstart();
-  session.featuresEnd = request->session().featuresend();
-  session.wordsStart = request->session().wordsstart();
-  session.wordsEnd = request->session().wordsend();
-  session.perspectiveStart = request->session().perspectivestart();
-  session.perspectiveEnd = request->session().perspectiveend();
+  assert(request->session().type() == proto::Session::HTTP_POST); 
+
+  std::unique_ptr<Session> session;
+  session->id = request->session().id();
+  session->type = HTTP_POST;
+  session->overallStart = request->session().overallstart();
+  session->overallEnd = request->session().overallend();
+  session->featuresStart = request->session().featuresstart();
+  session->featuresEnd = request->session().featuresend();
+  session->wordsStart = request->session().wordsstart();
+  session->wordsEnd = request->session().wordsend();
+  session->perspectiveStart = request->session().perspectivestart();
+  session->perspectiveEnd = request->session().perspectiveend();
+
+  std::unique_ptr<std::vector<std::string>> names(request->names());
 
   QSemaphore &detected = session->detected;
 
   _mutex.lock();
   auto iter = _sessionMap.find(session->id);
-  iter->second = std::move(session);
+  std::unique_ptr<SessionData> &sessionData = iter->second;
+  sessionData->session = std::move(session);
+  sessionData->names = std::move(names);
+  QSemaphore &detected = sessionData->detected;
   _mutex.unlock();
-  connInfo->detected.release();
+
+  detected.release();
 
   return grpc::Status::OK;
 }

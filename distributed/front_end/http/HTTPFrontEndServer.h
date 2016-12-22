@@ -12,8 +12,13 @@
 
 #define PORT 8080
 #define MAX_CLIENTS 10
-#define POST_BUFFER_SIZE 100000
-#define IMAGE_INIT_SIZE 100000
+
+// to keep session dependent data 
+typedef struct {
+  std::unique_ptr<Session> session;
+  std::unique_ptr<std::vector<std::string>> names;
+  QSemaphore detected;
+} SessionData;
 
 class HTTPFrontEndServer final : public proto::FrontService::Service {
 public:
@@ -35,7 +40,7 @@ private:
   std::mutex _mutex;
   std::mt19937 _gen;
   std::uniform_int_distribution<long> _dis;
-  std::map<long, std::unique_ptr<Session>> _sessionMap;
+  std::map<long, std::unique_ptr<SessionData>> _sessionMap;
 
   std::shared_ptr<grpc::Channel> _channel;
 };
