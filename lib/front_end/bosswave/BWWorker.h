@@ -32,7 +32,7 @@ signals:
   public:
   BWWorker(PMessage message,
            std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-                      std::unique_ptr<CameraModel> &&camera)> *onQuery;
+                      std::unique_ptr<CameraModel> &&camera)> *onQuery,
            unsigned int *numClients
            );
 

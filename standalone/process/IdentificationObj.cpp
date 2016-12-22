@@ -5,23 +5,23 @@
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
-#include "front_end/bosswave/BWServer.h"
+#include "front_end/bosswave/BWFrontEndObj.h"
 #include "front_end/http/HTTPFrontEndObj.h"
 #include "util/Time.h"
 #include <QCoreApplication>
 
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
                                      std::unique_ptr<Labels> &&labels)
-    : _httpFrontEndObj(nullptr), _bwServer(nullptr), _wordSearch(words),
+    : _httpFrontEndObj(nullptr), _bwFrontEndObj(nullptr), _wordSearch(words),
       _perspective(words), _visibility(std::move(labels)) {}
 
 IdentificationObj::~IdentificationObj() {
   _httpFrontEndObj = nullptr;
-  _bwServer = nullptr;
+  _bwFrontEndObj = nullptr;
 }
 
-void IdentificationObj::setBWServer(BWServer *bwServer) {
-  _bwServer = bwServer;
+void IdentificationObj::setBWFrontEndObj(std::shared_ptr<BWFrontEndObj> bwFrontEndObj) {
+  _bwFrontEndObj = bwFrontEndObj;
 }
 
 void IdentificationObj::setHTTPFrontEndObj(
@@ -43,7 +43,7 @@ bool IdentificationObj::event(QEvent *event) {
     if (success) {
       if (session->type == BOSSWAVE) {
         QCoreApplication::postEvent(
-            _bwServer,
+            _bwFrontEndObj.get(),
             new DetectionEvent(std::move(names), std::move(session)));
       } else {
         QCoreApplication::postEvent(
@@ -52,7 +52,7 @@ bool IdentificationObj::event(QEvent *event) {
       }
     } else {
       if (session->type == BOSSWAVE) {
-        QCoreApplication::postEvent(_bwServer,
+        QCoreApplication::postEvent(_bwFrontEndObj.get(),
                                     new FailureEvent(std::move(session)));
       } else {
         QCoreApplication::postEvent(_httpFrontEndObj.get(),

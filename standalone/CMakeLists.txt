@@ -11,14 +11,12 @@ find_package(RTABMap REQUIRED)
 
 set(MHD_INCLUDE_DIRS "/usr/include/")
 
-# TODO Move BW to library
-set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
-set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 
 set(CellMate_LIB_PATH "${PROJECT_SOURCE_DIR}/../lib/")
 set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} ${PROJECT_SOURCE_DIR})
 set(CellMate_LIBRARIES cellmate)
-
+set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
+set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
@@ -31,8 +29,8 @@ set(INCLUDE_DIRS
 set(LIBRARIES
     ${Qt5Core_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
-    ${BW_LIBRARIES}
     ${CellMate_LIBRARIES}
+    ${BW_LIBRARIES}
 )
 
 include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries

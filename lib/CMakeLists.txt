@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(CellMate_Library)
-
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Quick REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)

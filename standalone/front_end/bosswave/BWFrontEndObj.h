@@ -17,9 +17,10 @@ typedef struct {
   std::unique_ptr<Session> session;
   std::unique_ptr<std::vector<std::string>> names;
   QSemaphore detected;
-} SessionData;
+} BWSessionData;
 
 class BWFrontEndObj : public QObject {
+  Q_OBJECT
 public:
   BWFrontEndObj();
   virtual ~BWFrontEndObj();
@@ -31,7 +32,7 @@ public:
 public slots:
   bool init( unsigned int maxClients = MAX_CLIENTS);
 signals:
-  void triggerInit();
+  void triggerInit(unsigned int maxClients);
 protected:
   virtual bool event(QEvent *event);
 
@@ -46,5 +47,5 @@ private:
   std::mutex _mutex; // protect _sessionMap accesses from onQuery
   std::mt19937 _gen;
   std::uniform_int_distribution<long> _dis;
-  std::map<long, std::unique_ptr<SessionData>> _sessionMap;
+  std::map<long, std::unique_ptr<BWSessionData>> _sessionMap;
 };

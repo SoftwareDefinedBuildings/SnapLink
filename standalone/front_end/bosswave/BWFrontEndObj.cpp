@@ -1,4 +1,4 @@
-#include "front_end/bw/BWFrontEndObj.h"
+#include "front_end/bosswave/BWFrontEndObj.h"
 #include "event/DetectionEvent.h"
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
@@ -51,7 +51,7 @@ bool BWFrontEndObj::event(QEvent *event) {
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
-    std::unique_ptr<SessionData> &sessionData = iter->second;
+    std::unique_ptr<BWSessionData> &sessionData = iter->second;
     sessionData->session = std::move(session);
     sessionData->names = detectionEvent->takeNames();
     QSemaphore &detected = sessionData->detected;
@@ -65,7 +65,7 @@ bool BWFrontEndObj::event(QEvent *event) {
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
-    std::unique_ptr<SessionData> &sessionData = iter->second;
+    std::unique_ptr<BWSessionData> &sessionData = iter->second;
     sessionData->session = std::move(session);
     sessionData->names.reset(new std::vector<std::string>());
     QSemaphore &detected = sessionData->detected;
@@ -82,9 +82,9 @@ BWFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
                          std::unique_ptr<CameraModel> &&camera) {
   std::unique_ptr<Session> session(new Session);
   session->overallStart = getTime(); // log start of processing
-  session->type = BOSSWAVE_POST;
+  session->type = BOSSWAVE;
 
-  std::unique_ptr<SessionData> sessionData(new SessionData);
+  std::unique_ptr<BWSessionData> sessionData(new BWSessionData);
   QSemaphore &detected = sessionData->detected;
 
   _mutex.lock();

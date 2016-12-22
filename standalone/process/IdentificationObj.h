@@ -9,7 +9,7 @@
 
 #define SAMPLE_SIZE 200
 
-class BWServer;
+class BWFrontEndObj;
 class HTTPFrontEndObj;
 class CameraModel;
 class Session;
@@ -21,7 +21,7 @@ public:
   ~IdentificationObj();
 
   void setHTTPFrontEndObj(std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj);
-  void setBWServer(BWServer *bwServer);
+  void setBWFrontEndObj(std::shared_ptr<BWFrontEndObj> bwFrontEndObj);
   bool identify(const cv::Mat &image, const CameraModel &camera,
                 std::vector<std::string> &names, Session &session);
 
@@ -30,7 +30,7 @@ protected:
 
 private:
   std::shared_ptr<HTTPFrontEndObj> _httpFrontEndObj;
-  BWServer *_bwServer;
+  std::shared_ptr<BWFrontEndObj> _bwFrontEndObj;
   Feature _feature;
   WordSearch _wordSearch;
   Perspective _perspective;
