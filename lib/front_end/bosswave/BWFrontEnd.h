@@ -7,22 +7,25 @@
 #include <string>
 #include <fstream>
 #include "front_end/bosswave/BWWorker.h"
-#include "event/DetectionEvent.h"
-#include "event/FailureEvent.h"
+
 
 #define MAX_CLIENTS 10
 #define DEFAULT_CHANNEL "scratch.ns/cellmate"
 
-class BWServer : public QObject
+class BWFrontEnd : public QObject
 {
   Q_OBJECT
 
 public:
-  BWServer();
-  virtual ~BWServer();
+  BWFrontEnd();
+  virtual ~BWFrontEnd();
+  bool start(unsigned int maxClients);
+  void stop();
+  void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
+             std::unique_ptr<CameraModel> &&camera)> onQuery);
   void agentChanged();
   QByteArray mustGetEntity();
-  
+
 public slots:
   void publishResult(QString result, QString identity);
   void startRun();
@@ -32,12 +35,6 @@ signals:
   void signalBW();
   void askWorkerDoWork();
 
-public:
-  int getMaxClients() const;
-  int getNumClients() const;
-  void setNumClients(int numClients);
-  void setIdentificationObj(IdentificationObj *identObj);
-
 protected:
   virtual bool event(QEvent *event);
 
@@ -45,12 +42,10 @@ private:
   void parseMessage(PMessage msg);
   BW *_bw;
   QByteArray _entity;
-  unsigned int _maxClients;
-  unsigned int _numClients;
+  static const std::string none;
+  std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
+             std::unique_ptr<CameraModel> &&camera)> _onQuery;
   std::mutex _mutex;
-  std::mt19937 _gen;
-  std::uniform_int_distribution<unsigned long long> _dis;
-  std::map<long, BWConnectionInfo *> _connInfoMap;
-  IdentificationObj *_identObj;
+  std::atomic<unsigned int> _maxClients;
+  std::atomic<unsigned int> _numClients;
 };
-
