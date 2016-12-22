@@ -48,12 +48,13 @@ bool HTTPFrontEndObj::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
     std::unique_ptr<Session> session = detectionEvent->takeSession();
-    session->names = detectionEvent->takeNames();
-    QSemaphore &detected = session->detected;
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
-    iter->second = std::move(session);
+    std::unique_ptr<SessionData> &sessionData = iter->second;
+    sessionData->session = std::move(session);
+    sessionData->names = detectionEvent->takeNames();
+    QSemaphore &detected = sessionData->detected;
     _mutex.unlock();
 
     detected.release();
@@ -61,11 +62,13 @@ bool HTTPFrontEndObj::event(QEvent *event) {
   } else if (event->type() == FailureEvent::type()) {
     FailureEvent *failureEvent = static_cast<FailureEvent *>(event);
     std::unique_ptr<Session> session = failureEvent->takeSession();
-    QSemaphore &detected = session->detected;
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
-    iter->second = std::move(session);
+    std::unique_ptr<SessionData> &sessionData = iter->second;
+    sessionData->session = std::move(session);
+    sessionData->names.reset(new std::vector<std::string>());
+    QSemaphore &detected = sessionData->detected;
     _mutex.unlock();
 
     detected.release();
@@ -81,13 +84,15 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
   session->overallStart = getTime(); // log start of processing
   session->type = HTTP_POST;
 
+  std::unique_ptr<SessionData> sessionData(new SessionData);
+  QSemaphore &detected = sessionData->detected;
+
   _mutex.lock();
   long id = _dis(_gen); // this is not thread safe
-  _sessionMap.emplace(id, std::unique_ptr<Session>());
+  _sessionMap.emplace(id, std::move(sessionData));
   _mutex.unlock();
 
   session->id = id;
-  QSemaphore &detected = session->detected;
 
   QCoreApplication::postEvent(
       _identObj.get(),
@@ -98,11 +103,14 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
 
   _mutex.lock();
   auto iter = _sessionMap.find(id);
-  session = std::move(iter->second);
+  sessionData = std::move(iter->second);
   _sessionMap.erase(id);
   _mutex.unlock();
 
-  assert(session != nullptr);
+  assert(sessionData != nullptr);
+  assert(sessionData->session != nullptr);
+
+  session = std::move(sessionData->session);
 
   // print time
   session->overallEnd = getTime(); // log processing end time
@@ -117,5 +125,5 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
             << session->perspectiveEnd - session->perspectiveStart << " ms"
             << std::endl;
 
-  return *(session->names);
+  return *(sessionData->names);
 }

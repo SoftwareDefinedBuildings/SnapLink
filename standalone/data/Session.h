@@ -9,8 +9,6 @@ class Session {
 public:
   long id;
   SessionType type;
-  QSemaphore detected;
-  std::unique_ptr<std::vector<std::string>> names;
 
 public:
   unsigned long long overallStart;

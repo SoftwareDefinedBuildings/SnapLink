@@ -12,6 +12,13 @@
 
 class IdentificationObj;
 
+// to keep session dependent data 
+typedef struct {
+  std::unique_ptr<Session> session;
+  std::unique_ptr<std::vector<std::string>> names;
+  QSemaphore detected;
+} SessionData;
+
 class HTTPFrontEndObj : public QObject {
 public:
   HTTPFrontEndObj();
@@ -36,5 +43,5 @@ private:
   std::mutex _mutex; // protect _sessionMap accesses from onQuery
   std::mt19937 _gen;
   std::uniform_int_distribution<long> _dis;
-  std::map<long, std::unique_ptr<Session>> _sessionMap;
+  std::map<long, std::unique_ptr<SessionData>> _sessionMap;
 };

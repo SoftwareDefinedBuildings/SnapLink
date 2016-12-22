@@ -5,6 +5,6 @@ import "Empty.proto";
 
 package proto;
 
-service FrontService {
+service FrontEndService {
   rpc onDetection(DetectionMessage) returns (Empty) {}
 }

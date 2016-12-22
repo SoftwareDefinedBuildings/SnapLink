@@ -75,7 +75,7 @@ grpc::Status VisibilityServer::onLocation(grpc::ServerContext *context,
 
   std::vector<std::string> names = _visibility->process(dbId, camera, pose);
 
-  HTTPClient client(_channel);
+  HTTPFrontEndClient client(_channel);
   client.onDetection(names, session);
 
   return grpc::Status::OK;
