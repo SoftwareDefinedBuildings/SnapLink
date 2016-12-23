@@ -1,7 +1,7 @@
 #include "adapter/rtabmap/RTABMapDBAdapter.h"
 #include "data/LabelsSimple.h"
 #include "data/WordsKdTree.h"
-#include "front_end/bosswave/BWServer.h"
+#include "front_end/bosswave/BWFrontEndObj.h"
 #include "front_end/http/HTTPFrontEndObj.h"
 #include "process/IdentificationObj.h"
 #include <QCoreApplication>
@@ -47,15 +47,16 @@ int main(int argc, char *argv[]) {
   // BWServer
   std::cout << "Initializing BW server" << std::endl;
   // TODO use shared_ptr
-  BWServer bwServer;
-  identObj->setBWServer(&bwServer);
-  bwServer.setIdentificationObj(identObj.get());
+  unsigned int maxClients = 10;
+  std::shared_ptr<BWFrontEndObj> bwFrontEndObj(new BWFrontEndObj());
+  identObj->setBWFrontEndObj(bwFrontEndObj);
+  bwFrontEndObj->setIdentificationObj(identObj);
   QThread bwThread;
   bwThread.start();
-  bwServer.moveToThread(&bwThread);
-  QObject::connect(&bwServer, &BWServer::signalBW, &bwServer,
-                   &BWServer::startRun);
-  emit bwServer.signalBW();
+  bwFrontEndObj->moveToThread(&bwThread);
+  QObject::connect(bwFrontEndObj.get(), &BWFrontEndObj::triggerInit,
+                   bwFrontEndObj.get(), &BWFrontEndObj::init);
+  emit bwFrontEndObj->triggerInit(maxClients);
 
   // HTTPFrontEndObj
   std::cout << "Initializing HTTP Front End" << std::endl;
