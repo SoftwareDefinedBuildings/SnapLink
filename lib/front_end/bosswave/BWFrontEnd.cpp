@@ -21,9 +21,10 @@ void BWFrontEnd::startRun() {
 
 void BWFrontEnd::parseMessage(PMessage msg) {
   QThread *workerThread = new QThread();
-  BWWorker *worker = new BWWorker(msg, &_onQuery, &_numClients);
+  BWWorker *worker = new BWWorker(msg, _onQuery, &_numClients);
   worker->moveToThread(workerThread);
-  QObject::connect(this, &BWFrontEnd::askWorkerDoWork, worker, &BWWorker::doWork);
+  QObject::connect(this, &BWFrontEnd::askWorkerDoWork, worker,
+                   &BWWorker::doWork);
   QObject::connect(worker, &BWWorker::doneWork, workerThread, &QThread::quit);
   QObject::connect(worker, &BWWorker::doneWork, worker, &BWWorker::deleteLater);
   QObject::connect(workerThread, &QThread::finished, workerThread,
@@ -32,7 +33,8 @@ void BWFrontEnd::parseMessage(PMessage msg) {
   QObject::connect(worker, &BWWorker::error, worker, &BWWorker::deleteLater);
   QObject::connect(worker, &BWWorker::error, this,
                    &BWFrontEnd::workerReturnError);
-  QObject::connect(worker, &BWWorker::doneWork, this, &BWFrontEnd::publishResult);
+  QObject::connect(worker, &BWWorker::doneWork, this,
+                   &BWFrontEnd::publishResult);
   workerThread->start();
   _numClients++;
   emit this->askWorkerDoWork();
@@ -79,8 +81,6 @@ void BWFrontEnd::publishResult(QString result, QString identity) {
   _numClients--;
 }
 
-
-
 void BWFrontEnd::workerReturnError() {
   // publish error message to identity channel
   _numClients--;
@@ -89,7 +89,8 @@ void BWFrontEnd::workerReturnError() {
 bool BWFrontEnd::start(unsigned int maxClients) {
   _maxClients = maxClients;
 
-  // start BW instance, subscribe the appropriate channel with assigned call back function
+  // start BW instance, subscribe the appropriate channel with assigned call
+  // back function
   startRun();
 
   return true;
@@ -101,8 +102,8 @@ void BWFrontEnd::stop() {
 }
 
 void BWFrontEnd::registerOnQuery(std::function<std::vector<std::string>(
-                                       std::unique_ptr<cv::Mat> &&image,
-                                       std::unique_ptr<CameraModel> &&camera)>
-                                       onQuery) {
+                                     std::unique_ptr<cv::Mat> &&image,
+                                     std::unique_ptr<CameraModel> &&camera)>
+                                     onQuery) {
   _onQuery = onQuery;
 }

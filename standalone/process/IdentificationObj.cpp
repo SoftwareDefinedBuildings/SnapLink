@@ -20,7 +20,8 @@ IdentificationObj::~IdentificationObj() {
   _bwFrontEndObj = nullptr;
 }
 
-void IdentificationObj::setBWFrontEndObj(std::shared_ptr<BWFrontEndObj> bwFrontEndObj) {
+void IdentificationObj::setBWFrontEndObj(
+    std::shared_ptr<BWFrontEndObj> bwFrontEndObj) {
   _bwFrontEndObj = bwFrontEndObj;
 }
 

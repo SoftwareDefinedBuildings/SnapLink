@@ -3,7 +3,6 @@
 #include <libbw.h>
 #include <atomic>
 #include <string.h>
-#include "data/Session.h"
 #include <memory>
 #include <vector>
 #include <sstream>
@@ -32,8 +31,8 @@ signals:
   public:
   BWWorker(PMessage message,
            std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-                      std::unique_ptr<CameraModel> &&camera)> *onQuery,
-           unsigned int *numClients
+                      std::unique_ptr<CameraModel> &&camera)> onQuery,
+           std::atomic<unsigned int> *_numClients
            );
 
   private:
@@ -43,6 +42,6 @@ signals:
                                       CameraModel &camera);
   PMessage _msg;
   std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> *_onQuery;
+             std::unique_ptr<CameraModel> &&camera)> _onQuery;
   std::atomic<unsigned int> *_numClients;
 };

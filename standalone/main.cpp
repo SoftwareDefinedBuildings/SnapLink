@@ -54,8 +54,8 @@ int main(int argc, char *argv[]) {
   QThread bwThread;
   bwThread.start();
   bwFrontEndObj->moveToThread(&bwThread);
-  QObject::connect(bwFrontEndObj.get(), &BWFrontEndObj::triggerInit, bwFrontEndObj.get(),
-                   &BWFrontEndObj::init);
+  QObject::connect(bwFrontEndObj.get(), &BWFrontEndObj::triggerInit,
+                   bwFrontEndObj.get(), &BWFrontEndObj::init);
   emit bwFrontEndObj->triggerInit(maxClients);
 
   // HTTPFrontEndObj

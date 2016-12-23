@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.1.0)
 project(CellMate_Library)
+
+set(CMAKE_AUTOMOC ON)
+
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
@@ -15,6 +18,8 @@ set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
 set(CellMate_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}")
 
 set(INCLUDE_DIRS
+    ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Quick_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
     ${RTABMap_INCLUDE_DIRS}
@@ -23,6 +28,8 @@ set(INCLUDE_DIRS
 )
 
 set(LIBRARIES
+    ${Qt5Core_LIBRARIES}
+    ${Qt5Quick_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
     ${RTABMap_LIBRARIES}

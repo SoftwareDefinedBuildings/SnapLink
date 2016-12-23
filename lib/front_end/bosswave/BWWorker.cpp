@@ -1,16 +1,13 @@
 #include "front_end/bosswave/BWWorker.h"
 
-
-
 BWWorker::BWWorker(PMessage message,
-         std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-                    std::unique_ptr<CameraModel> &&camera)> *onQuery;
-         unsigned int *numClients
-       ) {
+                   std::function<std::vector<std::string>(
+                       std::unique_ptr<cv::Mat> &&image,
+                       std::unique_ptr<CameraModel> &&camera)> onQuery,
+                  std::atomic<unsigned int>  *numClients) {
   _msg = message;
   _onQuery = onQuery;
   _numClients = numClients;
-
 }
 void BWWorker::doWork() {
   if (_msg->POs().length() != BW_MSG_LENGTH) {
@@ -50,7 +47,7 @@ void BWWorker::doWork() {
   //     _identObj, new QueryEvent(std::move(image), std::move(camera),
   //                               std::move(connInfo->session)));
   // connInfo->detected.acquire();
-  std::string answer = *_onQuery(std::move(image), std::move(camera));
+  std::string answer = _onQuery(std::move(image), std::move(camera))[0];
   emit doneWork(QString::fromStdString(answer),
                 QString::fromStdString(std::string(contents[1], lens[1])));
 }

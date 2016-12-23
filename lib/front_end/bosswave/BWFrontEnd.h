@@ -18,7 +18,7 @@ class BWFrontEnd : public QObject
 
 public:
   BWFrontEnd();
-  virtual ~BWFrontEnd();
+  ~BWFrontEnd();
   bool start(unsigned int maxClients);
   void stop();
   void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
@@ -35,8 +35,6 @@ signals:
   void signalBW();
   void askWorkerDoWork();
 
-protected:
-  virtual bool event(QEvent *event);
 
 private:
   void parseMessage(PMessage msg);
