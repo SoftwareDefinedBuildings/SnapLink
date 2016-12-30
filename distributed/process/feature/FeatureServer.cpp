@@ -3,6 +3,7 @@
 #include "data/CameraModel.h"
 #include "data/Session.h"
 #include "util/Time.h"
+#include <opencv2/core/core.hpp>
 
 bool FeatureServer::init(std::string wordSearchServerAddr) {
   _channel = grpc::CreateChannel(wordSearchServerAddr,
@@ -16,9 +17,13 @@ bool FeatureServer::init(std::string wordSearchServerAddr) {
 grpc::Status FeatureServer::onQuery(grpc::ServerContext *context,
                                     const proto::QueryMessage *request,
                                     proto::Empty *response) {
+  std::vector<uchar> data(request->image().begin(), request->image().end());
+
+  assert(data.size() > 0);
   const bool copyData = false;
-  std::vector<char> data(request->image().begin(), request->image().end());
   cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+  assert(image.type() == CV_8U);
+  assert(image.channels() == 1);
 
   double fx = request->cameramodel().fx();
   double fy = request->cameramodel().fy();

@@ -1,6 +1,5 @@
 #include "HTTPFrontEndServer.h"
 #include "FeatureClient.h"
-#include "data/CameraModel.h"
 #include "util/Time.h"
 #include <cstdlib>
 #include <cstring>
@@ -26,30 +25,35 @@ grpc::Status
 HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
                                 const proto::DetectionMessage *request,
                                 proto::Empty *response) {
-  Session session;
-  session.id = request->session().id();
-  if (request->session().type() == proto::Session::HTTP_POST) {
-    session.type = HTTP_POST;
-  } else if (request->session().type() == proto::Session::BOSSWAVE) {
-    session.type = BOSSWAVE;
-  }
-  session.names = request->names();
-  session.overallStart = request->session().overallstart();
-  session.overallEnd = request->session().overallend();
-  session.featuresStart = request->session().featuresstart();
-  session.featuresEnd = request->session().featuresend();
-  session.wordsStart = request->session().wordsstart();
-  session.wordsEnd = request->session().wordsend();
-  session.perspectiveStart = request->session().perspectivestart();
-  session.perspectiveEnd = request->session().perspectiveend();
+  assert(request->session().type() == proto::Session::HTTP_POST);
 
-  QSemaphore &detected = session->detected;
+  std::unique_ptr<Session> session(new Session());
+  session->id = request->session().id();
+  session->type = HTTP_POST;
+  session->overallStart = request->session().overallstart();
+  session->overallEnd = request->session().overallend();
+  session->featuresStart = request->session().featuresstart();
+  session->featuresEnd = request->session().featuresend();
+  session->wordsStart = request->session().wordsstart();
+  session->wordsEnd = request->session().wordsend();
+  session->perspectiveStart = request->session().perspectivestart();
+  session->perspectiveEnd = request->session().perspectiveend();
+
+  std::unique_ptr<std::vector<std::string>> names(
+      new std::vector<std::string>());
+  for (auto name : request->names()) {
+    names->emplace_back(name);
+  }
 
   _mutex.lock();
   auto iter = _sessionMap.find(session->id);
-  iter->second = std::move(session);
+  std::unique_ptr<SessionData> &sessionData = iter->second;
+  sessionData->session = std::move(session);
+  sessionData->names = std::move(names);
+  QSemaphore &detected = sessionData->detected;
   _mutex.unlock();
-  connInfo->detected.release();
+
+  detected.release();
 
   return grpc::Status::OK;
 }
@@ -79,28 +83,32 @@ HTTPFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
   session->overallStart = getTime(); // log start of processing
   session->type = HTTP_POST;
 
+  std::unique_ptr<SessionData> sessionData(new SessionData);
+  QSemaphore &detected = sessionData->detected;
+
   _mutex.lock();
   long id = _dis(_gen); // this is not thread safe
-  _sessionMap.emplace(id, std::unique_ptr<Session>());
+  _sessionMap.emplace(id, std::move(sessionData));
   _mutex.unlock();
 
   session->id = id;
-  QSemaphore &detected = session->detected;
 
-  QCoreApplication::postEvent(
-      _identObj.get(),
-      new QueryEvent(std::move(image), std::move(camera), std::move(session)));
+  FeatureClient client(_channel);
+  client.onQuery(*image, *camera, *session);
 
   // TODO use condition variable?
   detected.acquire();
 
   _mutex.lock();
   auto iter = _sessionMap.find(id);
-  session = std::move(iter->second);
+  sessionData = std::move(iter->second);
   _sessionMap.erase(id);
   _mutex.unlock();
 
-  assert(session != nullptr);
+  assert(sessionData != nullptr);
+  assert(sessionData->session != nullptr);
+
+  session = std::move(sessionData->session);
 
   // print time
   session->overallEnd = getTime(); // log processing end time
@@ -115,5 +123,5 @@ HTTPFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
             << session->perspectiveEnd - session->perspectiveStart << " ms"
             << std::endl;
 
-  return *(session->names);
+  return *(sessionData->names);
 }

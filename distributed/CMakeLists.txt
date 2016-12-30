@@ -14,7 +14,6 @@ find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(RTABMap REQUIRED)
 
 set(MHD_INCLUDE_DIRS "/usr/include/")
-set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 
 set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
 set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
@@ -32,7 +31,6 @@ set(INCLUDE_DIRS
     ${PCL_INCLUDE_DIRS}
     ${RTABMap_INCLUDE_DIRS}
     ${MHD_INCLUDE_DIRS}
-    ${BW_INCLUDE_DIRS}
     ${BW_INCLUDE_DIRS}
 )
 
@@ -98,10 +96,10 @@ set(GENERATED_GRPC_PATH "${CMAKE_BINARY_DIR}/generated/grpc")
 file(MAKE_DIRECTORY ${GENERATED_GRPC_PATH})
 include_directories(SYSTEM ${GENERATED_GRPC_PATH})
 set(GENERATED_GRPC_SOURCES
-    "${GENERATED_GRPC_PATH}/FrontService.pb.h"
-    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.h"
-    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.pb.h"
+    "${GENERATED_GRPC_PATH}/FrontEndService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.grpc.pb.h"
+    "${GENERATED_GRPC_PATH}/FrontEndService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.pb.h"
     "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.h"
@@ -152,8 +150,8 @@ set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
 #    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
 #    "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
 #    "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
-#    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
-#    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
+#    "${GENERATED_GRPC_PATH}/FrontEndService.pb.cc"
+#    "${GENERATED_GRPC_PATH}/FrontEndService.grpc.pb.cc"
 #    "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
 #    "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
 #    "${PROJECT_SOURCE_DIR}/src/front/BWServer.cpp"
@@ -169,21 +167,21 @@ set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
 
 
 # Front
-set(HTTPServer_SOURCES
+set(HTTPFrontEnd_SOURCES
     "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
     "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.grpc.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
-    "${PROJECT_SOURCE_DIR}/front_end/http/HTTPServer.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/http/HTTPFrontEndServer.cpp"
     "${PROJECT_SOURCE_DIR}/front_end/http/FeatureClient.cpp"
     "${PROJECT_SOURCE_DIR}/front_end/http/main.cpp")
 
-add_executable(http_front ${HTTPServer_SOURCES})
+add_executable(http_front ${HTTPFrontEnd_SOURCES})
 
 target_link_libraries(http_front ${LIBRARIES})
 
@@ -270,10 +268,10 @@ set(Visibility_SOURCES
     "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
     "${GENERATED_GRPC_PATH}/VisibilityService.pb.cc"
     "${GENERATED_GRPC_PATH}/VisibilityService.grpc.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.pb.cc"
-    "${GENERATED_GRPC_PATH}/FrontService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.grpc.pb.cc"
     "${PROJECT_SOURCE_DIR}/process/visibility/VisibilityServer.cpp"
-    "${PROJECT_SOURCE_DIR}/process/visibility/HTTPClient.cpp"
+    "${PROJECT_SOURCE_DIR}/process/visibility/HTTPFrontEndClient.cpp"
     "${PROJECT_SOURCE_DIR}/process/visibility/main.cpp")
 
 add_executable(visibility ${Visibility_SOURCES})

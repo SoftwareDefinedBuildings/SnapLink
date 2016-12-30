@@ -84,8 +84,10 @@ grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
   session.wordsStart = getTime();
   std::vector<int> wordIds = _wordSearch->search(descriptors);
   session.wordsEnd = getTime();
+
   PerspectiveClient client(_channel);
   client.onWord(wordIds, keyPoints, descriptors, camera, session);
+
   return grpc::Status::OK;
 }
 

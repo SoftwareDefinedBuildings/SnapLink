@@ -10,12 +10,16 @@ FeatureClient::FeatureClient(std::shared_ptr<grpc::Channel> channel)
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool FeatureClient::onQuery(const std::vector<char> &image,
-                            const CameraModel &camera, const Session &session) {
+bool FeatureClient::onQuery(const cv::Mat &image, const CameraModel &camera,
+                            const Session &session) {
   // Data we are sending to the server.
   proto::QueryMessage query;
 
-  query.set_image(std::string(image.begin(), image.end()));
+  assert(image.type() == CV_8U);
+  assert(image.channels() == 1);
+  std::vector<uchar> imageStr;
+  imencode(".jpg", image, imageStr);
+  query.set_image(imageStr.data(), imageStr.size());
 
   query.mutable_cameramodel()->set_name(camera.name());
   query.mutable_cameramodel()->set_fx(camera.fx());

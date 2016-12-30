@@ -1,5 +1,6 @@
 #include "FeatureService.grpc.pb.h"
 #include <grpc++/grpc++.h>
+#include <opencv2/core/types.hpp>
 #include <memory>
 #include <string>
 
@@ -12,7 +13,7 @@ public:
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
-  bool onQuery(const std::vector<char> &image, const CameraModel &camera,
+  bool onQuery(const cv::Mat &image, const CameraModel &camera,
                const Session &session);
 
 private:

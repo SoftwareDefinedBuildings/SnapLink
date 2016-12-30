@@ -1,13 +1,13 @@
-#include "HTTPClient.h"
+#include "HTTPFrontEndClient.h"
 #include "data/Session.h"
 
-HTTPClient::HTTPClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(proto::FrontService::NewStub(channel)) {}
+HTTPFrontEndClient::HTTPFrontEndClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(proto::FrontEndService::NewStub(channel)) {}
 
 // Assembles the client's payload, sends it and presents the response back
 // from the server.
-bool HTTPClient::onDetection(const std::vector<std::string> &names,
-                             const Session &session) {
+bool HTTPFrontEndClient::onDetection(const std::vector<std::string> &names,
+                                     const Session &session) {
   // Data we are sending to the server.
   proto::DetectionMessage detection;
   for (const std::string &name : names) {

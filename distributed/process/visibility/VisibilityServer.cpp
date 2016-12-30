@@ -1,5 +1,5 @@
 #include "VisibilityServer.h"
-#include "HTTPClient.h"
+#include "HTTPFrontEndClient.h"
 #include "adapter/rtabmap/RTABMapDBAdapter.h"
 #include "data/CameraModel.h"
 #include "data/LabelsSimple.h"

@@ -3,4 +3,4 @@ project(CellMate)
 
 add_subdirectory(lib)
 add_subdirectory(standalone)
-#add_subdirectory(distributed)
+add_subdirectory(distributed)
