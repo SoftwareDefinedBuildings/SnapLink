@@ -1,4 +1,4 @@
-#include "FrontService.grpc.pb.h"
+#include "FrontEndService.grpc.pb.h"
 #include <grpc++/grpc++.h>
 
 class Session;
@@ -15,5 +15,5 @@ public:
 private:
   // Out of the passed in Channel comes the stub, stored here, our view of the
   // server's exposed services.
-  std::unique_ptr<proto::FrontService::Stub> stub_;
+  std::unique_ptr<proto::FrontEndService::Stub> stub_;
 };

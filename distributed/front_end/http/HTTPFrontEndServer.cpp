@@ -25,9 +25,9 @@ grpc::Status
 HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
                                 const proto::DetectionMessage *request,
                                 proto::Empty *response) {
-  assert(request->session().type() == proto::Session::HTTP_POST); 
+  assert(request->session().type() == proto::Session::HTTP_POST);
 
-  std::unique_ptr<Session> session;
+  std::unique_ptr<Session> session(new Session());
   session->id = request->session().id();
   session->type = HTTP_POST;
   session->overallStart = request->session().overallstart();
@@ -39,7 +39,8 @@ HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
   session->perspectiveStart = request->session().perspectivestart();
   session->perspectiveEnd = request->session().perspectiveend();
 
-  std::unique_ptr<std::vector<std::string>> names(new std::vector<std::string>());
+  std::unique_ptr<std::vector<std::string>> names(
+      new std::vector<std::string>());
   for (auto name : request->names()) {
     names->emplace_back(name);
   }
@@ -92,7 +93,7 @@ HTTPFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
 
   session->id = id;
 
-  FeatureClient client(_channel);        
+  FeatureClient client(_channel);
   client.onQuery(*image, *camera, *session);
 
   // TODO use condition variable?
@@ -122,5 +123,5 @@ HTTPFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
             << session->perspectiveEnd - session->perspectiveStart << " ms"
             << std::endl;
 
-  return *(session->names);
+  return *(sessionData->names);
 }

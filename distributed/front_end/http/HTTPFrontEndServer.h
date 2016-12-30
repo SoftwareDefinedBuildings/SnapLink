@@ -1,6 +1,6 @@
 #pragma once
 
-#include "FrontService.grpc.pb.h"
+#include "FrontEndService.grpc.pb.h"
 #include "data/Session.h"
 #include "data/CameraModel.h"
 #include "front_end/http/HTTPFrontEnd.h"
@@ -22,7 +22,7 @@ typedef struct {
   QSemaphore detected;
 } SessionData;
 
-class HTTPFrontEndServer final : public proto::FrontService::Service {
+class HTTPFrontEndServer final : public proto::FrontEndService::Service {
 public:
   bool init(std::string featureServerAddr, uint16_t port = PORT,
             unsigned int maxClients = MAX_CLIENTS);

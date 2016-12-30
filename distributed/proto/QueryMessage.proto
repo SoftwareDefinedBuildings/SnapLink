@@ -6,7 +6,7 @@ import "Session.proto";
 package proto;
 
 message QueryMessage {
-  bytes image = 1; 
+  bytes image = 1;
   CameraModel cameraModel = 2;
   Session session = 3;
 }
