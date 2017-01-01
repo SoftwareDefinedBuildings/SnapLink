@@ -1,0 +1,10 @@
+sudo: required
+
+language: cpp
+
+services:
+  - docker
+
+script:
+  - docker pull kaifeichen/cellmate
+  - docker run -d kaifeichen/cellmate /bin/sh -c "cd /root/workspace; git clone https://github.com/kaifeichen/CellMate_Server; cd CellMate_Server/build; cmake ..; make"
