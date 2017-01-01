@@ -6,10 +6,11 @@ env:
   global:
     - QT_PATH=/opt/Qt5.7.0/5.7/gcc_64/bin
     - CELLMATE_PATH=/root/workspace/CellMate_Server
+    - DOCKER_IMAGE=kaifeichen/cellmate
 
 services:
   - docker
 
 script:
-  - docker pull kaifeichen/cellmate
-  - docker run -v `pwd`:${CELLMATE_PATH} kaifeichen/cellmate /bin/bash -c "PATH=${QT_PATH}:$PATH; cd ${CELLMATE_PATH}/build; cmake ..; make"
+  - docker pull ${DOCKER_IMAGE}
+  - docker run -v `pwd`:${CELLMATE_PATH} ${DOCKER_IMAGE} /bin/bash -c "PATH=${QT_PATH}:$PATH; cd ${CELLMATE_PATH}/build; cmake ..; make"
