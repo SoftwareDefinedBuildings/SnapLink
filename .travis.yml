@@ -2,6 +2,9 @@ sudo: required
 
 language: cpp
 
+notifications:
+  email: false
+
 env:
   global:
     - QT_PATH=/opt/Qt5.7.0/5.7/gcc_64/bin
