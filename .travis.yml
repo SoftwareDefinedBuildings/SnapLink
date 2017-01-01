@@ -7,4 +7,4 @@ services:
 
 script:
   - docker pull kaifeichen/cellmate
-  - docker run -d kaifeichen/cellmate /bin/sh -c "cd /root/workspace; git clone https://github.com/kaifeichen/CellMate_Server; cd CellMate_Server/build; cmake ..; make"
+  - docker run -d -v `pwd`:/root/CellMate_Server kaifeichen/cellmate /bin/sh -c "cd /root/CellMate_Server/build; cmake ..; make"
