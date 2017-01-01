@@ -2,9 +2,14 @@ sudo: required
 
 language: cpp
 
+env:
+  global:
+    - QT_PATH=/opt/Qt5.7.0/5.7/gcc_64/bin
+    - CELLMATE_PATH=/root/workspace/CellMate_Server
+
 services:
   - docker
 
 script:
   - docker pull kaifeichen/cellmate
-  - docker run -v `pwd`:/root/CellMate_Server kaifeichen/cellmate /bin/sh -c "cd /root/CellMate_Server/build; cmake ..; make"
+  - docker run -v `pwd`:${CELLMATE_PATH} kaifeichen/cellmate /bin/bash -c "PATH=${QT_PATH}:$PATH; cd ${CELLMATE_PATH}/build; cmake ..; make"
