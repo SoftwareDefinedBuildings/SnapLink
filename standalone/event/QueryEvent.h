@@ -5,7 +5,7 @@
 #include <QEvent>
 #include <memory>
 
-class QueryEvent : public QEvent {
+class QueryEvent final : public QEvent {
 public:
   QueryEvent(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera,

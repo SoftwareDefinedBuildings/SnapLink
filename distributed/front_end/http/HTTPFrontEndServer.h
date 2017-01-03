@@ -16,11 +16,11 @@
 #define MAX_CLIENTS 10
 
 // to keep session dependent data 
-typedef struct {
+struct SessionData final {
   std::unique_ptr<Session> session;
   std::unique_ptr<std::vector<std::string>> names;
   QSemaphore detected;
-} SessionData;
+};
 
 class HTTPFrontEndServer final : public proto::FrontEndService::Service {
 public:

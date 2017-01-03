@@ -5,7 +5,7 @@ class CameraModel;
 class Transform;
 class Session;
 
-class VisibilityClient {
+class VisibilityClient final {
 public:
   explicit VisibilityClient(std::shared_ptr<grpc::Channel> channel);
 

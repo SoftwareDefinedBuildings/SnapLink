@@ -1,8 +1,8 @@
 #include "util/Utility.h"
 #include "data/Transform.h"
 #include <pcl/common/transforms.h>
-#include <sys/time.h>
 #include <stddef.h>
+#include <sys/time.h>
 
 unsigned long long Utility::getTime() {
   struct timeval tv;

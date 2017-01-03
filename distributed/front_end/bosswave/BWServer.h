@@ -2,7 +2,7 @@
 #include <libbw.h>
 #include <iostream>
 
-class BWServer {
+class BWServer final {
 
 public:
   BWServer();

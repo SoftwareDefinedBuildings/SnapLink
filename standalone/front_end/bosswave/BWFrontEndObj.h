@@ -13,13 +13,13 @@
 class IdentificationObj;
 
 // to keep session dependent data
-typedef struct {
+struct BWSessionData final {
   std::unique_ptr<Session> session;
   std::unique_ptr<std::vector<std::string>> names;
   QSemaphore detected;
-} BWSessionData;
+};
 
-class BWFrontEndObj : public QObject {
+class BWFrontEndObj final : public QObject {
   Q_OBJECT
 public:
   BWFrontEndObj();

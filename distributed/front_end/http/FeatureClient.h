@@ -7,7 +7,7 @@
 class CameraModel;
 class Session;
 
-class FeatureClient {
+class FeatureClient final {
 public:
   FeatureClient(std::shared_ptr<grpc::Channel> channel);
 

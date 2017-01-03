@@ -8,7 +8,7 @@
 class CameraModel;
 class Session;
 
-class WordSearchClient {
+class WordSearchClient final {
 public:
   explicit WordSearchClient(std::shared_ptr<grpc::Channel> channel);
 

@@ -3,7 +3,7 @@
 
 class Session;
 
-class HTTPFrontEndClient {
+class HTTPFrontEndClient final {
 public:
   explicit HTTPFrontEndClient(std::shared_ptr<grpc::Channel> channel);
 

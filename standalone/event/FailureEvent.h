@@ -4,7 +4,7 @@
 #include <QEvent>
 #include <memory>
 
-class FailureEvent : public QEvent {
+class FailureEvent final : public QEvent {
 public:
   FailureEvent(std::unique_ptr<Session> &&session);
 
