@@ -4,7 +4,7 @@
 
 class WordSearch;
 
-class Feature {
+class Feature final {
 public:
   Feature();
 

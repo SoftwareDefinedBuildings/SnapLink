@@ -13,7 +13,7 @@ class Transform;
 class Visibility;
 class HTTPServer;
 
-class Perspective {
+class Perspective final {
 public:
   Perspective(const std::shared_ptr<Words> &words);
 

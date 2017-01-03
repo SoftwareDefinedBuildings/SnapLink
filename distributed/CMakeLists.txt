@@ -143,7 +143,6 @@ set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
 
 # bwFront
 #set(BWServer_SOURCES
-#    "../src/util/Time.cpp"
 #    "../src/data/CameraModel.cpp"
 #    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
 #    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"

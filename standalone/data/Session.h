@@ -5,7 +5,7 @@
 
 enum SessionType { HTTP_POST = 0, BOSSWAVE = 1 };
 
-class Session {
+class Session final {
 public:
   long id;
   SessionType type;

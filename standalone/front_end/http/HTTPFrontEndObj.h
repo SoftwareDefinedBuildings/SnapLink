@@ -22,7 +22,7 @@ typedef struct {
 class HTTPFrontEndObj : public QObject {
 public:
   HTTPFrontEndObj();
-  virtual ~HTTPFrontEndObj();
+  ~HTTPFrontEndObj();
 
   bool init(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
   void stop();

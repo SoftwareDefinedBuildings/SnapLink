@@ -26,7 +26,7 @@ public:
                 std::vector<std::string> &names, Session &session);
 
 protected:
-  virtual bool event(QEvent *event);
+  bool event(QEvent *event);
 
 private:
   std::shared_ptr<HTTPFrontEndObj> _httpFrontEndObj;

@@ -2,7 +2,7 @@
 
 #include <opencv2/core/core.hpp>
 
-class Label {
+class Label final {
 public:
   Label(int dbId, cv::Point3f point3, std::string name);
 

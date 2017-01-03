@@ -2,7 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 
-class CameraModel {
+class CameraModel final {
 public:
   CameraModel();
 

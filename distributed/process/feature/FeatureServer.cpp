@@ -2,7 +2,7 @@
 #include "WordSearchClient.h"
 #include "data/CameraModel.h"
 #include "data/Session.h"
-#include "util/Time.h"
+#include "util/Utility.h"
 #include <opencv2/core/core.hpp>
 
 bool FeatureServer::init(std::string wordSearchServerAddr) {
@@ -51,9 +51,9 @@ grpc::Status FeatureServer::onQuery(grpc::ServerContext *context,
 
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;
-  session.featuresStart = getTime();
+  session.featuresStart = Utility::getTime();
   _feature->extract(image, keyPoints, descriptors);
-  session.featuresEnd = getTime();
+  session.featuresEnd = Utility::getTime();
 
   WordSearchClient client(_channel);
   client.onFeature(keyPoints, descriptors, camera, session);

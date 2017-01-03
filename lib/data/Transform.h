@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-class Transform {
+class Transform final {
 public:
   Transform();
 

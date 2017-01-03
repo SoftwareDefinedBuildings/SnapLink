@@ -6,7 +6,7 @@
 #include "data/Session.h"
 #include "data/Transform.h"
 #include "data/WordsKdTree.h"
-#include "util/Time.h"
+#include "util/Utility.h"
 #include <QDebug>
 
 bool PerspectiveServer::init(std::string visibilityServerAddr,
@@ -87,9 +87,9 @@ grpc::Status PerspectiveServer::onWord(grpc::ServerContext *context,
 
   int dbId;
   Transform pose;
-  session.perspectiveStart = getTime();
+  session.perspectiveStart = Utility::getTime();
   _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
-  session.perspectiveEnd = getTime();
+  session.perspectiveEnd = Utility::getTime();
 
   VisibilityClient client(_channel);
   client.onLocation(dbId, camera, pose, session);

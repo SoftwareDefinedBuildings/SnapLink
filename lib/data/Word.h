@@ -3,7 +3,7 @@
 #include <map>
 #include <opencv2/core/core.hpp>
 
-class Word {
+class Word final {
 public:
   Word(int id);
 

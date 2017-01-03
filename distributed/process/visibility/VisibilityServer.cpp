@@ -6,7 +6,6 @@
 #include "data/Session.h"
 #include "data/Transform.h"
 #include "data/WordsKdTree.h"
-#include "util/Time.h"
 #include <QDebug>
 
 bool VisibilityServer::init(std::string frontServerAddr,

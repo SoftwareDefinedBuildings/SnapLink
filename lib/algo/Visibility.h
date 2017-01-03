@@ -7,7 +7,7 @@
 class CameraModel;
 class Transform;
 
-class Visibility {
+class Visibility final {
 public:
   Visibility(std::unique_ptr<Labels> &&labels);
 

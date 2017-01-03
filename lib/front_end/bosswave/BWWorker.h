@@ -19,7 +19,7 @@
 
 class CameraModel;
 
-class BWWorker : public QObject
+class BWWorker final : public QObject
 {
   Q_OBJECT
 public slots:

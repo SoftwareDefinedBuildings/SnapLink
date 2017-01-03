@@ -3,7 +3,7 @@
 #include "data/Words.h"
 #include <memory>
 
-class WordSearch {
+class WordSearch final {
 public:
   WordSearch(const std::shared_ptr<Words> &words);
 
