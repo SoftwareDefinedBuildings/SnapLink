@@ -1,19 +1,19 @@
-#include "HTTPFrontEndServer.h"
+#include "BWFrontEndServer.h"
 #include "../FeatureClient.h"
 #include "util/Time.h"
 #include <cstdlib>
 #include <cstring>
 
-bool HTTPFrontEndServer::init(std::string featureServerAddr, uint16_t port,
+bool BWFrontEndServer::init(std::string featureServerAddr, 
                               unsigned int maxClients) {
-  _httpFront.reset(new HTTPFrontEnd());
+  _bwFront.reset(new BWFrontEnd());
   _gen = std::mt19937(std::random_device()());
   _channel = grpc::CreateChannel(featureServerAddr,
                                  grpc::InsecureChannelCredentials());
 
-  bool success = _httpFront->start(port, maxClients);
+  bool success = _bwFront->start(maxClients);
   if (success) {
-    _httpFront->registerOnQuery(std::bind(&HTTPFrontEndServer::onQuery, this,
+    _bwFront->registerOnQuery(std::bind(&BWFrontEndServer::onQuery, this,
                                           std::placeholders::_1,
                                           std::placeholders::_2));
   }
@@ -22,14 +22,14 @@ bool HTTPFrontEndServer::init(std::string featureServerAddr, uint16_t port,
 }
 
 grpc::Status
-HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
+BWFrontEndServer::onDetection(grpc::ServerContext *context,
                                 const proto::DetectionMessage *request,
                                 proto::Empty *response) {
-  assert(request->session().type() == proto::Session::HTTP_POST);
+  assert(request->session().type() == proto::Session::BOSSWAVE);
 
   std::unique_ptr<Session> session(new Session());
   session->id = request->session().id();
-  session->type = HTTP_POST;
+  session->type = BOSSWAVE;
   session->overallStart = request->session().overallstart();
   session->overallEnd = request->session().overallend();
   session->featuresStart = request->session().featuresstart();
@@ -58,8 +58,8 @@ HTTPFrontEndServer::onDetection(grpc::ServerContext *context,
   return grpc::Status::OK;
 }
 
-void HTTPFrontEndServer::run(std::string httpServerAddr) {
-  std::string server_address(httpServerAddr);
+void BWFrontEndServer::run(QString bwServerAddr) {
+  std::string server_address(bwServerAddr.toStdString());
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
@@ -77,11 +77,11 @@ void HTTPFrontEndServer::run(std::string httpServerAddr) {
 }
 
 std::vector<std::string>
-HTTPFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
+BWFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
                             std::unique_ptr<CameraModel> &&camera) {
   std::unique_ptr<Session> session(new Session);
   session->overallStart = getTime(); // log start of processing
-  session->type = HTTP_POST;
+  session->type = BOSSWAVE;
 
   std::unique_ptr<SessionData> sessionData(new SessionData);
   QSemaphore &detected = sessionData->detected;
