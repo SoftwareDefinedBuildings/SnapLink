@@ -16,7 +16,7 @@
 class Labels;
 class Words;
 
-class RTABMapDBAdapter {
+class RTABMapDBAdapter final {
 public:
   /**
    * read data from database files, NULL pointers will be ignored

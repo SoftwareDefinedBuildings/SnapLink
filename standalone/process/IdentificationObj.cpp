@@ -7,7 +7,7 @@
 #include "event/QueryEvent.h"
 #include "front_end/bosswave/BWFrontEndObj.h"
 #include "front_end/http/HTTPFrontEndObj.h"
-#include "util/Time.h"
+#include "util/Utility.h"
 #include <QCoreApplication>
 
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
@@ -72,9 +72,9 @@ bool IdentificationObj::identify(const cv::Mat &image,
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;
-  session.featuresStart = getTime();
+  session.featuresStart = Utility::getTime();
   _feature.extract(image, keyPoints, descriptors);
-  session.featuresEnd = getTime();
+  session.featuresEnd = Utility::getTime();
 
   std::vector<unsigned int> indices(keyPoints.size());
   std::iota(indices.begin(), indices.end(), 0);
@@ -88,17 +88,17 @@ bool IdentificationObj::identify(const cv::Mat &image,
   }
 
   // word search
-  session.wordsStart = getTime();
+  session.wordsStart = Utility::getTime();
   std::vector<int> subWordIds = _wordSearch.search(subDescriptors);
-  session.wordsEnd = getTime();
+  session.wordsEnd = Utility::getTime();
 
   // PnP
   int dbId;
   Transform pose;
-  session.perspectiveStart = getTime();
+  session.perspectiveStart = Utility::getTime();
   _perspective.localize(subWordIds, subKeyPoints, subDescriptors, camera, dbId,
                         pose);
-  session.perspectiveEnd = getTime();
+  session.perspectiveEnd = Utility::getTime();
 
   if (pose.isNull()) {
     return false;

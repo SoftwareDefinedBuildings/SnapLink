@@ -4,9 +4,9 @@
 
 class WordSearch;
 
-class Feature {
+class Feature final {
 public:
-  Feature();
+  explicit Feature();
 
   void extract(const cv::Mat &image, std::vector<cv::KeyPoint> &keyPoints,
                cv::Mat &descriptors) const;

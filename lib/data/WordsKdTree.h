@@ -3,29 +3,30 @@
 #include "data/Words.h"
 #include <opencv2/flann.hpp>
 
-class WordsKdTree : public Words {
+class WordsKdTree final : public Words {
 public:
-  WordsKdTree();
+  explicit WordsKdTree();
+
   /**
    * Add words
    */
-  void putWords(std::list<std::unique_ptr<Word>> &&words);
+  void putWords(std::list<std::unique_ptr<Word>> &&words) final;
 
   /**
    * get all words, indexed by wordId
    */
-  const std::map<int, std::shared_ptr<Word>> &getWordsById() const;
+  const std::map<int, std::shared_ptr<Word>> &getWordsById() const final;
 
   /**
    * get all words, indexed by dbId, and then wordId
    */
   const std::map<int, std::map<int, std::shared_ptr<Word>>> &
-  getWordsByDb() const;
+  getWordsByDb() const final;
 
   /**
    * find the indices of the nearst neighbors of descriptors
    */
-  std::vector<int> findNNs(const cv::Mat &descriptors) const;
+  std::vector<int> findNNs(const cv::Mat &descriptors) const final;
 
 private:
   void build();

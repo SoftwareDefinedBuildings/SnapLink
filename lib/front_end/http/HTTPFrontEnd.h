@@ -11,7 +11,7 @@
 
 class CameraModel;
 
-typedef struct {
+typedef struct final {
   struct MHD_PostProcessor *postProcessor;
   std::vector<char> imageRaw;
   double fx;
@@ -20,10 +20,10 @@ typedef struct {
   double cy;
 } ConnectionInfo;
 
-class HTTPFrontEnd {
+class HTTPFrontEnd final {
 public:
-  HTTPFrontEnd();
-  virtual ~HTTPFrontEnd();
+  explicit HTTPFrontEnd();
+  ~HTTPFrontEnd();
 
   bool start(uint16_t port, unsigned int maxClients);
   void stop();

@@ -6,7 +6,7 @@
 class CameraModel;
 class Session;
 
-class PerspectiveClient {
+class PerspectiveClient final {
 public:
   explicit PerspectiveClient(std::shared_ptr<grpc::Channel> channel);
 

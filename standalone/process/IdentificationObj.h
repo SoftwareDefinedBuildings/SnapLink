@@ -14,9 +14,9 @@ class HTTPFrontEndObj;
 class CameraModel;
 class Session;
 
-class IdentificationObj : public QObject {
+class IdentificationObj final : public QObject {
 public:
-  IdentificationObj(const std::shared_ptr<Words> &words,
+  explicit IdentificationObj(const std::shared_ptr<Words> &words,
                  std::unique_ptr<Labels> &&labels);
   ~IdentificationObj();
 
@@ -26,7 +26,7 @@ public:
                 std::vector<std::string> &names, Session &session);
 
 protected:
-  virtual bool event(QEvent *event);
+  bool event(QEvent *event);
 
 private:
   std::shared_ptr<HTTPFrontEndObj> _httpFrontEndObj;

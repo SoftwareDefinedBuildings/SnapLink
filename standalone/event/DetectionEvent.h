@@ -5,9 +5,9 @@
 #include <memory>
 #include <vector>
 
-class DetectionEvent : public QEvent {
+class DetectionEvent final : public QEvent {
 public:
-  DetectionEvent(std::unique_ptr<std::vector<std::string>> &&names,
+  explicit DetectionEvent(std::unique_ptr<std::vector<std::string>> &&names,
                  std::unique_ptr<Session> &&session);
 
   std::unique_ptr<std::vector<std::string>> takeNames();

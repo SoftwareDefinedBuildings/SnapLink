@@ -3,7 +3,7 @@
 #include "event/FailureEvent.h"
 #include "event/QueryEvent.h"
 #include "process/IdentificationObj.h"
-#include "util/Time.h"
+#include "util/Utility.h"
 #include <QCoreApplication>
 #include <QSemaphore>
 #include <cstdlib>
@@ -81,7 +81,7 @@ std::vector<std::string>
 HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
                          std::unique_ptr<CameraModel> &&camera) {
   std::unique_ptr<Session> session(new Session);
-  session->overallStart = getTime(); // log start of processing
+  session->overallStart = Utility::getTime(); // log start of processing
   session->type = HTTP_POST;
 
   std::unique_ptr<SessionData> sessionData(new SessionData);
@@ -113,7 +113,7 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
   session = std::move(sessionData->session);
 
   // print time
-  session->overallEnd = getTime(); // log processing end time
+  session->overallEnd = Utility::getTime(); // log processing end time
   std::cout << "Time overall: " << session->overallEnd - session->overallStart
             << " ms" << std::endl;
   std::cout << "Time features: "

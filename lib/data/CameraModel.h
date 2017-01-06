@@ -2,11 +2,11 @@
 
 #include <opencv2/opencv.hpp>
 
-class CameraModel {
+class CameraModel final {
 public:
-  CameraModel();
+  explicit CameraModel();
 
-  CameraModel(std::string &&name, double fx, double fy, double cx, double cy,
+  explicit CameraModel(std::string &&name, double fx, double fy, double cx, double cy,
               cv::Size &&imageSize);
 
   const std::string &name() const;

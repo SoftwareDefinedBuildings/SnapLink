@@ -7,9 +7,9 @@
 class CameraModel;
 class Session;
 
-class FeatureClient {
+class FeatureClient final {
 public:
-  FeatureClient(std::shared_ptr<grpc::Channel> channel);
+  explicit FeatureClient(std::shared_ptr<grpc::Channel> channel);
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.

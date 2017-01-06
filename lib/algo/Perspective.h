@@ -13,9 +13,9 @@ class Transform;
 class Visibility;
 class HTTPServer;
 
-class Perspective {
+class Perspective final {
 public:
-  Perspective(const std::shared_ptr<Words> &words);
+  explicit Perspective(const std::shared_ptr<Words> &words);
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,

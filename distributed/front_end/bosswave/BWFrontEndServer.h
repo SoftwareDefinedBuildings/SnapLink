@@ -24,6 +24,7 @@ typedef struct {
 
 class BWFrontEndServer: public QObject,  public proto::FrontEndService::Service {
   Q_OBJECT
+
 public:
   bool init(std::string featureServerAddr, 
             unsigned int maxClients = MAX_CLIENTS);
@@ -33,8 +34,10 @@ public:
                            proto::Empty *response) override;
 public slots:
   void run(QString bwFrontEndServerAddr);
+
 signals:
   void triggerRun(QString bwFrontEndServerAddr);
+
 private:
   // this method must be thread safe, because it will be called from other threads
   std::vector<std::string> onQuery(std::unique_ptr<cv::Mat> &&image,

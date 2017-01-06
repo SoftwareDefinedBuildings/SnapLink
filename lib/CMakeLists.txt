@@ -44,7 +44,6 @@ set(SOURCES
     "${PROJECT_SOURCE_DIR}/front_end/http/HTTPFrontEnd.cpp"
     "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWFrontEnd.cpp"
     "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWWorker.cpp"
-    "${PROJECT_SOURCE_DIR}/util/Time.cpp"
     "${PROJECT_SOURCE_DIR}/util/Utility.cpp"
     "${PROJECT_SOURCE_DIR}/adapter/rtabmap/RTABMapDBAdapter.cpp"
     "${PROJECT_SOURCE_DIR}/data/Transform.cpp"

@@ -6,11 +6,11 @@
 #include <string>
 #include <vector>
 
-class Transform {
+class Transform final {
 public:
-  Transform();
+  explicit Transform();
 
-  Transform(float r11, float r12, float r13, float t14, //
+  explicit Transform(float r11, float r12, float r13, float t14, //
             float r21, float r22, float r23, float t24, //
             float r31, float r32, float r33, float t34);
 

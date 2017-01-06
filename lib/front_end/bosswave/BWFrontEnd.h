@@ -12,12 +12,12 @@
 #define MAX_CLIENTS 10
 #define DEFAULT_CHANNEL "scratch.ns/cellmate"
 
-class BWFrontEnd : public QObject
+class BWFrontEnd final : public QObject
 {
   Q_OBJECT
 
 public:
-  BWFrontEnd();
+  explicit BWFrontEnd();
   ~BWFrontEnd();
   bool start(unsigned int maxClients);
   void stop();

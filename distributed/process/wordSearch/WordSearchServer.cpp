@@ -5,7 +5,7 @@
 #include "data/LabelsSimple.h"
 #include "data/Session.h"
 #include "data/WordsKdTree.h"
-#include "util/Time.h"
+#include "util/Utility.h"
 #include <QDebug>
 
 bool WordSearchServer::init(std::string perspectiveServerAddr,
@@ -81,9 +81,9 @@ grpc::Status WordSearchServer::onFeature(grpc::ServerContext *context,
   session.perspectiveStart = request->session().perspectivestart();
   session.perspectiveEnd = request->session().perspectiveend();
 
-  session.wordsStart = getTime();
+  session.wordsStart = Utility::getTime();
   std::vector<int> wordIds = _wordSearch->search(descriptors);
-  session.wordsEnd = getTime();
+  session.wordsEnd = Utility::getTime();
 
   PerspectiveClient client(_channel);
   client.onWord(wordIds, keyPoints, descriptors, camera, session);

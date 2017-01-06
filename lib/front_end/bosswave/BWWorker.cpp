@@ -1,10 +1,10 @@
 #include "front_end/bosswave/BWWorker.h"
 
-BWWorker::BWWorker(PMessage message,
-                   std::function<std::vector<std::string>(
-                       std::unique_ptr<cv::Mat> &&image,
-                       std::unique_ptr<CameraModel> &&camera)> onQuery,
-                  std::atomic<unsigned int>  *numClients) {
+BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
+                                         std::unique_ptr<cv::Mat> &&image,
+                                         std::unique_ptr<CameraModel> &&camera)>
+                                         onQuery,
+                   std::atomic<unsigned int> *numClients) {
   _msg = message;
   _onQuery = onQuery;
   _numClients = numClients;
