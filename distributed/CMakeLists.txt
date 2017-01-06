@@ -135,11 +135,11 @@ add_custom_command(
     )
 
 # bwFront
-set(BWServer_SOURCES
-    "${PROJECT_SOURCE_DIR}/front_end/bosswave/main3.cpp")
-add_executable(bw_front ${BWServer_SOURCES})
-target_link_libraries(bw_front ${LIBRARIES})
-set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
+#set(BWServer_SOURCES
+#    "${PROJECT_SOURCE_DIR}/front_end/bosswave/main3.cpp")
+#add_executable(bw_front ${BWServer_SOURCES})
+#target_link_libraries(bw_front ${LIBRARIES})
+#set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
 
 # bwFront
 #set(BWServer_SOURCES
@@ -163,6 +163,27 @@ set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
 
 #set_property(TARGET bwfront PROPERTY CXX_STANDARD 11)
 
+# BW Front
+set(BWFrontEnd_SOURCES
+    "${GENERATED_PROTOBUF_PATH}/Empty.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/CameraModel.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/Session.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/QueryMessage.pb.cc"
+    "${GENERATED_PROTOBUF_PATH}/DetectionMessage.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FrontEndService.grpc.pb.cc"
+    "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
+    "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/BWFrontEndServer.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/FeatureClient.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/bosswave/main.cpp")
+
+add_executable(bw_front ${BWFrontEnd_SOURCES})
+
+target_link_libraries(bw_front ${LIBRARIES})
+
+set_property(TARGET bw_front PROPERTY CXX_STANDARD 11)
+
 
 
 # Front
@@ -177,7 +198,7 @@ set(HTTPFrontEnd_SOURCES
     "${GENERATED_GRPC_PATH}/FeatureService.pb.cc"
     "${GENERATED_GRPC_PATH}/FeatureService.grpc.pb.cc"
     "${PROJECT_SOURCE_DIR}/front_end/http/HTTPFrontEndServer.cpp"
-    "${PROJECT_SOURCE_DIR}/front_end/http/FeatureClient.cpp"
+    "${PROJECT_SOURCE_DIR}/front_end/FeatureClient.cpp"
     "${PROJECT_SOURCE_DIR}/front_end/http/main.cpp")
 
 add_executable(http_front ${HTTPFrontEnd_SOURCES})
