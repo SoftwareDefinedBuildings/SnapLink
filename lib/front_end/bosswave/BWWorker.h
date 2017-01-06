@@ -23,19 +23,21 @@ class BWWorker final : public QObject
 {
   Q_OBJECT
 public slots:
-void doWork();
+  void doWork();
+
 signals:
   void finished();
   void error();
   void doneWork(QString result, QString identity);
-  public:
-  BWWorker(PMessage message,
+
+public:
+  explicit BWWorker(PMessage message,
            std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
                       std::unique_ptr<CameraModel> &&camera)> onQuery,
            std::atomic<unsigned int> *_numClients
            );
 
-  private:
+private:
   // void workComplete(BWConnectionInfo *connInfo);
   static void createData(const std::vector<char> &data, double fx, double fy,
                                       double cx, double cy, cv::Mat &image,

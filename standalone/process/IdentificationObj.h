@@ -16,7 +16,7 @@ class Session;
 
 class IdentificationObj final : public QObject {
 public:
-  IdentificationObj(const std::shared_ptr<Words> &words,
+  explicit IdentificationObj(const std::shared_ptr<Words> &words,
                  std::unique_ptr<Labels> &&labels);
   ~IdentificationObj();
 

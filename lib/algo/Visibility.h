@@ -9,7 +9,7 @@ class Transform;
 
 class Visibility final {
 public:
-  Visibility(std::unique_ptr<Labels> &&labels);
+  explicit Visibility(std::unique_ptr<Labels> &&labels);
 
   std::vector<std::string> process(int dbId, const CameraModel &camera,
                                    const Transform &pose) const;

@@ -5,7 +5,8 @@
 
 class WordsKdTree final : public Words {
 public:
-  WordsKdTree();
+  explicit WordsKdTree();
+
   /**
    * Add words
    */

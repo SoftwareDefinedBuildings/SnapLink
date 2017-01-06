@@ -22,7 +22,7 @@ typedef struct final {
 
 class HTTPFrontEnd final {
 public:
-  HTTPFrontEnd();
+  explicit HTTPFrontEnd();
   ~HTTPFrontEnd();
 
   bool start(uint16_t port, unsigned int maxClients);

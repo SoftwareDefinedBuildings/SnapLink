@@ -5,7 +5,7 @@
 
 class Word final {
 public:
-  Word(int id);
+  explicit Word(int id);
 
   /*
    * Add points and their descriptors in a database

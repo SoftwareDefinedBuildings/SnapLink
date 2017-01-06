@@ -7,7 +7,7 @@
 
 class QueryEvent final : public QEvent {
 public:
-  QueryEvent(std::unique_ptr<cv::Mat> &&image,
+  explicit QueryEvent(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera,
              std::unique_ptr<Session> &&session);
 

@@ -22,7 +22,7 @@ struct BWSessionData final {
 class BWFrontEndObj final : public QObject {
   Q_OBJECT
 public:
-  BWFrontEndObj();
+  explicit BWFrontEndObj();
   virtual ~BWFrontEndObj();
 
   void stop();

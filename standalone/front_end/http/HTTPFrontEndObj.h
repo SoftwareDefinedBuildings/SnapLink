@@ -21,7 +21,7 @@ struct SessionData final {
 
 class HTTPFrontEndObj final : public QObject {
 public:
-  HTTPFrontEndObj();
+  explicit HTTPFrontEndObj();
   ~HTTPFrontEndObj();
 
   bool init(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
