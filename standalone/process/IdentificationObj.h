@@ -7,7 +7,7 @@
 #include <QEvent>
 #include <QObject>
 
-#define SAMPLE_SIZE 200
+#define SAMPLE_SIZE 400
 
 class BWFrontEndObj;
 class HTTPFrontEndObj;

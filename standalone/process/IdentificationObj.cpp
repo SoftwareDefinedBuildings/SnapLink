@@ -13,7 +13,7 @@
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
                                      std::unique_ptr<Labels> &&labels)
     : _httpFrontEndObj(nullptr), _bwFrontEndObj(nullptr), _wordSearch(words),
-      _perspective(words), _visibility(std::move(labels)) {}
+      _perspective(words, 100, 0.7), _visibility(std::move(labels)) {}
 
 IdentificationObj::~IdentificationObj() {
   _httpFrontEndObj = nullptr;
@@ -76,6 +76,7 @@ bool IdentificationObj::identify(const cv::Mat &image,
   _feature.extract(image, keyPoints, descriptors);
   session.featuresEnd = Utility::getTime();
 
+  auto start = Utility::getTime();
   std::vector<unsigned int> indices(keyPoints.size());
   std::iota(indices.begin(), indices.end(), 0);
   std::random_shuffle(indices.begin(), indices.end());
@@ -86,6 +87,7 @@ bool IdentificationObj::identify(const cv::Mat &image,
     subKeyPoints.emplace_back(keyPoints[i]);
     subDescriptors.push_back(descriptors.row(i));
   }
+  std::cout << "sub-sample time: " <<  Utility::getTime() - start << std::endl;
 
   // word search
   session.wordsStart = Utility::getTime();

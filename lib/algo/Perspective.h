@@ -15,7 +15,7 @@ class HTTPServer;
 
 class Perspective final {
 public:
-  explicit Perspective(const std::shared_ptr<Words> &words);
+  explicit Perspective(const std::shared_ptr<Words> &words, int maxMatch = MAX_MATCH, double distRatio = DIST_RATIO);
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,

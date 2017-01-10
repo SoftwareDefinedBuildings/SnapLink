@@ -5,7 +5,7 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-Perspective::Perspective(const std::shared_ptr<Words> &words) : _words(words) {}
+Perspective::Perspective(const std::shared_ptr<Words> &words, int maxMatch, double distRatio) : _words(words) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
