@@ -5,7 +5,9 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-Perspective::Perspective(const std::shared_ptr<Words> &words, int maxMatch, double distRatio) : _words(words) {}
+Perspective::Perspective(const std::shared_ptr<Words> &words, int corrSize,
+                         double distRatio)
+    : _words(words), _corrSize(corrSize), _distRatio(distRatio) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
@@ -146,7 +148,7 @@ void Perspective::getMatchPoints(
         imagePoints.emplace_back(point2.pt);
         objectPoints.emplace_back(point3);
         matchCount++;
-        if (matchCount >= MAX_MATCH) {
+        if (matchCount >= _corrSize) {
           return;
         }
       }
@@ -158,7 +160,7 @@ void Perspective::getMatchPoints(
 bool Perspective::findMatchPoint3(
     const cv::Mat &descriptor, int wordId,
     const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
-    cv::Point3f &point3) {
+    cv::Point3f &point3) const {
   assert(descriptor.rows == 1);
 
   if (words3.find(wordId) == words3.end()) {
@@ -177,7 +179,7 @@ bool Perspective::findMatchPoint3(
     dists.emplace_back(dist, i);
   }
   std::partial_sort(dists.begin(), dists.begin() + 2, dists.end());
-  if (dists.at(0).first / dists.at(1).first <= DIST_RATIO) {
+  if (dists.at(0).first / dists.at(1).first <= _distRatio) {
     point3 = words3.at(wordId).first.at(dists.at(0).second);
     return true;
   }

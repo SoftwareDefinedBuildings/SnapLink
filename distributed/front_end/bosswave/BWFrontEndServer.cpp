@@ -4,8 +4,8 @@
 #include <cstdlib>
 #include <cstring>
 
-bool BWFrontEndServer::init(std::string featureServerAddr, 
-                              unsigned int maxClients) {
+bool BWFrontEndServer::init(std::string featureServerAddr,
+                            unsigned int maxClients) {
   _bwFront.reset(new BWFrontEnd());
   _gen = std::mt19937(std::random_device()());
   _channel = grpc::CreateChannel(featureServerAddr,
@@ -14,8 +14,8 @@ bool BWFrontEndServer::init(std::string featureServerAddr,
   bool success = _bwFront->start(maxClients);
   if (success) {
     _bwFront->registerOnQuery(std::bind(&BWFrontEndServer::onQuery, this,
-                                          std::placeholders::_1,
-                                          std::placeholders::_2));
+                                        std::placeholders::_1,
+                                        std::placeholders::_2));
   }
 
   return true;
@@ -23,8 +23,8 @@ bool BWFrontEndServer::init(std::string featureServerAddr,
 
 grpc::Status
 BWFrontEndServer::onDetection(grpc::ServerContext *context,
-                                const proto::DetectionMessage *request,
-                                proto::Empty *response) {
+                              const proto::DetectionMessage *request,
+                              proto::Empty *response) {
   assert(request->session().type() == proto::Session::BOSSWAVE);
 
   std::unique_ptr<Session> session(new Session());
@@ -78,7 +78,7 @@ void BWFrontEndServer::run(QString bwServerAddr) {
 
 std::vector<std::string>
 BWFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
-                            std::unique_ptr<CameraModel> &&camera) {
+                          std::unique_ptr<CameraModel> &&camera) {
   std::unique_ptr<Session> session(new Session);
   session->overallStart = Utility::getTime(); // log start of processing
   session->type = BOSSWAVE;

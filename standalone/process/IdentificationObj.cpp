@@ -11,9 +11,12 @@
 #include <QCoreApplication>
 
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
-                                     std::unique_ptr<Labels> &&labels)
-    : _httpFrontEndObj(nullptr), _bwFrontEndObj(nullptr), _wordSearch(words),
-      _perspective(words, 100, 0.7), _visibility(std::move(labels)) {}
+                                     std::unique_ptr<Labels> &&labels,
+                                     int sampleSize, int corrSize,
+                                     double distRatio)
+    : _httpFrontEndObj(nullptr), _bwFrontEndObj(nullptr), _feature(sampleSize),
+      _wordSearch(words), _perspective(words, corrSize, distRatio),
+      _visibility(std::move(labels)) {}
 
 IdentificationObj::~IdentificationObj() {
   _httpFrontEndObj = nullptr;
@@ -76,30 +79,16 @@ bool IdentificationObj::identify(const cv::Mat &image,
   _feature.extract(image, keyPoints, descriptors);
   session.featuresEnd = Utility::getTime();
 
-  auto start = Utility::getTime();
-  std::vector<unsigned int> indices(keyPoints.size());
-  std::iota(indices.begin(), indices.end(), 0);
-  std::random_shuffle(indices.begin(), indices.end());
-  std::vector<cv::KeyPoint> subKeyPoints;
-  cv::Mat subDescriptors;
-  unsigned int sampleSize = SAMPLE_SIZE;
-  for (int i = 0; i < sampleSize && i < indices.size(); i++) {
-    subKeyPoints.emplace_back(keyPoints[i]);
-    subDescriptors.push_back(descriptors.row(i));
-  }
-  std::cout << "sub-sample time: " <<  Utility::getTime() - start << std::endl;
-
   // word search
   session.wordsStart = Utility::getTime();
-  std::vector<int> subWordIds = _wordSearch.search(subDescriptors);
+  std::vector<int> subWordIds = _wordSearch.search(descriptors);
   session.wordsEnd = Utility::getTime();
 
   // PnP
   int dbId;
   Transform pose;
   session.perspectiveStart = Utility::getTime();
-  _perspective.localize(subWordIds, subKeyPoints, subDescriptors, camera, dbId,
-                        pose);
+  _perspective.localize(subWordIds, keyPoints, descriptors, camera, dbId, pose);
   session.perspectiveEnd = Utility::getTime();
 
   if (pose.isNull()) {

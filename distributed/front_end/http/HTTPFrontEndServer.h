@@ -12,9 +12,6 @@
 #include <opencv2/core/types.hpp>
 #include <random>
 
-#define PORT 8080
-#define MAX_CLIENTS 10
-
 // to keep session dependent data 
 struct SessionData final {
   std::unique_ptr<Session> session;
@@ -24,8 +21,8 @@ struct SessionData final {
 
 class HTTPFrontEndServer final : public proto::FrontEndService::Service {
 public:
-  bool init(std::string featureServerAddr, uint16_t port = PORT,
-            unsigned int maxClients = MAX_CLIENTS);
+  bool init(std::string featureServerAddr, uint16_t port = 8080,
+            unsigned int maxClients = 10);
   // TODO add on failure
   grpc::Status onDetection(grpc::ServerContext *context,
                            const proto::DetectionMessage *request,
