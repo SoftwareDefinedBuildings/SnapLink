@@ -11,45 +11,89 @@
 #include <getopt.h>
 #include <utility>
 
+#define MY_OPT 10000
+
 void showUsage() {
-  printf("\nUsage:\n"
-         "CellMate [options] database_file1 [database_file2 ...]\n"
-         "\nOptions:\n"
-         "-h only use HTTP front end\n"
-         "-b only use BOSSWAVE front end\n");
+  std::cout << "\nUsage:\n"
+            << "cellmate [options] [database_file]...\n"
+            << "\nOptions:\n"
+            << "-h, --help      print this help message\n"
+            << "-H, --http      only use HTTP front end\n"
+            << "-b, --bosswave  only use BOSSWAVE front end\n"
+            << "--sample-size   number of subsamples in feature extraction "
+               "(0 means no subsampling, default 200)\n"
+            << "--corr-size     number of correspondences in perspective "
+               "(default 100)\n"
+            << "--dist-ratio    distance ratio used for correspondences "
+               "(default 0.7)\n";
 }
 
 void parseOpt(int argc, char *argv[], bool &http, bool &bosswave,
+              int &sampleSize, int &corrSize, double &distRatio,
               std::vector<std::string> &dbfiles) {
 
   http = false;
   bosswave = false;
+  sampleSize = 200;
+  corrSize = 100;
+  distRatio = 0.7;
 
-  static struct option long_options[] = {
-      {"http", no_argument, nullptr, 'h'},
+  static struct option longOptions[] = {
+      {"help", no_argument, nullptr, 'h'},
+      {"http", no_argument, nullptr, 'H'},
       {"bosswave", no_argument, nullptr, 'b'},
+      {"sample-size", required_argument, nullptr, MY_OPT},
+      {"corr-size", required_argument, nullptr, MY_OPT},
+      {"dist-ratio", required_argument, nullptr, MY_OPT},
       {0, 0, 0, 0}};
 
   int c;
   while (true) {
-    int option_index = 0;
+    int optionIndex = 0;
 
-    c = getopt_long(argc, argv, "h::b::", long_options, &option_index);
+    c = getopt_long(argc, argv, ":hHb", longOptions, &optionIndex);
 
     if (c == -1) {
       break;
     }
 
     switch (c) {
+    case 0:
+      std::cerr << "invalid option" << std::endl;
+      showUsage();
+      exit(1);
+    case MY_OPT:
+      if (strcmp(longOptions[optionIndex].name, "sample-size") == 0) {
+        sampleSize = std::stoi(std::string(optarg));
+      } else if (strcmp(longOptions[optionIndex].name, "corr-ratio") == 0) {
+        corrSize = std::stoi(std::string(optarg));
+      } else if (strcmp(longOptions[optionIndex].name, "dist-ratio") == 0) {
+        distRatio = std::stod(std::string(optarg));
+      } else {
+        showUsage();
+        exit(1);
+      }
+      break;
     case 'h':
+      showUsage();
+      exit(0);
+    case 'H':
       http = true;
       break;
     case 'b':
       bosswave = true;
       break;
+    case ':': /* missing option argument */
+      std::cerr << "missing option argument" << std::endl;
+      showUsage();
+      exit(1);
+    case '?':
+      std::cerr << "invalid option" << std::endl;
+      showUsage();
+      exit(1);
     default:
       showUsage();
-      abort();
+      exit(1);
     }
   }
 
@@ -61,6 +105,12 @@ void parseOpt(int argc, char *argv[], bool &http, bool &bosswave,
   for (int i = optind; i < argc; i++) {
     dbfiles.emplace_back(argv[i]);
   }
+
+  std::cout << "http: " << http << std::endl
+            << "bosswave: " << bosswave << std::endl
+            << "sample-size: " << sampleSize << std::endl
+            << "corr-size: " << corrSize << std::endl
+            << "dist-ratio: " << distRatio << std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -70,8 +120,18 @@ int main(int argc, char *argv[]) {
 
   bool http;
   bool bosswave;
+  int sampleSize;
+  int corrSize;
+  double distRatio;
   std::vector<std::string> dbfiles;
-  parseOpt(argc, argv, http, bosswave, dbfiles);
+  try {
+    parseOpt(argc, argv, http, bosswave, sampleSize, corrSize, distRatio,
+             dbfiles);
+  } catch (const std::exception &e) {
+    std::cerr << "error: " << e.what() << std::endl;
+    showUsage();
+    exit(1);
+  }
 
   QCoreApplication app(argc, argv);
 
@@ -87,8 +147,8 @@ int main(int argc, char *argv[]) {
   }
 
   std::cout << "Initializing IdentificationObj Service" << std::endl;
-  std::shared_ptr<IdentificationObj> identObj(
-      new IdentificationObj(std::move(words), std::move(labels)));
+  std::shared_ptr<IdentificationObj> identObj(new IdentificationObj(
+      std::move(words), std::move(labels), sampleSize, corrSize, distRatio));
   identObj->moveToThread(&identObjThread);
   identObjThread.start();
 

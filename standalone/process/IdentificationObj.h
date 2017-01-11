@@ -16,7 +16,7 @@ class Session;
 class IdentificationObj final : public QObject {
 public:
   explicit IdentificationObj(const std::shared_ptr<Words> &words,
-                 std::unique_ptr<Labels> &&labels, int sampleSize = 200, int corrSize = 50, double distRatio = 0.7);
+                 std::unique_ptr<Labels> &&labels, int sampleSize, int corrSize, double distRatio);
   ~IdentificationObj();
 
   void setHTTPFrontEndObj(std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj);

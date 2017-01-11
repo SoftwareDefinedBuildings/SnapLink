@@ -9,7 +9,7 @@ void Feature::extract(const cv::Mat &image,
                       std::vector<cv::KeyPoint> &keyPoints,
                       cv::Mat &descriptors) const {
   _detector->detectAndCompute(image, cv::Mat(), keyPoints, descriptors);
-  if (_sampleSize == 0) {
+  if (_sampleSize != 0) {
     subsample(keyPoints, descriptors);
   }
 }
