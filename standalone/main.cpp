@@ -104,6 +104,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  QThread bwThread;
   if (bosswave == true) {
     // BWServer
     std::cout << "Initializing BW server" << std::endl;
@@ -112,7 +113,6 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<BWFrontEndObj> bwFrontEndObj(new BWFrontEndObj());
     identObj->setBWFrontEndObj(bwFrontEndObj);
     bwFrontEndObj->setIdentificationObj(identObj);
-    QThread bwThread;
     bwThread.start();
     bwFrontEndObj->moveToThread(&bwThread);
     QObject::connect(bwFrontEndObj.get(), &BWFrontEndObj::triggerInit,
