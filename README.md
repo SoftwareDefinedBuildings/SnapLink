@@ -23,43 +23,36 @@ docker pull kaifeichen/cellmate
 
 If you want to build your own environment, follow these [instructions](https://gist.github.com/kaifeichen/5839d0cbf357ede24662dc7c6e1f401f).
 
-### Compile and Run
+### Compile
 Clone the CellMate server repository
 ```bash
 git clone https://github.com/SoftwareDefinedBuildings/CellMate_Server
-
 ```
-There are two versions of CellMate server: *standalone* and *distributed*.
-
-#### standalone
-Use cmake to compile the standalone version in the [standalone/build/](standalone/build) folder
+Use cmake and make to compile in the [build/](build) folder
 ```bash
-cd standalone/build/
+cd build/
 cmake ..
 make -j $(nproc)
 ```
 
-To run the result executable *cellmate*
+
+### Run
+There are two versions of CellMate server: *standalone* and *distributed*.
+
+#### standalone
+To run the standalone executable *cellmat_standalone*
 ```bash
-cellmate [db_file...]
+cellmat_standalone [db_file...]
 ```
 
 Here is an example that runs it with all data in *~/data/buildsys16/*:
 ```bash
-cellmate `find ~/data/buildsys16/ -iname *.db`
+cellmat_standalone `find ~/data/buildsys16/ -iname *.db`
 ```
 
 #### distributed
-Use cmake to compile the distributed version in the [distributed/build/](distributed/build) folder
+To run the standalone executables
 ```bash
-cd distributed/build/
-cmake ..
-make -j $(nproc)
-```
-
-To run the result executables
-```bash
-
 front $FRONT_IP:$FRONT_PORT $FEATURE_IP:$FEATURE_PORT
 feature $FEATURE_IP:$FEATURE_PORT $WORDSEARCH_IP:$WORDSEARCH_PORT
 wordsearch $WORDSEARCH_IP:$WORDSEARCH_PORT $SIGNATURESEARCH_IP:$SIGNATURESEARCH_PORT [db_file...]
