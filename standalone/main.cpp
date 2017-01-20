@@ -65,11 +65,12 @@ void parseOpt(int argc, char *argv[], bool &http, bool &bosswave,
     case MY_OPT:
       if (strcmp(longOptions[optionIndex].name, "sample-size") == 0) {
         sampleSize = std::stoi(std::string(optarg));
-      } else if (strcmp(longOptions[optionIndex].name, "corr-ratio") == 0) {
+      } else if (strcmp(longOptions[optionIndex].name, "corr-size") == 0) {
         corrSize = std::stoi(std::string(optarg));
       } else if (strcmp(longOptions[optionIndex].name, "dist-ratio") == 0) {
         distRatio = std::stod(std::string(optarg));
       } else {
+        std::cerr << "invalid option" << std::endl;
         showUsage();
         exit(1);
       }
@@ -114,10 +115,6 @@ void parseOpt(int argc, char *argv[], bool &http, bool &bosswave,
 }
 
 int main(int argc, char *argv[]) {
-  // ULogger::setType(ULogger::kTypeConsole);
-  // ULogger::setLevel(ULogger::kInfo);
-  // ULogger::setLevel(ULogger::kDebug);
-
   bool http;
   bool bosswave;
   int sampleSize;
@@ -168,7 +165,6 @@ int main(int argc, char *argv[]) {
   if (bosswave == true) {
     // BWServer
     std::cout << "Initializing BW server" << std::endl;
-    // TODO use shared_ptr
     unsigned int maxClients = 10;
     std::shared_ptr<BWFrontEndObj> bwFrontEndObj(new BWFrontEndObj());
     identObj->setBWFrontEndObj(bwFrontEndObj);

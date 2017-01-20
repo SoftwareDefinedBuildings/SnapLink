@@ -14,6 +14,10 @@ void Perspective::localize(const std::vector<int> &wordIds,
                            const cv::Mat &descriptors,
                            const CameraModel &camera, int &dbId,
                            Transform &transform) const {
+  if (wordIds.size() == 0) {
+    return;
+  }
+
   std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
       getWords2(wordIds, keyPoints, descriptors);
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> words3 =
@@ -30,8 +34,6 @@ void Perspective::localize(const std::vector<int> &wordIds,
   if (transform.isNull()) {
     std::cout << "Localization failed" << std::endl;
   }
-
-  // TODO check RegistrationVis.cpp to see whether rotation check is necessary
 
   std::cout << "transform= " << transform.prettyPrint() << std::endl;
 }
@@ -227,8 +229,7 @@ Transform Perspective::solvePnP(const std::vector<cv::Point2f> &imagePoints,
 
     transform = std::move(pnp);
 
-    // compute variance, which is the rms of reprojection errors
-    // TODO
+    // TODO: compute variance, which is the rms of reprojection errors
   }
 
   return transform;
