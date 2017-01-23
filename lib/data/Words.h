@@ -28,11 +28,6 @@ public:
   getWordsByDb() const = 0;
 
   /**
-   * get all wordIds indexed by dbId
-   */
-  virtual const std::map<int, std::set<int>> &getWordIdsByDb() const = 0;
-
-  /**
    * find the indices of the nearst neighbors of descriptors
    */
   virtual std::vector<int> findNNs(const cv::Mat &descriptors) const = 0;

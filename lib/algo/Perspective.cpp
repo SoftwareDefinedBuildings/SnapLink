@@ -64,11 +64,11 @@ Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
 
   dbId = getDbId(wordIds);
 
-  const std::set<int> &dbWordIds = _words->getWordIdsByDb().at(dbId);
+  const auto &dbWords = _words->getWordsByDb().at(dbId);
 
   for (int wordId : wordIds) {
-    auto iter = dbWordIds.find(wordId);
-    if (iter == dbWordIds.end()) {
+    auto iter = dbWords.find(wordId);
+    if (iter == dbWords.end()) {
       continue;
     }
 
@@ -91,30 +91,41 @@ Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
 }
 
 int Perspective::getDbId(const std::set<int> &wordIds) const {
-  const std::map<int, std::set<int>> &wordIdsByDb = _words->getWordIdsByDb();
+  const auto &words = _words->getWordsById();
+
+  std::map<int, int> dbCounts; // dbId: number of shared words in db
+  for (auto wordId : wordIds) {
+    const auto iter = words.find(wordId);
+    assert(iter != words.end());
+    const std::shared_ptr<Word> &word = iter->second;
+
+    const auto &points3Map = word->getPoints3Map();
+    for (const auto &points3 : points3Map) {
+      int dbId = points3.first;
+      auto jter = dbCounts.find(dbId);
+      if (jter == dbCounts.end()) {
+        auto ret = dbCounts.emplace(dbId, 0);
+        jter = ret.first;
+      }
+      jter->second++; // TODO: +1 or +points3.size() ?
+    }
+  }
+
+  const auto &wordsByDb = _words->getWordsByDb();
   std::map<int, double> dbSims; // dbId: similarity
-  for (auto dbWordIds : wordIdsByDb) {
-    std::cout << Utility::getTime() << std::endl;
-    std::set<int> unionIds;
-    std::set_union(wordIds.begin(), wordIds.end(), dbWordIds.second.begin(),
-                   dbWordIds.second.end(),
-                   std::inserter(unionIds, unionIds.end()));
-    std::cout << Utility::getTime() << std::endl;
-    std::set<int> intersectIds;
-    std::set_intersection(wordIds.begin(), wordIds.end(),
-                          dbWordIds.second.begin(), dbWordIds.second.end(),
-                          std::inserter(intersectIds, intersectIds.end()));
-    std::cout << Utility::getTime() << std::endl;
-    int dbId = dbWordIds.first;
-    double sim = static_cast<double>(intersectIds.size()) / unionIds.size();
-    dbSims.emplace(dbId, sim);
+  for (const auto &count : dbCounts) {
+    int dbId = count.first;
+    double sim = static_cast<double>(count.second) / wordsByDb.at(dbId).size();
+    dbSims[dbId] = sim;
     std::cout << "dbId = " << dbId << ", similarity = " << sim << std::endl;
   }
+
   auto maxCount = std::max_element(
       dbSims.begin(), dbSims.end(),
       [](const std::pair<int, double> &p1, const std::pair<int, double> &p2) {
         return p1.second < p2.second;
       });
+
   int dbId = maxCount->first;
   std::cout << "max dbId = " << dbId << std::endl;
 

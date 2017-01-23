@@ -24,11 +24,6 @@ public:
   getWordsByDb() const final;
 
   /**
-   * get all wordIds indexed by dbId
-   */
-  const std::map<int, std::set<int>> &getWordIdsByDb() const final;
-
-  /**
    * find the indices of the nearst neighbors of descriptors
    */
   std::vector<int> findNNs(const cv::Mat &descriptors) const final;
@@ -41,7 +36,6 @@ private:
   int _dim;
   std::map<int, std::shared_ptr<Word>> _wordsById;
   std::map<int, std::map<int, std::shared_ptr<Word>>> _wordsByDb;
-  std::map<int, std::set<int>> _wordIdsByDb;
   cv::Mat _dataMat;
   std::unique_ptr<cv::flann::Index> _index;
   std::map<int, int> _mapIndexId; // (row num, word id)
