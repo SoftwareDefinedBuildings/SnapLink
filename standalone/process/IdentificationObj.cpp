@@ -96,7 +96,9 @@ bool IdentificationObj::identify(const cv::Mat &image,
   }
 
   // visibility
+  session.visibilityStart = Utility::getTime();
   names = _visibility.process(dbId, camera, pose);
+  session.visibilityEnd = Utility::getTime();
 
   return true;
 }

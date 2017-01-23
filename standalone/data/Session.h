@@ -19,4 +19,6 @@ public:
   unsigned long long wordsEnd;
   unsigned long long perspectiveStart;
   unsigned long long perspectiveEnd;
+  unsigned long long visibilityStart;
+  unsigned long long visibilityEnd;
 };

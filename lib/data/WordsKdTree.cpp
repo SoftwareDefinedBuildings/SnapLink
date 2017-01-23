@@ -12,6 +12,7 @@ void WordsKdTree::putWords(std::list<std::unique_ptr<Word>> &&words) {
     for (auto &points3 : sharedWord->getPoints3Map()) {
       int dbId = points3.first;
       _wordsByDb[dbId][wordId] = sharedWord;
+      _wordIdsByDb[dbId].emplace(wordId);
     }
   }
   build();
@@ -24,6 +25,10 @@ const std::map<int, std::shared_ptr<Word>> &WordsKdTree::getWordsById() const {
 const std::map<int, std::map<int, std::shared_ptr<Word>>> &
 WordsKdTree::getWordsByDb() const {
   return _wordsByDb;
+}
+
+const std::map<int, std::set<int>> &WordsKdTree::getWordIdsByDb() const {
+  return _wordIdsByDb;
 }
 
 std::vector<int> WordsKdTree::findNNs(const cv::Mat &descriptors) const {

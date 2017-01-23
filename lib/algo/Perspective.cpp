@@ -42,65 +42,83 @@ std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
 Perspective::getWords2(const std::vector<int> &wordIds,
                        const std::vector<cv::KeyPoint> &keyPoints,
                        const cv::Mat &descriptors) {
-  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words;
+  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;
   for (const auto wordId : wordIds) {
-    // an empty vector is ceated if wordId is not in words3Map[dbId]
-    words[wordId].first.emplace_back(keyPoints[i]);
-    words[wordId].second.push_back(descriptors.row(i));
+    // an empty vector is ceated if wordId is not in words2
+    words2[wordId].first.emplace_back(keyPoints[i]);
+    words2[wordId].second.push_back(descriptors.row(i));
     i++;
   }
 
-  return words;
+  return words2;
 }
 
 std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
 Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
-  std::map<int, std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>>
-      words3Map;               // dbId: wordId: point3
-  std::map<int, int> dbCounts; // dbId: count
+  std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
+      words3; // wordId: point3
+
+  dbId = getDbId(wordIds);
+
+  const std::set<int> &dbWordIds = _words->getWordIdsByDb().at(dbId);
+
   for (int wordId : wordIds) {
-    const auto iter = wordsById.find(wordId);
-    assert(iter != wordsById.end());
-    const std::shared_ptr<Word> &word = iter->second;
-    const std::map<int, cv::Mat> &descriptors = word->getDescriptorsByDb();
-    for (auto &points3 : word->getPoints3Map()) {
-      int dbId = points3.first;
-      cv::Mat desc = descriptors.at(dbId);
-      unsigned int i = 0;
-      for (const auto &point3 : points3.second) {
-        // an empty vector is ceated if wordId is not in words3Map[dbId]
-        words3Map[dbId][wordId].first.emplace_back(point3);
-        words3Map[dbId][wordId].second.push_back(desc.row(i));
-        i++;
-      }
-      auto jter = dbCounts.find(dbId);
-      if (jter == dbCounts.end()) {
-        auto ret = dbCounts.emplace(dbId, 0);
-        jter = ret.first;
-      }
-      jter->second++; // TODO: +1 or +points3.size() ?
+    auto iter = dbWordIds.find(wordId);
+    if (iter == dbWordIds.end()) {
+      continue;
+    }
+
+    const auto jter = wordsById.find(wordId);
+    assert(jter != wordsById.end());
+    const std::shared_ptr<Word> &word = jter->second;
+    const auto &points3 = word->getPoints3Map().at(dbId);
+    cv::Mat desc = word->getDescriptorsByDb().at(dbId);
+
+    unsigned int i = 0;
+    for (const auto &point3 : points3) {
+      // an empty vector is ceated if wordId is not in words3
+      words3[wordId].first.emplace_back(point3);
+      words3[wordId].second.push_back(desc.row(i));
+      i++;
     }
   }
-  std::map<int, double> dbCountsNorm;
-  for (const auto &count : dbCounts) {
-    dbCountsNorm[count.first] =
-        (float)count.second / _words->getWordsByDb().at(count.first).size();
-    std::cout << "dbId = " << count.first
-              << ", norm count = " << dbCountsNorm[count.first] << std::endl;
+
+  return words3;
+}
+
+int Perspective::getDbId(const std::set<int> &wordIds) const {
+  const std::map<int, std::set<int>> &wordIdsByDb = _words->getWordIdsByDb();
+  std::map<int, double> dbSims; // dbId: similarity
+  for (auto dbWordIds : wordIdsByDb) {
+    std::cout << Utility::getTime() << std::endl;
+    std::set<int> unionIds;
+    std::set_union(wordIds.begin(), wordIds.end(), dbWordIds.second.begin(),
+                   dbWordIds.second.end(),
+                   std::inserter(unionIds, unionIds.end()));
+    std::cout << Utility::getTime() << std::endl;
+    std::set<int> intersectIds;
+    std::set_intersection(wordIds.begin(), wordIds.end(),
+                          dbWordIds.second.begin(), dbWordIds.second.end(),
+                          std::inserter(intersectIds, intersectIds.end()));
+    std::cout << Utility::getTime() << std::endl;
+    int dbId = dbWordIds.first;
+    double sim = static_cast<double>(intersectIds.size()) / unionIds.size();
+    dbSims.emplace(dbId, sim);
+    std::cout << "dbId = " << dbId << ", similarity = " << sim << std::endl;
   }
-  auto maxCount = std::max_element(dbCountsNorm.begin(), dbCountsNorm.end(),
-                                   [](const std::pair<double, double> &p1,
-                                      const std::pair<double, double> &p2) {
-                                     return p1.second < p2.second;
-                                   });
-  dbId = maxCount->first;
+  auto maxCount = std::max_element(
+      dbSims.begin(), dbSims.end(),
+      [](const std::pair<int, double> &p1, const std::pair<int, double> &p2) {
+        return p1.second < p2.second;
+      });
+  int dbId = maxCount->first;
   std::cout << "max dbId = " << dbId << std::endl;
 
-  return words3Map[dbId];
+  return dbId;
 }
 
 std::map<int, int> Perspective::countWords(

@@ -25,8 +25,16 @@ private:
             const std::vector<cv::KeyPoint> &keyPoints,
             const cv::Mat &descriptors);
 
+  /**
+   * get 3D point and descriptors, indexed by word Id, from the database
+   */
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
   getWords3(const std::set<int> &wordIds, int &dbId) const;
+
+  /**
+   * get the database ID where the image is mostly taken in
+   */
+  int getDbId(const std::set<int> &wordIds) const;
 
   std::map<int, int>
   countWords(const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>

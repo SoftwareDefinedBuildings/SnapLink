@@ -5,6 +5,7 @@
 #include <memory>
 #include <opencv2/core/core.hpp>
 #include <vector>
+#include <set>
 
 class Words {
 public:
@@ -25,6 +26,11 @@ public:
    */
   virtual const std::map<int, std::map<int, std::shared_ptr<Word>>> &
   getWordsByDb() const = 0;
+
+  /**
+   * get all wordIds indexed by dbId
+   */
+  virtual const std::map<int, std::set<int>> &getWordIdsByDb() const = 0;
 
   /**
    * find the indices of the nearst neighbors of descriptors
