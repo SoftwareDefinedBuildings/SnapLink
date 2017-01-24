@@ -5,9 +5,6 @@
 #include <opencv2/core/core.hpp>
 #include <set>
 
-#define MAX_MATCH 50
-#define DIST_RATIO 0.7
-
 class CameraModel;
 class Transform;
 class Visibility;
@@ -15,7 +12,7 @@ class HTTPServer;
 
 class Perspective final {
 public:
-  explicit Perspective(const std::shared_ptr<Words> &words);
+  explicit Perspective(const std::shared_ptr<Words> &words, int corrSize = 100, double distRatio = 0.7);
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,
@@ -28,8 +25,16 @@ private:
             const std::vector<cv::KeyPoint> &keyPoints,
             const cv::Mat &descriptors);
 
+  /**
+   * get 3D point and descriptors, indexed by word Id, from the database
+   */
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
   getWords3(const std::set<int> &wordIds, int &dbId) const;
+
+  /**
+   * get the database ID where the image is mostly taken in
+   */
+  int getDbId(const std::set<int> &wordIds) const;
 
   std::map<int, int>
   countWords(const std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
@@ -44,10 +49,10 @@ private:
       std::vector<cv::Point2f> &imagePoints,
       std::vector<cv::Point3f> &objectPoints) const;
 
-  static bool findMatchPoint3(
+  bool findMatchPoint3(
       const cv::Mat &descriptor, int wordId,
       const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
-      cv::Point3f &point3);
+      cv::Point3f &point3) const;
 
   static Transform solvePnP(const std::vector<cv::Point2f> &imagePoints,
                             const std::vector<cv::Point3f> &objectPoints,
@@ -55,4 +60,6 @@ private:
 
 private:
   std::shared_ptr<Words> _words;
+  int _corrSize;
+  double _distRatio;
 };

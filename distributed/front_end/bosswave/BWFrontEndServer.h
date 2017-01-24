@@ -12,9 +12,6 @@
 #include <opencv2/core/types.hpp>
 #include <random>
 
-#define PORT 8080
-#define MAX_CLIENTS 10
-
 // to keep session dependent data 
 typedef struct {
   std::unique_ptr<Session> session;
@@ -27,7 +24,7 @@ class BWFrontEndServer: public QObject,  public proto::FrontEndService::Service 
 
 public:
   bool init(std::string featureServerAddr, 
-            unsigned int maxClients = MAX_CLIENTS);
+            unsigned int maxClients = 10);
   // TODO add on failure
   grpc::Status onDetection(grpc::ServerContext *context,
                            const proto::DetectionMessage *request,

@@ -5,13 +5,19 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-Perspective::Perspective(const std::shared_ptr<Words> &words) : _words(words) {}
+Perspective::Perspective(const std::shared_ptr<Words> &words, int corrSize,
+                         double distRatio)
+    : _words(words), _corrSize(corrSize), _distRatio(distRatio) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
                            const cv::Mat &descriptors,
                            const CameraModel &camera, int &dbId,
                            Transform &transform) const {
+  if (wordIds.size() == 0) {
+    return;
+  }
+
   std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
       getWords2(wordIds, keyPoints, descriptors);
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> words3 =
@@ -29,8 +35,6 @@ void Perspective::localize(const std::vector<int> &wordIds,
     std::cout << "Localization failed" << std::endl;
   }
 
-  // TODO check RegistrationVis.cpp to see whether rotation check is necessary
-
   std::cout << "transform= " << transform.prettyPrint() << std::endl;
 }
 
@@ -38,41 +42,66 @@ std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
 Perspective::getWords2(const std::vector<int> &wordIds,
                        const std::vector<cv::KeyPoint> &keyPoints,
                        const cv::Mat &descriptors) {
-  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words;
+  std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2;
   assert(wordIds.size() == keyPoints.size());
   unsigned int i = 0;
   for (const auto wordId : wordIds) {
-    // an empty vector is ceated if wordId is not in words3Map[dbId]
-    words[wordId].first.emplace_back(keyPoints[i]);
-    words[wordId].second.push_back(descriptors.row(i));
+    // an empty vector is ceated if wordId is not in words2
+    words2[wordId].first.emplace_back(keyPoints[i]);
+    words2[wordId].second.push_back(descriptors.row(i));
     i++;
   }
 
-  return words;
+  return words2;
 }
 
 std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
 Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
-  std::map<int, std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>>
-      words3Map;               // dbId: wordId: point3
-  std::map<int, int> dbCounts; // dbId: count
+  std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
+      words3; // wordId: point3
+
+  dbId = getDbId(wordIds);
+
+  const auto &dbWords = _words->getWordsByDb().at(dbId);
+
   for (int wordId : wordIds) {
-    const auto iter = wordsById.find(wordId);
-    assert(iter != wordsById.end());
+    auto iter = dbWords.find(wordId);
+    if (iter == dbWords.end()) {
+      continue;
+    }
+
+    const auto jter = wordsById.find(wordId);
+    assert(jter != wordsById.end());
+    const std::shared_ptr<Word> &word = jter->second;
+    const auto &points3 = word->getPoints3Map().at(dbId);
+    cv::Mat desc = word->getDescriptorsByDb().at(dbId);
+
+    unsigned int i = 0;
+    for (const auto &point3 : points3) {
+      // an empty vector is ceated if wordId is not in words3
+      words3[wordId].first.emplace_back(point3);
+      words3[wordId].second.push_back(desc.row(i));
+      i++;
+    }
+  }
+
+  return words3;
+}
+
+int Perspective::getDbId(const std::set<int> &wordIds) const {
+  const auto &words = _words->getWordsById();
+
+  std::map<int, int> dbCounts; // dbId: number of shared words in db
+  for (auto wordId : wordIds) {
+    const auto iter = words.find(wordId);
+    assert(iter != words.end());
     const std::shared_ptr<Word> &word = iter->second;
-    const std::map<int, cv::Mat> &descriptors = word->getDescriptorsByDb();
-    for (auto &points3 : word->getPoints3Map()) {
+
+    const auto &points3Map = word->getPoints3Map();
+    for (const auto &points3 : points3Map) {
       int dbId = points3.first;
-      cv::Mat desc = descriptors.at(dbId);
-      unsigned int i = 0;
-      for (const auto &point3 : points3.second) {
-        // an empty vector is ceated if wordId is not in words3Map[dbId]
-        words3Map[dbId][wordId].first.emplace_back(point3);
-        words3Map[dbId][wordId].second.push_back(desc.row(i));
-        i++;
-      }
       auto jter = dbCounts.find(dbId);
       if (jter == dbCounts.end()) {
         auto ret = dbCounts.emplace(dbId, 0);
@@ -81,22 +110,26 @@ Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
       jter->second++; // TODO: +1 or +points3.size() ?
     }
   }
-  std::map<int, double> dbCountsNorm;
+
+  const auto &wordsByDb = _words->getWordsByDb();
+  std::map<int, double> dbSims; // dbId: similarity
   for (const auto &count : dbCounts) {
-    dbCountsNorm[count.first] =
-        (float)count.second / _words->getWordsByDb().at(count.first).size();
-    std::cout << "dbId = " << count.first
-              << ", norm count = " << dbCountsNorm[count.first] << std::endl;
+    int dbId = count.first;
+    double sim = static_cast<double>(count.second) / wordsByDb.at(dbId).size();
+    dbSims[dbId] = sim;
+    std::cout << "dbId = " << dbId << ", similarity = " << sim << std::endl;
   }
-  auto maxCount = std::max_element(dbCountsNorm.begin(), dbCountsNorm.end(),
-                                   [](const std::pair<double, double> &p1,
-                                      const std::pair<double, double> &p2) {
-                                     return p1.second < p2.second;
-                                   });
-  dbId = maxCount->first;
+
+  auto maxCount = std::max_element(
+      dbSims.begin(), dbSims.end(),
+      [](const std::pair<int, double> &p1, const std::pair<int, double> &p2) {
+        return p1.second < p2.second;
+      });
+
+  int dbId = maxCount->first;
   std::cout << "max dbId = " << dbId << std::endl;
 
-  return words3Map[dbId];
+  return dbId;
 }
 
 std::map<int, int> Perspective::countWords(
@@ -146,7 +179,7 @@ void Perspective::getMatchPoints(
         imagePoints.emplace_back(point2.pt);
         objectPoints.emplace_back(point3);
         matchCount++;
-        if (matchCount >= MAX_MATCH) {
+        if (matchCount >= _corrSize) {
           return;
         }
       }
@@ -158,7 +191,7 @@ void Perspective::getMatchPoints(
 bool Perspective::findMatchPoint3(
     const cv::Mat &descriptor, int wordId,
     const std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> &words3,
-    cv::Point3f &point3) {
+    cv::Point3f &point3) const {
   assert(descriptor.rows == 1);
 
   if (words3.find(wordId) == words3.end()) {
@@ -177,7 +210,7 @@ bool Perspective::findMatchPoint3(
     dists.emplace_back(dist, i);
   }
   std::partial_sort(dists.begin(), dists.begin() + 2, dists.end());
-  if (dists.at(0).first / dists.at(1).first <= DIST_RATIO) {
+  if (dists.at(0).first / dists.at(1).first <= _distRatio) {
     point3 = words3.at(wordId).first.at(dists.at(0).second);
     return true;
   }
@@ -225,8 +258,7 @@ Transform Perspective::solvePnP(const std::vector<cv::Point2f> &imagePoints,
 
     transform = std::move(pnp);
 
-    // compute variance, which is the rms of reprojection errors
-    // TODO
+    // TODO: compute variance, which is the rms of reprojection errors
   }
 
   return transform;

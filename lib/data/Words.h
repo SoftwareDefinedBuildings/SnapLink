@@ -5,6 +5,7 @@
 #include <memory>
 #include <opencv2/core/core.hpp>
 #include <vector>
+#include <set>
 
 class Words {
 public:

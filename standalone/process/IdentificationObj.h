@@ -7,7 +7,6 @@
 #include <QEvent>
 #include <QObject>
 
-#define SAMPLE_SIZE 200
 
 class BWFrontEndObj;
 class HTTPFrontEndObj;
@@ -17,7 +16,7 @@ class Session;
 class IdentificationObj final : public QObject {
 public:
   explicit IdentificationObj(const std::shared_ptr<Words> &words,
-                 std::unique_ptr<Labels> &&labels);
+                 std::unique_ptr<Labels> &&labels, int sampleSize, int corrSize, double distRatio);
   ~IdentificationObj();
 
   void setHTTPFrontEndObj(std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj);
