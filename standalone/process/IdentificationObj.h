@@ -4,6 +4,7 @@
 #include "algo/Perspective.h"
 #include "algo/Visibility.h"
 #include "algo/WordSearch.h"
+#include "algo/DbSearch.h"
 #include <QEvent>
 #include <QObject>
 
@@ -32,6 +33,7 @@ private:
   std::shared_ptr<BWFrontEndObj> _bwFrontEndObj;
   Feature _feature;
   WordSearch _wordSearch;
+  DbSearch _dbSearch;
   Perspective _perspective;
   Visibility _visibility;
 };

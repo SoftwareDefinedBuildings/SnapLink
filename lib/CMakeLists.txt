@@ -53,6 +53,7 @@ set(SOURCES
     "${PROJECT_SOURCE_DIR}/data/CameraModel.cpp"
     "${PROJECT_SOURCE_DIR}/data/WordsKdTree.cpp"
     "${PROJECT_SOURCE_DIR}/algo/WordSearch.cpp"
+    "${PROJECT_SOURCE_DIR}/algo/DbSearch.cpp"
     "${PROJECT_SOURCE_DIR}/algo/Visibility.cpp"
     "${PROJECT_SOURCE_DIR}/algo/Feature.cpp"
     "${PROJECT_SOURCE_DIR}/algo/Perspective.cpp")

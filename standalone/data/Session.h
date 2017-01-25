@@ -15,8 +15,10 @@ public:
   unsigned long long overallEnd;
   unsigned long long featuresStart;
   unsigned long long featuresEnd;
-  unsigned long long wordsStart;
-  unsigned long long wordsEnd;
+  unsigned long long wordSearchStart;
+  unsigned long long wordSearchEnd;
+  unsigned long long dbSearchStart;
+  unsigned long long dbSearchEnd;
   unsigned long long perspectiveStart;
   unsigned long long perspectiveEnd;
   unsigned long long visibilityStart;

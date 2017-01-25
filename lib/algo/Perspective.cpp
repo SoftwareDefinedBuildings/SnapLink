@@ -12,7 +12,7 @@ Perspective::Perspective(const std::shared_ptr<Words> &words, int corrSize,
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
                            const cv::Mat &descriptors,
-                           const CameraModel &camera, int &dbId,
+                           const CameraModel &camera, int dbId,
                            Transform &transform) const {
   if (wordIds.size() == 0) {
     return;
@@ -56,13 +56,11 @@ Perspective::getWords2(const std::vector<int> &wordIds,
 }
 
 std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
-Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
+Perspective::getWords3(const std::set<int> &wordIds, int dbId) const {
   const std::map<int, std::shared_ptr<Word>> &wordsById =
       _words->getWordsById();
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
       words3; // wordId: point3
-
-  dbId = getDbId(wordIds);
 
   const auto &dbWords = _words->getWordsByDb().at(dbId);
 
@@ -88,48 +86,6 @@ Perspective::getWords3(const std::set<int> &wordIds, int &dbId) const {
   }
 
   return words3;
-}
-
-int Perspective::getDbId(const std::set<int> &wordIds) const {
-  const auto &words = _words->getWordsById();
-
-  std::map<int, int> dbCounts; // dbId: number of shared words in db
-  for (auto wordId : wordIds) {
-    const auto iter = words.find(wordId);
-    assert(iter != words.end());
-    const std::shared_ptr<Word> &word = iter->second;
-
-    const auto &points3Map = word->getPoints3Map();
-    for (const auto &points3 : points3Map) {
-      int dbId = points3.first;
-      auto jter = dbCounts.find(dbId);
-      if (jter == dbCounts.end()) {
-        auto ret = dbCounts.emplace(dbId, 0);
-        jter = ret.first;
-      }
-      jter->second++; // TODO: +1 or +points3.size() ?
-    }
-  }
-
-  const auto &wordsByDb = _words->getWordsByDb();
-  std::map<int, double> dbSims; // dbId: similarity
-  for (const auto &count : dbCounts) {
-    int dbId = count.first;
-    double sim = static_cast<double>(count.second) / wordsByDb.at(dbId).size();
-    dbSims[dbId] = sim;
-    std::cout << "dbId = " << dbId << ", similarity = " << sim << std::endl;
-  }
-
-  auto maxCount = std::max_element(
-      dbSims.begin(), dbSims.end(),
-      [](const std::pair<int, double> &p1, const std::pair<int, double> &p2) {
-        return p1.second < p2.second;
-      });
-
-  int dbId = maxCount->first;
-  std::cout << "max dbId = " << dbId << std::endl;
-
-  return dbId;
 }
 
 std::map<int, int> Perspective::countWords(

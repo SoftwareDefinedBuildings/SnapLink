@@ -15,8 +15,9 @@ IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
                                      int sampleSize, int corrSize,
                                      double distRatio)
     : _httpFrontEndObj(nullptr), _bwFrontEndObj(nullptr), _feature(sampleSize),
-      _wordSearch(words), _perspective(words, corrSize, distRatio),
-      _visibility(std::move(labels)) {}
+      _wordSearch(words), _dbSearch(words),
+      _perspective(words, corrSize, distRatio), _visibility(std::move(labels)) {
+}
 
 IdentificationObj::~IdentificationObj() {
   _httpFrontEndObj = nullptr;
@@ -80,15 +81,19 @@ bool IdentificationObj::identify(const cv::Mat &image,
   session.featuresEnd = Utility::getTime();
 
   // word search
-  session.wordsStart = Utility::getTime();
-  std::vector<int> subWordIds = _wordSearch.search(descriptors);
-  session.wordsEnd = Utility::getTime();
+  session.wordSearchStart = Utility::getTime();
+  std::vector<int> wordIds = _wordSearch.search(descriptors);
+  session.wordSearchEnd = Utility::getTime();
+
+  // db search
+  session.dbSearchStart = Utility::getTime();
+  int dbId = _dbSearch.search(wordIds);
+  session.dbSearchEnd = Utility::getTime();
 
   // PnP
-  int dbId;
   Transform pose;
   session.perspectiveStart = Utility::getTime();
-  _perspective.localize(subWordIds, keyPoints, descriptors, camera, dbId, pose);
+  _perspective.localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
   session.perspectiveEnd = Utility::getTime();
 
   if (pose.isNull()) {
