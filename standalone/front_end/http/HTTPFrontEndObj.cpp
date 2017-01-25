@@ -119,8 +119,12 @@ HTTPFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
   std::cout << "Time features: "
             << session->featuresEnd - session->featuresStart << " ms"
             << std::endl;
-  std::cout << "Time words: " << session->wordsEnd - session->wordsStart
-            << " ms" << std::endl;
+  std::cout << "Time wordSearch: "
+            << session->wordSearchEnd - session->wordSearchStart << " ms"
+            << std::endl;
+  std::cout << "Time dbSearch: "
+            << session->dbSearchEnd - session->dbSearchStart << " ms"
+            << std::endl;
   std::cout << "Time perspective: "
             << session->perspectiveEnd - session->perspectiveStart << " ms"
             << std::endl;
