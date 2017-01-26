@@ -97,6 +97,8 @@ bool IdentificationObj::identify(const cv::Mat &image,
   session.perspectiveEnd = Utility::getTime();
 
   if (pose.isNull()) {
+    session.visibilityStart = 1;
+    session.visibilityEnd = 0;
     return false;
   }
 
