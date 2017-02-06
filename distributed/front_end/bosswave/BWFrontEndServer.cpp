@@ -79,6 +79,9 @@ void BWFrontEndServer::run(QString bwServerAddr) {
 std::vector<std::string>
 BWFrontEndServer::onQuery(std::unique_ptr<cv::Mat> &&image,
                           std::unique_ptr<CameraModel> &&camera) {
+
+  std::cout << "onQuery" << std::endl;
+
   std::unique_ptr<Session> session(new Session);
   session->overallStart = Utility::getTime(); // log start of processing
   session->type = BOSSWAVE;
