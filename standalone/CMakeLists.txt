@@ -15,8 +15,8 @@ set(MHD_INCLUDE_DIRS "/usr/include/")
 set(CellMate_LIB_PATH "${PROJECT_SOURCE_DIR}/../lib/")
 set(CellMate_INCLUDE_DIRS ${CellMate_LIB_PATH} ${PROJECT_SOURCE_DIR})
 set(CellMate_LIBRARIES cellmate)
-set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
-set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
+set(BW_INCLUDE_DIRS "/usr/local/Qt-5.8.0/qml/io/bw2/")
+set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}

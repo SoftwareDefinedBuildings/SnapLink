@@ -12,8 +12,8 @@ find_package(RTABMap REQUIRED)
 # TODO make these parameters
 set(MHD_INCLUDE_DIRS "/usr/include/")
 set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
-set(BW_INCLUDE_DIRS "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/")
-set(BW_LIBRARIES "/opt/Qt5.7.0/5.7/gcc_64/qml/io/bw2/libbosswave.so")
+set(BW_INCLUDE_DIRS "/usr/local/Qt-5.8.0/qml/io/bw2/")
+set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
 
 set(CellMate_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}")
 
