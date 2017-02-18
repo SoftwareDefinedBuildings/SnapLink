@@ -40,7 +40,8 @@ make -j $(nproc)
 make install -j $(nproc)
 
 # Add QT binaries to PATH
-echo 'export PATH=/usr/local/Qt-5.8.0/bin:$PATH' >> ~/.bashrc 
+echo 'export PATH=$PATH:/usr/local/Qt-5.8.0/bin' >> ~/.bashrc
+echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/Qt-5.8.0/lib" >> ~/.bashrc
 
 
 ## VTK
