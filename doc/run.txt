@@ -1,0 +1,16 @@
+USAGE:
+  cellmate run [command options...] database...
+
+COMMAND OPTIONS:
+  --help                          Print this help message
+  -H, --http                      Use only HTTP front end
+      --http-port=PORT            HTTP port number
+      --http-max-client           Max number of HTTP clients
+  -B, --bosswave                  Use only BOSSWAVE front end
+      --bw-topic=URI              BOSSWAVE URI to subscribe to
+  -s, --stage=STAGE               Run a single stage, valid value: [feature|word|room|loc|vis]
+      --grpc-port=PORT            PORT of the GRPC Server of the stage
+      --next-address=HOST:PORT    Host and port of the GRPC server of next stage
+  --dist-ratio=RATIO              Distance ratio used for correspondences (default 0.7)
+  --limit-feature=SIZE            Max number of features to use
+  --limit-corr=SIZE               Max number of correspondencing 2D and 3D point pairs to use

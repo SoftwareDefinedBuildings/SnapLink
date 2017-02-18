@@ -1,0 +1,5 @@
+USAGE:
+  cellmate show [command options...] database
+
+COMMAND OPTIONS:
+  --help                  Print this help message
