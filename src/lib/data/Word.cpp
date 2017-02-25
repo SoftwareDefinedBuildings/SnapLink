@@ -1,4 +1,4 @@
-#include "Word.h"
+#include "lib/data/Word.h"
 #include <cassert>
 
 Word::Word(int id) : _id(id) {}

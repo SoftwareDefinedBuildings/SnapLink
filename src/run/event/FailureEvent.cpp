@@ -1,4 +1,4 @@
-#include "event/FailureEvent.h"
+#include "run/event/FailureEvent.h"
 
 const QEvent::Type FailureEvent::_type =
     static_cast<QEvent::Type>(QEvent::registerEventType());

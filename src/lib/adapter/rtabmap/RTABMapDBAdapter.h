@@ -1,7 +1,7 @@
 #pragma once
 
-#include "data/Label.h"
-#include "data/Word.h"
+#include "lib/data/Label.h"
+#include "lib/data/Word.h"
 #include <list>
 #include <map>
 #include <memory>

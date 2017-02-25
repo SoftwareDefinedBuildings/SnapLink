@@ -1,4 +1,4 @@
-#include "event/QueryEvent.h"
+#include "run/event/QueryEvent.h"
 
 const QEvent::Type QueryEvent::_type =
     static_cast<QEvent::Type>(QEvent::registerEventType());

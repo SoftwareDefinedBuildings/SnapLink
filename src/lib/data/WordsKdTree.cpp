@@ -1,4 +1,4 @@
-#include "data/WordsKdTree.h"
+#include "lib/data/WordsKdTree.h"
 #include <cassert>
 
 WordsKdTree::WordsKdTree() : _type(-1), _dim(-1) {}

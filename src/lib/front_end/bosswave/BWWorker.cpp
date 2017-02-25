@@ -1,4 +1,4 @@
-#include "front_end/bosswave/BWWorker.h"
+#include "lib/front_end/bosswave/BWWorker.h"
 
 BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
                                          std::unique_ptr<cv::Mat> &&image,

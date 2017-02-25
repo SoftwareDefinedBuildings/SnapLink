@@ -6,7 +6,7 @@
 #include <sstream>
 #include <string>
 #include <fstream>
-#include "front_end/bosswave/BWWorker.h"
+#include "lib/front_end/bosswave/BWWorker.h"
 
 
 #define MAX_CLIENTS 10

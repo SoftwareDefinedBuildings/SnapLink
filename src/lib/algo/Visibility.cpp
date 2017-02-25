@@ -1,7 +1,7 @@
-#include "algo/Visibility.h"
-#include "data/CameraModel.h"
-#include "data/Transform.h"
-#include "util/Utility.h"
+#include "lib/algo/Visibility.h"
+#include "lib/data/CameraModel.h"
+#include "lib/data/Transform.h"
+#include "lib/util/Utility.h"
 #include <fstream>
 #include <iostream>
 #include <opencv/cv.h>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/Label.h"
+#include "lib/data/Label.h"
 #include <list>
 #include <map>
 #include <memory>

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "algo/Feature.h"
-#include "algo/Perspective.h"
-#include "algo/Visibility.h"
-#include "algo/WordSearch.h"
-#include "algo/DbSearch.h"
+#include "lib/algo/Feature.h"
+#include "lib/algo/Perspective.h"
+#include "lib/algo/Visibility.h"
+#include "lib/algo/WordSearch.h"
+#include "lib/algo/DbSearch.h"
 #include <QEvent>
 #include <QObject>
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/Words.h"
+#include "lib/data/Words.h"
 #include <memory>
 #include <opencv2/core/core.hpp>
 #include <set>

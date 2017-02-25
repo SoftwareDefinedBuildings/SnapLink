@@ -1,13 +1,13 @@
-#include "process/IdentificationObj.h"
-#include "data/CameraModel.h"
-#include "data/Session.h"
-#include "data/Transform.h"
-#include "event/DetectionEvent.h"
-#include "event/FailureEvent.h"
-#include "event/QueryEvent.h"
-#include "front_end/bosswave/BWFrontEndObj.h"
-#include "front_end/http/HTTPFrontEndObj.h"
-#include "util/Utility.h"
+#include "run/process/IdentificationObj.h"
+#include "lib/data/CameraModel.h"
+#include "lib/data/Session.h"
+#include "lib/data/Transform.h"
+#include "run/event/DetectionEvent.h"
+#include "run/event/FailureEvent.h"
+#include "run/event/QueryEvent.h"
+#include "run/front_end/bosswave/BWFrontEndObj.h"
+#include "run/front_end/http/HTTPFrontEndObj.h"
+#include "lib/util/Utility.h"
 #include <QCoreApplication>
 
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,

@@ -1,4 +1,4 @@
-#include "data/Label.h"
+#include "lib/data/Label.h"
 #include <cassert>
 
 Label::Label(int dbId, cv::Point3f point3, std::string name)

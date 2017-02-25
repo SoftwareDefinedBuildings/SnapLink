@@ -1,4 +1,4 @@
-#include "front_end/bosswave/BWFrontEnd.h"
+#include "lib/front_end/bosswave/BWFrontEnd.h"
 
 BWFrontEnd::BWFrontEnd() {
   _numClients = 0;

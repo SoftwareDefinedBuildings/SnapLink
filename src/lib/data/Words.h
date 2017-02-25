@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Word.h"
+#include "lib/data/Word.h"
 #include <list>
 #include <memory>
 #include <opencv2/core/core.hpp>

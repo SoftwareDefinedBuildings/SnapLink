@@ -3,9 +3,9 @@
 #include <QObject>
 #include <memory>
 #include <opencv2/core/types.hpp>
-#include "front_end/http/HTTPFrontEnd.h"
-#include "data/CameraModel.h"
-#include "data/Session.h"
+#include "lib/front_end/http/HTTPFrontEnd.h"
+#include "lib/data/CameraModel.h"
+#include "lib/data/Session.h"
 
 #define PORT 8080
 #define MAX_CLIENTS 10

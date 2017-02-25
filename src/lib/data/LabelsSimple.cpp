@@ -1,4 +1,4 @@
-#include "data/LabelsSimple.h"
+#include "lib/data/LabelsSimple.h"
 
 void LabelsSimple::putLabels(std::list<std::unique_ptr<Label>> &&labels) {
   for (auto &label : labels) {

@@ -1,7 +1,7 @@
-#include "adapter/rtabmap/RTABMapDBAdapter.h"
-#include "data/Labels.h"
-#include "data/Transform.h"
-#include "data/Words.h"
+#include "lib/adapter/rtabmap/RTABMapDBAdapter.h"
+#include "lib/data/Labels.h"
+#include "lib/data/Transform.h"
+#include "lib/data/Words.h"
 #include <opencv2/xfeatures2d.hpp>
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>

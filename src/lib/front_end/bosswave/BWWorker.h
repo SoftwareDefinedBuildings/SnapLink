@@ -9,7 +9,7 @@
 #include <mutex>
 #include <opencv2/core/core.hpp>
 #include <QCoreApplication>
-#include "data/CameraModel.h"
+#include "lib/data/CameraModel.h"
 #include <cstdlib>
 #include <strings.h>
 

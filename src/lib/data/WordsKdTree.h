@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/Words.h"
+#include "lib/data/Words.h"
 #include <opencv2/flann.hpp>
 
 class WordsKdTree final : public Words {

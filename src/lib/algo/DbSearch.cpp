@@ -1,4 +1,4 @@
-#include "algo/DbSearch.h"
+#include "lib/algo/DbSearch.h"
 #include <cassert>
 #include <iostream>
 

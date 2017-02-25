@@ -1,4 +1,4 @@
-#include "event/DetectionEvent.h"
+#include "run/event/DetectionEvent.h"
 
 const QEvent::Type DetectionEvent::_type =
     static_cast<QEvent::Type>(QEvent::registerEventType());

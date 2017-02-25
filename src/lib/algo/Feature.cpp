@@ -1,4 +1,4 @@
-#include "algo/Feature.h"
+#include "lib/algo/Feature.h"
 
 Feature::Feature(int sampleSize) : _sampleSize(sampleSize) {
   int minHessian = 400;

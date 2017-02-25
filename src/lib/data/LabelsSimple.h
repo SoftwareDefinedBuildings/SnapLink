@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/Labels.h"
+#include "lib/data/Labels.h"
 
 class LabelsSimple final : public Labels {
 public:

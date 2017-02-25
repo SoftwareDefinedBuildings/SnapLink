@@ -1,7 +1,7 @@
-#include "algo/Perspective.h"
-#include "data/CameraModel.h"
-#include "data/Transform.h"
-#include "util/Utility.h"
+#include "lib/algo/Perspective.h"
+#include "lib/data/CameraModel.h"
+#include "lib/data/Transform.h"
+#include "lib/util/Utility.h"
 #include <cassert>
 #include <pcl/common/transforms.h>
 
