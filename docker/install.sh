@@ -108,18 +108,6 @@ make install -j $(nproc)
 cp /root/workspace/qtlibbw/*.h /usr/local/Qt-5.8.0/qml/io/bw2/
 
 
-## Gflags
-# Clone GFlags to the target tag
-git clone -b v2.2.0 --single-branch --depth 1 https://github.com/gflags/gflags.git /root/workspace/gflags
-
-# Compile and install GFlags
-mkdir -p /root/workspace/gflags/build
-cd /root/workspace/gflags/build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j $(nproc)
-make install -j $(nproc)
-
-
 ## Libmicrohttpd
 apt-get install -y libmicrohttpd-dev
 

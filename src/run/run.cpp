@@ -11,25 +11,54 @@
 #include <cstdio>
 #include <getopt.h>
 #include <utility>
+#include <boost/program_options.hpp>
 
-#define MY_OPT 10000
+namespace po = boost::program_options;
+
+static void printInvalid(const std::vector<std::string> &opts);
+static void printUsage(const po::options_description &desc);
 
 int run(int argc, char *argv[]) {
+  // Parse arguments
   bool http;
   bool bosswave;
-  int sampleSize;
-  int corrSize;
+  int featureLimit;
+  int corrLimit;
   double distRatio;
-  std::vector<std::string> dbfiles;
-  try {
-    parseOpt(argc, argv, http, bosswave, sampleSize, corrSize, distRatio,
-             dbfiles);
-  } catch (const std::exception &e) {
-    std::cerr << "error: " << e.what() << std::endl;
-    showUsage();
-    exit(1);
+  std::vector<std::string> dbFiles;
+
+  po::options_description run("command options");
+  run.add_options()
+      ("help,h", "print help message")
+      ("http,H", po::value<bool>(&http)->default_value(true), "run HTTP front end")
+      ("bosswave,B", po::value<bool>(&bosswave)->default_value(false), "run BOSSWAVE front end")
+      ("feature-limit", po::value<int>(&featureLimit)->default_value(0), "limit the number of features used")
+      ("corr-limit", po::value<int>(&corrLimit)->default_value(0), "limit the number of corresponding 2D-3D points used")
+      ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7), "limit the number of features used")
+      ("dbfiles", po::value<std::vector<std::string>>(&dbFiles)->multitoken(), "database files");
+
+  po::positional_options_description pos;
+  pos.add("dbfiles", -1);
+
+  po::variables_map vm;        
+  po::parsed_options parsed = po::command_line_parser(argc, argv).options(run).positional(pos).allow_unregistered().run();
+  po::store(parsed, vm);
+  po::notify(vm);    
+
+  // print invalid options
+  std::vector<std::string> unrecog = collect_unrecognized(parsed.options, po::exclude_positional);
+  if (unrecog.size() > 0) {
+    printInvalid(unrecog);
+    printUsage(run);
+    return 1;
   }
 
+  if (vm.count("help")) {
+    printUsage(run);
+    return 0;
+  }
+
+  // Run the program
   QCoreApplication app(argc, argv);
 
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
@@ -38,14 +67,14 @@ int run(int argc, char *argv[]) {
   QThread identObjThread;
 
   std::cout << "Reading data" << std::endl;
-  if (!RTABMapDBAdapter::readData(dbfiles, *words, *labels)) {
+  if (!RTABMapDBAdapter::readData(dbFiles, *words, *labels)) {
     qCritical() << "Reading data failed";
     return 1;
   }
 
   std::cout << "Initializing IdentificationObj Service" << std::endl;
   std::shared_ptr<IdentificationObj> identObj(new IdentificationObj(
-      std::move(words), std::move(labels), sampleSize, corrSize, distRatio));
+      std::move(words), std::move(labels), featureLimit, corrLimit, distRatio));
   identObj->moveToThread(&identObjThread);
   identObjThread.start();
 
@@ -81,103 +110,15 @@ int run(int argc, char *argv[]) {
   return app.exec();
 }
 
-void showUsage() {
-  std::cout << "\nUsage:\n"
-            << "cellmate [options] [database_file]...\n"
-            << "\nOptions:\n"
-            << "-h, --help      print this help message\n"
-            << "-H, --http      only use HTTP front end\n"
-            << "-b, --bosswave  only use BOSSWAVE front end\n"
-            << "--sample-size   number of subsamples in feature extraction "
-               "(0 means no subsampling, default 200)\n"
-            << "--corr-size     number of correspondences in perspective "
-               "(default 100)\n"
-            << "--dist-ratio    distance ratio used for correspondences "
-               "(default 0.7)\n";
+static void printInvalid(const std::vector<std::string> &opts) {
+  std::cerr << "invalid options: ";
+  for (const auto &opt : opts)  {
+    std::cerr << opt << " ";
+  }
+  std::cerr << std::endl;
 }
 
-void parseOpt(int argc, char *argv[], bool &http, bool &bosswave,
-              int &sampleSize, int &corrSize, double &distRatio,
-              std::vector<std::string> &dbfiles) {
-
-  http = false;
-  bosswave = false;
-  sampleSize = 200;
-  corrSize = 100;
-  distRatio = 0.7;
-
-  static struct option longOptions[] = {
-      {"help", no_argument, nullptr, 'h'},
-      {"http", no_argument, nullptr, 'H'},
-      {"bosswave", no_argument, nullptr, 'b'},
-      {"sample-size", required_argument, nullptr, MY_OPT},
-      {"corr-size", required_argument, nullptr, MY_OPT},
-      {"dist-ratio", required_argument, nullptr, MY_OPT},
-      {0, 0, 0, 0}};
-
-  int c;
-  while (true) {
-    int optionIndex = 0;
-
-    c = getopt_long(argc, argv, ":hHb", longOptions, &optionIndex);
-
-    if (c == -1) {
-      break;
-    }
-
-    switch (c) {
-    case 0:
-      std::cerr << "invalid option" << std::endl;
-      showUsage();
-      exit(1);
-    case MY_OPT:
-      if (strcmp(longOptions[optionIndex].name, "sample-size") == 0) {
-        sampleSize = std::stoi(std::string(optarg));
-      } else if (strcmp(longOptions[optionIndex].name, "corr-size") == 0) {
-        corrSize = std::stoi(std::string(optarg));
-      } else if (strcmp(longOptions[optionIndex].name, "dist-ratio") == 0) {
-        distRatio = std::stod(std::string(optarg));
-      } else {
-        std::cerr << "invalid option" << std::endl;
-        showUsage();
-        exit(1);
-      }
-      break;
-    case 'h':
-      showUsage();
-      exit(0);
-    case 'H':
-      http = true;
-      break;
-    case 'b':
-      bosswave = true;
-      break;
-    case ':': /* missing option argument */
-      std::cerr << "missing option argument" << std::endl;
-      showUsage();
-      exit(1);
-    case '?':
-      std::cerr << "invalid option" << std::endl;
-      showUsage();
-      exit(1);
-    default:
-      showUsage();
-      exit(1);
-    }
-  }
-
-  if (http == false && bosswave == false) {
-    http = true;
-    bosswave = true;
-  }
-
-  for (int i = optind; i < argc; i++) {
-    dbfiles.emplace_back(argv[i]);
-  }
-
-  std::cout << "http: " << http << std::endl
-            << "bosswave: " << bosswave << std::endl
-            << "sample-size: " << sampleSize << std::endl
-            << "corr-size: " << corrSize << std::endl
-            << "dist-ratio: " << distRatio << std::endl;
+static void printUsage(const po::options_description &desc) {
+  std::cout << "cellmate run [command options]" << std::endl << std::endl
+            << desc << std::endl;
 }

@@ -12,7 +12,7 @@ class HTTPServer;
 
 class Perspective final {
 public:
-  explicit Perspective(const std::shared_ptr<Words> &words, int corrSize = 100, double distRatio = 0.7);
+  explicit Perspective(const std::shared_ptr<Words> &words, int corrSize = 0, double distRatio = 0.7);
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,

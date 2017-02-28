@@ -7,6 +7,7 @@ find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
+find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(RTABMap REQUIRED)
 
 set(MHD_INCLUDE_DIRS "/usr/include/")
@@ -20,6 +21,7 @@ set(INCLUDE_DIRS
     ${Qt5Quick_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIR}
     ${RTABMap_INCLUDE_DIRS}
     ${MHD_INCLUDE_DIRS}
     ${BW_INCLUDE_DIRS}
@@ -30,6 +32,7 @@ set(LIBRARIES
     ${Qt5Quick_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
+    ${Boost_LIBRARIES}
     ${RTABMap_LIBRARIES}
     ${MHD_LIBRARIES}
     ${BW_LIBRARIES}
@@ -70,6 +73,6 @@ add_executable(cellmate ${SOURCES})
 
 target_link_libraries(cellmate ${LIBRARIES})
 
-set_property(TARGET cellmate_standalone PROPERTY CXX_STANDARD 11)
+set_property(TARGET cellmate PROPERTY CXX_STANDARD 11)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")

@@ -135,7 +135,7 @@ void Perspective::getMatchPoints(
         imagePoints.emplace_back(point2.pt);
         objectPoints.emplace_back(point3);
         matchCount++;
-        if (matchCount >= _corrSize) {
+        if (_corrSize > 0 && matchCount >= _corrSize) {
           return;
         }
       }
