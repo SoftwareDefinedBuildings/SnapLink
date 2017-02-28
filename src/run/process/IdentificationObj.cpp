@@ -2,12 +2,12 @@
 #include "lib/data/CameraModel.h"
 #include "lib/data/Session.h"
 #include "lib/data/Transform.h"
+#include "lib/util/Utility.h"
 #include "run/event/DetectionEvent.h"
 #include "run/event/FailureEvent.h"
 #include "run/event/QueryEvent.h"
 #include "run/front_end/bosswave/BWFrontEndObj.h"
 #include "run/front_end/http/HTTPFrontEndObj.h"
-#include "lib/util/Utility.h"
 #include <QCoreApplication>
 
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,

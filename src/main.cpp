@@ -1,6 +1,6 @@
 #include "run/run.h"
-#include <iostream>
 #include <boost/program_options.hpp>
+#include <iostream>
 
 #define VERSION "0.1"
 
@@ -21,18 +21,22 @@ int main(int argc, char *argv[]) {
       // TODO
     }
   }
-  
+
   po::options_description global("global options");
-  global.add_options()
-      ("help,h", "print help message")
+  global.add_options() // use empty comment to force new line using formater
+      ("help,h", "print help message") //
       ("version", "print version number");
 
-  po::variables_map vm;        
-  po::parsed_options parsed = po::command_line_parser(argc, argv).options(global).allow_unregistered().run();
+  po::variables_map vm;
+  po::parsed_options parsed = po::command_line_parser(argc, argv)
+                                  .options(global)
+                                  .allow_unregistered()
+                                  .run();
   po::store(parsed, vm);
 
   // print invalid options
-  std::vector<std::string> unrecog = collect_unrecognized(parsed.options, po::exclude_positional);
+  std::vector<std::string> unrecog =
+      collect_unrecognized(parsed.options, po::exclude_positional);
   if (unrecog.size() > 0) {
     printInvalid(unrecog);
     printUsage(global);
@@ -55,14 +59,16 @@ int main(int argc, char *argv[]) {
 
 static void printInvalid(const std::vector<std::string> &opts) {
   std::cerr << "invalid options: ";
-  for (const auto &opt : opts)  {
+  for (const auto &opt : opts) {
     std::cerr << opt << " ";
   }
   std::cerr << std::endl;
 }
 
 static void printUsage(const po::options_description &desc) {
-  std::cout << "cellmate [global options] command [command options]" << std::endl << std::endl
+  std::cout << "cellmate [global options] command [command options]"
+            << std::endl
+            << std::endl
             << desc << std::endl
             << "commands:" << std::endl
             << "  run        run cellmate" << std::endl
@@ -70,4 +76,3 @@ static void printUsage(const po::options_description &desc) {
             << "  vis        visualize a datobase" << std::endl
             << "  label      label a database" << std::endl;
 }
-

@@ -1,9 +1,9 @@
 #include "run/front_end/bosswave/BWFrontEndObj.h"
+#include "lib/util/Utility.h"
 #include "run/event/DetectionEvent.h"
 #include "run/event/FailureEvent.h"
 #include "run/event/QueryEvent.h"
 #include "run/process/IdentificationObj.h"
-#include "lib/util/Utility.h"
 #include <QCoreApplication>
 #include <QSemaphore>
 #include <cstdlib>
