@@ -25,8 +25,11 @@ public:
   explicit HTTPFrontEnd();
   ~HTTPFrontEnd();
 
+  // start front end thread asynchronously
   bool start(uint16_t port, unsigned int maxClients);
+  // stop front end thread synchronously
   void stop();
+
   void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera)> onQuery);
 

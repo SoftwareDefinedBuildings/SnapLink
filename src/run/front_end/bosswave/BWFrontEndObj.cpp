@@ -19,18 +19,15 @@ BWFrontEndObj::~BWFrontEndObj() {
   _identObj = nullptr;
 }
 
-bool BWFrontEndObj::init(unsigned int maxClients) {
+bool BWFrontEndObj::init(const std::string &topic, unsigned int maxClients) {
   if (_bwFront == nullptr) {
     return false;
   }
-  bool success = _bwFront->start(maxClients);
-  if (success) {
-    _bwFront->registerOnQuery(std::bind(&BWFrontEndObj::onQuery, this,
-                                        std::placeholders::_1,
-                                        std::placeholders::_2));
-  }
-
-  return success;
+  _bwFront->start(maxClients);
+  _bwFront->registerOnQuery(std::bind(&BWFrontEndObj::onQuery, this,
+                                      std::placeholders::_1,
+                                      std::placeholders::_2));
+  return true;
 }
 
 void BWFrontEndObj::stop() {

@@ -7,7 +7,6 @@
 #include "lib/data/CameraModel.h"
 #include "lib/data/Session.h"
 
-#define PORT 8080
 #define MAX_CLIENTS 10
 
 class IdentificationObj;
@@ -24,7 +23,7 @@ public:
   explicit HTTPFrontEndObj();
   ~HTTPFrontEndObj();
 
-  bool init(uint16_t port = PORT, unsigned int maxClients = MAX_CLIENTS);
+  bool init(uint16_t port, unsigned int maxClients = MAX_CLIENTS);
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);

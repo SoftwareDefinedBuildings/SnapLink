@@ -7,7 +7,6 @@
 #include "lib/data/CameraModel.h"
 #include "lib/data/Session.h"
 
-#define PORT 8080
 #define MAX_CLIENTS 10
 
 class IdentificationObj;
@@ -20,19 +19,15 @@ struct BWSessionData final {
 };
 
 class BWFrontEndObj final : public QObject {
-  Q_OBJECT
 public:
   explicit BWFrontEndObj();
   virtual ~BWFrontEndObj();
 
+  bool init(const std::string &topic, unsigned int maxClients = MAX_CLIENTS);
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);
 
-public slots:
-  bool init( unsigned int maxClients = MAX_CLIENTS);
-signals:
-  void triggerInit(unsigned int maxClients);
 protected:
   virtual bool event(QEvent *event);
 

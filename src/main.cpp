@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   }
 
   po::options_description global("global options");
-  global.add_options() // use empty comment to force new line using formater
+  global.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
       ("version", "print version number");
 

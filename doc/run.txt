@@ -5,7 +5,6 @@ COMMAND OPTIONS:
   --help                          Print this help message
   -H, --http                      Use only HTTP front end
       --http-port=PORT            HTTP port number
-      --http-max-client           Max number of HTTP clients
   -B, --bosswave                  Use only BOSSWAVE front end
       --bw-topic=URI              BOSSWAVE URI to subscribe to
   -s, --stage=STAGE               Run a single stage, valid value: [feature|word|room|loc|vis]

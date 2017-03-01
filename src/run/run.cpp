@@ -21,19 +21,26 @@ static void printUsage(const po::options_description &desc);
 int run(int argc, char *argv[]) {
   // Parse arguments
   bool http;
+  int httpPort;
   bool bosswave;
+  std::string bosswaveTopic;
   int featureLimit;
   int corrLimit;
   double distRatio;
   std::vector<std::string> dbFiles;
 
   po::options_description run("command options");
-  run.add_options() // use empty comment to force new line using formater
+  run.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
       ("http,H", po::value<bool>(&http)->default_value(true),
        "run HTTP front end") //
+      ("http-port", po::value<int>(&httpPort)->default_value(8080),
+       "the port that HTTP front end binds to") //
       ("bosswave,B", po::value<bool>(&bosswave)->default_value(false),
        "run BOSSWAVE front end") //
+      ("bosswave-topic", po::value<std::string>(&bosswaveTopic)
+                             ->default_value("scratch.ns/cellmate"),
+       "the topic that BOSSWAVE front end subscribes to") //
       ("feature-limit", po::value<int>(&featureLimit)->default_value(0),
        "limit the number of features used") //
       ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
@@ -77,13 +84,13 @@ int run(int argc, char *argv[]) {
 
   QThread identObjThread;
 
-  std::cout << "Reading data" << std::endl;
+  std::cout << "reading data" << std::endl;
   if (!RTABMapDBAdapter::readData(dbFiles, *words, *labels)) {
-    qCritical() << "Reading data failed";
+    qCritical() << "reading data failed";
     return 1;
   }
 
-  std::cout << "Initializing IdentificationObj Service" << std::endl;
+  std::cout << "initializing identification service" << std::endl;
   std::shared_ptr<IdentificationObj> identObj(new IdentificationObj(
       std::move(words), std::move(labels), featureLimit, corrLimit, distRatio));
   identObj->moveToThread(&identObjThread);
@@ -91,29 +98,26 @@ int run(int argc, char *argv[]) {
 
   if (http == true) {
     // HTTPFrontEndObj
-    std::cout << "Initializing HTTP Front End" << std::endl;
+    std::cout << "initializing HTTP front end" << std::endl;
     std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj(new HTTPFrontEndObj());
     identObj->setHTTPFrontEndObj(httpFrontEndObj);
     httpFrontEndObj->setIdentificationObj(identObj);
-    if (!httpFrontEndObj->init()) {
-      qCritical() << "Starting HTTP Front End Failed";
+    if (!httpFrontEndObj->init(httpPort)) {
+      std::cerr << "starting HTTP front end failed";
       return 1;
     }
   }
 
-  QThread bwThread;
   if (bosswave == true) {
     // BWServer
-    std::cout << "Initializing BW server" << std::endl;
-    unsigned int maxClients = 10;
+    std::cerr << "initializing BOSSWAVE front end" << std::endl;
     std::shared_ptr<BWFrontEndObj> bwFrontEndObj(new BWFrontEndObj());
     identObj->setBWFrontEndObj(bwFrontEndObj);
     bwFrontEndObj->setIdentificationObj(identObj);
-    bwThread.start();
-    bwFrontEndObj->moveToThread(&bwThread);
-    QObject::connect(bwFrontEndObj.get(), &BWFrontEndObj::triggerInit,
-                     bwFrontEndObj.get(), &BWFrontEndObj::init);
-    emit bwFrontEndObj->triggerInit(maxClients);
+    if (!bwFrontEndObj->init(bosswaveTopic)) {
+      std::cerr << "starting BOSSWAVE front end failed";
+      return 1;
+    }
   }
 
   std::cout << "Initialization Done" << std::endl;
