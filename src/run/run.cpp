@@ -23,7 +23,7 @@ int run(int argc, char *argv[]) {
   bool http;
   int httpPort;
   bool bosswave;
-  std::string bosswaveTopic;
+  std::string bosswaveURI;
   int featureLimit;
   int corrLimit;
   double distRatio;
@@ -38,9 +38,9 @@ int run(int argc, char *argv[]) {
        "the port that HTTP front end binds to") //
       ("bosswave,B", po::value<bool>(&bosswave)->default_value(false),
        "run BOSSWAVE front end") //
-      ("bosswave-topic", po::value<std::string>(&bosswaveTopic)
-                             ->default_value("scratch.ns/cellmate"),
-       "the topic that BOSSWAVE front end subscribes to") //
+      ("bosswave-uri", po::value<std::string>(&bosswaveURI)
+                           ->default_value("scratch.ns/cellmate"),
+       "the URI that BOSSWAVE front end subscribes to") //
       ("feature-limit", po::value<int>(&featureLimit)->default_value(0),
        "limit the number of features used") //
       ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
@@ -114,7 +114,7 @@ int run(int argc, char *argv[]) {
     std::shared_ptr<BWFrontEndObj> bwFrontEndObj(new BWFrontEndObj());
     identObj->setBWFrontEndObj(bwFrontEndObj);
     bwFrontEndObj->setIdentificationObj(identObj);
-    if (!bwFrontEndObj->init(bosswaveTopic)) {
+    if (!bwFrontEndObj->init(bosswaveURI)) {
       std::cerr << "starting BOSSWAVE front end failed";
       return 1;
     }

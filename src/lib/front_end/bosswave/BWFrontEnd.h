@@ -8,8 +8,6 @@
 #include <fstream>
 #include "lib/front_end/bosswave/BWWorker.h"
 
-#define DEFAULT_CHANNEL "scratch.ns/cellmate"
-
 class BWFrontEnd final : public QObject
 {
   Q_OBJECT
@@ -19,7 +17,7 @@ public:
   ~BWFrontEnd();
 
   // start front end thread asynchronously
-  void start(unsigned int maxClients);
+  void start(const std::string &uri, unsigned int maxClients);
   // stop front end thread synchronously
   void stop();
 
@@ -30,16 +28,15 @@ public:
 public slots:
   void run();
   void agentChanged(bool success, QString msg);
-  void publishResult(QString result, QString identity);
+  void respond(QString result, QString identity);
   void workerReturnError();
 
 signals:
   void signalBW();
-  void askWorkerDoWork();
 
 private:
   QByteArray getEntity();
-  void parseMessage(PMessage msg);
+  void onMessage(PMessage msg);
 
 private:
   static const std::string none;
@@ -48,7 +45,7 @@ private:
              std::unique_ptr<CameraModel> &&camera)> _onQuery;
   std::shared_ptr<BW> _bw;
   QByteArray _entity;
-  std::mutex _mutex;
+  std::string _uri;
   std::atomic<unsigned int> _maxClients;
   std::atomic<unsigned int> _numClients;
 };

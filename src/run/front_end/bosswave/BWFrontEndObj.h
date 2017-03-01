@@ -23,7 +23,7 @@ public:
   explicit BWFrontEndObj();
   virtual ~BWFrontEndObj();
 
-  bool init(const std::string &topic, unsigned int maxClients = MAX_CLIENTS);
+  bool init(const std::string &uri, unsigned int maxClients = MAX_CLIENTS);
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);

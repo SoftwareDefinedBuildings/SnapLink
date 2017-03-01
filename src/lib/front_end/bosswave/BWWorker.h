@@ -22,6 +22,13 @@ class CameraModel;
 class BWWorker final : public QObject
 {
   Q_OBJECT
+
+public:
+  explicit BWWorker(PMessage message,
+           std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
+                      std::unique_ptr<CameraModel> &&camera)> onQuery,
+           std::atomic<unsigned int> &_numClients);
+
 public slots:
   void doWork();
 
@@ -29,13 +36,6 @@ signals:
   void finished();
   void error();
   void doneWork(QString result, QString identity);
-
-public:
-  explicit BWWorker(PMessage message,
-           std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-                      std::unique_ptr<CameraModel> &&camera)> onQuery,
-           std::atomic<unsigned int> *_numClients
-           );
 
 private:
   // void workComplete(BWConnectionInfo *connInfo);
@@ -45,5 +45,5 @@ private:
   PMessage _msg;
   std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera)> _onQuery;
-  std::atomic<unsigned int> *_numClients;
+  std::atomic<unsigned int> &_numClients;
 };

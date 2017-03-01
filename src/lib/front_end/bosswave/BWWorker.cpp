@@ -4,11 +4,9 @@ BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
                                          std::unique_ptr<cv::Mat> &&image,
                                          std::unique_ptr<CameraModel> &&camera)>
                                          onQuery,
-                   std::atomic<unsigned int> *numClients) {
-  _msg = message;
-  _onQuery = onQuery;
-  _numClients = numClients;
-}
+                   std::atomic<unsigned int> &numClients)
+    : _msg(message), _onQuery(onQuery), _numClients(numClients) {}
+
 void BWWorker::doWork() {
   if (_msg->POs().length() != BW_MSG_LENGTH) {
     qDebug() << "It's now a standard BW message\n";
@@ -43,14 +41,12 @@ void BWWorker::doWork() {
     emit error();
   }
 
-  // QCoreApplication::postEvent(
-  //     _identObj, new QueryEvent(std::move(image), std::move(camera),
-  //                               std::move(connInfo->session)));
-  // connInfo->detected.acquire();
-  std::string answer = _onQuery(std::move(image), std::move(camera))[0];
-  emit doneWork(QString::fromStdString(answer),
+  std::vector<std::string> answers =
+      _onQuery(std::move(image), std::move(camera));
+  emit doneWork(QString::fromStdString(answers.at(0)),
                 QString::fromStdString(std::string(contents[1], lens[1])));
 }
+
 void BWWorker::createData(const std::vector<char> &data, double fx, double fy,
                           double cx, double cy, cv::Mat &image,
                           CameraModel &camera) {
