@@ -7,8 +7,6 @@
 #include "lib/data/CameraModel.h"
 #include "lib/data/Session.h"
 
-#define MAX_CLIENTS 10
-
 class IdentificationObj;
 
 // to keep session dependent data
@@ -23,7 +21,7 @@ public:
   explicit BWFrontEndObj();
   virtual ~BWFrontEndObj();
 
-  bool init(const std::string &uri, unsigned int maxClients = MAX_CLIENTS);
+  bool init(const std::string &uri);
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);

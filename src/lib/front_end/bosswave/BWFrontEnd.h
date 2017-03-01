@@ -17,7 +17,7 @@ public:
   ~BWFrontEnd();
 
   // start front end thread asynchronously
-  void start(const std::string &uri, unsigned int maxClients);
+  void start(const std::string &uri);
   // stop front end thread synchronously
   void stop();
 
@@ -45,6 +45,5 @@ private:
   std::shared_ptr<BW> _bw;
   QByteArray _entity;
   std::string _uri;
-  std::atomic<unsigned int> _maxClients;
   std::atomic<unsigned int> _numClients;
 };

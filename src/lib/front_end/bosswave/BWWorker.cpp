@@ -11,7 +11,7 @@ BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
 
 void BWWorker::process() {
   if (_msg->POs().length() != BW_MSG_LENGTH) {
-    qDebug() << "It's now a standard BW message\n";
+    std::cerr << "invalid message format\n" << std::endl;
     emit error();
   }
 
@@ -39,7 +39,7 @@ void BWWorker::process() {
   rawData->insert(rawData->end(), contents[2], contents[2] + lens[2]);
   createData(*rawData, fx, fy, cx, cy, *image, *camera);
   if (image->empty()) {
-    qDebug() << "Creating image failed";
+    std::cerr << "Creating image failed" << std::endl;
     emit error();
   }
 

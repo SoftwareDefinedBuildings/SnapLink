@@ -8,9 +8,8 @@ BWFrontEnd::~BWFrontEnd() {
   _numClients = 0;
 }
 
-void BWFrontEnd::start(const std::string &uri, unsigned int maxClients) {
+void BWFrontEnd::start(const std::string &uri) {
   _uri = uri;
-  _maxClients = maxClients;
   _thread.reset(new QThread());
   this->moveToThread(_thread.get());
   connect(_thread.get(), &QThread::started, this, &BWFrontEnd::run);
@@ -33,7 +32,7 @@ void BWFrontEnd::run() {
   connect(_bw.get(), &BW::agentChanged, this, &BWFrontEnd::agentChanged);
   _entity = getEntity();
   _bw->connectAgent(_entity);
-  _bw->setEntity(_entity, [](QString err, QString vk) {});
+  _bw->setEntity(_entity, [](QString, QString) {});
 }
 
 void BWFrontEnd::agentChanged(bool success, QString msg) {
@@ -51,9 +50,11 @@ void BWFrontEnd::respond(QString result, QString identity) {
   _bw->publishText(uri, QString(), true, QList<RoutingObject *>(), ponum, msg,
                    QDateTime(), -1, "partial", false, false, [](QString err) {
                      if (!err.isEmpty()) {
-                       qDebug() << "publish error: " << err;
+                       std::cerr
+                           << "publish error: " << err.toUtf8().constData()
+                           << std::endl;
                      } else {
-                       qDebug() << "published ok";
+                       std::cerr << "published ok" << std::endl;
                      }
                    });
   _numClients--;
@@ -73,7 +74,7 @@ QByteArray BWFrontEnd::getEntity() {
   }
   QFile f(entitypath);
   if (!f.open(QIODevice::ReadOnly)) {
-    qDebug() << "could not open entity file";
+    std::cerr << "could not open entity file" << std::endl;
     return QByteArray();
   }
   QByteArray contents = f.readAll().mid(1);
