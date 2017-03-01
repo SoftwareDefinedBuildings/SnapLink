@@ -1,5 +1,7 @@
 #include "lib/front_end/bosswave/BWWorker.h"
 
+const std::string BWWorker::none = "None";
+
 BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
                                          std::unique_ptr<cv::Mat> &&image,
                                          std::unique_ptr<CameraModel> &&camera)>
@@ -7,7 +9,7 @@ BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
                    std::atomic<unsigned int> &numClients)
     : _msg(message), _onQuery(onQuery), _numClients(numClients) {}
 
-void BWWorker::doWork() {
+void BWWorker::process() {
   if (_msg->POs().length() != BW_MSG_LENGTH) {
     qDebug() << "It's now a standard BW message\n";
     emit error();
@@ -43,8 +45,8 @@ void BWWorker::doWork() {
 
   std::vector<std::string> answers =
       _onQuery(std::move(image), std::move(camera));
-  emit doneWork(QString::fromStdString(answers.at(0)),
-                QString::fromStdString(std::string(contents[1], lens[1])));
+  emit done(QString::fromStdString(answers.at(0)),
+            QString::fromStdString(std::string(contents[1], lens[1])));
 }
 
 void BWWorker::createData(const std::vector<char> &data, double fx, double fy,

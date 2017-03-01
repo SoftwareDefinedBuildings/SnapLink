@@ -59,10 +59,7 @@ void BWFrontEnd::respond(QString result, QString identity) {
   _numClients--;
 }
 
-void BWFrontEnd::workerReturnError() {
-  // publish error message to identity channel
-  _numClients--;
-}
+void BWFrontEnd::error() { _numClients--; }
 
 QByteArray BWFrontEnd::getEntity() {
   QString entitypath;
@@ -85,18 +82,23 @@ QByteArray BWFrontEnd::getEntity() {
 
 void BWFrontEnd::onMessage(PMessage msg) {
   std::cerr << "DEBUG:: received message" << std::endl;
+  // workerThread memory will be freed using QThread::deleteLater
   QThread *workerThread = new QThread();
+  // worker memory will be freed using BWWorker::deleteLater
   BWWorker *worker = new BWWorker(msg, _onQuery, _numClients);
+
   worker->moveToThread(workerThread);
-  connect(workerThread, &QThread::started, worker, &BWWorker::doWork);
-  connect(worker, &BWWorker::doneWork, workerThread, &QThread::quit);
-  connect(worker, &BWWorker::doneWork, worker, &BWWorker::deleteLater);
+
+  connect(workerThread, &QThread::started, worker, &BWWorker::process);
+  connect(worker, &BWWorker::done, workerThread, &QThread::quit);
+  connect(worker, &BWWorker::error, workerThread, &QThread::quit);
+  connect(workerThread, &QThread::finished, worker, &BWWorker::deleteLater);
   connect(workerThread, &QThread::finished, workerThread,
           &QThread::deleteLater);
-  connect(worker, &BWWorker::error, workerThread, &QThread::quit);
-  connect(worker, &BWWorker::error, worker, &BWWorker::deleteLater);
-  connect(worker, &BWWorker::error, this, &BWFrontEnd::workerReturnError);
-  connect(worker, &BWWorker::doneWork, this, &BWFrontEnd::respond);
+
+  connect(worker, &BWWorker::done, this, &BWFrontEnd::respond);
+  connect(worker, &BWWorker::error, this, &BWFrontEnd::error);
+
   workerThread->start();
   _numClients++;
 }

@@ -30,18 +30,19 @@ public:
            std::atomic<unsigned int> &_numClients);
 
 public slots:
-  void doWork();
+  void process();
 
 signals:
-  void finished();
   void error();
-  void doneWork(QString result, QString identity);
+  void done(QString result, QString identity);
 
 private:
-  // void workComplete(BWConnectionInfo *connInfo);
   static void createData(const std::vector<char> &data, double fx, double fy,
                                       double cx, double cy, cv::Mat &image,
                                       CameraModel &camera);
+
+private:
+  static const std::string none;
   PMessage _msg;
   std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera)> _onQuery;

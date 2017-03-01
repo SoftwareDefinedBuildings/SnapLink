@@ -29,7 +29,7 @@ public slots:
   void run();
   void agentChanged(bool success, QString msg);
   void respond(QString result, QString identity);
-  void workerReturnError();
+  void error();
 
 signals:
   void signalBW();
@@ -39,7 +39,6 @@ private:
   void onMessage(PMessage msg);
 
 private:
-  static const std::string none;
   std::unique_ptr<QThread> _thread;
   std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
              std::unique_ptr<CameraModel> &&camera)> _onQuery;
