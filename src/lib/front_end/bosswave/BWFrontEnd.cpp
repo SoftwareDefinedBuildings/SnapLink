@@ -1,4 +1,5 @@
 #include "lib/front_end/bosswave/BWFrontEnd.h"
+#include "lib/front_end/bosswave/BWWorker.h"
 
 BWFrontEnd::BWFrontEnd() : _numClients(0), _bw(BW::instance()) {}
 

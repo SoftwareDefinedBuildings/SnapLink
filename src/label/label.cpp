@@ -1,3 +1,4 @@
+#include "label/label.h"
 #include "label/widget.h"
 #include <QApplication>
 #include <QResource>

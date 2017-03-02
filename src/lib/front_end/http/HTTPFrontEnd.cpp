@@ -1,5 +1,4 @@
 #include "lib/front_end/http/HTTPFrontEnd.h"
-#include "lib/data/CameraModel.h"
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>

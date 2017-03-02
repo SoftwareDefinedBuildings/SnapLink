@@ -3,10 +3,12 @@
 #include <iostream>
 #include <libbw.h>
 #include <allocations.h>
-#include <sstream>
 #include <string>
 #include <fstream>
-#include "lib/front_end/bosswave/BWWorker.h"
+#include <memory>
+#include "lib/data/CameraModel.h"
+#include <vector>
+#include <atomic>
 
 class BWFrontEnd final : public QObject
 {

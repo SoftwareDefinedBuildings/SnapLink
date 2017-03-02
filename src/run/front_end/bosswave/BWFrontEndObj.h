@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <memory>
+#include <mutex>
 #include <opencv2/core/types.hpp>
 #include "lib/front_end/bosswave/BWFrontEnd.h"
 #include "lib/data/CameraModel.h"

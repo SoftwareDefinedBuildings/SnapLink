@@ -5,11 +5,10 @@
 #include <microhttpd.h>
 #include <mutex>
 #include <opencv2/core/core.hpp>
+#include "lib/data/CameraModel.h"
 
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
-
-class CameraModel;
 
 typedef struct final {
   struct MHD_PostProcessor *postProcessor;

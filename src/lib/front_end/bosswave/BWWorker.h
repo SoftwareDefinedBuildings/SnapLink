@@ -1,12 +1,10 @@
 #pragma once
 
 #include <libbw.h>
-#include <atomic>
 #include <string.h>
 #include <memory>
 #include <vector>
 #include <sstream>
-#include <mutex>
 #include <opencv2/core/core.hpp>
 #include <QCoreApplication>
 #include "lib/data/CameraModel.h"
@@ -16,8 +14,6 @@
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
 #define BW_MSG_LENGTH 9
-
-class CameraModel;
 
 class BWWorker final : public QObject
 {
