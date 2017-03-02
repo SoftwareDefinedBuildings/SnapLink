@@ -2,9 +2,14 @@ cmake_minimum_required(VERSION 3.1.0)
 project(CellMate)
 
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
+find_package(Qt5Gui REQUIRED)
+find_package(Qt5Widgets REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
 find_package(PCL 1.8 REQUIRED COMPONENTS common search)
 find_package(Boost REQUIRED COMPONENTS program_options)
@@ -18,6 +23,8 @@ set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
+    ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
@@ -29,6 +36,8 @@ set(INCLUDE_DIRS
 
 set(LIBRARIES
     ${Qt5Core_LIBRARIES}
+    ${Qt5Gui_LIBRARIES}
+    ${Qt5Widgets_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
     ${OpenCV_LIBRARIES}
     ${PCL_LIBRARIES}
@@ -64,6 +73,9 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/run/event/FailureEvent.cpp"
     "${CellMate_SOURCE_DIR}/run/process/IdentificationObj.cpp"
     "${CellMate_SOURCE_DIR}/run/run.cpp"
+    "${CellMate_SOURCE_DIR}/label/res/label_dot.qrc"
+    "${CellMate_SOURCE_DIR}/label/widget.cpp"
+    "${CellMate_SOURCE_DIR}/label/label.cpp"
     "${CellMate_SOURCE_DIR}/main.cpp")
 
 include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries

@@ -47,7 +47,8 @@ int run(int argc, char *argv[]) {
        "limit the number of corresponding 2D-3D points used") //
       ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7),
        "limit the number of features used") //
-      ("dbfiles", po::value<std::vector<std::string>>(&dbFiles)->multitoken(),
+      ("dbfiles",
+       po::value<std::vector<std::string>>(&dbFiles)->multitoken()->required(),
        "database files");
 
   po::positional_options_description pos;

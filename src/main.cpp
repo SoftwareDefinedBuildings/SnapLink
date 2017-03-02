@@ -1,3 +1,4 @@
+#include "label/label.h"
 #include "run/run.h"
 #include <boost/program_options.hpp>
 #include <iostream>
@@ -18,7 +19,7 @@ int main(int argc, char *argv[]) {
     } else if (std::string(argv[1]) == "vis") {
       // TODO
     } else if (std::string(argv[1]) == "label") {
-      // TODO
+      return label(argc - 1, argv + 1);
     }
   }
 
