@@ -29,8 +29,8 @@ int run(int argc, char *argv[]) {
   double distRatio;
   std::vector<std::string> dbFiles;
 
-  po::options_description run("command options");
-  run.add_options() // use comment to force new line using formater
+  po::options_description visible("command options");
+  visible.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
       ("http,H", po::value<bool>(&http)->default_value(true),
        "run HTTP front end") //
@@ -46,36 +46,44 @@ int run(int argc, char *argv[]) {
       ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
        "limit the number of corresponding 2D-3D points used") //
       ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7),
-       "limit the number of features used") //
+       "limit the number of features used");
+
+  po::options_description hidden;
+  hidden.add_options() // use comment to force new line using formater
       ("dbfiles",
        po::value<std::vector<std::string>>(&dbFiles)->multitoken()->required(),
        "database files");
+
+  po::options_description all;
+  all.add(visible).add(hidden);
 
   po::positional_options_description pos;
   pos.add("dbfiles", -1);
 
   po::variables_map vm;
   po::parsed_options parsed = po::command_line_parser(argc, argv)
-                                  .options(run)
+                                  .options(all)
                                   .positional(pos)
                                   .allow_unregistered()
                                   .run();
   po::store(parsed, vm);
-  po::notify(vm);
 
   // print invalid options
   std::vector<std::string> unrecog =
       collect_unrecognized(parsed.options, po::exclude_positional);
   if (unrecog.size() > 0) {
     printInvalid(unrecog);
-    printUsage(run);
+    printUsage(visible);
     return 1;
   }
 
   if (vm.count("help")) {
-    printUsage(run);
+    printUsage(visible);
     return 0;
   }
+
+  // check whether required options exist after handling help
+  po::notify(vm);
 
   // Run the program
   QCoreApplication app(argc, argv);
@@ -135,7 +143,7 @@ static void printInvalid(const std::vector<std::string> &opts) {
 }
 
 static void printUsage(const po::options_description &desc) {
-  std::cout << "cellmate run [command options]" << std::endl
+  std::cout << "cellmate run [command options] db_file..." << std::endl
             << std::endl
             << desc << std::endl;
 }
