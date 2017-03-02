@@ -1,0 +1,5 @@
+USAGE:
+  cellmate label [command options...] database
+
+COMMAND OPTIONS:
+  --help                  Print this help message

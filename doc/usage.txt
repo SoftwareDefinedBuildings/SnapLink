@@ -1,0 +1,12 @@
+USAGE:
+  cellmate [global options] command [command options] [arguments...]
+
+GLOBAL OPTIONS:
+  -h, --help      Print this help message
+  -v, --version   Print the version number
+
+COMMANDS:
+  run             Run the CellMate server
+  convert         Convert database of other formats to CellMate database
+  label           Label a CellMate database
+  show            Visualize a Cellmate database
