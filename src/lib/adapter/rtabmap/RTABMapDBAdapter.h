@@ -18,9 +18,7 @@ class Words;
 
 class RTABMapDBAdapter final {
 public:
-  /**
-   * read data from database files, NULL pointers will be ignored
-   */
+  // read data from database files
   static bool readData(const std::vector<std::string> &dbPaths, Words &words,
                        Labels &labels);
 

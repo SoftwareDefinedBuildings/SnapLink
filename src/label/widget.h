@@ -39,7 +39,7 @@ private:
   bool getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld);
 
 private:
-  Ui::Widget *_ui;
+  std::unique_ptr<Ui::Widget> _ui;
 
   int numImages;
   sqlite3 *_db;

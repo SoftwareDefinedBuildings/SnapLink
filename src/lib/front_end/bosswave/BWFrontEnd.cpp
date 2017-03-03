@@ -1,7 +1,8 @@
 #include "lib/front_end/bosswave/BWFrontEnd.h"
 #include "lib/front_end/bosswave/BWWorker.h"
 
-BWFrontEnd::BWFrontEnd() : _numClients(0), _bw(BW::instance()) {}
+BWFrontEnd::BWFrontEnd(const std::string &uri)
+    : _bw(BW::instance()), _uri(uri), _numClients(0) {}
 
 BWFrontEnd::~BWFrontEnd() {
   stop();
@@ -9,24 +10,18 @@ BWFrontEnd::~BWFrontEnd() {
   _numClients = 0;
 }
 
-void BWFrontEnd::start(const std::string &uri) {
-  _uri = uri;
+bool BWFrontEnd::start() {
   _thread.reset(new QThread());
   this->moveToThread(_thread.get());
   connect(_thread.get(), &QThread::started, this, &BWFrontEnd::run);
   _thread->start();
+
+  return true;
 }
 
 void BWFrontEnd::stop() {
   _thread->exit();
   _thread.reset();
-}
-
-void BWFrontEnd::registerOnQuery(std::function<std::vector<std::string>(
-                                     std::unique_ptr<cv::Mat> &&image,
-                                     std::unique_ptr<CameraModel> &&camera)>
-                                     onQuery) {
-  _onQuery = onQuery;
 }
 
 void BWFrontEnd::run() {
@@ -87,7 +82,7 @@ void BWFrontEnd::onMessage(PMessage msg) {
   // workerThread memory will be freed using QThread::deleteLater
   QThread *workerThread = new QThread();
   // worker memory will be freed using BWWorker::deleteLater
-  BWWorker *worker = new BWWorker(msg, _onQuery, _numClients);
+  BWWorker *worker = new BWWorker(msg, getOnQuery(), _numClients);
 
   worker->moveToThread(workerThread);
 

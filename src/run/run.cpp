@@ -108,10 +108,11 @@ int run(int argc, char *argv[]) {
   if (http == true) {
     // HTTPFrontEndObj
     std::cout << "initializing HTTP front end" << std::endl;
-    std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj(new HTTPFrontEndObj());
+    std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj(
+        new HTTPFrontEndObj(httpPort));
     identObj->setHTTPFrontEndObj(httpFrontEndObj);
     httpFrontEndObj->setIdentificationObj(identObj);
-    if (!httpFrontEndObj->init(httpPort)) {
+    if (!httpFrontEndObj->init()) {
       std::cerr << "starting HTTP front end failed";
       return 1;
     }
@@ -120,10 +121,11 @@ int run(int argc, char *argv[]) {
   if (bosswave == true) {
     // BWServer
     std::cerr << "initializing BOSSWAVE front end" << std::endl;
-    std::shared_ptr<BWFrontEndObj> bwFrontEndObj(new BWFrontEndObj());
+    std::shared_ptr<BWFrontEndObj> bwFrontEndObj(
+        new BWFrontEndObj(bosswaveURI));
     identObj->setBWFrontEndObj(bwFrontEndObj);
     bwFrontEndObj->setIdentificationObj(identObj);
-    if (!bwFrontEndObj->init(bosswaveURI)) {
+    if (!bwFrontEndObj->init()) {
       std::cerr << "starting BOSSWAVE front end failed";
       return 1;
     }

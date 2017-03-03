@@ -5,16 +5,15 @@
 
 const std::string HTTPFrontEnd::none = "None";
 
-HTTPFrontEnd::HTTPFrontEnd() : _daemon(nullptr), _numClients(0) {}
+HTTPFrontEnd::HTTPFrontEnd(uint16_t port, unsigned int maxClients)
+    : _port(port), _daemon(nullptr), _numClients(0), _maxClients(maxClients) {}
 
 HTTPFrontEnd::~HTTPFrontEnd() {
   stop();
   _numClients = 0;
 }
 
-bool HTTPFrontEnd::start(uint16_t port, unsigned int maxClients) {
-  _maxClients = maxClients;
-
+bool HTTPFrontEnd::start() {
   // start MHD daemon, listening on port
   unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;
   struct MHD_OptionItem ops[] = {
@@ -24,7 +23,7 @@ bool HTTPFrontEnd::start(uint16_t port, unsigned int maxClients) {
        reinterpret_cast<intptr_t>(&requestCompleted),
        static_cast<void *>(this)},
       {MHD_OPTION_END, 0, nullptr}};
-  _daemon = MHD_start_daemon(flags, port, nullptr, nullptr,                //
+  _daemon = MHD_start_daemon(flags, _port, nullptr, nullptr,               //
                              &answerConnection, static_cast<void *>(this), //
                              MHD_OPTION_ARRAY, ops,                        //
                              MHD_OPTION_END);
@@ -40,13 +39,6 @@ void HTTPFrontEnd::stop() {
     MHD_stop_daemon(_daemon);
     _daemon = nullptr;
   }
-}
-
-void HTTPFrontEnd::registerOnQuery(std::function<std::vector<std::string>(
-                                       std::unique_ptr<cv::Mat> &&image,
-                                       std::unique_ptr<CameraModel> &&camera)>
-                                       onQuery) {
-  _onQuery = onQuery;
 }
 
 int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
@@ -114,7 +106,7 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       }
 
       // blocking wait
-      names = httpServer->_onQuery(std::move(image), std::move(camera));
+      names = httpServer->getOnQuery()(std::move(image), std::move(camera));
     }
 
     std::string answer = none;

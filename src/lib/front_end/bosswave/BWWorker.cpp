@@ -24,7 +24,6 @@ void BWWorker::process() {
   }
 
   double fx, fy, cx, cy;
-  int wdith, height;
   std::stringstream ss;
   // TODO: Add comments here to explain why 5 and 8
   for (int i = 5; i <= 8; i++) {

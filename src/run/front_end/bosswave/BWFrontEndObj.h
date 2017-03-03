@@ -19,10 +19,10 @@ struct BWSessionData final {
 
 class BWFrontEndObj final : public QObject {
 public:
-  explicit BWFrontEndObj();
+  explicit BWFrontEndObj(const std::string &uri);
   virtual ~BWFrontEndObj();
 
-  bool init(const std::string &uri);
+  bool init();
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);

@@ -10,8 +10,8 @@
 #include <cstring>
 #include <strings.h>
 
-HTTPFrontEndObj::HTTPFrontEndObj()
-    : _httpFront(new HTTPFrontEnd()), _identObj(nullptr),
+HTTPFrontEndObj::HTTPFrontEndObj(uint16_t port, unsigned int maxClients)
+    : _httpFront(new HTTPFrontEnd(port, maxClients)), _identObj(nullptr),
       _gen(std::random_device()()) {}
 
 HTTPFrontEndObj::~HTTPFrontEndObj() {
@@ -19,11 +19,11 @@ HTTPFrontEndObj::~HTTPFrontEndObj() {
   _identObj = nullptr;
 }
 
-bool HTTPFrontEndObj::init(uint16_t port, unsigned int maxClients) {
+bool HTTPFrontEndObj::init() {
   if (_httpFront == nullptr) {
     return false;
   }
-  bool success = _httpFront->start(port, maxClients);
+  bool success = _httpFront->start();
   if (success) {
     _httpFront->registerOnQuery(std::bind(&HTTPFrontEndObj::onQuery, this,
                                           std::placeholders::_1,

@@ -20,10 +20,10 @@ struct SessionData final {
 
 class HTTPFrontEndObj final : public QObject {
 public:
-  explicit HTTPFrontEndObj();
+  explicit HTTPFrontEndObj(uint16_t port, unsigned int maxClients = MAX_CLIENTS);
   ~HTTPFrontEndObj();
 
-  bool init(uint16_t port, unsigned int maxClients = MAX_CLIENTS);
+  bool init();
   void stop();
 
   void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);

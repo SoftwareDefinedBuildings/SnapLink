@@ -10,8 +10,8 @@
 #include <cstring>
 #include <strings.h>
 
-BWFrontEndObj::BWFrontEndObj()
-    : _bwFront(new BWFrontEnd()), _identObj(nullptr),
+BWFrontEndObj::BWFrontEndObj(const std::string &uri)
+    : _bwFront(new BWFrontEnd(uri)), _identObj(nullptr),
       _gen(std::random_device()()) {}
 
 BWFrontEndObj::~BWFrontEndObj() {
@@ -19,11 +19,11 @@ BWFrontEndObj::~BWFrontEndObj() {
   _identObj = nullptr;
 }
 
-bool BWFrontEndObj::init(const std::string &uri) {
+bool BWFrontEndObj::init() {
   if (_bwFront == nullptr) {
     return false;
   }
-  _bwFront->start(uri);
+  _bwFront->start();
   _bwFront->registerOnQuery(std::bind(&BWFrontEndObj::onQuery, this,
                                       std::placeholders::_1,
                                       std::placeholders::_2));
