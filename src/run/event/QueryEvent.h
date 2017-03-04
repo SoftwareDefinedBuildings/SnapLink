@@ -1,7 +1,7 @@
 #pragma once
 
 #include "lib/data/CameraModel.h"
-#include "lib/data/Session.h"
+#include "run/data/Session.h"
 #include <QEvent>
 #include <memory>
 

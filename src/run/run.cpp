@@ -1,10 +1,11 @@
 #include "run.h"
-#include "lib/adapter/rtabmap/RTABMapDBAdapter.h"
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include "lib/data/LabelsSimple.h"
 #include "lib/data/WordsKdTree.h"
-#include "run/front_end/bosswave/BWFrontEndObj.h"
-#include "run/front_end/http/HTTPFrontEndObj.h"
-#include "run/process/IdentificationObj.h"
+#include "lib/front_end/bosswave/BWFrontEnd.h"
+#include "lib/front_end/http/HTTPFrontEnd.h"
+#include "run/wrapper/BackEndWrapper.h"
+#include "run/wrapper/FrontEndWrapper.h"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QThread>
@@ -91,41 +92,38 @@ int run(int argc, char *argv[]) {
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
-  QThread identObjThread;
+  QThread backEndWrapperThread;
 
   std::cout << "reading data" << std::endl;
-  if (!RTABMapDBAdapter::readData(dbFiles, *words, *labels)) {
+  if (!RTABMapAdapter::readData(dbFiles, *words, *labels)) {
     qCritical() << "reading data failed";
     return 1;
   }
 
   std::cout << "initializing identification service" << std::endl;
-  std::shared_ptr<IdentificationObj> identObj(new IdentificationObj(
+  std::shared_ptr<FrontEndWrapper> backEndWrapper(new BackEndWrapper(
       std::move(words), std::move(labels), featureLimit, corrLimit, distRatio));
-  identObj->moveToThread(&identObjThread);
-  identObjThread.start();
+  backEndWrapper->moveToThread(&backEndWrapperThread);
+  backEndWrapperThread.start();
 
   if (http == true) {
-    // HTTPFrontEndObj
     std::cout << "initializing HTTP front end" << std::endl;
-    std::shared_ptr<HTTPFrontEndObj> httpFrontEndObj(
-        new HTTPFrontEndObj(httpPort));
-    identObj->setHTTPFrontEndObj(httpFrontEndObj);
-    httpFrontEndObj->setIdentificationObj(identObj);
-    if (!httpFrontEndObj->init()) {
+    std::unique_ptr<FrontEnd> httpFrontEnd(
+        new HTTPFrontEnd(httpPort, MAX_CLIENTS));
+    std::shared_ptr<FrontEndWrapper> frontEndWrapper(std::move(httpFrontEnd));
+    frontEndWrapper->setBackEndWrapper(backEndWrapper);
+    if (!frontEndWrapper->init()) {
       std::cerr << "starting HTTP front end failed";
       return 1;
     }
   }
 
   if (bosswave == true) {
-    // BWServer
     std::cerr << "initializing BOSSWAVE front end" << std::endl;
-    std::shared_ptr<BWFrontEndObj> bwFrontEndObj(
-        new BWFrontEndObj(bosswaveURI));
-    identObj->setBWFrontEndObj(bwFrontEndObj);
-    bwFrontEndObj->setIdentificationObj(identObj);
-    if (!bwFrontEndObj->init()) {
+    std::unique_ptr<FrontEnd> bwFrontEnd(new BWFrontEnd(bosswaveURI));
+    std::shared_ptr<FrontEndWrapper> frontEndWrapper(std::move(bwFrontEnd));
+    bwFrontEndObj->setBackEndWrapper(backEndWrapper);
+    if (!frontEndWrapper->init()) {
       std::cerr << "starting BOSSWAVE front end failed";
       return 1;
     }

@@ -1,54 +1,56 @@
-#include "run/front_end/bosswave/BWFrontEndObj.h"
+#include "run/wrapper/FrontEndWrapper.h"
 #include "lib/util/Utility.h"
 #include "run/event/DetectionEvent.h"
 #include "run/event/FailureEvent.h"
 #include "run/event/QueryEvent.h"
-#include "run/process/IdentificationObj.h"
 #include <QCoreApplication>
 #include <QSemaphore>
 #include <cstdlib>
 #include <cstring>
 #include <strings.h>
 
-BWFrontEndObj::BWFrontEndObj(const std::string &uri)
-    : _bwFront(new BWFrontEnd(uri)), _identObj(nullptr),
+FrontEndWrapper::FrontEndWrapper(std::unique_ptr<FrontEnd> &&frontEnd)
+    : _frontEnd(std::move(frontEnd)), _backEndWrapper(nullptr),
       _gen(std::random_device()()) {}
 
-BWFrontEndObj::~BWFrontEndObj() {
+FrontEndWrapper::~FrontEndWrapper() {
   stop();
-  _identObj = nullptr;
+  _backEndWrapper.reset();
 }
 
-bool BWFrontEndObj::init() {
-  if (_bwFront == nullptr) {
+bool FrontEndWrapper::init() {
+  if (_frontEnd == nullptr) {
     return false;
   }
-  _bwFront->start();
-  _bwFront->registerOnQuery(std::bind(&BWFrontEndObj::onQuery, this,
-                                      std::placeholders::_1,
-                                      std::placeholders::_2));
-  return true;
+  bool success = _frontEnd->start();
+  if (success) {
+    _frontEnd->registerOnQuery(std::bind(&FrontEndWrapper::onQuery, this,
+                                         std::placeholders::_1,
+                                         std::placeholders::_2));
+  }
+
+  return success;
 }
 
-void BWFrontEndObj::stop() {
-  if (_bwFront != nullptr) {
-    _bwFront->stop();
+void FrontEndWrapper::stop() {
+  if (_frontEnd != nullptr) {
+    _frontEnd->stop();
   }
 }
 
-void BWFrontEndObj::setIdentificationObj(
-    std::shared_ptr<IdentificationObj> identObj) {
-  _identObj = identObj;
+void FrontEndWrapper::setBackEndWrapper(
+    std::shared_ptr<BackEndWrapper> backEndWrapper) {
+  _backEndWrapper = backEndWrapper;
 }
 
-bool BWFrontEndObj::event(QEvent *event) {
+bool FrontEndWrapper::event(QEvent *event) {
   if (event->type() == DetectionEvent::type()) {
     DetectionEvent *detectionEvent = static_cast<DetectionEvent *>(event);
     std::unique_ptr<Session> session = detectionEvent->takeSession();
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
-    std::unique_ptr<BWSessionData> &sessionData = iter->second;
+    std::unique_ptr<SessionData> &sessionData = iter->second;
     sessionData->session = std::move(session);
     sessionData->names = detectionEvent->takeNames();
     QSemaphore &detected = sessionData->detected;
@@ -62,7 +64,7 @@ bool BWFrontEndObj::event(QEvent *event) {
 
     _mutex.lock();
     auto iter = _sessionMap.find(session->id);
-    std::unique_ptr<BWSessionData> &sessionData = iter->second;
+    std::unique_ptr<SessionData> &sessionData = iter->second;
     sessionData->session = std::move(session);
     sessionData->names.reset(new std::vector<std::string>());
     QSemaphore &detected = sessionData->detected;
@@ -75,13 +77,13 @@ bool BWFrontEndObj::event(QEvent *event) {
 }
 
 std::vector<std::string>
-BWFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
-                       std::unique_ptr<CameraModel> &&camera) {
+FrontEndWrapper::onQuery(std::unique_ptr<cv::Mat> &&image,
+                         std::unique_ptr<CameraModel> &&camera) {
   std::unique_ptr<Session> session(new Session);
   session->overallStart = Utility::getTime(); // log start of processing
-  session->type = BOSSWAVE;
+  session->frontEnd.reset(this);
 
-  std::unique_ptr<BWSessionData> sessionData(new BWSessionData);
+  std::unique_ptr<SessionData> sessionData(new SessionData);
   QSemaphore &detected = sessionData->detected;
 
   _mutex.lock();
@@ -92,7 +94,7 @@ BWFrontEndObj::onQuery(std::unique_ptr<cv::Mat> &&image,
   session->id = id;
 
   QCoreApplication::postEvent(
-      _identObj.get(),
+      _backEndWrapper.get(),
       new QueryEvent(std::move(image), std::move(camera), std::move(session)));
 
   // TODO use condition variable?

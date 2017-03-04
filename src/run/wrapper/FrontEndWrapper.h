@@ -1,31 +1,33 @@
 #pragma once
 
 #include <QObject>
+#include <QSemaphore>
 #include <memory>
 #include <mutex>
 #include <opencv2/core/types.hpp>
-#include "lib/front_end/bosswave/BWFrontEnd.h"
+#include "run/wrapper/BackEndWrapper.h"
+#include "lib/front_end/FrontEnd.h"
 #include "lib/data/CameraModel.h"
-#include "lib/data/Session.h"
+#include "run/data/Session.h"
 
-class IdentificationObj;
 
-// to keep session dependent data
-struct BWSessionData final {
+// to keep session dependent data 
+struct SessionData final {
   std::unique_ptr<Session> session;
   std::unique_ptr<std::vector<std::string>> names;
   QSemaphore detected;
 };
 
-class BWFrontEndObj final : public QObject {
+class FrontEndWrapper final : public QObject {
 public:
-  explicit BWFrontEndObj(const std::string &uri);
-  virtual ~BWFrontEndObj();
+  // owmership transfer
+  explicit FrontEndWrapper(std::unique_ptr<FrontEnd> &&frontEnd);
+  ~FrontEndWrapper();
 
   bool init();
   void stop();
 
-  void setIdentificationObj(std::shared_ptr<IdentificationObj> identObj);
+  void setBackEndWrapper(std::shared_ptr<BackEndWrapper> backEndWrapper);
 
 protected:
   virtual bool event(QEvent *event);
@@ -36,10 +38,10 @@ private:
              std::unique_ptr<CameraModel> &&camera);
 
 private:
-  std::unique_ptr<BWFrontEnd> _bwFront;
-  std::shared_ptr<IdentificationObj> _identObj;
+  std::unique_ptr<FrontEnd> _frontEnd;
+  std::shared_ptr<BackEndWrapper> _backEndWrapper;
   std::mutex _mutex; // protect _sessionMap accesses from onQuery
   std::mt19937 _gen;
   std::uniform_int_distribution<long> _dis;
-  std::map<long, std::unique_ptr<BWSessionData>> _sessionMap;
+  std::map<long, std::unique_ptr<SessionData>> _sessionMap;
 };

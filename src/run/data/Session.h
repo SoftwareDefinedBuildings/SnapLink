@@ -1,15 +1,16 @@
 #pragma once
 
 #include <memory>
-#include <QSemaphore>
 
-enum SessionType { HTTP_POST = 0, BOSSWAVE = 1 };
+class FrontEndWrapper;
 
 class Session final {
 public:
   long id;
-  SessionType type;
+  // a pointer to the front end that initiates the session
+  std::shared_ptr<FrontEndWrapper> frontEnd;
 
+  // timing values
 public:
   unsigned long long overallStart;
   unsigned long long overallEnd;

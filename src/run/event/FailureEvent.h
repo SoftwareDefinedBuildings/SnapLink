@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/data/Session.h"
+#include "run/data/Session.h"
 #include <QEvent>
 #include <memory>
 
