@@ -92,7 +92,7 @@ int run(int argc, char *argv[]) {
   std::unique_ptr<WordsKdTree> words(new WordsKdTree());
   std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
 
-  QThread backEndWrapperThread;
+  std::unique_ptr<QThread> backEndWrapperThread(new QThread());
 
   std::cout << "reading data" << std::endl;
   if (!RTABMapAdapter::readData(dbFiles, *words, *labels)) {
@@ -101,29 +101,33 @@ int run(int argc, char *argv[]) {
   }
 
   std::cout << "initializing identification service" << std::endl;
-  std::shared_ptr<FrontEndWrapper> backEndWrapper(new BackEndWrapper(
+  std::shared_ptr<BackEndWrapper> backEndWrapper(new BackEndWrapper(
       std::move(words), std::move(labels), featureLimit, corrLimit, distRatio));
-  backEndWrapper->moveToThread(&backEndWrapperThread);
-  backEndWrapperThread.start();
+  backEndWrapper->moveToThread(backEndWrapperThread.get());
+  backEndWrapperThread->start();
 
+  std::shared_ptr<FrontEndWrapper> httpFrontEndWrapper;
   if (http == true) {
     std::cout << "initializing HTTP front end" << std::endl;
     std::unique_ptr<FrontEnd> httpFrontEnd(
         new HTTPFrontEnd(httpPort, MAX_CLIENTS));
-    std::shared_ptr<FrontEndWrapper> frontEndWrapper(std::move(httpFrontEnd));
-    frontEndWrapper->setBackEndWrapper(backEndWrapper);
-    if (!frontEndWrapper->init()) {
+    httpFrontEndWrapper.reset(new FrontEndWrapper(std::move(httpFrontEnd)));
+    httpFrontEndWrapper->setBackEndWrapper(backEndWrapper);
+    if (!httpFrontEndWrapper->init()) {
       std::cerr << "starting HTTP front end failed";
       return 1;
     }
   }
 
+  std::shared_ptr<FrontEndWrapper> bwFrontEndWrapper;
   if (bosswave == true) {
     std::cerr << "initializing BOSSWAVE front end" << std::endl;
     std::unique_ptr<FrontEnd> bwFrontEnd(new BWFrontEnd(bosswaveURI));
-    std::shared_ptr<FrontEndWrapper> frontEndWrapper(std::move(bwFrontEnd));
-    bwFrontEndObj->setBackEndWrapper(backEndWrapper);
-    if (!frontEndWrapper->init()) {
+    bwFrontEndWrapper.reset(new FrontEndWrapper(std::move(bwFrontEnd)));
+    std::cerr << "DEBUG: bw front end addr" << bwFrontEndWrapper.get()
+              << std::endl;
+    bwFrontEndWrapper->setBackEndWrapper(backEndWrapper);
+    if (!bwFrontEndWrapper->init()) {
       std::cerr << "starting BOSSWAVE front end failed";
       return 1;
     }

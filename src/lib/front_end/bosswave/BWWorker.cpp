@@ -44,6 +44,8 @@ void BWWorker::process() {
 
   std::vector<std::string> answers =
       _onQuery(std::move(image), std::move(camera));
+
+  std::cerr << "DEBUG: emmiting done()" << std::endl;
   emit done(QString::fromStdString(answers.at(0)),
             QString::fromStdString(std::string(contents[1], lens[1])));
 }

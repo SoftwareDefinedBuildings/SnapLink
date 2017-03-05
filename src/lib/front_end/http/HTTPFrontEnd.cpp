@@ -9,8 +9,8 @@ HTTPFrontEnd::HTTPFrontEnd(uint16_t port, unsigned int maxClients)
     : _port(port), _daemon(nullptr), _numClients(0), _maxClients(maxClients) {}
 
 HTTPFrontEnd::~HTTPFrontEnd() {
+  std::cerr << "HTTPFrontEnd destructor" << std::endl;
   stop();
-  _numClients = 0;
 }
 
 bool HTTPFrontEnd::start() {
@@ -39,6 +39,7 @@ void HTTPFrontEnd::stop() {
     MHD_stop_daemon(_daemon);
     _daemon = nullptr;
   }
+  _numClients = 0;
 }
 
 int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,

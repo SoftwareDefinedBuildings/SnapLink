@@ -28,14 +28,17 @@ bool BackEndWrapper::event(QEvent *event) {
     bool success = identify(*image, *camera, *names, *session);
 
     if (success) {
-      if (session->frontEnd != nullptr) {
+      if (session->frontEndWrapper != nullptr) {
+        FrontEndWrapper *frontEndWrapper = session->frontEndWrapper.get();
         QCoreApplication::postEvent(
-            session->frontEnd.get(),
+            frontEndWrapper,
             new DetectionEvent(std::move(names), std::move(session)));
+        std::cerr << "DEBUG: post detection event done " << std::endl;
       }
     } else {
-      if (session->frontEnd != nullptr) {
-        QCoreApplication::postEvent(session->frontEnd.get(),
+      if (session->frontEndWrapper != nullptr) {
+        FrontEndWrapper *frontEndWrapper = session->frontEndWrapper.get();
+        QCoreApplication::postEvent(frontEndWrapper,
                                     new FailureEvent(std::move(session)));
       }
     }

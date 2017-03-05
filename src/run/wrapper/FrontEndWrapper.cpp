@@ -14,6 +14,7 @@ FrontEndWrapper::FrontEndWrapper(std::unique_ptr<FrontEnd> &&frontEnd)
       _gen(std::random_device()()) {}
 
 FrontEndWrapper::~FrontEndWrapper() {
+  std::cerr << "FrontEndWrapper destructor" << std::endl;
   stop();
   _backEndWrapper.reset();
 }
@@ -39,7 +40,7 @@ void FrontEndWrapper::stop() {
 }
 
 void FrontEndWrapper::setBackEndWrapper(
-    std::shared_ptr<BackEndWrapper> backEndWrapper) {
+    const std::shared_ptr<BackEndWrapper> &backEndWrapper) {
   _backEndWrapper = backEndWrapper;
 }
 
@@ -55,6 +56,9 @@ bool FrontEndWrapper::event(QEvent *event) {
     sessionData->names = detectionEvent->takeNames();
     QSemaphore &detected = sessionData->detected;
     _mutex.unlock();
+
+    std::cerr << "DEBUG: detection event " << sessionData->names->at(0)
+              << std::endl;
 
     detected.release();
     return true;
@@ -81,13 +85,14 @@ FrontEndWrapper::onQuery(std::unique_ptr<cv::Mat> &&image,
                          std::unique_ptr<CameraModel> &&camera) {
   std::unique_ptr<Session> session(new Session);
   session->overallStart = Utility::getTime(); // log start of processing
-  session->frontEnd.reset(this);
+  session->frontEndWrapper = shared_from_this();
+  std::cerr << "DEBUG: session bw front end addr " << this << std::endl;
 
   std::unique_ptr<SessionData> sessionData(new SessionData);
   QSemaphore &detected = sessionData->detected;
 
   _mutex.lock();
-  long id = _dis(_gen); // this is not thread safe
+  long id = _dis(_gen); // _dis(_gen) is not thread safe
   _sessionMap.emplace(id, std::move(sessionData));
   _mutex.unlock();
 

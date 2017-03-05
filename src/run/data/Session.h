@@ -7,8 +7,8 @@ class FrontEndWrapper;
 class Session final {
 public:
   long id;
-  // a pointer to the front end that initiates the session
-  std::shared_ptr<FrontEndWrapper> frontEnd;
+  // a pointer to the front end wrapper that initiates the session
+  std::shared_ptr<FrontEndWrapper> frontEndWrapper;
 
   // timing values
 public:

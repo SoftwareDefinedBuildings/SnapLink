@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QEvent>
 #include <QSemaphore>
 #include <memory>
 #include <mutex>
@@ -18,7 +19,7 @@ struct SessionData final {
   QSemaphore detected;
 };
 
-class FrontEndWrapper final : public QObject {
+class FrontEndWrapper final : public QObject, public std::enable_shared_from_this<FrontEndWrapper> {
 public:
   // owmership transfer
   explicit FrontEndWrapper(std::unique_ptr<FrontEnd> &&frontEnd);
@@ -27,10 +28,10 @@ public:
   bool init();
   void stop();
 
-  void setBackEndWrapper(std::shared_ptr<BackEndWrapper> backEndWrapper);
+  void setBackEndWrapper(const std::shared_ptr<BackEndWrapper> &backEndWrapper);
 
 protected:
-  virtual bool event(QEvent *event);
+  bool event(QEvent *event);
 
 private:
   // this method must be thread safe, because it will be called from other threads
