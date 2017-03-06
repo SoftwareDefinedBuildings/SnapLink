@@ -23,9 +23,6 @@ public slots:
   void respond(QString result, QString identity);
   void error();
 
-signals:
-  void signalBW();
-
 private:
   QByteArray getEntity();
   void onMessage(PMessage msg);

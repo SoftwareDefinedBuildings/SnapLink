@@ -20,7 +20,7 @@ public:
                  std::unique_ptr<Labels> &&labels, int sampleSize, int corrSize, double distRatio);
 
   bool identify(const cv::Mat &image, const CameraModel &camera,
-                std::vector<std::string> &names, Session &session);
+                std::vector<std::string> &results, Session &session);
 
 protected:
   bool event(QEvent *event);

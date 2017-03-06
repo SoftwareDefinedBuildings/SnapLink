@@ -23,17 +23,16 @@ bool BackEndWrapper::event(QEvent *event) {
     std::unique_ptr<CameraModel> camera = queryEvent->takeCameraModel();
     std::unique_ptr<Session> session = queryEvent->takeSession();
 
-    std::unique_ptr<std::vector<std::string>> names(
+    std::unique_ptr<std::vector<std::string>> results(
         new std::vector<std::string>);
-    bool success = identify(*image, *camera, *names, *session);
+    bool success = identify(*image, *camera, *results, *session);
 
     if (success) {
       if (session->frontEndWrapper != nullptr) {
         FrontEndWrapper *frontEndWrapper = session->frontEndWrapper.get();
         QCoreApplication::postEvent(
             frontEndWrapper,
-            new DetectionEvent(std::move(names), std::move(session)));
-        std::cerr << "DEBUG: post detection event done " << std::endl;
+            new DetectionEvent(std::move(results), std::move(session)));
       }
     } else {
       if (session->frontEndWrapper != nullptr) {
@@ -48,7 +47,7 @@ bool BackEndWrapper::event(QEvent *event) {
 }
 
 bool BackEndWrapper::identify(const cv::Mat &image, const CameraModel &camera,
-                              std::vector<std::string> &names,
+                              std::vector<std::string> &results,
                               Session &session) {
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
@@ -81,7 +80,7 @@ bool BackEndWrapper::identify(const cv::Mat &image, const CameraModel &camera,
 
   // visibility
   session.visibilityStart = Utility::getTime();
-  names = _visibility.process(dbId, camera, pose);
+  results = _visibility.process(dbId, camera, pose);
   session.visibilityEnd = Utility::getTime();
 
   return true;

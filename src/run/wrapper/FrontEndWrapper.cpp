@@ -50,15 +50,10 @@ bool FrontEndWrapper::event(QEvent *event) {
     std::unique_ptr<Session> session = detectionEvent->takeSession();
 
     _mutex.lock();
-    auto iter = _sessionMap.find(session->id);
-    std::unique_ptr<SessionData> &sessionData = iter->second;
-    sessionData->session = std::move(session);
-    sessionData->names = detectionEvent->takeNames();
-    QSemaphore &detected = sessionData->detected;
+    session->results = std::move(detectionEvent->takeResults());
+    QSemaphore &detected = session->detected;
+    _sessionMap[session->id] = std::move(session);
     _mutex.unlock();
-
-    std::cerr << "DEBUG: detection event " << sessionData->names->at(0)
-              << std::endl;
 
     detected.release();
     return true;
@@ -67,11 +62,8 @@ bool FrontEndWrapper::event(QEvent *event) {
     std::unique_ptr<Session> session = failureEvent->takeSession();
 
     _mutex.lock();
-    auto iter = _sessionMap.find(session->id);
-    std::unique_ptr<SessionData> &sessionData = iter->second;
-    sessionData->session = std::move(session);
-    sessionData->names.reset(new std::vector<std::string>());
-    QSemaphore &detected = sessionData->detected;
+    QSemaphore &detected = session->detected;
+    _sessionMap[session->id] = std::move(session);
     _mutex.unlock();
 
     detected.release();
@@ -86,18 +78,15 @@ FrontEndWrapper::onQuery(std::unique_ptr<cv::Mat> &&image,
   std::unique_ptr<Session> session(new Session);
   session->overallStart = Utility::getTime(); // log start of processing
   session->frontEndWrapper = shared_from_this();
-  std::cerr << "DEBUG: session bw front end addr " << this << std::endl;
-
-  std::unique_ptr<SessionData> sessionData(new SessionData);
-  QSemaphore &detected = sessionData->detected;
+  QSemaphore &detected = session->detected;
 
   _mutex.lock();
   long id = _dis(_gen); // _dis(_gen) is not thread safe
-  _sessionMap.emplace(id, std::move(sessionData));
   _mutex.unlock();
 
   session->id = id;
 
+  // handle multi-threads using message passing (as opposed to shared memory)
   QCoreApplication::postEvent(
       _backEndWrapper.get(),
       new QueryEvent(std::move(image), std::move(camera), std::move(session)));
@@ -107,14 +96,11 @@ FrontEndWrapper::onQuery(std::unique_ptr<cv::Mat> &&image,
 
   _mutex.lock();
   auto iter = _sessionMap.find(id);
-  sessionData = std::move(iter->second);
+  session = std::move(iter->second);
   _sessionMap.erase(id);
   _mutex.unlock();
 
-  assert(sessionData != nullptr);
-  assert(sessionData->session != nullptr);
-
-  session = std::move(sessionData->session);
+  assert(session != nullptr);
 
   // print time
   session->overallEnd = Utility::getTime(); // log processing end time
@@ -136,5 +122,5 @@ FrontEndWrapper::onQuery(std::unique_ptr<cv::Mat> &&image,
             << session->visibilityEnd - session->visibilityStart << " ms"
             << std::endl;
 
-  return *(sessionData->names);
+  return *(session->results);
 }

@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QEvent>
-#include <QSemaphore>
 #include <memory>
 #include <mutex>
 #include <opencv2/core/types.hpp>
@@ -11,13 +10,6 @@
 #include "lib/data/CameraModel.h"
 #include "run/data/Session.h"
 
-
-// to keep session dependent data 
-struct SessionData final {
-  std::unique_ptr<Session> session;
-  std::unique_ptr<std::vector<std::string>> names;
-  QSemaphore detected;
-};
 
 class FrontEndWrapper final : public QObject, public std::enable_shared_from_this<FrontEndWrapper> {
 public:
@@ -44,5 +36,5 @@ private:
   std::mutex _mutex; // protect _sessionMap accesses from onQuery
   std::mt19937 _gen;
   std::uniform_int_distribution<long> _dis;
-  std::map<long, std::unique_ptr<SessionData>> _sessionMap;
+  std::map<long, std::unique_ptr<Session>> _sessionMap;
 };

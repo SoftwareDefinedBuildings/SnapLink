@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <QSemaphore>
 
 class FrontEndWrapper;
 
@@ -9,6 +10,8 @@ public:
   long id;
   // a pointer to the front end wrapper that initiates the session
   std::shared_ptr<FrontEndWrapper> frontEndWrapper;
+  std::unique_ptr<std::vector<std::string>> results;
+  QSemaphore detected;
 
   // timing values
 public:
