@@ -38,7 +38,7 @@ int Run::run(int argc, char *argv[]) {
       ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
        "limit the number of corresponding 2D-3D points used") //
       ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7),
-       "limit the number of features used");
+       "distance ratio used to create words");
 
   po::options_description hidden;
   hidden.add_options() // use comment to force new line using formater
