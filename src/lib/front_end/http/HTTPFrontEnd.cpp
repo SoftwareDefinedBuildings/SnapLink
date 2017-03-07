@@ -98,16 +98,16 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       double fy = connInfo->fy;
       double cx = connInfo->cx;
       double cy = connInfo->cy;
-      std::unique_ptr<cv::Mat> image(new cv::Mat());
-      std::unique_ptr<CameraModel> camera(new CameraModel());
-      createData(connInfo->imageRaw, fx, fy, cx, cy, *image, *camera);
-      if (image->empty()) {
+      cv::Mat image;
+      CameraModel camera;
+      createData(connInfo->imageRaw, fx, fy, cx, cy, image, camera);
+      if (image.empty()) {
         // TODO do I need to free anything here?
         return respond(connection, none, MHD_HTTP_BAD_REQUEST);
       }
 
       // blocking wait
-      results = httpServer->getOnQuery()(std::move(image), std::move(camera));
+      results = httpServer->getOnQuery()(image, camera);
     }
 
     std::string answer = none;

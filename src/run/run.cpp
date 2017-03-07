@@ -1,25 +1,16 @@
-#include "run.h"
+#include "run/run.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include "lib/data/LabelsSimple.h"
+#include "lib/data/Transform.h"
 #include "lib/data/WordsKdTree.h"
 #include "lib/front_end/bosswave/BWFrontEnd.h"
 #include "lib/front_end/http/HTTPFrontEnd.h"
-#include "run/wrapper/BackEndWrapper.h"
-#include "run/wrapper/FrontEndWrapper.h"
+#include "lib/util/Utility.h"
 #include <QCoreApplication>
-#include <QDebug>
-#include <QThread>
-#include <boost/program_options.hpp>
 #include <cstdio>
-#include <getopt.h>
 #include <utility>
 
-namespace po = boost::program_options;
-
-static void printInvalid(const std::vector<std::string> &opts);
-static void printUsage(const po::options_description &desc);
-
-int run(int argc, char *argv[]) {
+int Run::run(int argc, char *argv[]) {
   // Parse arguments
   bool http;
   int httpPort;
@@ -73,13 +64,13 @@ int run(int argc, char *argv[]) {
   std::vector<std::string> unrecog =
       collect_unrecognized(parsed.options, po::exclude_positional);
   if (unrecog.size() > 0) {
-    printInvalid(unrecog);
-    printUsage(visible);
+    Run::printInvalid(unrecog);
+    Run::printUsage(visible);
     return 1;
   }
 
   if (vm.count("help")) {
-    printUsage(visible);
+    Run::printUsage(visible);
     return 0;
   }
 
@@ -89,10 +80,8 @@ int run(int argc, char *argv[]) {
   // Run the program
   QCoreApplication app(argc, argv);
 
-  std::unique_ptr<WordsKdTree> words(new WordsKdTree());
-  std::unique_ptr<LabelsSimple> labels(new LabelsSimple());
-
-  std::unique_ptr<QThread> backEndWrapperThread(new QThread());
+  std::shared_ptr<Words> words(new WordsKdTree());
+  std::unique_ptr<Labels> labels(new LabelsSimple());
 
   std::cout << "reading data" << std::endl;
   if (!RTABMapAdapter::readData(dbFiles, *words, *labels)) {
@@ -100,37 +89,35 @@ int run(int argc, char *argv[]) {
     return 1;
   }
 
-  std::cout << "initializing identification service" << std::endl;
-  std::shared_ptr<BackEndWrapper> backEndWrapper(new BackEndWrapper(
-      std::move(words), std::move(labels), featureLimit, corrLimit, distRatio));
-  backEndWrapper->moveToThread(backEndWrapperThread.get());
-  backEndWrapperThread->start();
+  std::cout << "initializing computing stages" << std::endl;
+  _feature.reset(new Feature(featureLimit));
+  _wordSearch.reset(new WordSearch(words));
+  _dbSearch.reset(new DbSearch(words));
+  _perspective.reset(new Perspective(words, corrLimit, distRatio));
+  _visibility.reset(new Visibility(std::move(labels)));
 
-  std::shared_ptr<FrontEndWrapper> httpFrontEndWrapper;
+  std::unique_ptr<FrontEnd> httpFrontEnd;
   if (http == true) {
     std::cout << "initializing HTTP front end" << std::endl;
-    std::unique_ptr<FrontEnd> httpFrontEnd(
-        new HTTPFrontEnd(httpPort, MAX_CLIENTS));
-    httpFrontEndWrapper.reset(new FrontEndWrapper(std::move(httpFrontEnd)));
-    httpFrontEndWrapper->setBackEndWrapper(backEndWrapper);
-    if (!httpFrontEndWrapper->init()) {
+    httpFrontEnd.reset(new HTTPFrontEnd(httpPort, MAX_CLIENTS));
+    if (httpFrontEnd->start() == false) {
       std::cerr << "starting HTTP front end failed";
       return 1;
     }
+    httpFrontEnd->registerOnQuery(std::bind(
+        &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
   }
 
-  std::shared_ptr<FrontEndWrapper> bwFrontEndWrapper;
+  std::unique_ptr<FrontEnd> bwFrontEnd;
   if (bosswave == true) {
     std::cerr << "initializing BOSSWAVE front end" << std::endl;
-    std::unique_ptr<FrontEnd> bwFrontEnd(new BWFrontEnd(bosswaveURI));
-    bwFrontEndWrapper.reset(new FrontEndWrapper(std::move(bwFrontEnd)));
-    std::cerr << "DEBUG: bw front end addr" << bwFrontEndWrapper.get()
-              << std::endl;
-    bwFrontEndWrapper->setBackEndWrapper(backEndWrapper);
-    if (!bwFrontEndWrapper->init()) {
+    bwFrontEnd.reset(new BWFrontEnd(bosswaveURI));
+    if (bwFrontEnd->start() == false) {
       std::cerr << "starting BOSSWAVE front end failed";
       return 1;
     }
+    bwFrontEnd->registerOnQuery(std::bind(
+        &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
   }
 
   std::cout << "Initialization Done" << std::endl;
@@ -138,7 +125,7 @@ int run(int argc, char *argv[]) {
   return app.exec();
 }
 
-static void printInvalid(const std::vector<std::string> &opts) {
+void Run::printInvalid(const std::vector<std::string> &opts) {
   std::cerr << "invalid options: ";
   for (const auto &opt : opts) {
     std::cerr << opt << " ";
@@ -146,8 +133,68 @@ static void printInvalid(const std::vector<std::string> &opts) {
   std::cerr << std::endl;
 }
 
-static void printUsage(const po::options_description &desc) {
+void Run::printUsage(const po::options_description &desc) {
   std::cout << "cellmate run [command options] db_file..." << std::endl
             << std::endl
             << desc << std::endl;
+}
+
+void Run::printTime(long total, long feature, long wordSearch, long dbSearch,
+                    long perspective, long visibility) {
+  std::cout << "Time overall: " << total << " ms" << std::endl;
+  std::cout << "Time feature: " << feature << " ms" << std::endl;
+  std::cout << "Time wordSearch: " << wordSearch << " ms" << std::endl;
+  std::cout << "Time dbSearch: " << dbSearch << " ms" << std::endl;
+  std::cout << "Time perspective: " << perspective << " ms" << std::endl;
+  std::cout << "Time visibility: " << visibility << " ms" << std::endl;
+}
+
+std::vector<std::string> Run::identify(const cv::Mat &image,
+                                       const CameraModel &camera) {
+  std::vector<std::string> results;
+
+  // feature extraction
+  std::vector<cv::KeyPoint> keyPoints;
+  cv::Mat descriptors;
+
+  long startTime;
+  long totalStartTime = Utility::getTime();
+
+  startTime = Utility::getTime();
+  _feature->extract(image, keyPoints, descriptors);
+  long featureTime = Utility::getTime() - startTime;
+
+  // word search
+  startTime = Utility::getTime();
+  std::vector<int> wordIds = _wordSearch->search(descriptors);
+  long wordSearchTime = Utility::getTime() - startTime;
+
+  // db search
+  startTime = Utility::getTime();
+  int dbId = _dbSearch->search(wordIds);
+  long dbSearchTime = Utility::getTime() - startTime;
+
+  // PnP
+  Transform pose;
+  startTime = Utility::getTime();
+  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
+  long perspectiveTime = Utility::getTime() - startTime;
+
+  if (pose.isNull()) {
+    long totalTime = Utility::getTime() - totalStartTime;
+    Run::printTime(totalTime, featureTime, wordSearchTime, dbSearchTime,
+                   perspectiveTime, -1);
+    return results;
+  }
+
+  // visibility
+  startTime = Utility::getTime();
+  results = _visibility->process(dbId, camera, pose);
+  long visibilityTime = Utility::getTime() - startTime;
+
+  long totalTime = Utility::getTime() - totalStartTime;
+  Run::printTime(totalTime, featureTime, wordSearchTime, dbSearchTime,
+                 perspectiveTime, visibilityTime);
+
+  return results;
 }

@@ -22,16 +22,13 @@ public:
   /**
    * register a callback function
    */
-  void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> onQuery) {_onQuery = onQuery;}
+  void registerOnQuery(std::function<std::vector<std::string>(const cv::Mat &image, const CameraModel &camera)> onQuery) {_onQuery = onQuery;}
 
   /**
    * call the callback function
    */
-  std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> getOnQuery() {return _onQuery;}
+  std::function<std::vector<std::string>(const cv::Mat &image, const CameraModel &camera)> getOnQuery() {return _onQuery;}
 
 private:
-  std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> _onQuery;
+  std::function<std::vector<std::string>(const cv::Mat &image, const CameraModel &camera)> _onQuery;
 };
