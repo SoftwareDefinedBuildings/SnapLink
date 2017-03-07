@@ -153,32 +153,49 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
                                        const CameraModel &camera) {
   std::vector<std::string> results;
 
-  // feature extraction
-  std::vector<cv::KeyPoint> keyPoints;
-  cv::Mat descriptors;
-
   long startTime;
   long totalStartTime = Utility::getTime();
 
-  startTime = Utility::getTime();
-  _feature->extract(image, keyPoints, descriptors);
-  long featureTime = Utility::getTime() - startTime;
+  // feature extraction
+  std::vector<cv::KeyPoint> keyPoints;
+  cv::Mat descriptors;
+  long featureTime;
+  {
+    std::lock_guard<std::mutex> lock(_featureMutex);
+    startTime = Utility::getTime();
+    _feature->extract(image, keyPoints, descriptors);
+    featureTime = Utility::getTime() - startTime;
+  }
 
   // word search
-  startTime = Utility::getTime();
-  std::vector<int> wordIds = _wordSearch->search(descriptors);
-  long wordSearchTime = Utility::getTime() - startTime;
+  std::vector<int> wordIds;
+  long wordSearchTime;
+  {
+    std::lock_guard<std::mutex> lock(_wordSearchMutex);
+    startTime = Utility::getTime();
+    wordIds = _wordSearch->search(descriptors);
+    wordSearchTime = Utility::getTime() - startTime;
+  }
 
   // db search
-  startTime = Utility::getTime();
-  int dbId = _dbSearch->search(wordIds);
-  long dbSearchTime = Utility::getTime() - startTime;
+  int dbId;
+  long dbSearchTime;
+  {
+    std::lock_guard<std::mutex> lock(_dbSearchMutex);
+    startTime = Utility::getTime();
+    dbId = _dbSearch->search(wordIds);
+    dbSearchTime = Utility::getTime() - startTime;
+  }
 
   // PnP
   Transform pose;
-  startTime = Utility::getTime();
-  _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
-  long perspectiveTime = Utility::getTime() - startTime;
+  long perspectiveTime;
+  {
+    std::lock_guard<std::mutex> lock(_perspectiveMutex);
+    startTime = Utility::getTime();
+    _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
+    perspectiveTime = Utility::getTime() - startTime;
+  }
 
   if (pose.isNull()) {
     long totalTime = Utility::getTime() - totalStartTime;
@@ -188,9 +205,13 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   }
 
   // visibility
-  startTime = Utility::getTime();
-  results = _visibility->process(dbId, camera, pose);
-  long visibilityTime = Utility::getTime() - startTime;
+  long visibilityTime;
+  {
+    std::lock_guard<std::mutex> lock(_visibilityMutex);
+    startTime = Utility::getTime();
+    results = _visibility->process(dbId, camera, pose);
+    visibilityTime = Utility::getTime() - startTime;
+  }
 
   long totalTime = Utility::getTime() - totalStartTime;
   Run::printTime(totalTime, featureTime, wordSearchTime, dbSearchTime,
