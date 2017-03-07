@@ -1,15 +1,12 @@
 #pragma once
 
-#include <memory>
+#include "lib/front_end/FrontEnd.h"
 #include <atomic>
 #include <microhttpd.h>
 #include <mutex>
-#include <opencv2/core/core.hpp>
 
 #define POST_BUFFER_SIZE 100000
 #define IMAGE_INIT_SIZE 100000
-
-class CameraModel;
 
 typedef struct final {
   struct MHD_PostProcessor *postProcessor;
@@ -20,18 +17,14 @@ typedef struct final {
   double cy;
 } ConnectionInfo;
 
-class HTTPFrontEnd final {
+class HTTPFrontEnd final : public FrontEnd
+{
 public:
-  explicit HTTPFrontEnd();
+  explicit HTTPFrontEnd(uint16_t port, unsigned int maxClients);
   ~HTTPFrontEnd();
 
-  // start front end thread asynchronously
-  bool start(uint16_t port, unsigned int maxClients);
-  // stop front end thread synchronously
-  void stop();
-
-  void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> onQuery);
+  bool start() final;
+  void stop() final;
 
 private:
   static int answerConnection(void *cls, struct MHD_Connection *connection,
@@ -54,11 +47,9 @@ private:
 
 private:
   static const std::string none;
-
+  uint16_t _port;
   struct MHD_Daemon *_daemon;
-  std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> _onQuery; 
-  std::mutex _mutex;
-  std::atomic<unsigned int> _maxClients;
+  std::mutex _mutex; // to protect _numClient
   std::atomic<unsigned int> _numClients;
+  std::atomic<unsigned int> _maxClients;
 };

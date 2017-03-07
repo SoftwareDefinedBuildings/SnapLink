@@ -1,4 +1,4 @@
-#include "lib/adapter/rtabmap/RTABMapDBAdapter.h"
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include "lib/data/Labels.h"
 #include "lib/data/Transform.h"
 #include "lib/data/Words.h"
@@ -19,8 +19,8 @@
 #include <rtabmap/utilite/UStl.h>
 #include <sqlite3.h>
 
-bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
-                                Words &words, Labels &labels) {
+bool RTABMapAdapter::readData(const std::vector<std::string> &dbPaths,
+                              Words &words, Labels &labels) {
   // Read data from databases
   std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
       allSignatures;
@@ -63,7 +63,7 @@ bool RTABMapDBAdapter::readData(const std::vector<std::string> &dbPaths,
 }
 
 std::map<int, std::unique_ptr<rtabmap::Signature>>
-RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
+RTABMapAdapter::readSignatures(const std::string &dbPath) {
   std::map<int, std::unique_ptr<rtabmap::Signature>> signatures;
 
   // get optimized poses of signatures
@@ -109,7 +109,7 @@ RTABMapDBAdapter::readSignatures(const std::string &dbPath) {
   return signatures;
 }
 
-std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
+std::list<std::unique_ptr<Label>> RTABMapAdapter::readLabels(
     const std::string &dbPath, int dbId,
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
         &allSignatures) {
@@ -162,7 +162,7 @@ std::list<std::unique_ptr<Label>> RTABMapDBAdapter::readLabels(
 }
 
 std::map<int, rtabmap::Transform>
-RTABMapDBAdapter::getOptimizedPoseMap(const std::string &dbPath) {
+RTABMapAdapter::getOptimizedPoseMap(const std::string &dbPath) {
   rtabmap::Memory memory;
   memory.init(dbPath);
 
@@ -189,7 +189,7 @@ RTABMapDBAdapter::getOptimizedPoseMap(const std::string &dbPath) {
   return optimizedPoseMap;
 }
 
-std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
+std::list<std::unique_ptr<Word>> RTABMapAdapter::createWords(
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
         &allSignatures) {
   std::map<int, std::unique_ptr<Word>> wordsMap; // wordId: word pointer
@@ -248,8 +248,8 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::createWords(
   return words;
 }
 
-std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
-    std::list<std::unique_ptr<Word>> &words) {
+std::list<std::unique_ptr<Word>>
+RTABMapAdapter::clusterPointsInWords(std::list<std::unique_ptr<Word>> &words) {
   std::list<std::unique_ptr<Word>> newWords;
   for (const auto &word : words) {
     std::unique_ptr<Word> newWord =
@@ -301,9 +301,9 @@ std::list<std::unique_ptr<Word>> RTABMapDBAdapter::clusterPointsInWords(
   return newWords;
 }
 
-bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
-                                      const cv::Point2f &point2,
-                                      pcl::PointXYZ &point3) {
+bool RTABMapAdapter::getPoint3World(const rtabmap::Signature &signature,
+                                    const cv::Point2f &point2,
+                                    pcl::PointXYZ &point3) {
   rtabmap::SensorData data = signature.sensorData();
   rtabmap::Transform poseWorld = signature.getPose();
   assert(!poseWorld.isNull());
@@ -327,7 +327,7 @@ bool RTABMapDBAdapter::getPoint3World(const rtabmap::Signature &signature,
   return true;
 }
 
-std::vector<pcl::PointXYZ> RTABMapDBAdapter::clusterPoints3(
+std::vector<pcl::PointXYZ> RTABMapAdapter::clusterPoints3(
     const std::vector<pcl::PointXYZ> &points3,
     std::vector<pcl::PointIndices> *clusterIndicesOut) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);

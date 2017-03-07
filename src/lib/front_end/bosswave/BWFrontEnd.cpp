@@ -1,34 +1,33 @@
 #include "lib/front_end/bosswave/BWFrontEnd.h"
+#include "lib/front_end/bosswave/BWWorker.h"
 
-BWFrontEnd::BWFrontEnd() : _numClients(0), _bw(BW::instance()) {}
+BWFrontEnd::BWFrontEnd(const std::string &uri)
+    : _bw(BW::instance()), _uri(uri), _numClients(0) {}
 
 BWFrontEnd::~BWFrontEnd() {
+  std::cerr << "BWFrontEnd destructor" << std::endl;
   stop();
-  _bw.reset();
-  _numClients = 0;
 }
 
-void BWFrontEnd::start(const std::string &uri) {
-  _uri = uri;
+bool BWFrontEnd::start() {
+  std::cerr << "DEBUG: BW start()" << std::endl;
   _thread.reset(new QThread());
   this->moveToThread(_thread.get());
   connect(_thread.get(), &QThread::started, this, &BWFrontEnd::run);
   _thread->start();
+
+  return true;
 }
 
 void BWFrontEnd::stop() {
   _thread->exit();
   _thread.reset();
-}
-
-void BWFrontEnd::registerOnQuery(std::function<std::vector<std::string>(
-                                     std::unique_ptr<cv::Mat> &&image,
-                                     std::unique_ptr<CameraModel> &&camera)>
-                                     onQuery) {
-  _onQuery = onQuery;
+  _bw.reset();
+  _numClients = 0;
 }
 
 void BWFrontEnd::run() {
+  std::cerr << "DEBUG: BW run" << std::endl;
   connect(_bw.get(), &BW::agentChanged, this, &BWFrontEnd::agentChanged);
   _entity = getEntity();
   _bw->connectAgent(_entity);
@@ -36,6 +35,7 @@ void BWFrontEnd::run() {
 }
 
 void BWFrontEnd::agentChanged(bool success, QString msg) {
+  std::cerr << "DEBUG: agent Changed" << std::endl;
   _bw->subscribe(
       QString::fromStdString(_uri), QString(), true, QList<RoutingObject *>(),
       QDateTime(), -1, QString(), false, false,
@@ -86,19 +86,20 @@ void BWFrontEnd::onMessage(PMessage msg) {
   // workerThread memory will be freed using QThread::deleteLater
   QThread *workerThread = new QThread();
   // worker memory will be freed using BWWorker::deleteLater
-  BWWorker *worker = new BWWorker(msg, _onQuery, _numClients);
+  BWWorker *worker = new BWWorker(msg, getOnQuery(), _numClients);
 
   worker->moveToThread(workerThread);
 
   connect(workerThread, &QThread::started, worker, &BWWorker::process);
+
+  connect(worker, &BWWorker::done, this, &BWFrontEnd::respond);
+  connect(worker, &BWWorker::error, this, &BWFrontEnd::error);
+
   connect(worker, &BWWorker::done, workerThread, &QThread::quit);
   connect(worker, &BWWorker::error, workerThread, &QThread::quit);
   connect(workerThread, &QThread::finished, worker, &BWWorker::deleteLater);
   connect(workerThread, &QThread::finished, workerThread,
           &QThread::deleteLater);
-
-  connect(worker, &BWWorker::done, this, &BWFrontEnd::respond);
-  connect(worker, &BWWorker::error, this, &BWFrontEnd::error);
 
   workerThread->start();
   _numClients++;

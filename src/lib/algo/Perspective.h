@@ -7,8 +7,6 @@
 
 class CameraModel;
 class Transform;
-class Visibility;
-class HTTPServer;
 
 class Perspective final {
 public:

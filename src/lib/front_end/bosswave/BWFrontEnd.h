@@ -1,29 +1,21 @@
 #pragma once
 
-#include <iostream>
+#include "lib/front_end/FrontEnd.h"
 #include <libbw.h>
 #include <allocations.h>
-#include <sstream>
 #include <string>
-#include <fstream>
-#include "lib/front_end/bosswave/BWWorker.h"
+#include <atomic>
 
-class BWFrontEnd final : public QObject
+class BWFrontEnd final : public QObject, public FrontEnd
 {
   Q_OBJECT
 
 public:
-  explicit BWFrontEnd();
+  explicit BWFrontEnd(const std::string &uri);
   ~BWFrontEnd();
 
-  // start front end thread asynchronously
-  void start(const std::string &uri);
-  // stop front end thread synchronously
-  void stop();
-
-  void registerOnQuery(std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> onQuery);
-
+  bool start() final;
+  void stop() final;
 
 public slots:
   void run();
@@ -31,17 +23,12 @@ public slots:
   void respond(QString result, QString identity);
   void error();
 
-signals:
-  void signalBW();
-
 private:
   QByteArray getEntity();
   void onMessage(PMessage msg);
 
 private:
   std::unique_ptr<QThread> _thread;
-  std::function<std::vector<std::string>(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera)> _onQuery;
   std::shared_ptr<BW> _bw;
   QByteArray _entity;
   std::string _uri;

@@ -2,10 +2,10 @@
 
 const std::string BWWorker::none = "None";
 
-BWWorker::BWWorker(PMessage message, std::function<std::vector<std::string>(
-                                         std::unique_ptr<cv::Mat> &&image,
-                                         std::unique_ptr<CameraModel> &&camera)>
-                                         onQuery,
+BWWorker::BWWorker(PMessage message,
+                   std::function<std::vector<std::string>(
+                       const cv::Mat &image, const CameraModel &camera)>
+                       onQuery,
                    std::atomic<unsigned int> &numClients)
     : _msg(message), _onQuery(onQuery), _numClients(numClients) {}
 
@@ -24,27 +24,27 @@ void BWWorker::process() {
   }
 
   double fx, fy, cx, cy;
-  int wdith, height;
   std::stringstream ss;
   // TODO: Add comments here to explain why 5 and 8
   for (int i = 5; i <= 8; i++) {
     ss << std::string(contents[i], lens[i]) << " ";
   }
   ss >> fx >> fy >> cx >> cy;
-  std::unique_ptr<cv::Mat> image(new cv::Mat());
-  std::unique_ptr<CameraModel> camera(new CameraModel());
-  std::unique_ptr<std::vector<char>> rawData;
-  rawData.reset(new std::vector<char>());
-  rawData->reserve(IMAGE_INIT_SIZE);
-  rawData->insert(rawData->end(), contents[2], contents[2] + lens[2]);
-  createData(*rawData, fx, fy, cx, cy, *image, *camera);
-  if (image->empty()) {
+  cv::Mat image;
+  CameraModel camera;
+  std::vector<char> rawData;
+  rawData.reserve(IMAGE_INIT_SIZE);
+  rawData.insert(rawData.end(), contents[2], contents[2] + lens[2]);
+  createData(rawData, fx, fy, cx, cy, image, camera);
+  if (image.empty()) {
     std::cerr << "Creating image failed" << std::endl;
     emit error();
   }
 
-  std::vector<std::string> answers =
-      _onQuery(std::move(image), std::move(camera));
+  // blocking wait
+  std::vector<std::string> answers = _onQuery(image, camera);
+
+  std::cerr << "DEBUG: emmiting done()" << std::endl;
   emit done(QString::fromStdString(answers.at(0)),
             QString::fromStdString(std::string(contents[1], lens[1])));
 }

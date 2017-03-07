@@ -2,8 +2,6 @@
 
 #include <opencv2/xfeatures2d.hpp>
 
-class WordSearch;
-
 class Feature final {
 public:
   explicit Feature(int sampleSize = 0); // 0 means no subsampling

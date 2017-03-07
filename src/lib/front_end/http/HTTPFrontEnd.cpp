@@ -1,21 +1,19 @@
 #include "lib/front_end/http/HTTPFrontEnd.h"
-#include "lib/data/CameraModel.h"
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
 
 const std::string HTTPFrontEnd::none = "None";
 
-HTTPFrontEnd::HTTPFrontEnd() : _daemon(nullptr), _numClients(0) {}
+HTTPFrontEnd::HTTPFrontEnd(uint16_t port, unsigned int maxClients)
+    : _port(port), _daemon(nullptr), _numClients(0), _maxClients(maxClients) {}
 
 HTTPFrontEnd::~HTTPFrontEnd() {
+  std::cerr << "HTTPFrontEnd destructor" << std::endl;
   stop();
-  _numClients = 0;
 }
 
-bool HTTPFrontEnd::start(uint16_t port, unsigned int maxClients) {
-  _maxClients = maxClients;
-
+bool HTTPFrontEnd::start() {
   // start MHD daemon, listening on port
   unsigned int flags = MHD_USE_SELECT_INTERNALLY | MHD_USE_EPOLL_LINUX_ONLY;
   struct MHD_OptionItem ops[] = {
@@ -25,7 +23,7 @@ bool HTTPFrontEnd::start(uint16_t port, unsigned int maxClients) {
        reinterpret_cast<intptr_t>(&requestCompleted),
        static_cast<void *>(this)},
       {MHD_OPTION_END, 0, nullptr}};
-  _daemon = MHD_start_daemon(flags, port, nullptr, nullptr,                //
+  _daemon = MHD_start_daemon(flags, _port, nullptr, nullptr,               //
                              &answerConnection, static_cast<void *>(this), //
                              MHD_OPTION_ARRAY, ops,                        //
                              MHD_OPTION_END);
@@ -41,13 +39,7 @@ void HTTPFrontEnd::stop() {
     MHD_stop_daemon(_daemon);
     _daemon = nullptr;
   }
-}
-
-void HTTPFrontEnd::registerOnQuery(std::function<std::vector<std::string>(
-                                       std::unique_ptr<cv::Mat> &&image,
-                                       std::unique_ptr<CameraModel> &&camera)>
-                                       onQuery) {
-  _onQuery = onQuery;
+  _numClients = 0;
 }
 
 int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
@@ -98,7 +90,7 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
 
     return MHD_YES;
   } else {
-    std::vector<std::string> names;
+    std::vector<std::string> results;
 
     // all data are received
     if (!connInfo->imageRaw.empty()) {
@@ -106,21 +98,21 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       double fy = connInfo->fy;
       double cx = connInfo->cx;
       double cy = connInfo->cy;
-      std::unique_ptr<cv::Mat> image(new cv::Mat());
-      std::unique_ptr<CameraModel> camera(new CameraModel());
-      createData(connInfo->imageRaw, fx, fy, cx, cy, *image, *camera);
-      if (image->empty()) {
+      cv::Mat image;
+      CameraModel camera;
+      createData(connInfo->imageRaw, fx, fy, cx, cy, image, camera);
+      if (image.empty()) {
         // TODO do I need to free anything here?
         return respond(connection, none, MHD_HTTP_BAD_REQUEST);
       }
 
       // blocking wait
-      names = httpServer->_onQuery(std::move(image), std::move(camera));
+      results = httpServer->getOnQuery()(image, camera);
     }
 
     std::string answer = none;
-    if (!names.empty()) {
-      answer = std::move(names.at(0));
+    if (!results.empty()) {
+      answer = std::move(results.at(0));
     }
 
     return respond(connection, answer, MHD_HTTP_OK);

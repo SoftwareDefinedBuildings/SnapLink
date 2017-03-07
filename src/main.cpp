@@ -13,7 +13,8 @@ static void printUsage(const po::options_description &desc);
 int main(int argc, char *argv[]) {
   if (argc > 1) {
     if (std::string(argv[1]) == "run") {
-      return run(argc - 1, argv + 1);
+      Run run;
+      return run.run(argc - 1, argv + 1);
     } else if (std::string(argv[1]) == "dist") {
       // TODO
     } else if (std::string(argv[1]) == "vis") {
@@ -48,6 +49,9 @@ int main(int argc, char *argv[]) {
     printUsage(global);
     return 0;
   }
+
+  // check whether required options exist after handling help
+  po::notify(vm);
 
   if (vm.count("version")) {
     std::cout << "cellmate version " << VERSION << std::endl;

@@ -17,7 +17,6 @@
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/utilite/UEventsManager.h>
 #include <string>
 
 Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
@@ -33,7 +32,6 @@ Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
 }
 
 Widget::~Widget() {
-  delete _ui;
   if (_db) {
     sqlite3_close(_db);
   }
