@@ -42,6 +42,7 @@ void BWWorker::process() {
     emit error();
   }
 
+  // blocking wait
   std::vector<std::string> answers =
       _onQuery(std::move(image), std::move(camera));
 

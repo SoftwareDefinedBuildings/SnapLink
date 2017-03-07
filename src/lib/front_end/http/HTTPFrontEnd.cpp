@@ -90,7 +90,7 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
 
     return MHD_YES;
   } else {
-    std::vector<std::string> names;
+    std::vector<std::string> results;
 
     // all data are received
     if (!connInfo->imageRaw.empty()) {
@@ -107,12 +107,12 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       }
 
       // blocking wait
-      names = httpServer->getOnQuery()(std::move(image), std::move(camera));
+      results = httpServer->getOnQuery()(std::move(image), std::move(camera));
     }
 
     std::string answer = none;
-    if (!names.empty()) {
-      answer = std::move(names.at(0));
+    if (!results.empty()) {
+      answer = std::move(results.at(0));
     }
 
     return respond(connection, answer, MHD_HTTP_OK);
