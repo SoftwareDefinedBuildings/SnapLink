@@ -1,6 +1,8 @@
 #pragma once
 
-#include "lib/data/Labels.h"
+#include "lib/data/Label.h"
+#include <map>
+#include <list>
 #include <memory>
 #include <numeric>
 
@@ -9,13 +11,13 @@ class Transform;
 
 class Visibility final {
 public:
-  explicit Visibility(std::unique_ptr<Labels> &&labels);
+  explicit Visibility(const std::map<int, std::list<Label>> &labels);
 
   std::vector<std::string> process(int dbId, const CameraModel &camera,
                                    const Transform &pose) const;
 
 private:
-  std::unique_ptr<Labels> _labels;
+  const std::map<int, std::list<Label>> &_labels;
 };
 
 struct CompareMeanDist {

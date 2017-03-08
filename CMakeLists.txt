@@ -56,7 +56,6 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/lib/util/Utility.cpp"
     "${CellMate_SOURCE_DIR}/lib/adapter/rtabmap/RTABMapAdapter.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Transform.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/LabelsSimple.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Label.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Word.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/CameraModel.cpp"

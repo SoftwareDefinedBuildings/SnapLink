@@ -7,19 +7,17 @@
 #include <opencv/cv.h>
 #include <pcl/point_types.h>
 
-Visibility::Visibility(std::unique_ptr<Labels> &&labels)
-    : _labels(std::move(labels)) {}
+Visibility::Visibility(const std::map<int, std::list<Label>> &labels)
+    : _labels(labels) {}
 
 std::vector<std::string> Visibility::process(int dbId,
                                              const CameraModel &camera,
                                              const Transform &pose) const {
-  const std::list<std::unique_ptr<Label>> &labels =
-      _labels->getLabels().at(dbId);
   std::vector<cv::Point3f> points;
   std::vector<std::string> names;
-  for (auto &label : labels) {
-    points.emplace_back(label->getPoint3());
-    names.emplace_back(label->getName());
+  for (auto &label : _labels.at(dbId)) {
+    points.emplace_back(label.getPoint3());
+    names.emplace_back(label.getName());
   }
 
   std::vector<std::string> results;

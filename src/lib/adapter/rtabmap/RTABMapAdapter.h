@@ -13,19 +13,18 @@
 #include <set>
 #include <typeinfo>
 
-class Labels;
 class Words;
 
 class RTABMapAdapter final {
 public:
   // read data from database files
   static bool readData(const std::vector<std::string> &dbPaths, Words &words,
-                       Labels &labels);
+                       std::map<int, std::list<Label>> &labels);
 
 private:
   static std::map<int, std::unique_ptr<rtabmap::Signature>>
   readSignatures(const std::string &dbPath);
-  static std::list<std::unique_ptr<Label>> readLabels(
+  static std::list<Label> readDBLabels(
       const std::string &dbPath, int dbId,
       const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
           &allSignatures);

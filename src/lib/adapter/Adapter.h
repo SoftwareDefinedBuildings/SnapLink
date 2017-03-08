@@ -2,7 +2,6 @@
 
 #include <set>
 
-class Labels;
 class Words;
 class Images;
 
@@ -16,5 +15,5 @@ public:
 
   virtual const Images &getImages() = 0;
 
-  virtual const Labels &getLabels() = 0;
+  virtual const std::map<int, std::list<Label>> &getLabels() = 0;
 };

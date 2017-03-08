@@ -1,6 +1,6 @@
 #include "run/run.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
-#include "lib/data/LabelsSimple.h"
+#include "lib/data/Label.h"
 #include "lib/data/Transform.h"
 #include "lib/data/WordsKdTree.h"
 #include "lib/front_end/bosswave/BWFrontEnd.h"
@@ -81,10 +81,10 @@ int Run::run(int argc, char *argv[]) {
   QCoreApplication app(argc, argv);
 
   std::shared_ptr<Words> words(new WordsKdTree());
-  std::unique_ptr<Labels> labels(new LabelsSimple());
+  std::map<int, std::list<Label>> labels;
 
   std::cout << "reading data" << std::endl;
-  if (!RTABMapAdapter::readData(dbFiles, *words, *labels)) {
+  if (!RTABMapAdapter::readData(dbFiles, *words, labels)) {
     qCritical() << "reading data failed";
     return 1;
   }
@@ -94,7 +94,7 @@ int Run::run(int argc, char *argv[]) {
   _wordSearch.reset(new WordSearch(words));
   _dbSearch.reset(new DbSearch(words));
   _perspective.reset(new Perspective(words, corrLimit, distRatio));
-  _visibility.reset(new Visibility(std::move(labels)));
+  _visibility.reset(new Visibility(labels));
 
   std::unique_ptr<FrontEnd> httpFrontEnd;
   if (http == true) {
