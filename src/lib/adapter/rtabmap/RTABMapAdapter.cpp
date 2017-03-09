@@ -1,6 +1,6 @@
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include "lib/data/Transform.h"
-#include "lib/data/Words.h"
+#include "lib/data/Word.h"
 #include <opencv2/xfeatures2d.hpp>
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
@@ -19,7 +19,7 @@
 #include <sqlite3.h>
 
 bool RTABMapAdapter::readData(const std::vector<std::string> &dbPaths,
-                              Words &words,
+                              std::map<int, Word> &words, std::map<int, Room> &rooms,
                               std::map<int, std::list<Label>> &labels) {
   // Read data from databases
   std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
@@ -36,24 +36,17 @@ bool RTABMapAdapter::readData(const std::vector<std::string> &dbPaths,
   }
 
   std::cerr << "Building Index for Words" << std::endl;
-  std::list<std::unique_ptr<Word>> allWords = createWords(allSignatures);
-  std::cerr << "Total Number of words: " << allWords.size() << std::endl;
+  words = createWords(allSignatures);
+  std::cerr << "Total Number of words: " << words.size() << std::endl;
   long count = 0;
-  for (const auto &word : allWords) {
-    for (const auto &desc : word->getDescriptorsByDb()) {
-      count += desc.second.rows;
-    }
-  }
-  std::cerr << "Total Number of descriptors: " << count << std::endl;
-  allWords = clusterPointsInWords(allWords);
-  count = 0;
-  for (const auto &word : allWords) {
-    for (const auto &desc : word->getDescriptorsByDb()) {
+  for (const auto &word : words) {
+    for (const auto &desc : word.second.getDescriptorsByDb()) {
       count += desc.second.rows;
     }
   }
   std::cerr << "Total Number of points: " << count << std::endl;
-  words.putWords(std::move(allWords));
+
+  rooms = createRooms(words);
 
   return true;
 }
@@ -185,23 +178,16 @@ RTABMapAdapter::getOptimizedPoseMap(const std::string &dbPath) {
   return optimizedPoseMap;
 }
 
-std::list<std::unique_ptr<Word>> RTABMapAdapter::createWords(
+std::map<int, Word> RTABMapAdapter::createWords(
     const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
         &allSignatures) {
-  std::map<int, std::unique_ptr<Word>> wordsMap; // wordId: word pointer
+  std::map<int, Word> words;
   rtabmap::VWDictionary vwd;
   cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
   for (const auto &dbSignatures : allSignatures) {
     int dbId = dbSignatures.first;
     std::cerr << "Creating words for signatures in DB " << dbId << std::endl;
     for (const auto &dbSignature : dbSignatures.second) {
-      // get image normal vector
-      const rtabmap::Transform &poseWorld = dbSignature.second->getPose();
-      assert(!poseWorld.isNull());
-      pcl::PointXYZ normalPCL = pcl::transformPoint(
-          pcl::PointXYZ(0, 0, 1), poseWorld.rotation().toEigen3f());
-      cv::Point3f normalCV(normalPCL.x, normalPCL.y, normalPCL.z);
-
       // compute 2D features
       const cv::Mat &image = dbSignature.second->sensorData().imageRaw();
       std::vector<cv::KeyPoint> keyPoints;
@@ -220,15 +206,12 @@ std::list<std::unique_ptr<Word>> RTABMapAdapter::createWords(
         pcl::PointXYZ point3PCL;
         if (getPoint3World(*dbSignature.second, point2CV.pt, point3PCL)) {
           cv::Point3f point3CV(point3PCL.x, point3PCL.y, point3PCL.z);
-
-          auto iter = wordsMap.find(wordId);
-          if (iter == wordsMap.end()) {
-            auto ret = wordsMap.emplace(
-                wordId, std::unique_ptr<Word>(new Word(wordId)));
+          auto iter = words.find(wordId);
+          if (iter == words.end()) {
+            auto ret = words.emplace(wordId, Word(wordId));
             iter = ret.first;
           }
-          iter->second->addPoints3(dbId, std::vector<cv::Point3f>(1, point3CV),
-                                   std::vector<cv::Point3f>(1, normalCV),
+          iter->second.addPoints3(dbId, std::vector<cv::Point3f>(1, point3CV),
                                    descriptor);
         }
         i++;
@@ -236,65 +219,25 @@ std::list<std::unique_ptr<Word>> RTABMapAdapter::createWords(
     }
   }
 
-  std::list<std::unique_ptr<Word>> words;
-  for (auto &word : wordsMap) {
-    words.emplace_back(std::move(word.second));
-  }
-
   return words;
 }
 
-std::list<std::unique_ptr<Word>>
-RTABMapAdapter::clusterPointsInWords(std::list<std::unique_ptr<Word>> &words) {
-  std::list<std::unique_ptr<Word>> newWords;
-  for (const auto &word : words) {
-    std::unique_ptr<Word> newWord =
-        std::unique_ptr<Word>(new Word(word->getId()));
-    // cluster points and calculate mean descriptor for every cluster
-    for (const auto &oldPoints3CV : word->getPoints3Map()) {
-      int dbId = oldPoints3CV.first;
-      std::vector<pcl::PointXYZ> oldPoints3PCL;
-      for (const auto &oldPoint3CV : oldPoints3CV.second) {
-        oldPoints3PCL.emplace_back(oldPoint3CV.x, oldPoint3CV.y, oldPoint3CV.z);
+std::map<int, Room> createRooms(const std::map<int, Word> &words) {
+  std::map<int, Room> rooms;
+  for (const auto word : words) {
+    int wordId = word.first;
+    for (const auto points : word.second.getPoints3Map()) {
+      int roomId = points.first; // same as DB ID for now
+      auto iter = rooms.find(roomId);
+      if (iter == rooms.end()) {
+        auto ret = rooms.emplace(roomId, Room(roomId));
+        iter = ret.first;
       }
-      std::vector<pcl::PointIndices> clusterIndices;
-      std::vector<pcl::PointXYZ> newPoints3PCL =
-          clusterPoints3(oldPoints3PCL, &clusterIndices);
-      std::vector<cv::Point3f> newPoints3CV;
-      for (const auto &newPoint3PCL : newPoints3PCL) {
-        newPoints3CV.emplace_back(newPoint3PCL.x, newPoint3PCL.y,
-                                  newPoint3PCL.z);
-      }
-
-      // create new descriptors based on indices
-      cv::Mat oldDescriptors = word->getDescriptorsByDb().at(dbId);
-      cv::Mat newDescriptors; // descriptors of clustered points
-      const auto &oldNormals = word->getNormalsMap().at(dbId);
-      std::vector<cv::Point3f> newNormals;
-      for (const auto &clusterIndice : clusterIndices) {
-        cv::Mat clusterDescriptors;
-        cv::Mat meanDescriptor;
-        std::vector<cv::Point3f> clusterNormals;
-        for (int index : clusterIndice.indices) {
-          clusterDescriptors.push_back(oldDescriptors.row(index));
-          clusterNormals.emplace_back(oldNormals.at(index));
-        }
-        cv::reduce(clusterDescriptors, meanDescriptor, 0, CV_REDUCE_AVG);
-        cv::Point3f sum = std::accumulate(
-            clusterNormals.begin(), clusterNormals.end(), cv::Point3f(0, 0, 0));
-        newDescriptors.push_back(meanDescriptor);
-        newNormals.emplace_back(sum.x / clusterNormals.size(),
-                                sum.y / clusterNormals.size(),
-                                sum.z / clusterNormals.size());
-      }
-
-      newWord->addPoints3(dbId, newPoints3CV, newNormals, newDescriptors);
+      iter->second.addWordIds(std::vector<int>(1, wordId));
     }
-
-    newWords.emplace_back(std::move(newWord));
   }
 
-  return newWords;
+  return rooms;
 }
 
 bool RTABMapAdapter::getPoint3World(const rtabmap::Signature &signature,
@@ -321,46 +264,4 @@ bool RTABMapAdapter::getPoint3World(const rtabmap::Signature &signature,
   poseWorld = poseWorld * camera.localTransform();
   point3 = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
   return true;
-}
-
-std::vector<pcl::PointXYZ> RTABMapAdapter::clusterPoints3(
-    const std::vector<pcl::PointXYZ> &points3,
-    std::vector<pcl::PointIndices> *clusterIndicesOut) {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  for (const auto &point3 : points3) {
-    cloud->push_back(point3);
-  }
-
-  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
-      new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(cloud);
-
-  std::vector<pcl::PointIndices> clusterIndices;
-  pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-  ec.setClusterTolerance(0.1); // in meter
-  ec.setSearchMethod(tree);
-  ec.setInputCloud(cloud);
-  ec.extract(clusterIndices);
-
-  std::vector<pcl::PointXYZ> clusteredPoints3;
-  int j = 0;
-  for (std::vector<pcl::PointIndices>::const_iterator iter =
-           clusterIndices.begin();
-       iter != clusterIndices.end(); iter++) {
-    pcl::CentroidPoint<pcl::PointXYZ> cloudCluster;
-    for (std::vector<int>::const_iterator jter = iter->indices.begin();
-         jter != iter->indices.end(); jter++) {
-      cloudCluster.add(cloud->points[*jter]);
-    }
-    pcl::PointXYZ centroid;
-    cloudCluster.get(centroid);
-    clusteredPoints3.emplace_back(std::move(centroid));
-    j++;
-  }
-
-  if (clusterIndicesOut != nullptr) {
-    *clusterIndicesOut = clusterIndices;
-  }
-
-  return clusteredPoints3;
 }

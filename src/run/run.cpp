@@ -80,11 +80,12 @@ int Run::run(int argc, char *argv[]) {
   // Run the program
   QCoreApplication app(argc, argv);
 
-  std::shared_ptr<Words> words(new WordsKdTree());
-  std::map<int, std::list<Label>> labels;
+  std::map<int, Word> words; // word ID : word
+  std::map<int, Room> rooms; // room ID : room
+  std::map<int, std::list<Label>> labels; // label DB ID : label
 
   std::cout << "reading data" << std::endl;
-  if (!RTABMapAdapter::readData(dbFiles, *words, labels)) {
+  if (!RTABMapAdapter::readData(dbFiles, words, rooms, labels)) {
     qCritical() << "reading data failed";
     return 1;
   }
