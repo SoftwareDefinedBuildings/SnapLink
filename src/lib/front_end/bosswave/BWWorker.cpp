@@ -42,10 +42,15 @@ void BWWorker::process() {
   }
 
   // blocking wait
-  std::vector<std::string> answers = _onQuery(image, camera);
+  std::vector<std::string> results = _onQuery(image, camera);
+
+  std::string result = none;
+  if (!results.empty()) {
+    result = std::move(results.at(0));
+  }
 
   std::cerr << "DEBUG: emmiting done()" << std::endl;
-  emit done(QString::fromStdString(answers.at(0)),
+  emit done(QString::fromStdString(result),
             QString::fromStdString(std::string(contents[1], lens[1])));
 }
 

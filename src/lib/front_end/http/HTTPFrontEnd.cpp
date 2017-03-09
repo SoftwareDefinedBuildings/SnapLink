@@ -110,12 +110,12 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
       results = httpServer->getOnQuery()(image, camera);
     }
 
-    std::string answer = none;
+    std::string result = none;
     if (!results.empty()) {
-      answer = std::move(results.at(0));
+      result = std::move(results.at(0));
     }
 
-    return respond(connection, answer, MHD_HTTP_OK);
+    return respond(connection, result, MHD_HTTP_OK);
   }
 
   return respond(connection, none, MHD_HTTP_BAD_REQUEST);

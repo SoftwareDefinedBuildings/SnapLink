@@ -1,8 +1,7 @@
 #include "run/run.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
-#include "lib/data/LabelsSimple.h"
+#include "lib/data/Label.h"
 #include "lib/data/Transform.h"
-#include "lib/data/WordsKdTree.h"
 #include "lib/front_end/bosswave/BWFrontEnd.h"
 #include "lib/front_end/http/HTTPFrontEnd.h"
 #include "lib/util/Utility.h"
@@ -80,11 +79,12 @@ int Run::run(int argc, char *argv[]) {
   // Run the program
   QCoreApplication app(argc, argv);
 
-  std::shared_ptr<Words> words(new WordsKdTree());
-  std::unique_ptr<Labels> labels(new LabelsSimple());
+  std::map<int, Word> words;              // word ID : word
+  std::map<int, Room> rooms;              // room ID : room
+  std::map<int, std::list<Label>> labels; // label DB ID : label
 
   std::cout << "reading data" << std::endl;
-  if (!RTABMapAdapter::readData(dbFiles, *words, *labels)) {
+  if (!RTABMapAdapter::readData(dbFiles, words, rooms, labels)) {
     qCritical() << "reading data failed";
     return 1;
   }
@@ -92,9 +92,9 @@ int Run::run(int argc, char *argv[]) {
   std::cout << "initializing computing stages" << std::endl;
   _feature.reset(new Feature(featureLimit));
   _wordSearch.reset(new WordSearch(words));
-  _dbSearch.reset(new DbSearch(words));
-  _perspective.reset(new Perspective(words, corrLimit, distRatio));
-  _visibility.reset(new Visibility(std::move(labels)));
+  _roomSearch.reset(new RoomSearch(rooms, words));
+  _perspective.reset(new Perspective(rooms, words, corrLimit, distRatio));
+  _visibility.reset(new Visibility(labels));
 
   std::unique_ptr<FrontEnd> httpFrontEnd;
   if (http == true) {
@@ -139,12 +139,12 @@ void Run::printUsage(const po::options_description &desc) {
             << desc << std::endl;
 }
 
-void Run::printTime(long total, long feature, long wordSearch, long dbSearch,
+void Run::printTime(long total, long feature, long wordSearch, long roomSearch,
                     long perspective, long visibility) {
   std::cout << "Time overall: " << total << " ms" << std::endl;
   std::cout << "Time feature: " << feature << " ms" << std::endl;
   std::cout << "Time wordSearch: " << wordSearch << " ms" << std::endl;
-  std::cout << "Time dbSearch: " << dbSearch << " ms" << std::endl;
+  std::cout << "Time roomSearch: " << roomSearch << " ms" << std::endl;
   std::cout << "Time perspective: " << perspective << " ms" << std::endl;
   std::cout << "Time visibility: " << visibility << " ms" << std::endl;
 }
@@ -177,14 +177,14 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
     wordSearchTime = Utility::getTime() - startTime;
   }
 
-  // db search
-  int dbId;
-  long dbSearchTime;
+  // room search
+  int roomId;
+  long roomSearchTime;
   {
-    std::lock_guard<std::mutex> lock(_dbSearchMutex);
+    std::lock_guard<std::mutex> lock(_roomSearchMutex);
     startTime = Utility::getTime();
-    dbId = _dbSearch->search(wordIds);
-    dbSearchTime = Utility::getTime() - startTime;
+    roomId = _roomSearch->search(wordIds);
+    roomSearchTime = Utility::getTime() - startTime;
   }
 
   // PnP
@@ -193,13 +193,14 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   {
     std::lock_guard<std::mutex> lock(_perspectiveMutex);
     startTime = Utility::getTime();
-    _perspective->localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
+    _perspective->localize(wordIds, keyPoints, descriptors, camera, roomId,
+                           pose);
     perspectiveTime = Utility::getTime() - startTime;
   }
 
   if (pose.isNull()) {
     long totalTime = Utility::getTime() - totalStartTime;
-    Run::printTime(totalTime, featureTime, wordSearchTime, dbSearchTime,
+    Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                    perspectiveTime, -1);
     return results;
   }
@@ -209,12 +210,12 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   {
     std::lock_guard<std::mutex> lock(_visibilityMutex);
     startTime = Utility::getTime();
-    results = _visibility->process(dbId, camera, pose);
+    results = _visibility->process(roomId, camera, pose);
     visibilityTime = Utility::getTime() - startTime;
   }
 
   long totalTime = Utility::getTime() - totalStartTime;
-  Run::printTime(totalTime, featureTime, wordSearchTime, dbSearchTime,
+  Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                  perspectiveTime, visibilityTime);
 
   return results;

@@ -5,14 +5,16 @@
 #include <cassert>
 #include <pcl/common/transforms.h>
 
-Perspective::Perspective(const std::shared_ptr<Words> &words, int corrSize,
+Perspective::Perspective(const std::map<int, Room> &rooms,
+                         const std::map<int, Word> &words, int corrLimit,
                          double distRatio)
-    : _words(words), _corrSize(corrSize), _distRatio(distRatio) {}
+    : _rooms(rooms), _words(words), _corrLimit(corrLimit),
+      _distRatio(distRatio) {}
 
 void Perspective::localize(const std::vector<int> &wordIds,
                            const std::vector<cv::KeyPoint> &keyPoints,
                            const cv::Mat &descriptors,
-                           const CameraModel &camera, int dbId,
+                           const CameraModel &camera, int roomId,
                            Transform &transform) const {
   if (wordIds.size() == 0) {
     return;
@@ -21,7 +23,7 @@ void Perspective::localize(const std::vector<int> &wordIds,
   std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
       getWords2(wordIds, keyPoints, descriptors);
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>> words3 =
-      getWords3(std::set<int>(wordIds.begin(), wordIds.end()), dbId);
+      getWords3(std::set<int>(wordIds.begin(), wordIds.end()), roomId);
 
   std::vector<cv::Point2f> imagePoints;
   std::vector<cv::Point3f> objectPoints;
@@ -56,25 +58,23 @@ Perspective::getWords2(const std::vector<int> &wordIds,
 }
 
 std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
-Perspective::getWords3(const std::set<int> &wordIds, int dbId) const {
-  const std::map<int, std::shared_ptr<Word>> &wordsById =
-      _words->getWordsById();
+Perspective::getWords3(const std::set<int> &wordIds, int roomId) const {
   std::map<int, std::pair<std::vector<cv::Point3f>, cv::Mat>>
       words3; // wordId: point3
 
-  const auto &dbWords = _words->getWordsByDb().at(dbId);
+  const auto &roomWords = _rooms.at(roomId).getWordIds();
 
   for (int wordId : wordIds) {
-    auto iter = dbWords.find(wordId);
-    if (iter == dbWords.end()) {
+    auto iter = roomWords.find(wordId);
+    if (iter == roomWords.end()) {
       continue;
     }
 
-    const auto jter = wordsById.find(wordId);
-    assert(jter != wordsById.end());
-    const std::shared_ptr<Word> &word = jter->second;
-    const auto &points3 = word->getPoints3Map().at(dbId);
-    cv::Mat desc = word->getDescriptorsByDb().at(dbId);
+    const auto jter = _words.find(wordId);
+    assert(jter != _words.end());
+    const Word &word = jter->second;
+    const auto &points3 = word.getPoints3Map().at(roomId);
+    cv::Mat desc = word.getDescriptorsByDb().at(roomId);
 
     unsigned int i = 0;
     for (const auto &point3 : points3) {
@@ -135,7 +135,7 @@ void Perspective::getMatchPoints(
         imagePoints.emplace_back(point2.pt);
         objectPoints.emplace_back(point3);
         matchCount++;
-        if (_corrSize > 0 && matchCount >= _corrSize) {
+        if (_corrLimit > 0 && matchCount >= _corrLimit) {
           return;
         }
       }
