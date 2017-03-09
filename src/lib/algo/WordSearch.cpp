@@ -1,7 +1,8 @@
 #include "lib/algo/WordSearch.h"
 #include <cassert>
 
-WordSearch::WordSearch(const std::map<int, Word> &words) : _words(words) {
+WordSearch::WordSearch(const std::map<int, Word> &words)
+    : _words(words), _type(-1), _dim(-1) {
   buildIndex();
 }
 
@@ -43,8 +44,7 @@ void WordSearch::buildIndex() {
   if (_words.size() > 0) {
     // use the first word to define the type and dim
     if (_type < 0 || _dim < 0) {
-      const cv::Mat &descriptor =
-          _words.begin()->second.getMeanDescriptor();
+      const cv::Mat &descriptor = _words.begin()->second.getMeanDescriptor();
       _type = descriptor.type();
       _dim = descriptor.cols;
     }

@@ -19,7 +19,8 @@
 #include <sqlite3.h>
 
 bool RTABMapAdapter::readData(const std::vector<std::string> &dbPaths,
-                              std::map<int, Word> &words, std::map<int, Room> &rooms,
+                              std::map<int, Word> &words,
+                              std::map<int, Room> &rooms,
                               std::map<int, std::list<Label>> &labels) {
   // Read data from databases
   std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
@@ -212,7 +213,7 @@ std::map<int, Word> RTABMapAdapter::createWords(
             iter = ret.first;
           }
           iter->second.addPoints3(dbId, std::vector<cv::Point3f>(1, point3CV),
-                                   descriptor);
+                                  descriptor);
         }
         i++;
       }
@@ -222,7 +223,8 @@ std::map<int, Word> RTABMapAdapter::createWords(
   return words;
 }
 
-std::map<int, Room> createRooms(const std::map<int, Word> &words) {
+std::map<int, Room>
+RTABMapAdapter::createRooms(const std::map<int, Word> &words) {
   std::map<int, Room> rooms;
   for (const auto word : words) {
     int wordId = word.first;

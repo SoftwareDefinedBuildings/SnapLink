@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lib/data/Words.h"
+#include "lib/data/Word.h"
 #include <opencv2/flann.hpp>
 #include <memory>
 

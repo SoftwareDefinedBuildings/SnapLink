@@ -12,9 +12,9 @@ public:
 
   int getId() const;
   void addWordIds(std::vector<int> &&wordIds);
+  const std::set<int> &getWordIds() const;
 
 private:
   int _id;
   std::set<int> _wordIds;
-  const std::map<int, Word> &_words;
 };
