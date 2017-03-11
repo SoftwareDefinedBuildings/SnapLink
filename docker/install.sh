@@ -26,7 +26,7 @@ apt-get build-dep -y qt5-default
 apt-get install -y libxcb-xinerama0-dev 
 
 # Clone qt5, init repository, checkout to the target tag (only after init-repository has been run), and get all submodules
-git clone git://code.qt.io/qt/qt5.git /root/workspace/qt5
+git clone https://code.qt.io/qt/qt5.git /root/workspace/qt5
 cd /root/workspace/qt5
 perl init-repository
 git checkout tags/v5.8.0
