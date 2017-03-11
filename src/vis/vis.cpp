@@ -6,8 +6,11 @@
 #include "vis/vis.h"
 #include <rtabmap/utilite/UStl.h>
 #include "rtabmap/core/RtabmapEvent.h"
+#include <rtabmap/core/Optimizer.h>
 #include <iostream>
 #include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util3d_transforms.h>
+
 /*
 int main1() {
   std::cout<<"hello\n";
@@ -83,51 +86,85 @@ int main1() {
 int main1() {
   std::string dbPath = "/root/workspace/tempdata/face_down.db"; 
   std::cout<<"hello\n";
+
+
+  //get posesMap and linksMap
+  rtabmap::Memory memory;
+  memory.init(dbPath);
+  std::map<int, rtabmap::Transform> poses;
+  std::multimap<int, rtabmap::Link> links;
+  if (memory.getLastWorkingSignature()) {
+      // Get all IDs linked to last signature (including those in Long-Term
+      //  Memory)
+      std::map<int, int> ids =
+          memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
+      // Get all metric constraints (the graph)
+      memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
+  }
+  // Optimize the graph
+  std::map<int, rtabmap::Transform> optimizedPoseMap;
+  rtabmap::Optimizer *graphOptimizer =
+                rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
+  optimizedPoseMap =
+                graphOptimizer->optimize(poses.begin()->first, poses, links);
+  delete graphOptimizer;
+
+
+
+
+
+
+
   rtabmap::DBDriver * driver = rtabmap::DBDriver::create();
   driver->openConnection(dbPath);
   std::set<int> ids;
   driver->getAllNodeIds(ids, true);
   std::cout<<"Number of pictures : "<<ids.size()<<std::endl;
-  rtabmap::Memory memory;
-  memory.init(dbPath);
+  //rtabmap::Memory memory;
+  //memory.init(dbPath);
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr
+      assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
   for(auto id : ids) {
-    std::cout<<"id is "<<id<<std::endl;
-  
-  
-  int imageId = id;
-  bool uncompressedData = true; 
-  rtabmap::SensorData data = memory.getNodeData(imageId, uncompressedData);
-  const rtabmap::CameraModel &cm = data.cameraModels()[0];
-  bool smoothing = false;
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-  cv::Mat depthRaw = data.depthRaw();
-  cv::Mat imageRaw = data.imageRaw();
-  cloud->height = depthRaw.rows;
-  cloud->width  = depthRaw.cols;
-  cloud->resize(cloud->height * cloud->width);
-    
-  for(int i = 0; i < depthRaw.rows; i++) {
-    for(int j = 0; j < depthRaw.cols; j++) {
-      pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(
-                data.depthRaw(), i, j, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
-      const unsigned char * bgr = imageRaw.ptr<unsigned char>(i,j);
-      pcl::PointXYZRGB & pt = cloud->at(i*cloud->width + j);
-      pt.x = pLocal.x;
-      pt.y = pLocal.y;
-      pt.z = pLocal.z;
-      pt.b = bgr[0];
-      pt.g = bgr[1];
-      pt.r = bgr[2];
-      if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
-        //std::cout<<"Depth value not valid\n";
-        
-        pt.x = pt.y = pt.z = pt.b = pt.g = pt.r = 0;;
+    if(optimizedPoseMap.count(id) == 0) {
+      //this image is being optimized out
+      continue;
+    }
+    std::cout<<"id is "<<id<<std::endl; 
+    int imageId = id;
+    bool uncompressedData = true; 
+    rtabmap::SensorData data = memory.getNodeData(imageId, uncompressedData);
+    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    bool smoothing = false;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    cv::Mat depthRaw = data.depthRaw();
+    cv::Mat imageRaw = data.imageRaw();
+    cloud->height = depthRaw.rows;
+    cloud->width  = depthRaw.cols;
+    cloud->resize(cloud->height * cloud->width);
+      
+    for(int i = 0; i < depthRaw.rows; i++) {
+      for(int j = 0; j < depthRaw.cols; j++) {
+        pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(
+                  data.depthRaw(), i, j, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+        const unsigned char * bgr = imageRaw.ptr<unsigned char>(i,j);
+        pcl::PointXYZRGB & pt = cloud->at(i*cloud->width + j);
+        pt.x = pLocal.x;
+        pt.y = pLocal.y;
+        pt.z = pLocal.z;
+        pt.b = bgr[0];
+        pt.g = bgr[1];
+        pt.r = bgr[2];
+        if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
+          //std::cout<<"Depth value not valid\n";
+          
+          pt.x = pt.y = pt.z = pt.b = pt.g = pt.r = 0;;
+        }
       }
     }
-  }
-
-  pcl::io::savePLYFile("output"+std::to_string(id)+".ply", *cloud, false);
-  }
+    cloud = rtabmap::util3d::transformPointCloud(cloud, optimizedPoseMap.at(id));
+    *assembledCloud += *cloud;
+  } 
+  pcl::io::savePLYFile("output.ply", *assembledCloud, false);
   return 0; 
 
 }
