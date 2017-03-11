@@ -1,5 +1,7 @@
 apt-get update
 
+set -e
+
 ## OpenCV
 # Install prerequisites
 apt-get install -y git cmake build-essential python-dev python-numpy 
