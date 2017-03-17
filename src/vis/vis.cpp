@@ -14,32 +14,8 @@
 #include <opencv2/viz.hpp>
 #include <fstream>
 
-
-// static cv::Mat cvcloud_load()
-// {
-//     std::ifstream ifs("output.ply");
-//     int lineCount = 0;
-//     std::string buffer;
-//     while(getline(ifs, buffer);) {
-//       lineCount++;
-//     }
-//     cv::Mat cloud(1, lineCount, CV_32FC3);
-//
-//     for(size_t i = 0; i < 32; ++i)
-//         getline(ifs, str);
-//     cv::Point3f* data = cloud.ptr<cv::Point3f>();
-//     float dummy1, dummy2;
-//     for(size_t i = 0; i < 1889; ++i)
-//         ifs >> data[i].x >> data[i].y >> data[i].z >> dummy1 >> dummy2;
-//     cloud *= 5.0f;
-//     return cloud;
-// }
-
-
 int main1() {
   std::string dbPath = "face_down.db";
-  std::cout<<"hello\n";
-
 
   //get posesMap and linksMap
   rtabmap::Memory memory;
@@ -117,19 +93,19 @@ int main1() {
     std::cout<<optimizedPoseMap.at(id);
   }
   // pcl::io::savePLYFile("output.ply", *assembledCloud, false);
+
   int totalSize = assembledCloud->size();
   cv::Mat cloudXYZ(1, totalSize, CV_32FC3);
-  cv::Mat cloudBGR(1, totalSize, CV_32FC3);
+  cv::Mat cloudBGR(1, totalSize, CV_8UC3);
   cv::Point3f* XYZdata = cloudXYZ.ptr<cv::Point3f>();
-  cv::Point3f* BGRdata = cloudBGR.ptr<cv::Point3f>();
   for(int i = 0; i < totalSize; i++) {
     pcl::PointXYZRGB & pt = assembledCloud->at(i);
     XYZdata[i].x = pt.x;
     XYZdata[i].y = pt.y;
     XYZdata[i].z = pt.z;
-    BGRdata[i].x = pt.b;
-    BGRdata[i].x = pt.g;
-    BGRdata[i].x = pt.r;
+    cloudBGR.at<cv::Vec3b>(i)[0] = pt.b;
+    cloudBGR.at<cv::Vec3b>(i)[1] = pt.g;
+    cloudBGR.at<cv::Vec3b>(i)[2] = pt.r;
   }
   bool camera_pov = false;
   cv::viz::Viz3d myWindow("Coordinate Frame");
@@ -137,7 +113,7 @@ int main1() {
   cv::Vec3f cam_pos(3.0f,3.0f,3.0f), cam_focal_point(3.0f,3.0f,2.0f), cam_y_dir(-1.0f,0.0f,0.0f);
   cv::Affine3f cam_pose = cv::viz::makeCameraPose(cam_pos, cam_focal_point, cam_y_dir);
   cv::Affine3f transform = cv::viz::makeTransformToGlobal(cv::Vec3f(0.0f,-1.0f,0.0f), cv::Vec3f(-1.0f,0.0f,0.0f), cv::Vec3f(0.0f,0.0f,-1.0f), cam_pos);
-  cv::viz::WCloud cloud_widget(cloudXYZ,  cv::viz::Color::green());
+  cv::viz::WCloud cloud_widget(cloudXYZ,  cloudBGR);
   cv::Affine3f cloud_pose = cv::Affine3f().translate(cv::Vec3f(0.0f,0.0f,3.0f));
   cv::Affine3f cloud_pose_global = transform * cloud_pose;
   if (!camera_pov)
