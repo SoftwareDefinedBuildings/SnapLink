@@ -17,6 +17,13 @@ public:
   static bool isInFrontOfCamera(const cv::Point3f &point,
                                 const Transform &pose);
 
+  // from ``Effective Modern C++''
+  template<typename T, typename... Ts>
+  std::unique_ptr<T> make_unique(Ts&&... params)
+  {
+    return std::unique_ptr<T>(new T(std::forward<Ts>(params)...));
+  }
+
   template <class K, class V>
   static std::vector<K> Keys(const std::map<K, V> &m) {
     std::vector<K> v(m.size());
