@@ -15,7 +15,7 @@ public:
   virtual bool init(const std::set<std::string> &dbPaths) = 0;
 
   /**
-   * room ID : vector of images
+   * room ID : vector of images, indexed by image ID
    */
   virtual const std::map<int, std::vector<Image>> &getImages() const = 0;
 

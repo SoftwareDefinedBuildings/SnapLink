@@ -1,10 +1,13 @@
 #include "lib/data/Image.h"
 
-Image::Image(int id, cv::Mat &&image, cv::Mat &&depth, Transform &&pose,
-             CameraModel &&camera)
-    : _id(id), _image(image), _depth(depth), _pose(pose), _camera(camera) {}
+Image::Image(int id, int roomId, cv::Mat &&image, cv::Mat &&depth,
+             Transform &&pose, CameraModel &&camera)
+    : _id(id), _roomId(roomId), _image(image), _depth(depth), _pose(pose),
+      _camera(camera) {}
 
 int Image::getId() const { return _id; }
+
+int Image::getiRoomId() const { return _roomId; }
 
 const cv::Mat &Image::getImage() const { return _image; }
 

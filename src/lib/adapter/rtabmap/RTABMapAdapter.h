@@ -22,24 +22,20 @@ public:
   const std::map<int, Word> &getWords() const final;
   const std::map<int, Room> &getRooms() const final;
   const std::map<int, std::vector<Label>> &getLabels() const final;
+  // TODO addLabels()
 
 private:
-  std::vector<Image> readRoomImages(const std::string &dbPath);
-  static std::vector<Label> readRoomLabels(const std::string &dbPath, const std::vector<Image> &roomImages);
+  std::vector<Image> readRoomImages(const std::string &dbPath, int roomId);
+  std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
 
-  // RTABMap requires to use an graph optimizer to obtain the correct poses of each image
-  static std::map<int, Transform> computePoses(const std::string &dbPath);
+  void createWords();
+  void createRooms();
 
-  static std::map<int, Word> createWords(
-      const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-          &allSignatures);
-  static std::map<int, Room> createRooms(const std::map<int, Word> &words);
-
-  static bool getPoint3World(const rtabmap::Signature &signature,
-                             const cv::Point2f &point2, pcl::PointXYZ &point3);
 
 private:
   int _nextImageId;
+  // {room ID : {signature ID in database : image ID in memory}}
+  std::map<int, std::map<int, int>> _sigImageIdMap;
   std::map<int, std::vector<Image>> _images;
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;

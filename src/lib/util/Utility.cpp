@@ -10,6 +10,25 @@ unsigned long long Utility::getTime() {
   return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
+bool Utility::getPoint3World(const Image &image, const cv::Point2f &point2,
+                             pcl::PointXYZ &point3) {
+  Transform pose = image.getPose();
+  assert(!pose.isNull());
+
+  const CameraModel &camera = image.getCameraModel();
+  bool smoothing = false;
+  pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(
+      image.getDepth(), point2.x, point2.y, camera.cx(), camera.cy(),
+      camera.fx(), camera.fy(), smoothing);
+  if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
+    // std::cerr << "Depth value not valid" << std::endl;
+    return false;
+  }
+  pose = pose * camera.localTransform();
+  point3 = pcl::transformPoint(pLocal, pose.toEigen3f());
+  return true;
+}
+
 bool Utility::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2) {
   return ((p1.x < p2.x) || ((p1.x == p2.x) && (p1.y < p2.y)));
 }

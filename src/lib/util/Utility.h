@@ -12,6 +12,8 @@ public:
 /* Returns current time in milliseconds. */
   static unsigned long long getTime();
 
+  static bool getPoint3World(const Image &image, const cv::Point2f &point2, pcl::PointXYZ &point3);
+
   static bool compareCVPoint2f(cv::Point2f p1, cv::Point2f p2);
 
   static bool isInFrontOfCamera(const cv::Point3f &point,
