@@ -9,7 +9,7 @@
 #include "run/front_end/bosswave/BWFrontEndObj.h"
 #include "run/front_end/http/HTTPFrontEndObj.h"
 #include <QCoreApplication>
-
+#include <fstream>
 IdentificationObj::IdentificationObj(const std::shared_ptr<Words> &words,
                                      std::unique_ptr<Labels> &&labels,
                                      int sampleSize, int corrSize,
@@ -101,7 +101,12 @@ bool IdentificationObj::identify(const cv::Mat &image,
     session.visibilityEnd = 0;
     return false;
   }
-
+  std::ofstream fout("BookResult.txt", std::ios_base::app);
+  fout<<"Pose\n";
+  fout<<pose.r11()<<"  "<<pose.r12()<<"   "<<pose.r13()<<"   "<<pose.x()<<"\n";
+  fout<<pose.r21()<<"  "<<pose.r22()<<"   "<<pose.r23()<<"   "<<pose.y()<<"\n";
+  fout<<pose.r31()<<"  "<<pose.r32()<<"   "<<pose.r33()<<"   "<<pose.z()<<"\n";
+  fout.close();
   // visibility
   session.visibilityStart = Utility::getTime();
   names = _visibility.process(dbId, camera, pose);
