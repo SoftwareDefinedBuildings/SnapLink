@@ -21,7 +21,7 @@ static void printInvalid(const std::vector<std::string> &opts);
 static void printUsage(const po::options_description &desc);
 std::vector<float> getPoseFromFileVector(std::string camaraPoseFile);
 cv::Mat_<float> getPoseFromFileMat(std::string);
-
+cv::Mat_<float> makeVector(float a, float b, float c);
 
 int vis(int argc, char* argv[]) {
   std::string dbFile = argv[1];
@@ -55,6 +55,8 @@ int vis(int argc, char* argv[]) {
   std::cout<<"Number of pictures : "<<ids.size()<<std::endl;
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr
       assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+  rtabmap::CameraModel cm;
   for(auto id : ids) {
     if(optimizedPoseMap.count(id) == 0) {
       //this image is being optimized out
@@ -64,7 +66,7 @@ int vis(int argc, char* argv[]) {
     int imageId = id;
     bool uncompressedData = true;
     rtabmap::SensorData data = memory.getNodeData(imageId, uncompressedData);
-    const rtabmap::CameraModel &cm = data.cameraModels()[0];
+    cm = data.cameraModels()[0];
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     cv::Mat depthRaw = data.depthRaw();
     cv::Mat imageRaw = data.imageRaw();
@@ -96,9 +98,21 @@ int vis(int argc, char* argv[]) {
   cv::viz::Viz3d myWindow("Coordinate Frame");
   myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
   std::vector<float> datas = getPoseFromFileVector(camaraPoseFile);
+  std::cout<<"happen-4?\n";
+  // std::cout<<cm.localTransform().rotationMatrix();
+  // cv::Mat_<float> focal_point = cm.localTransform().rotation().dataMatrix() * makeVector(datas[2],datas[6],datas[10]);
   // cv::Vec3f cam_pos(0,0,0), cam_focal_point(0.0f,0.0f,1.0f), cam_y_dir(0.0f,1.0f,0.0f);
-  cv::Vec3f cam_pos(datas[3],datas[7],datas[11]), cam_focal_point(datas[2],datas[6],datas[10]), cam_y_dir(0.0f,1.0f,0.0f);
+  std::cout<<"happen-3?\n";
+  // c, -a, -b
+  // 2, 6,  10
+  // a, b, c
+  // 10, -2. -6
+  cv::Vec3f cam_pos(datas[3],datas[7],datas[11]), cam_focal_point(datas[0], datas[4], datas[8]), cam_y_dir(0.0f,1.0f,0.0f);
+  std::cout<<"happen-2?\n";
   cv::Affine3f cam_pose = cv::viz::makeCameraPose(cam_pos, cam_focal_point, cam_y_dir);
+
+
+  std::cout<<"happen-1?\n";
 
   // cv::Affine3f transform = cv::viz::makeTransformToGlobal(cv::Vec3f(0.0f,-1.0f,0.0f), cv::Vec3f(-1.0f,0.0f,0.0f), cv::Vec3f(0.0f,0.0f,-1.0f), cam_pos);
   // cv::Affine3f cam_pose(getPoseFromFileMat(camaraPoseFile));
@@ -156,6 +170,10 @@ std::vector<float> getPoseFromFileVector(std::string camaraPoseFile) {
   return datas;
 }
 
+cv::Mat_<float> makeVector(float a, float b, float c) {
+  return cv::Mat_<float>(3,1) << a, b, c;
+}
+
 
 cv::Mat_<float> getPoseFromFileMat(std::string camaraPoseFile) {
   std::ifstream fin(camaraPoseFile);
@@ -176,12 +194,12 @@ cv::Mat_<float> getPoseFromFileMat(std::string camaraPoseFile) {
     }
   }
   fin.close();
-  // return cv::Mat_<float>(3, 4) << datas[0], datas[1], datas[2], datas[3],
-  //                                 datas[4], datas[5], datas[6], datas[7],
-  //                                 datas[8], datas[9], datas[10], datas[11];
-  return cv::Mat_<float>(3, 4) << 1,0,0,0,
-                                  0,1,0,0,
-                                  0,0,1,1;
+  return cv::Mat_<float>(3, 4) << datas[0], datas[1], datas[2], datas[3],
+                                  datas[4], datas[5], datas[6], datas[7],
+                                  datas[8], datas[9], datas[10], datas[11];
+  // return cv::Mat_<float>(3, 4) << 1,0,0,0,
+  //                                 0,1,0,0,
+  //                                 0,0,1,1;
 }
 
 static void printInvalid(const std::vector<std::string> &opts) {
