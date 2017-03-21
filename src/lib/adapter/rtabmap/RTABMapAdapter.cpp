@@ -72,15 +72,15 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
   int sigId = memory.getLastWorkingSignature()->id();
   int maxGraphDepth = 0;
   std::map<int, int> idMarginMap = memory.getNeighborsId(sigId, maxGraphDepth);
-  std::set<int> ids;
+  std::set<int> sigIds;
   for (const auto &pair : idMarginMap) {
-    ids.emplace(pair.first);
+    sigIds.emplace(pair.first);
   }
 
   std::map<int, rtabmap::Transform> posesRtabmap;
   std::multimap<int, rtabmap::Link> links;
   bool lookInDatabase = true;
-  memory.getMetricConstraints(ids, posesRtabmap, links, lookInDatabase);
+  memory.getMetricConstraints(sigIds, posesRtabmap, links, lookInDatabase);
 
   std::unique_ptr<rtabmap::Optimizer> optimizer(
       rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO));
@@ -97,7 +97,6 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
 
   // get signatures
   std::vector<Image> images;
-  const auto &sigIds = memory.getAllSignatureIds();
   std::cerr << "Read signatures from database..." << std::endl;
   for (const auto &sigId : sigIds) {
     const rtabmap::Signature *sig = memory.getSignature(sigId);
@@ -105,9 +104,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
 
     const auto &iter = poses.find(sig->id());
     // only use signatures with optimized poses
-    if (iter != poses.end()) {
-      continue;
-    }
+    assert(iter != poses.end());
     Transform pose = iter->second;
 
     bool uncompressedData = true;
