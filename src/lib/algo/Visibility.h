@@ -11,13 +11,13 @@ class Transform;
 
 class Visibility final {
 public:
-  explicit Visibility(const std::map<int, std::list<Label>> &labels);
+  explicit Visibility(const std::map<int, std::vector<Label>> &labels);
 
   std::vector<std::string> process(int dbId, const CameraModel &camera,
                                    const Transform &pose) const;
 
 private:
-  const std::map<int, std::list<Label>> &_labels;
+  const std::map<int, std::vector<Label>> &_labels;
 };
 
 struct CompareMeanDist {

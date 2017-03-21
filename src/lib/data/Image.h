@@ -1,12 +1,11 @@
 #pragma once
 
-#include "lib/data/Image.h"
 #include "lib/data/Transform.h"
 #include "lib/data/CameraModel.h"
 
 class Image {
 public:
-  explicit Image(int id, int roomId, int cv::Mat &&image, cv::Mat &&depth, Transform &&pose, CameraModel &&camera);
+  explicit Image(int id, int roomId, const cv::Mat &image, const cv::Mat &depth, Transform &&pose, CameraModel &&camera);
 
   int getId() const;
   int getRoomId() const;

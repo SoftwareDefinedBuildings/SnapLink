@@ -1,4 +1,5 @@
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/data/Room.h"
 #include "lib/data/Transform.h"
 #include "lib/data/Word.h"
 #include "lib/util/Utility.h"
@@ -15,10 +16,10 @@
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/VWDictionary.h>
-#include <rtabmap/core/util3d.h>
 #include <sqlite3.h>
+#include <utility>
 
-explicit RTABMapAdapter::RTABMapAdapter() : _nextImageId(0){};
+RTABMapAdapter::RTABMapAdapter() : _nextImageId(0) {}
 
 bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
   int roomId = 0;
@@ -27,7 +28,7 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     auto roomImages = readRoomImages(dbPath, roomId);
     _images.emplace(roomId, std::move(roomImages));
 
-    auto roomLabels = readRoomLabels(dbPath, roomId, roomImages);
+    auto roomLabels = readRoomLabels(dbPath, roomId);
     _labels.emplace(roomId, std::move(roomLabels));
 
     roomId++;
@@ -36,7 +37,7 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
   createWords();
   std::cerr << "Total Number of words: " << _words.size() << std::endl;
   long count = 0;
-  for (const auto &word : words) {
+  for (const auto &word : _words) {
     for (const auto &desc : word.second.getDescriptorsByDb()) {
       count += desc.second.rows;
     }
@@ -48,13 +49,17 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
   return true;
 }
 
-const std::map<int, Image> &getImages() const { return _image; }
+const std::map<int, std::vector<Image>> &RTABMapAdapter::getImages() const {
+  return _images;
+}
 
-const std::map<int, Word> &getWords() const { return _words; }
+const std::map<int, Word> &RTABMapAdapter::getWords() const { return _words; }
 
-const std::map<int, Room> &getRooms() const { return _rooms; }
+const std::map<int, Room> &RTABMapAdapter::getRooms() const { return _rooms; }
 
-const std::map<int, std::list<Label>> &getLabels() const { return _labels; }
+const std::map<int, std::vector<Label>> &RTABMapAdapter::getLabels() const {
+  return _labels;
+}
 
 std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
                                                   int roomId) {
@@ -69,7 +74,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
   std::map<int, int> idMarginMap = memory.getNeighborsId(sigId, maxGraphDepth);
   std::set<int> ids;
   for (const auto &pair : idMarginMap) {
-    ids.emplace_back(pair.first);
+    ids.emplace(pair.first);
   }
 
   std::map<int, rtabmap::Transform> posesRtabmap;
@@ -77,25 +82,27 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
   bool lookInDatabase = true;
   memory.getMetricConstraints(ids, posesRtabmap, links, lookInDatabase);
 
-  std::unique_ptr<rtabmap::Optimizer::create> optimizer(
+  std::unique_ptr<rtabmap::Optimizer> optimizer(
       rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO));
   auto optimizedPoses =
       optimizer->optimize(posesRtabmap.begin()->first, posesRtabmap, links);
   std::map<int, Transform> poses;
   for (const auto &pose : optimizedPoses) {
-    Transform t(
-        p.second.r11(), p.second.r12(), p.second.r13(), p.second.o14(), //
-        p.second.r21(), p.second.r22(), p.second.r23(), p.second.o24(), //
-        p.second.r31(), p.second.r32(), p.second.r33(), p.second.o34());
-    poses.emplace_back(pose.first, t);
+    const rtabmap::Transform &p = pose.second;
+    Transform t(p.r11(), p.r12(), p.r13(), p.o14(), //
+                p.r21(), p.r22(), p.r23(), p.o24(), //
+                p.r31(), p.r32(), p.r33(), p.o34());
+    poses.emplace(pose.first, t);
   }
 
   // get signatures
   std::vector<Image> images;
-  const auto &signatures = memory.getSignatures();
-
+  const auto &sigIds = memory.getAllSignatureIds();
   std::cerr << "Read signatures from database..." << std::endl;
-  for (const auto &sig : signatures) {
+  for (const auto &sigId : sigIds) {
+    const rtabmap::Signature *sig = memory.getSignature(sigId);
+    assert(sig != nullptr);
+
     const auto &iter = poses.find(sig->id());
     // only use signatures with optimized poses
     if (iter != poses.end()) {
@@ -103,13 +110,11 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
     }
     Transform pose = iter->second;
 
-    if (!sig->sensorData().imageCompressed().empty()) {
-      sig->sensorData().uncompressData();
-    }
-
-    rtabmap::SensorData &data = sig->sensorData();
-    cv::Mat &image = data.imageRaw();
-    cv::Mat &depth = data.depthRaw();
+    bool uncompressedData = true;
+    const rtabmap::SensorData data =
+        memory.getNodeData(sigId, uncompressedData);
+    const cv::Mat &image = data.imageRaw();
+    const cv::Mat &depth = data.depthRaw();
     assert(!image.empty() && !depth.empty());
 
     const std::vector<rtabmap::CameraModel> &cameras = data.cameraModels();
@@ -117,17 +122,25 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
     const rtabmap::CameraModel &c = cameras[0];
     CameraModel camera(c.name(), c.fx(), c.fy(), c.cx(), c.cy(), c.imageSize());
 
+    const rtabmap::Transform &lt = c.localTransform();
+    Transform t(lt.r11(), lt.r12(), lt.r13(), lt.o14(), //
+                lt.r21(), lt.r22(), lt.r23(), lt.o24(), //
+                lt.r31(), lt.r32(), lt.r33(), lt.o34());
+    pose = pose * t;
+
     int imageId = _nextImageId++;
-    images.emplace_back(imageId, roomId, image, depth, camera);
-    _sigImageIdMap.emplace(roomId, std::make_pair(sig->id(), imageId));
+    images.emplace_back(imageId, roomId, image, depth, std::move(pose),
+                        std::move(camera));
+    // insert if not exists
+    _sigImageIdMap[roomId][sig->id()] = imageId;
   }
 
   return images;
 }
 
-std::list<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
-                                                int roomId) {
-  std::list<Label> labels;
+std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
+                                                  int roomId) {
+  std::vector<Label> labels;
 
   // SQLite C API
   sqlite3 *db = nullptr;
@@ -153,14 +166,14 @@ std::list<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
 
       // throws out_of_range
       int imageId = _sigImageIdMap.at(roomId).at(sigId);
-      pcl::PointXYZ p3;
+      cv::Point3f point3;
       const Image &image = _images.at(roomId).at(imageId);
 
-      if (Utility::getPoint3World(image, cv::Point2f(x, y), p3)) {
-        labels.emplace_back(roomId, cv::Point3f(p3.x, p3.y, p3.z), name);
-        std::cerr << "Read point (" << p3.x << "," << p3.y << "," << p3.z
-                  << ") with label " << name << " in database " << dbPath
-                  << std::endl;
+      if (Utility::getPoint3World(image, cv::Point2f(x, y), point3)) {
+        labels.emplace_back(roomId, point3, name);
+        std::cerr << "Read point (" << point3.x << "," << point3.y << ","
+                  << point3.z << ") with label " << name << " in database "
+                  << dbPath << std::endl;
       }
     }
   } else {
@@ -179,16 +192,15 @@ void RTABMapAdapter::createWords() {
   rtabmap::VWDictionary vwd;
   cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
   for (const auto &roomImages : _images) {
-    int roomId = roomImagess.first;
+    int roomId = roomImages.first;
     std::cerr << "Creating words for signatures in room " << roomId
               << std::endl;
-    for (const auto &roomImage : roomImages.second) {
-      const cv::Mat &image = roomImage.second.getImage();
-
+    for (const auto &image : roomImages.second) {
       // compute 2D features
       std::vector<cv::KeyPoint> keyPoints;
       cv::Mat descriptors;
-      detector->detectAndCompute(image, cv::Mat(), keyPoints, descriptors);
+      detector->detectAndCompute(image.getImage(), cv::Mat(), keyPoints,
+                                 descriptors);
 
       // convert them to 3D points in words
       int dummySigId = 1;
@@ -197,18 +209,17 @@ void RTABMapAdapter::createWords() {
       vwd.update();
       size_t i = 0;
       for (int wordId : wordIds) {
-        cv::KeyPoint p2 = keyPoints.at(i);
+        cv::KeyPoint kp = keyPoints.at(i);
         cv::Mat descriptor = descriptors.row(i);
-        pcl::PointXYZ p3PCL;
-        if (Utility::getPoint3World(image, p2.pt, p3PCL)) {
-          cv::Point3f p3CV(p3PCL.x, p3PCL.y, p3PCL.z);
-          auto iter = words.find(wordId);
-          if (iter == words.end()) {
-            auto ret = words.emplace(wordId, Word(wordId));
+        cv::Point3f point3;
+        if (Utility::getPoint3World(image, kp.pt, point3)) {
+          auto iter = _words.find(wordId);
+          if (iter == _words.end()) {
+            auto ret = _words.emplace(wordId, Word(wordId));
             iter = ret.first;
           }
-          iter->second.addPoints3(roomId, std::vector<cv::Point3f>(1, p3CV),
-                                  descriptor);
+          std::vector<cv::Point3f> points3(1, point3);
+          iter->second.addPoints3(roomId, points3, descriptor);
         }
         i++;
       }
@@ -221,9 +232,9 @@ void RTABMapAdapter::createRooms() {
     int wordId = word.first;
     for (const auto points : word.second.getPoints3Map()) {
       int roomId = points.first;
-      auto iter = rooms.find(roomId);
-      if (iter == rooms.end()) {
-        auto ret = rooms.emplace(roomId, Room(roomId));
+      auto iter = _rooms.find(roomId);
+      if (iter == _rooms.end()) {
+        auto ret = _rooms.emplace(roomId, Room(roomId));
         iter = ret.first;
       }
       iter->second.addWordIds(std::vector<int>(1, wordId));

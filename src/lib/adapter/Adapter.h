@@ -8,7 +8,7 @@
 #include <map>
 #include <list>
 
-class Adapter final {
+class Adapter {
 public:
   virtual ~Adapter() = default;
 

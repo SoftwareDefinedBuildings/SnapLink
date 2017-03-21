@@ -3,8 +3,10 @@
 #include <list>
 #include <map>
 #include <opencv2/core/core.hpp>
+#include <pcl/common/common.h>
 #include <vector>
 
+class Image;
 class Transform;
 
 class Utility final {
@@ -12,7 +14,7 @@ public:
 /* Returns current time in milliseconds. */
   static unsigned long long getTime();
 
-  static bool getPoint3World(const Image &image, const cv::Point2f &point2, pcl::PointXYZ &point3);
+  static bool getPoint3World(const Image &image, const cv::Point2f &point2, cv::Point3f &point3);
 
   static bool compareCVPoint2f(cv::Point2f p1, cv::Point2f p2);
 

@@ -6,8 +6,8 @@ class CameraModel final {
 public:
   explicit CameraModel();
 
-  explicit CameraModel(std::string &&name, double fx, double fy, double cx, double cy,
-              cv::Size &&imageSize);
+  explicit CameraModel(const std::string &name, double fx, double fy, double cx, double cy,
+              const cv::Size &imageSize);
 
   const std::string &name() const;
   double fx() const;

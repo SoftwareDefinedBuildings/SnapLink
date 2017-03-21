@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lib/adapter/Adapter.h"
 #include <list>
 #include <map>
 #include <memory>

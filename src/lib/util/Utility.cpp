@@ -1,6 +1,8 @@
 #include "lib/util/Utility.h"
+#include "lib/data/Image.h"
 #include "lib/data/Transform.h"
 #include <pcl/common/transforms.h>
+#include <rtabmap/core/util3d.h>
 #include <stddef.h>
 #include <sys/time.h>
 
@@ -11,7 +13,7 @@ unsigned long long Utility::getTime() {
 }
 
 bool Utility::getPoint3World(const Image &image, const cv::Point2f &point2,
-                             pcl::PointXYZ &point3) {
+                             cv::Point3f &point3) {
   Transform pose = image.getPose();
   assert(!pose.isNull());
 
@@ -24,8 +26,8 @@ bool Utility::getPoint3World(const Image &image, const cv::Point2f &point2,
     // std::cerr << "Depth value not valid" << std::endl;
     return false;
   }
-  pose = pose * camera.localTransform();
-  point3 = pcl::transformPoint(pLocal, pose.toEigen3f());
+  pcl::PointXYZ point3PCL = pcl::transformPoint(pLocal, pose.toEigen3f());
+  point3 = cv::Point3f(point3PCL.x, point3PCL.y, point3PCL.z);
   return true;
 }
 
