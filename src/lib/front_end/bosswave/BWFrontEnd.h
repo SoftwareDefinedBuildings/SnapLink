@@ -28,8 +28,8 @@ private:
   void onMessage(PMessage msg);
 
 private:
-  std::unique_ptr<QThread> _thread;
-  std::shared_ptr<BW> _bw;
+  QThread _thread;
+  BW &_bw;
   QByteArray _entity;
   std::string _uri;
   std::atomic<unsigned int> _numClients;

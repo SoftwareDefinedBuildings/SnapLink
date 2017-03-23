@@ -82,6 +82,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
   bool lookInDatabase = true;
   memory.getMetricConstraints(sigIds, posesRtabmap, links, lookInDatabase);
 
+  // we take the ownership of optimizer
   std::unique_ptr<rtabmap::Optimizer> optimizer(
       rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO));
   auto optimizedPoses =
