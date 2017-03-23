@@ -10,8 +10,8 @@ find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Widgets REQUIRED)
-find_package(OpenCV 3 REQUIRED COMPONENTS core imgproc imgcodecs calib3d flann xfeatures2d)
-find_package(PCL 1.8 REQUIRED COMPONENTS common search)
+find_package(OpenCV 3 REQUIRED COMPONENTS viz core imgproc imgcodecs calib3d flann xfeatures2d)
+find_package(PCL 1.8 REQUIRED COMPONENTS common search io)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(RTABMap REQUIRED)
 
@@ -69,6 +69,7 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/run/run.cpp"
     "${CellMate_SOURCE_DIR}/label/res/label_dot.qrc"
     "${CellMate_SOURCE_DIR}/label/widget.cpp"
+    "${CellMate_SOURCE_DIR}/vis/vis.cpp"
     "${CellMate_SOURCE_DIR}/label/label.cpp"
     "${CellMate_SOURCE_DIR}/main.cpp")
 
