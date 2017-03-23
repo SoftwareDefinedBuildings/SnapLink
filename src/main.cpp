@@ -1,6 +1,6 @@
 #include "label/label.h"
-#include "vis/vis.h"
 #include "run/run.h"
+#include "vis/vis.h"
 #include <boost/program_options.hpp>
 #include <iostream>
 

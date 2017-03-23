@@ -53,19 +53,24 @@ def test_file(filename):
     img = np.array(img) # convert from PIL image to OpenCV image
 
     _, jpg = cv2.imencode('.jpg', img)
-    
+
     print filename, 'width:', width, 'height:', height
     files = {'file': (filename, jpg.tostring()), 'fx': str(562.25), 'fy': str(562.25), 'cx': str(240), 'cy': str(320)}
     t0 = time.time()
     r = requests.post(SERVER_ADDR, files=files)
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
+    resultFile = open("410DemoTest.txt", "a+")
     if r.text != obj_name:
         text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         print text
+        resultFile.write("fail: " + filename + " \n")
+        resultFile.close()
         return RESULT_FAIL, elapsed_time
     else:
         print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
+        resultFile.write("pass: " + filename + " \n")
+        resultFile.close()
         return RESULT_PASS, elapsed_time
 
 

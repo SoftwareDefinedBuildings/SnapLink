@@ -96,9 +96,17 @@ bool IdentificationObj::identify(const cv::Mat &image,
   _perspective.localize(wordIds, keyPoints, descriptors, camera, dbId, pose);
   session.perspectiveEnd = Utility::getTime();
 
+  std::string OutputnName = "410Demo.txt";
   if (pose.isNull()) {
     session.visibilityStart = 1;
     session.visibilityEnd = 0;
+    std::ofstream fout(OutputnName, std::ios_base::app);
+    fout << "Null"
+         << "\n";
+    fout << "Null1\n";
+    fout << "Null2\n";
+    fout << "Null3\n";
+    fout.close();
     return false;
   }
 
@@ -106,11 +114,14 @@ bool IdentificationObj::identify(const cv::Mat &image,
   session.visibilityStart = Utility::getTime();
   names = _visibility.process(dbId, camera, pose);
   session.visibilityEnd = Utility::getTime();
-  std::ofstream fout("465HResult.txt", std::ios_base::app);
-  fout<<names.at(0)<<"\n";
-  fout<<pose.r11()<<"  "<<pose.r12()<<"   "<<pose.r13()<<"   "<<pose.x()<<"\n";
-  fout<<pose.r21()<<"  "<<pose.r22()<<"   "<<pose.r23()<<"   "<<pose.y()<<"\n";
-  fout<<pose.r31()<<"  "<<pose.r32()<<"   "<<pose.r33()<<"   "<<pose.z()<<"\n";
+  std::ofstream fout(OutputnName, std::ios_base::app);
+  fout << names.at(0) << "\n";
+  fout << pose.r11() << "  " << pose.r12() << "   " << pose.r13() << "   "
+       << pose.x() << "\n";
+  fout << pose.r21() << "  " << pose.r22() << "   " << pose.r23() << "   "
+       << pose.y() << "\n";
+  fout << pose.r31() << "  " << pose.r32() << "   " << pose.r33() << "   "
+       << pose.z() << "\n";
   fout.close();
 
   return true;
