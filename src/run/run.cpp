@@ -79,15 +79,16 @@ int Run::run(int argc, char *argv[]) {
   // Run the program
   QCoreApplication app(argc, argv);
 
-  std::map<int, Word> words;              // word ID : word
-  std::map<int, Room> rooms;              // room ID : room
-  std::map<int, std::list<Label>> labels; // label DB ID : label
-
   std::cout << "reading data" << std::endl;
-  if (!RTABMapAdapter::readData(dbFiles, words, rooms, labels)) {
-    qCritical() << "reading data failed";
+  RTABMapAdapter adapter;
+  if (!adapter.init(std::set<std::string>(dbFiles.begin(), dbFiles.end()))) {
+    std::cerr << "reading data failed";
     return 1;
   }
+
+  const std::map<int, Word> &words = adapter.getWords();
+  const std::map<int, Room> &rooms = adapter.getRooms();
+  const std::map<int, std::vector<Label>> &labels = adapter.getLabels();
 
   std::cout << "initializing computing stages" << std::endl;
   _feature.reset(new Feature(featureLimit));

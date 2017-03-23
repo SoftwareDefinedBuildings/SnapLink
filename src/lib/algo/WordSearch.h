@@ -17,7 +17,6 @@ private:
   const std::map<int, Word> &_words;
   int _type;
   int _dim;
-  std::map<int, std::map<int, std::shared_ptr<Word>>> _wordsByDb;
   cv::Mat _dataMat;
   std::unique_ptr<cv::flann::Index> _index;
   std::map<int, int> _mapIndexId; // (row num, word id)

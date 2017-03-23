@@ -59,6 +59,7 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/lib/data/Label.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Word.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Room.cpp"
+    "${CellMate_SOURCE_DIR}/lib/data/Image.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/CameraModel.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/WordSearch.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/RoomSearch.cpp"

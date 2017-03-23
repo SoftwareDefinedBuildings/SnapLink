@@ -2,7 +2,7 @@
 #include "lib/front_end/bosswave/BWWorker.h"
 
 BWFrontEnd::BWFrontEnd(const std::string &uri)
-    : _bw(BW::instance()), _uri(uri), _numClients(0) {}
+    : _bw(*BW::instance()), _uri(uri), _numClients(0) {}
 
 BWFrontEnd::~BWFrontEnd() {
   std::cerr << "BWFrontEnd destructor" << std::endl;
@@ -11,35 +11,32 @@ BWFrontEnd::~BWFrontEnd() {
 
 bool BWFrontEnd::start() {
   std::cerr << "DEBUG: BW start()" << std::endl;
-  _thread.reset(new QThread());
-  this->moveToThread(_thread.get());
-  connect(_thread.get(), &QThread::started, this, &BWFrontEnd::run);
-  _thread->start();
+  this->moveToThread(&_thread);
+  connect(&_thread, &QThread::started, this, &BWFrontEnd::run);
+  _thread.start();
 
   return true;
 }
 
 void BWFrontEnd::stop() {
-  _thread->exit();
-  _thread.reset();
-  _bw.reset();
+  _thread.exit();
   _numClients = 0;
 }
 
 void BWFrontEnd::run() {
   std::cerr << "DEBUG: BW run" << std::endl;
-  connect(_bw.get(), &BW::agentChanged, this, &BWFrontEnd::agentChanged);
+  connect(&_bw, &BW::agentChanged, this, &BWFrontEnd::agentChanged);
   _entity = getEntity();
-  _bw->connectAgent(_entity);
-  _bw->setEntity(_entity, [](QString, QString) {});
+  _bw.connectAgent(_entity);
+  _bw.setEntity(_entity, [](QString, QString) {});
 }
 
 void BWFrontEnd::agentChanged(bool success, QString msg) {
   std::cerr << "DEBUG: agent Changed" << std::endl;
-  _bw->subscribe(
-      QString::fromStdString(_uri), QString(), true, QList<RoutingObject *>(),
-      QDateTime(), -1, QString(), false, false,
-      std::bind(&BWFrontEnd::onMessage, this, std::placeholders::_1));
+  _bw.subscribe(QString::fromStdString(_uri), QString(), true,
+                QList<RoutingObject *>(), QDateTime(), -1, QString(), false,
+                false,
+                std::bind(&BWFrontEnd::onMessage, this, std::placeholders::_1));
 }
 
 void BWFrontEnd::respond(QString result, QString identity) {
@@ -47,16 +44,15 @@ void BWFrontEnd::respond(QString result, QString identity) {
   // TODO this uri needs to be contained in the query messsage later
   QString uri = QString::fromStdString(_uri) + "/" + identity;
   QString msg = result;
-  _bw->publishText(uri, QString(), true, QList<RoutingObject *>(), ponum, msg,
-                   QDateTime(), -1, "partial", false, false, [](QString err) {
-                     if (!err.isEmpty()) {
-                       std::cerr
-                           << "publish error: " << err.toUtf8().constData()
-                           << std::endl;
-                     } else {
-                       std::cerr << "published ok" << std::endl;
-                     }
-                   });
+  _bw.publishText(uri, QString(), true, QList<RoutingObject *>(), ponum, msg,
+                  QDateTime(), -1, "partial", false, false, [](QString err) {
+                    if (!err.isEmpty()) {
+                      std::cerr << "publish error: " << err.toUtf8().constData()
+                                << std::endl;
+                    } else {
+                      std::cerr << "published ok" << std::endl;
+                    }
+                  });
   _numClients--;
 }
 

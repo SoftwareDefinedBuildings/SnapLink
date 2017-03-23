@@ -4,10 +4,10 @@
 
 CameraModel::CameraModel() = default;
 
-CameraModel::CameraModel(std::string &&name, double fx, double fy, double cx,
-                         double cy, cv::Size &&imageSize)
-    : _name(std::move(name)), _K(cv::Mat::eye(3, 3, CV_64FC1)),
-      _D(cv::Mat::zeros(1, 5, CV_64FC1)), _imageSize(std::move(imageSize)) {
+CameraModel::CameraModel(const std::string &name, double fx, double fy,
+                         double cx, double cy, const cv::Size &imageSize)
+    : _name(name), _K(cv::Mat::eye(3, 3, CV_64FC1)),
+      _D(cv::Mat::zeros(1, 5, CV_64FC1)), _imageSize(imageSize) {
   assert(fx > 0.0);
   assert(fy > 0.0);
   assert(cx >= 0.0);

@@ -1,8 +1,6 @@
 #pragma once
 
-#include "lib/data/Label.h"
-#include "lib/data/Word.h"
-#include "lib/data/Room.h"
+#include "lib/adapter/Adapter.h"
 #include <list>
 #include <map>
 #include <memory>
@@ -14,30 +12,33 @@
 #include <set>
 #include <typeinfo>
 
-class Words;
-
-class RTABMapAdapter final {
+class RTABMapAdapter final : public Adapter {
 public:
+  explicit RTABMapAdapter();
+
   // read data from database files
-  static bool readData(const std::vector<std::string> &dbPaths, std::map<int, Word> &words, std::map<int, Room> &rooms,
-                       std::map<int, std::list<Label>> &labels);
+  bool init(const std::set<std::string> &dbPaths) final;
+
+  const std::map<int, std::vector<Image>> &getImages() const final;
+  const std::map<int, Word> &getWords() const final;
+  const std::map<int, Room> &getRooms() const final;
+  const std::map<int, std::vector<Label>> &getLabels() const final;
+  // TODO addLabels()
 
 private:
-  static std::map<int, std::unique_ptr<rtabmap::Signature>>
-  readSignatures(const std::string &dbPath);
-  static std::list<Label> readDBLabels(
-      const std::string &dbPath, int dbId,
-      const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-          &allSignatures);
+  std::vector<Image> readRoomImages(const std::string &dbPath, int roomId);
+  std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
 
-  static std::map<int, rtabmap::Transform>
-  getOptimizedPoseMap(const std::string &dbPath);
+  void createWords();
+  void createRooms();
 
-  static std::map<int, Word> createWords(
-      const std::map<int, std::map<int, std::unique_ptr<rtabmap::Signature>>>
-          &allSignatures);
-  static std::map<int, Room> createRooms(const std::map<int, Word> &words);
 
-  static bool getPoint3World(const rtabmap::Signature &signature,
-                             const cv::Point2f &point2, pcl::PointXYZ &point3);
+private:
+  int _nextImageId;
+  // {room ID : {signature ID in database : image ID in memory}}
+  std::map<int, std::map<int, int>> _sigImageIdMap;
+  std::map<int, std::vector<Image>> _images;
+  std::map<int, Word> _words;
+  std::map<int, Room> _rooms;
+  std::map<int, std::vector<Label>> _labels;
 };

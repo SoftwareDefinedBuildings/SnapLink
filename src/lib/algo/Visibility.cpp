@@ -7,7 +7,7 @@
 #include <opencv/cv.h>
 #include <pcl/point_types.h>
 
-Visibility::Visibility(const std::map<int, std::list<Label>> &labels)
+Visibility::Visibility(const std::map<int, std::vector<Label>> &labels)
     : _labels(labels) {}
 
 std::vector<std::string> Visibility::process(int dbId,
