@@ -4,6 +4,9 @@ apt-get update
 
 set -e
 
+## Install prerequisites
+apt-get install -y git cmake build-essential
+
 ## Qt5
 # ref: https://wiki.qt.io/Building_Qt_5_from_Git
 # Install prerequisites
@@ -49,7 +52,7 @@ make install -j $(nproc)
 
 ## OpenCV
 # Install prerequisites
-apt-get install -y git cmake build-essential python-dev python-numpy
+apt-get install -y python-dev python-numpy
 
 # Clone opencv to the target tag
 git clone -b 3.2.0 --single-branch --depth 1 https://github.com/opencv/opencv $HOME/workspace/opencv
