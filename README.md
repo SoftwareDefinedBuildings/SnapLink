@@ -1,5 +1,5 @@
 # CellMate : Visual Appliance Identification and Control in Smart Buildings
-[![Build Status](https://travis-ci.com/kaifeichen/CellMate_Dev.svg?token=XjizLR77Z2rgJhyHZZ73&branch=master)](https://travis-ci.com/kaifeichen/CellMate_Dev)
+[![Build Status](https://travis-ci.com/SoftwareDefinedBuildings/CellMate.svg?token=XjizLR77Z2rgJhyHZZ73&branch=master)](https://travis-ci.com/SoftwareDefinedBuildings/CellMate)
 
 ## What is CellMate? 
 CellMate is a system that allows you to interact with smart building appliances by taking pictures of them.

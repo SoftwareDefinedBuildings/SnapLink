@@ -8,7 +8,7 @@ notifications:
 env:
   global:
     - QT_PATH=/usr/local/Qt-5.8.0/bin
-    - CELLMATE_PATH=/root/workspace/CellMate_Server
+    - CELLMATE_PATH=/root/workspace/CellMate
     - DOCKER_IMAGE=kaifeichen/cellmate
 
 services:
