@@ -232,7 +232,7 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
 
   // for debug
   std::ofstream fout(OutputnName, std::ios_base::app);
-  fout << names.at(0) << "\n";
+  fout << results.at(0) << "\n";
   fout << pose.r11() << "  " << pose.r12() << "   " << pose.r13() << "   "
        << pose.x() << "\n";
   fout << pose.r21() << "  " << pose.r22() << "   " << pose.r23() << "   "
