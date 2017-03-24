@@ -31,7 +31,7 @@ make install -j $(nproc)
 
 # Add QT binaries to PATH
 QT_PATH=/usr/local/Qt-5.8.0
-echo 'export PATH=$PATH:$QT_PATH/bin' >> $HOME/.bashrc
+echo "export PATH=$PATH:$QT_PATH/bin" >> $HOME/.bashrc
 echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QT_PATH/lib" >> $HOME/.bashrc
 source $HOME/.bashrc
 
