@@ -126,7 +126,7 @@ apt-get install -y libmicrohttpd-dev
 apt-get install -y autoconf libtool
 
 #Clone latest GRPC and init its submodules
-git clone -b $(curl -L http://grpc.io/release) --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $HOME/workspace/grpc
+git clone -b v1.2.0 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $HOME/workspace/grpc
 
 #Compile and install GRPC
 cd $HOME/workspace/grpc
