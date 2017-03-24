@@ -15,6 +15,8 @@
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UStl.h>
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/data/Image.h"
 namespace po = boost::program_options;
 
 void printTransformMat(Transform t);
@@ -30,62 +32,87 @@ cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
                                   float a9, float a10, float a11, float a12);
 
 int vis(int argc, char *argv[]) {
-  std::string dbFile = argv[1];
+  std::set<std::string> dbFile;
+  dbFile.push_back(argv[1]);
   std::string camaraPoseFile = argv[2];
   int resultId = atoi(argv[3]);
-  // get posesMap and linksMap
-  rtabmap::Memory memory;
-  memory.init(dbFile);
-  std::map<int, rtabmap::Transform> poses;
-  std::multimap<int, rtabmap::Link> links;
-  if (memory.getLastWorkingSignature()) {
-    // Get all IDs linked to last signature (including those in Long-Term
-    //  Memory)
-    std::map<int, int> ids =
-        memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
-    // Get all metric constraints (the graph)
-    memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
+  int decimation = 4;
+  RTABMapAdapter adapter;
+  if (!adapter.init(std::set<std::string>(dbFiles.begin(), dbFiles.end()))) {
+    std::cerr << "reading data failed";
+    return 1;
   }
-  // Optimize the graph
-  std::map<int, rtabmap::Transform> optimizedPoseMap;
-  rtabmap::Optimizer *graphOptimizer =
-      rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
-  optimizedPoseMap =
-      graphOptimizer->optimize(poses.begin()->first, poses, links);
-  delete graphOptimizer;
-
-  rtabmap::DBDriver *driver = rtabmap::DBDriver::create();
-  driver->openConnection(dbFile);
-  std::set<int> ids;
-  driver->getAllNodeIds(ids, true);
+  const std::map<int, std::vector<Image>> &images = adapter.getImages();
+  Image targetRoomImages = images.begin();
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
-
-  rtabmap::CameraModel cm;
-  for (auto id : ids) {
-    if (optimizedPoseMap.count(id) == 0) {
-      // this image is being optimized out
-      continue;
-    }
-    int imageId = id;
-    bool uncompressedData = true;
-    rtabmap::SensorData data = memory.getNodeData(imageId, uncompressedData);
-    cm = data.cameraModels()[0];
+  for(auto image: targetRoomImages) {
+    const CameraModel cm = image.getCameraModel();
+    const cv::Mat depthRaw = image.getDepth();
+    const cv::Mat imageRaw = image.getImage();
+    const Transform pose = image.getPose();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
         new pcl::PointCloud<pcl::PointXYZRGB>);
-    cv::Mat depthRaw = data.depthRaw();
-    cv::Mat imageRaw = data.imageRaw();
-    // Todo Check what's the difference between my implementation and rtabmap's
-    // cloudFromDepthRGB()
-    // My implementation is at the botom of this file
-    cloud = rtabmap::util3d::cloudFromDepthRGB(imageRaw, depthRaw, cm, 4, 0, 0,
-                                               nullptr);
+    cloud = rtabmap::util3d::cloudFromDepthRGB(imageRaw, depthRaw, cm, decimation, 0, 0, nullptr);
     cloud = rtabmap::util3d::removeNaNFromPointCloud(cloud);
     cloud = rtabmap::util3d::transformPointCloud(cloud, cm.localTransform());
-    cloud =
-        rtabmap::util3d::transformPointCloud(cloud, optimizedPoseMap.at(id));
+    cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
     *assembledCloud += *cloud;
   }
+
+  // // get posesMap and linksMap
+  // rtabmap::Memory memory;
+  // memory.init(dbFile);
+  // std::map<int, rtabmap::Transform> poses;
+  // std::multimap<int, rtabmap::Link> links;
+  // if (memory.getLastWorkingSignature()) {
+  //   // Get all IDs linked to last signature (including those in Long-Term
+  //   //  Memory)
+  //   std::map<int, int> ids =
+  //       memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
+  //   // Get all metric constraints (the graph)
+  //   memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
+  // }
+  // // Optimize the graph
+  // std::map<int, rtabmap::Transform> optimizedPoseMap;
+  // rtabmap::Optimizer *graphOptimizer =
+  //     rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
+  // optimizedPoseMap =
+  //     graphOptimizer->optimize(poses.begin()->first, poses, links);
+  // delete graphOptimizer;
+  //
+  // rtabmap::DBDriver *driver = rtabmap::DBDriver::create();
+  // driver->openConnection(dbFile);
+  // std::set<int> ids;
+  // driver->getAllNodeIds(ids, true);
+  // pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
+  //     new pcl::PointCloud<pcl::PointXYZRGB>);
+  //
+  // rtabmap::CameraModel cm;
+  // for (auto id : ids) {
+  //   if (optimizedPoseMap.count(id) == 0) {
+  //     // this image is being optimized out
+  //     continue;
+  //   }
+  //   int imageId = id;
+  //   bool uncompressedData = true;
+  //   rtabmap::SensorData data = memory.getNodeData(imageId, uncompressedData);
+  //   cm = data.cameraModels()[0];
+  //   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
+  //       new pcl::PointCloud<pcl::PointXYZRGB>);
+  //   cv::Mat depthRaw = data.depthRaw();
+  //   cv::Mat imageRaw = data.imageRaw();
+  //   // Todo Check what's the difference between my implementation and rtabmap's
+  //   // cloudFromDepthRGB()
+  //   // My implementation is at the botom of this file
+  //   cloud = rtabmap::util3d::cloudFromDepthRGB(imageRaw, depthRaw, cm, 4, 0, 0,
+  //                                              nullptr);
+  //   cloud = rtabmap::util3d::removeNaNFromPointCloud(cloud);
+  //   cloud = rtabmap::util3d::transformPointCloud(cloud, cm.localTransform());
+  //   cloud =
+  //       rtabmap::util3d::transformPointCloud(cloud, optimizedPoseMap.at(id));
+  //   *assembledCloud += *cloud;
+  // }
   float maxX = 0.0f;
   float maxY = 0.0f;
   float maxZ = 0.0f;
