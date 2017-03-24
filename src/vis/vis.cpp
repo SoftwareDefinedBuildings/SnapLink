@@ -103,7 +103,7 @@ int vis(int argc, char *argv[]) {
     // Todo Check what's the difference between my implementation and rtabmap's
     // cloudFromDepthRGB()
     // My implementation is at the botom of this file
-    cloud = cloudFromDepthRGB(imageRaw, depthRaw, cm, 4, 0, 0);
+    cloud = cloudFromDepthRGB(imageRaw, depthRaw, cm, 2, 0, 0);
     cloud = removeNaNFromPointCloud(cloud);
     cloud = rtabmap::util3d::transformPointCloud(cloud, cm.localTransform());
     cloud =
@@ -141,25 +141,25 @@ int vis(int argc, char *argv[]) {
 
   cv::viz::Viz3d myWindow("Coordinate Frame");
   myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-  // std::vector<float> datas = getPoseFromFileVector(camaraPoseFile, resultId);
-  std::vector<float> datas;
-  datas.push_back(0.992269);
-  datas.push_back(-0.055068);
-  datas.push_back(-0.111220);
-  datas.push_back(-0.052803);
-  datas.push_back(0.050433);
-  datas.push_back(0.997755);
-  datas.push_back(-0.044067);
-  datas.push_back(-0.140940);
-  datas.push_back(0.113397);
-  datas.push_back(0.038117);
-  datas.push_back(0.992819);
-  datas.push_back(0.021211);
+  std::vector<float> datas = getPoseFromFileVector(camaraPoseFile, resultId);
+  // std::vector<float> datas;
+  // datas.push_back(0.992269);
+  // datas.push_back(-0.055068);
+  // datas.push_back(-0.111220);
+  // datas.push_back(-0.052803);
+  // datas.push_back(0.050433);
+  // datas.push_back(0.997755);
+  // datas.push_back(-0.044067);
+  // datas.push_back(-0.140940);
+  // datas.push_back(0.113397);
+  // datas.push_back(0.038117);
+  // datas.push_back(0.992819);
+  // datas.push_back(0.021211);
   Transform transP(datas[0], datas[1], datas[2], datas[3], datas[4], datas[5],
                    datas[6], datas[7], datas[8], datas[9], datas[10],
                    datas[11]);
   Transform transL(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-  Transform transPL = transP * transL;
+  Transform transPL = transP * transL * transL;
   std::cout << "transofrm PL is:\n";
   printTransformMat(transPL);
   cv::Affine3f cam_pose(
