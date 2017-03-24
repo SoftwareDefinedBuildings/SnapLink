@@ -63,7 +63,7 @@ git clone -b 3.2.0 --single-branch --depth 1 https://github.com/opencv/opencv_co
 # Compile and install OpenCV with non-free modules (e.g., SURF)
 mkdir -p $HOME/workspace/opencv/build
 cd $HOME/workspace/opencv/build
-cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D WITH_VTK=ON OPENCV_EXTRA_MODULES_PATH=$HOME/workspace/opencv_contrib/modules ..
+cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D WITH_VTK=ON -D OPENCV_EXTRA_MODULES_PATH=$HOME/workspace/opencv_contrib/modules ..
 make -j $(nproc)
 make install -j $(nproc)
 
