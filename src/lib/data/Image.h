@@ -2,7 +2,9 @@
 
 #include "lib/data/Transform.h"
 #include "lib/data/CameraModel.h"
-
+#include <pcl/common/projection_matrix.h>
+#include <pcl/io/ply_io.h>
+#include <pcl/filters/extract_indices.h>
 class Image {
 public:
   explicit Image(int id, int roomId, const cv::Mat &image, const cv::Mat &depth, Transform &&pose, CameraModel &&camera);
@@ -13,6 +15,30 @@ public:
   const cv::Mat &getDepth() const;
   const Transform &getPose() const;
   const CameraModel &getCameraModel() const;
+  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &getCloud(int decimation) const;
+private:
+  float getDepth(
+		const cv::Mat & depthImage,
+		float x, float y,
+		bool smoothing,
+		float maxZError,
+		bool estWithNeighborsIfNull) const;
+  pcl::PointXYZ projectDepthTo3D(
+		const cv::Mat & depthImage,
+		float x, float y,
+		float cx, float cy,
+		float fx, float fy,
+		bool smoothing,
+		float maxZError) const;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
+		const cv::Mat & imageRgb,
+		const cv::Mat & imageDepthIn,
+		const CameraModel & model,
+		int decimation,
+		float maxDepth,
+		float minDepth) const;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr removeNaNFromPointCloud(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) const;
 
 private:
   int _id;
