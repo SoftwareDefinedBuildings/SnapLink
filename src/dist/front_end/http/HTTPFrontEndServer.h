@@ -1,8 +1,8 @@
 #pragma once
 
 #include "FrontEndService.grpc.pb.h"
-#include "data/Session.h"
 #include "data/CameraModel.h"
+#include "data/Session.h"
 #include "front_end/http/HTTPFrontEnd.h"
 #include <QSemaphore>
 #include <grpc++/grpc++.h>
@@ -12,7 +12,7 @@
 #include <opencv2/core/types.hpp>
 #include <random>
 
-// to keep session dependent data 
+// to keep session dependent data
 struct SessionData final {
   std::unique_ptr<Session> session;
   std::unique_ptr<std::vector<std::string>> names;
@@ -30,9 +30,10 @@ public:
   void run(std::string httpFrontEndServerAddr);
 
 private:
-  // this method must be thread safe, because it will be called from other threads
+  // this method must be thread safe, because it will be called from other
+  // threads
   std::vector<std::string> onQuery(std::unique_ptr<cv::Mat> &&image,
-             std::unique_ptr<CameraModel> &&camera);
+                                   std::unique_ptr<CameraModel> &&camera);
 
 private:
   std::unique_ptr<HTTPFrontEnd> _httpFront;

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "lib/data/Label.h"
-#include "lib/data/Word.h"
-#include "lib/data/Room.h"
 #include "lib/data/Image.h"
-#include <set>
-#include <map>
+#include "lib/data/Label.h"
+#include "lib/data/Room.h"
+#include "lib/data/Word.h"
 #include <list>
+#include <map>
+#include <set>
 
 class Adapter {
 public:

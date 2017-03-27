@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lib/data/Word.h"
 #include "lib/data/Room.h"
+#include "lib/data/Word.h"
 #include <memory>
 #include <opencv2/core/core.hpp>
 #include <set>
@@ -14,7 +14,10 @@ class Transform;
 
 class Perspective final {
 public:
-  explicit Perspective(const std::map<int, Room> &rooms, const std::map<int, Word> &words, int corrLimit = CORR_LIMIT, double distRatio = DIST_RATIO);
+  explicit Perspective(const std::map<int, Room> &rooms,
+                       const std::map<int, Word> &words,
+                       int corrLimit = CORR_LIMIT,
+                       double distRatio = DIST_RATIO);
 
   void localize(const std::vector<int> &wordIds,
                 const std::vector<cv::KeyPoint> &keyPoints,

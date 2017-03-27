@@ -63,7 +63,7 @@ void WordSearch::buildIndex() {
       i++;
     }
 
-    _index.reset(
-        new cv::flann::Index(_dataMat, cv::flann::KDTreeIndexParams()));
+    _index = std::make_unique<cv::flann::Index>(_dataMat,
+                                                cv::flann::KDTreeIndexParams());
   }
 }

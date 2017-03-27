@@ -13,10 +13,9 @@ public:
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
   bool onWord(const std::vector<int> &wordIds,
-                   const std::vector<cv::KeyPoint> &keyPoints,
-                   const cv::Mat &descriptors,
-                   const CameraModel &camera,
-                   const Session &session);
+              const std::vector<cv::KeyPoint> &keyPoints,
+              const cv::Mat &descriptors, const CameraModel &camera,
+              const Session &session);
 
 private:
   // Out of the passed in Channel comes the stub, stored here, our view of the

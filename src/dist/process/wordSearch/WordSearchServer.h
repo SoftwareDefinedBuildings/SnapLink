@@ -4,7 +4,7 @@
 
 class WordSearchServer final : public proto::WordSearchService::Service {
 public:
-  bool init(std::string , std::vector<std::string> dbfiles);
+  bool init(std::string, std::vector<std::string> dbfiles);
   grpc::Status onFeature(grpc::ServerContext *context,
                          const proto::FeatureMessage *request,
                          proto::Empty *response) override;
