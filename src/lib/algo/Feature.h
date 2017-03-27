@@ -10,7 +10,8 @@ public:
                cv::Mat &descriptors) const;
 
 private:
-  void subsample(std::vector<cv::KeyPoint> &keyPoints, cv::Mat &descriptors) const;
+  void subsample(std::vector<cv::KeyPoint> &keyPoints,
+                 cv::Mat &descriptors) const;
 
 private:
   int _sampleSize;

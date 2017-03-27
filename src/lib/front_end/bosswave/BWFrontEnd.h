@@ -1,13 +1,12 @@
 #pragma once
 
 #include "lib/front_end/FrontEnd.h"
-#include <libbw.h>
 #include <allocations.h>
-#include <string>
 #include <atomic>
+#include <libbw.h>
+#include <string>
 
-class BWFrontEnd final : public QObject, public FrontEnd
-{
+class BWFrontEnd final : public QObject, public FrontEnd {
   Q_OBJECT
 
 public:

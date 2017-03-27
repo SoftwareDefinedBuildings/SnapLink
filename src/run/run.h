@@ -1,14 +1,14 @@
 #pragma once
 
 #include "lib/algo/Feature.h"
-#include "lib/algo/WordSearch.h"
-#include "lib/algo/RoomSearch.h"
 #include "lib/algo/Perspective.h"
+#include "lib/algo/RoomSearch.h"
 #include "lib/algo/Visibility.h"
+#include "lib/algo/WordSearch.h"
 #include <boost/program_options.hpp>
-#include <opencv2/core/core.hpp>
 #include <memory>
 #include <mutex>
+#include <opencv2/core/core.hpp>
 
 #define MAX_CLIENTS 10
 
@@ -23,9 +23,11 @@ public:
 private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
-  static void printTime(long total, long feature, long wordSearch, long roomSearch, long perspective, long visibility);
+  static void printTime(long total, long feature, long wordSearch,
+                        long roomSearch, long perspective, long visibility);
   // must be thread-safe
-  std::vector<std::string> identify(const cv::Mat &image, const CameraModel &camera);
+  std::vector<std::string> identify(const cv::Mat &image,
+                                    const CameraModel &camera);
 
 private:
   std::unique_ptr<Feature> _feature;

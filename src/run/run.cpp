@@ -91,16 +91,17 @@ int Run::run(int argc, char *argv[]) {
   const std::map<int, std::vector<Label>> &labels = adapter.getLabels();
 
   std::cout << "initializing computing stages" << std::endl;
-  _feature.reset(new Feature(featureLimit));
-  _wordSearch.reset(new WordSearch(words));
-  _roomSearch.reset(new RoomSearch(rooms, words));
-  _perspective.reset(new Perspective(rooms, words, corrLimit, distRatio));
-  _visibility.reset(new Visibility(labels));
+  _feature = std::make_unique<Feature>(featureLimit);
+  _wordSearch = std::make_unique<WordSearch>(words);
+  _roomSearch = std::make_unique<RoomSearch>(rooms, words);
+  _perspective =
+      std::make_unique<Perspective>(rooms, words, corrLimit, distRatio);
+  _visibility = std::make_unique<Visibility>(labels);
 
   std::unique_ptr<FrontEnd> httpFrontEnd;
   if (http == true) {
     std::cout << "initializing HTTP front end" << std::endl;
-    httpFrontEnd.reset(new HTTPFrontEnd(httpPort, MAX_CLIENTS));
+    httpFrontEnd = std::make_unique<HTTPFrontEnd>(httpPort, MAX_CLIENTS);
     if (httpFrontEnd->start() == false) {
       std::cerr << "starting HTTP front end failed";
       return 1;
@@ -112,7 +113,7 @@ int Run::run(int argc, char *argv[]) {
   std::unique_ptr<FrontEnd> bwFrontEnd;
   if (bosswave == true) {
     std::cerr << "initializing BOSSWAVE front end" << std::endl;
-    bwFrontEnd.reset(new BWFrontEnd(bosswaveURI));
+    bwFrontEnd = std::make_unique<BWFrontEnd>(bosswaveURI);
     if (bwFrontEnd->start() == false) {
       std::cerr << "starting BOSSWAVE front end failed";
       return 1;
@@ -150,6 +151,7 @@ void Run::printTime(long total, long feature, long wordSearch, long roomSearch,
   std::cout << "Time visibility: " << visibility << " ms" << std::endl;
 }
 
+// must be thread safe
 std::vector<std::string> Run::identify(const cv::Mat &image,
                                        const CameraModel &camera) {
   std::vector<std::string> results;

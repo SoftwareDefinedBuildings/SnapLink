@@ -1,1 +1,1 @@
-int vis(int argc, char* argv[]);
+int vis(int argc, char *argv[]);

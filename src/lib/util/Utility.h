@@ -11,10 +11,11 @@ class Transform;
 
 class Utility final {
 public:
-/* Returns current time in milliseconds. */
+  /* Returns current time in milliseconds. */
   static unsigned long long getTime();
 
-  static bool getPoint3World(const Image &image, const cv::Point2f &point2, cv::Point3f &point3);
+  static bool getPoint3World(const Image &image, const cv::Point2f &point2,
+                             cv::Point3f &point3);
 
   static bool compareCVPoint2f(cv::Point2f p1, cv::Point2f p2);
 

@@ -1,7 +1,7 @@
 #include "FeatureService.grpc.pb.h"
 #include <grpc++/grpc++.h>
-#include <opencv2/core/types.hpp>
 #include <memory>
+#include <opencv2/core/types.hpp>
 #include <string>
 
 class CameraModel;

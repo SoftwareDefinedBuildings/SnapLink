@@ -1,9 +1,9 @@
 #pragma once
 
-#include <functional>
-#include <vector>
-#include <memory>
 #include "lib/data/CameraModel.h"
+#include <functional>
+#include <memory>
+#include <vector>
 
 class FrontEnd {
 public:
@@ -22,13 +22,23 @@ public:
   /**
    * register a callback function
    */
-  void registerOnQuery(std::function<std::vector<std::string>(const cv::Mat &image, const CameraModel &camera)> onQuery) {_onQuery = onQuery;}
+  void registerOnQuery(std::function<std::vector<std::string>(
+                           const cv::Mat &image, const CameraModel &camera)>
+                           onQuery) {
+    _onQuery = onQuery;
+  }
 
   /**
    * call the callback function
    */
-  std::function<std::vector<std::string>(const cv::Mat &image, const CameraModel &camera)> getOnQuery() {return _onQuery;}
+  std::function<std::vector<std::string>(const cv::Mat &image,
+                                         const CameraModel &camera)>
+  getOnQuery() {
+    return _onQuery;
+  }
 
 private:
-  std::function<std::vector<std::string>(const cv::Mat &image, const CameraModel &camera)> _onQuery;
+  std::function<std::vector<std::string>(const cv::Mat &image,
+                                         const CameraModel &camera)>
+      _onQuery;
 };

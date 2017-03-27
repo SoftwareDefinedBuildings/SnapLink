@@ -1,12 +1,13 @@
 #pragma once
 
-#include "lib/data/Word.h"
 #include "lib/data/Room.h"
+#include "lib/data/Word.h"
 #include <memory>
 
 class RoomSearch final {
 public:
-  explicit RoomSearch(const std::map<int, Room> &rooms, const std::map<int, Word> &words);
+  explicit RoomSearch(const std::map<int, Room> &rooms,
+                      const std::map<int, Word> &words);
 
   /**
    * return the id of the most similar database.

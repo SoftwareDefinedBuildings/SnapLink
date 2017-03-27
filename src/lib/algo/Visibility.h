@@ -1,8 +1,8 @@
 #pragma once
 
 #include "lib/data/Label.h"
-#include <map>
 #include <list>
+#include <map>
 #include <memory>
 #include <numeric>
 
