@@ -24,7 +24,7 @@ private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
   static void printTime(long total, long feature, long wordSearch, long roomSearch, long perspective, long visibility);
-  // thread-safe
+  // must be thread-safe
   std::vector<std::string> identify(const cv::Mat &image, const CameraModel &camera);
 
 private:
