@@ -4,14 +4,6 @@
 ## What is CellMate? 
 CellMate is a system that allows you to interact with smart building appliances by taking pictures of them.
 
-### What Does This Repository do?
-This is the server part of CellMate. Use this only if you want to deploy your own CellMate Server.
-
-### What Other Repositories do you have?
-* [Android Client](https://github.com/SoftwareDefinedBuildings/CellMate_Android): an Android app that allows you to take an image to identify appliances and interact with them.
-* [Web Client](https://github.com/SoftwareDefinedBuildings/CellMate_Web_Client): a web client that allows you to upload an image to identify appliances.
-* [Labeling Tool](https://github.com/SoftwareDefinedBuildings/CellMate_Labeling_Tool): a GUI tool that allows you label appliances in a 3D model. We currently only support [RTABMap](https://github.com/introlab/rtabmap) databases.
-
 
 ## How to Run CellMate server?
 
@@ -21,7 +13,7 @@ The easiest way to run CellMate server is using the prebuilt [docker image](http
 docker pull kaifeichen/cellmate
 ```
 
-If you want to build your own environment, follow these [instructions](https://gist.github.com/kaifeichen/5839d0cbf357ede24662dc7c6e1f401f).
+If you want to build your own environment, follow the [install script](script/install.sh).
 
 ### Compile
 Clone the CellMate server repository
@@ -37,43 +29,20 @@ make -j $(nproc)
 
 
 ### Run
-There are two versions of CellMate server: *standalone* and *distributed*.
 
 #### standalone
-To run the standalone executable *cellmat_standalone*
+To run the cellmat server
 ```bash
-cellmat_standalone [db_file...]
+cellmate run [db_file...]
 ```
 
 Here is an example that runs it with all data in *~/data/buildsys16/*:
 ```bash
-cellmat_standalone `find ~/data/buildsys16/ -iname *.db`
-```
-
-#### distributed
-To run the standalone executables
-```bash
-front $FRONT_IP:$FRONT_PORT $FEATURE_IP:$FEATURE_PORT
-feature $FEATURE_IP:$FEATURE_PORT $WORDSEARCH_IP:$WORDSEARCH_PORT
-wordsearch $WORDSEARCH_IP:$WORDSEARCH_PORT $SIGNATURESEARCH_IP:$SIGNATURESEARCH_PORT [db_file...]
-signaturesearch $SIGNATURESEARCH_IP:$SIGNATURESEARCH_PORT $PERSPECTIVE_IP:$PERSPECTIVE_PORT [db_file...]
-perspective $PERSPECTIVE_IP:$PERSPECTIVE_PORT $VISIBILITY_IP:$VISIBILITY_PORT [db_file...]
-visibility $VISIBILITY_IP:$VISIBILITY_PORT $FRONT_IP:$FRONT_PORT [db_file...]
-```
-where `[db_file...]` must be the same for all commands.
-
-Here is an example that runs them on the same machine with all data in *~/data/buildsys16/*:
-```bash
-front localhost:8081 localhost:8082
-feature localhost:8082 localhost:8083
-wordsearch localhost:8083 localhost:8084 `find ~/data/buildsys16/ -iname *.db`
-signaturesearch localhost:8084 localhost:8085 `find ~/data/buildsys16/ -iname *.db`
-perspective localhost:8085 localhost:8086 `find ~/data/buildsys16/ -iname *.db`
-visibility localhost:8086 localhost:8081 `find ~/data/buildsys16/ -iname *.db`
+cellmate run `find ~/data/buildsys16/ -iname *.db`
 ```
 
 
-## CellMate Server Interface
+## CellMate Server API
 
 CellMate server has a HTTP fron end and a [BOSSWAVE](https://github.com/immesys/bw2) front end.
 
@@ -137,7 +106,7 @@ You must cite the following paper if you use this code in any ways:
 ## License
 
 ```
-Copyright (c) 2016, Regents of the University of California
+Copyright (c) 2016-2017, Regents of the University of California
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
