@@ -25,7 +25,7 @@ mkdir -p $HOME/workspace/qt5/build
 cd $HOME/workspace/qt5/build
 ../configure -opensource -confirm-license -nomake examples -nomake tests
 
-# Compile and install QT to /usr/loca/Qt-%VERSION%
+# Compile and install QT to /usr/local/Qt-%VERSION%
 make -j $(nproc)
 make install -j $(nproc)
 
