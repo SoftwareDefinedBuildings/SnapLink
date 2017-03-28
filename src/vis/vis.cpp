@@ -3,7 +3,6 @@
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
 #include "rtabmap/core/RtabmapEvent.h"
-#include <boost/program_options.hpp>
 #include <fstream>
 #include <iostream>
 #include <opencv2/viz.hpp>
@@ -17,11 +16,8 @@
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UStl.h>
-namespace po = boost::program_options;
 
 void printTransformMat(Transform t);
-static void printInvalid(const std::vector<std::string> &opts);
-static void printUsage(const po::options_description &desc);
 std::vector<float> getPoseFromFileVector(std::string camaraPoseFile,
                                          int resultId);
 cv::Mat_<float> makeCvMat(float a1, float a2, float a3, float a4, float a5,
@@ -31,90 +27,83 @@ cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
                                   float a5, float a6, float a7, float a8,
                                   float a9, float a10, float a11, float a12);
 
-int vis(int argc, char *argv[]) {
-  std::set<std::string> dbFile;
-  dbFile.push_back(argv[1]);
-  std::string camaraPoseFile = argv[2];
-  int resultId = atoi(argv[3]);
-  int decimation = 4;
+int Vis::run(int argc, char *argv[]) {
+  // Parse arguments
+  std::string dbFile;
+  std::string poseFile;
+  int poseIndex;
+
+  po::options_description visible("command options");
+  visible.add_options() // use comment to force new line using formater
+      ("help,h", "print help message");
+
+  po::options_description hidden;
+  hidden.add_options() // use comment to force new line using formater
+      ("dbfile", po::value<std::string>(&dbFile)->required(),
+       "database file") //
+      ("posefile", po::value<std::string>(&poseFile)->required(),
+       "pose file") //
+      ("poseindex", po::value<int>(&poseIndex)->required(), "pose index");
+
+  po::options_description all;
+  all.add(visible).add(hidden);
+
+  po::positional_options_description pos;
+  pos.add("dbfile", 1);
+  pos.add("posefile", 1);
+  pos.add("poseindex", 1);
+
+  po::variables_map vm;
+  po::parsed_options parsed = po::command_line_parser(argc, argv)
+                                  .options(all)
+                                  .positional(pos)
+                                  .allow_unregistered()
+                                  .run();
+  po::store(parsed, vm);
+
+  // print invalid options
+  std::vector<std::string> unrecog =
+      collect_unrecognized(parsed.options, po::exclude_positional);
+  if (unrecog.size() > 0) {
+    printInvalid(unrecog);
+    printUsage(visible);
+    return 1;
+  }
+
+  if (vm.count("help")) {
+    printUsage(visible);
+    return 0;
+  }
+
+  // check whether required options exist after handling help
+  po::notify(vm);
+
+  // Run the program
   RTABMapAdapter adapter;
-  if (!adapter.init(std::set<std::string>(dbFiles.begin(), dbFiles.end()))) {
+  std::set<std::string> dbFiles{dbFile};
+  if (!adapter.init(dbFiles)) {
     std::cerr << "reading data failed";
     return 1;
   }
+
+  std::cerr << "DEBUG: cloud" << std::endl;
   const std::map<int, std::vector<Image>> &images = adapter.getImages();
-  Image targetRoomImages = images.begin();
+  assert(images.size() == 1);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
-  for (auto image : targetRoomImages) {
-    const CameraModel cm = image.getCameraModel();
-    const Transform pose = image.getPose();
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
-        new pcl::PointCloud<pcl::PointXYZRGB>);
-    cloud = image.getCloud(4);
-    cloud = rtabmap::util3d::transformPointCloud(cloud, cm.localTransform());
+  for (auto image : images.begin()->second) {
+    auto cloud = image.getCloud(4);
+    rtabmap::Transform pose(image.getPose().r11(), image.getPose().r12(),
+                            image.getPose().r13(), image.getPose().x(), //
+                            image.getPose().r21(), image.getPose().r22(),
+                            image.getPose().r23(), image.getPose().y(), //
+                            image.getPose().r31(), image.getPose().r32(),
+                            image.getPose().r33(), image.getPose().z());
     cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
+    std::cerr << "DEBUG: cloud " << image.getId() << std::endl;
     *assembledCloud += *cloud;
   }
 
-  // // get posesMap and linksMap
-  // rtabmap::Memory memory;
-  // memory.init(dbFile);
-  // std::map<int, rtabmap::Transform> poses;
-  // std::multimap<int, rtabmap::Link> links;
-  // if (memory.getLastWorkingSignature()) {
-  //   // Get all IDs linked to last signature (including those in Long-Term
-  //   //  Memory)
-  //   std::map<int, int> ids =
-  //       memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
-  //   // Get all metric constraints (the graph)
-  //   memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
-  // }
-  // // Optimize the graph
-  // std::map<int, rtabmap::Transform> optimizedPoseMap;
-  // rtabmap::Optimizer *graphOptimizer =
-  //     rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
-  // optimizedPoseMap =
-  //     graphOptimizer->optimize(poses.begin()->first, poses, links);
-  // delete graphOptimizer;
-  //
-  // rtabmap::DBDriver *driver = rtabmap::DBDriver::create();
-  // driver->openConnection(dbFile);
-  // std::set<int> ids;
-  // driver->getAllNodeIds(ids, true);
-  // pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
-  //     new pcl::PointCloud<pcl::PointXYZRGB>);
-  //
-  // rtabmap::CameraModel cm;
-  // for (auto id : ids) {
-  //   if (optimizedPoseMap.count(id) == 0) {
-  //     // this image is being optimized out
-  //     continue;
-  //   }
-  //   int imageId = id;
-  //   bool uncompressedData = true;
-  //   rtabmap::SensorData data = memory.getNodeData(imageId, uncompressedData);
-  //   cm = data.cameraModels()[0];
-  //   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
-  //       new pcl::PointCloud<pcl::PointXYZRGB>);
-  //   cv::Mat depthRaw = data.depthRaw();
-  //   cv::Mat imageRaw = data.imageRaw();
-  //   // Todo Check what's the difference between my implementation and
-  //   rtabmap's
-  //   // cloudFromDepthRGB()
-  //   // My implementation is at the botom of this file
-  //   cloud = rtabmap::util3d::cloudFromDepthRGB(imageRaw, depthRaw, cm, 4, 0,
-  //   0,
-  //                                              nullptr);
-  //   cloud = rtabmap::util3d::removeNaNFromPointCloud(cloud);
-  //   cloud = rtabmap::util3d::transformPointCloud(cloud, cm.localTransform());
-  //   cloud =
-  //       rtabmap::util3d::transformPointCloud(cloud, optimizedPoseMap.at(id));
-  //   *assembledCloud += *cloud;
-  // }
-  float maxX = 0.0f;
-  float maxY = 0.0f;
-  float maxZ = 0.0f;
   int totalSize = assembledCloud->size();
   cv::Mat cloudXYZ(1, totalSize, CV_32FC3);
   cv::Mat cloudBGR(1, totalSize, CV_8UC3);
@@ -124,39 +113,14 @@ int vis(int argc, char *argv[]) {
     XYZdata[i].x = pt.x;
     XYZdata[i].y = pt.y;
     XYZdata[i].z = pt.z;
-    if (pt.x > maxX) {
-      maxX = pt.x;
-    }
-    if (pt.y > maxY) {
-      maxY = pt.y;
-    }
-    if (pt.z > maxZ) {
-      maxZ = pt.z;
-    }
     cloudBGR.at<cv::Vec3b>(i)[0] = pt.b;
     cloudBGR.at<cv::Vec3b>(i)[1] = pt.g;
     cloudBGR.at<cv::Vec3b>(i)[2] = pt.r;
   }
-  std::cout << "Max X is " << maxX << "\n";
-  std::cout << "Max Y is " << maxY << "\n";
-  std::cout << "Max Z is " << maxZ << "\n";
 
   cv::viz::Viz3d myWindow("Coordinate Frame");
   myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-  std::vector<float> datas = getPoseFromFileVector(camaraPoseFile, resultId);
-  // std::vector<float> datas;
-  // datas.push_back(0.992269);
-  // datas.push_back(-0.055068);
-  // datas.push_back(-0.111220);
-  // datas.push_back(-0.052803);
-  // datas.push_back(0.050433);
-  // datas.push_back(0.997755);
-  // datas.push_back(-0.044067);
-  // datas.push_back(-0.140940);
-  // datas.push_back(0.113397);
-  // datas.push_back(0.038117);
-  // datas.push_back(0.992819);
-  // datas.push_back(0.021211);
+  std::vector<float> datas = getPoseFromFileVector(poseFile, poseIndex);
   Transform transP(datas[0], datas[1], datas[2], datas[3], datas[4], datas[5],
                    datas[6], datas[7], datas[8], datas[9], datas[10],
                    datas[11]);
@@ -184,6 +148,21 @@ int vis(int argc, char *argv[]) {
   myWindow.showWidget("Cellmate vis", cloud_widget, cloud_pose_global);
   myWindow.spin();
   return 0;
+}
+
+void Vis::printInvalid(const std::vector<std::string> &opts) {
+  std::cerr << "invalid options: ";
+  for (const auto &opt : opts) {
+    std::cerr << opt << " ";
+  }
+  std::cerr << std::endl;
+}
+
+void Vis::printUsage(const po::options_description &desc) {
+  std::cout << "cellmate vis [command options] db_file posefile poseindex"
+            << std::endl
+            << std::endl
+            << desc << std::endl;
 }
 
 std::vector<float> getPoseFromFileVector(std::string camaraPoseFile,
