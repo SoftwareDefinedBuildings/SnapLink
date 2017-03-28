@@ -86,13 +86,13 @@ int Vis::run(int argc, char *argv[]) {
     return 1;
   }
 
-  std::cerr << "DEBUG: cloud" << std::endl;
   const std::map<int, std::vector<Image>> &images = adapter.getImages();
   assert(images.size() == 1);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
-  for (auto image : images.begin()->second) {
+  for (const auto &image : images.begin()->second) {
     auto cloud = image.getCloud(4);
+    Transform t = image.getPose();
     rtabmap::Transform pose(image.getPose().r11(), image.getPose().r12(),
                             image.getPose().r13(), image.getPose().x(), //
                             image.getPose().r21(), image.getPose().r22(),
@@ -100,7 +100,6 @@ int Vis::run(int argc, char *argv[]) {
                             image.getPose().r31(), image.getPose().r32(),
                             image.getPose().r33(), image.getPose().z());
     cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
-    std::cerr << "DEBUG: cloud " << image.getId() << std::endl;
     *assembledCloud += *cloud;
   }
 

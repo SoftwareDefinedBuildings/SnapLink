@@ -9,7 +9,7 @@
 class Image {
 public:
   explicit Image(int id, int roomId, const cv::Mat &image, const cv::Mat &depth,
-                 Transform &&pose, CameraModel &&camera);
+                 const Transform &pose, const CameraModel &camera);
 
   int getId() const;
   int getRoomId() const;
@@ -17,7 +17,7 @@ public:
   const cv::Mat &getDepth() const;
   const Transform &getPose() const;
   const CameraModel &getCameraModel() const;
-  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &getCloud(int decimation) const;
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr getCloud(int decimation) const;
 
 private:
   float getDepth(const cv::Mat &depthImage, float x, float y, bool smoothing,
@@ -29,8 +29,6 @@ private:
   cloudFromDepthRGB(const cv::Mat &imageRgb, const cv::Mat &imageDepthIn,
                     const CameraModel &model, int decimation, float maxDepth,
                     float minDepth) const;
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr removeNaNFromPointCloud(
-      const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud) const;
 
 private:
   int _id;

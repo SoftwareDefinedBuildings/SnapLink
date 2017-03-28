@@ -1,9 +1,9 @@
 #include "lib/data/Image.h"
 
 Image::Image(int id, int roomId, const cv::Mat &image, const cv::Mat &depth,
-             Transform &&pose, CameraModel &&camera)
-    : _id(id), _roomId(roomId), _image(image), _depth(depth),
-      _pose(std::move(pose)), _camera(std::move(camera)) {}
+             const Transform &pose, const CameraModel &camera)
+    : _id(id), _roomId(roomId), _image(image), _depth(depth), _pose(pose),
+      _camera(camera) {}
 
 int Image::getId() const { return _id; }
 
@@ -17,11 +17,12 @@ const Transform &Image::getPose() const { return _pose; }
 
 const CameraModel &Image::getCameraModel() const { return _camera; }
 
-const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &
-Image::getCloud(int decimation) const {
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr Image::getCloud(int decimation) const {
   // generate a new pcl point cloud and return
-  return removeNaNFromPointCloud(
-      cloudFromDepthRGB(_image, _depth, _camera, decimation, 0, 0));
+  auto cloud = cloudFromDepthRGB(_image, _depth, _camera, decimation, 0, 0);
+  std::vector<int> indices;
+  pcl::removeNaNFromPointCloud(*cloud, *cloud, indices);
+  return cloud;
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr
@@ -291,13 +292,4 @@ pcl::PointXYZ Image::projectDepthTo3D(const cv::Mat &depthImage, float x,
     pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
   }
   return pt;
-}
-
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr Image::removeNaNFromPointCloud(
-    const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &cloud) const {
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(
-      new pcl::PointCloud<pcl::PointXYZRGB>);
-  std::vector<int> indices;
-  pcl::removeNaNFromPointCloud(*cloud, *output, indices);
-  return output;
 }

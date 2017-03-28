@@ -130,8 +130,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
     pose = pose * t;
 
     int imageId = _nextImageId++;
-    images.emplace_back(imageId, roomId, image, depth, std::move(pose),
-                        std::move(camera));
+    images.emplace_back(imageId, roomId, image, depth, pose, camera);
     // insert if not exists
     _sigImageIdMap[roomId][sig->id()] = imageId;
   }
