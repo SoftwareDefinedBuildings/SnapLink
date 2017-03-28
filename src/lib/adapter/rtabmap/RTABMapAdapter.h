@@ -19,10 +19,10 @@ public:
   // read data from database files
   bool init(const std::set<std::string> &dbPaths) final;
 
-  const std::map<int, std::vector<Image>> &getImages() const final;
-  const std::map<int, Word> &getWords() const final;
-  const std::map<int, Room> &getRooms() const final;
-  const std::map<int, std::vector<Label>> &getLabels() const final;
+  const std::map<int, std::vector<Image>> &getImages() final;
+  const std::map<int, Word> &getWords() final;
+  const std::map<int, Room> &getRooms() final;
+  const std::map<int, std::vector<Label>> &getLabels() final;
   // TODO addLabels()
 
 private:

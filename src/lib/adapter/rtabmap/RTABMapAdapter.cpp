@@ -34,30 +34,33 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     roomId++;
   }
 
-  createWords();
-  std::cerr << "Total Number of words: " << _words.size() << std::endl;
-  long count = 0;
-  for (const auto &word : _words) {
-    for (const auto &desc : word.second.getDescriptorsByDb()) {
-      count += desc.second.rows;
-    }
-  }
-  std::cerr << "Total Number of points: " << count << std::endl;
-
-  createRooms();
-
   return true;
 }
 
-const std::map<int, std::vector<Image>> &RTABMapAdapter::getImages() const {
+const std::map<int, std::vector<Image>> &RTABMapAdapter::getImages() {
   return _images;
 }
 
-const std::map<int, Word> &RTABMapAdapter::getWords() const { return _words; }
+const std::map<int, Word> &RTABMapAdapter::getWords() {
+  // create words the first time it's accessed
+  if (_words.empty()) {
+    createWords();
+  }
+  return _words;
+}
 
-const std::map<int, Room> &RTABMapAdapter::getRooms() const { return _rooms; }
+const std::map<int, Room> &RTABMapAdapter::getRooms() {
+  if (_words.empty()) {
+    createWords();
+  }
+  // create rooms the first time it's accessed
+  if (_rooms.empty()) {
+    createRooms();
+  }
+  return _rooms;
+}
 
-const std::map<int, std::vector<Label>> &RTABMapAdapter::getLabels() const {
+const std::map<int, std::vector<Label>> &RTABMapAdapter::getLabels() {
   return _labels;
 }
 
@@ -186,9 +189,12 @@ std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
 }
 
 void RTABMapAdapter::createWords() {
+  assert(_images.empty() == false);
+
   std::cerr << "Building Index for Words" << std::endl;
   rtabmap::VWDictionary vwd;
   cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
+
   for (const auto &roomImages : _images) {
     int roomId = roomImages.first;
     std::cerr << "Creating words for signatures in room " << roomId
@@ -223,9 +229,19 @@ void RTABMapAdapter::createWords() {
       }
     }
   }
+
+  std::cerr << "Total Number of words: " << _words.size() << std::endl;
+  long count = 0;
+  for (const auto &word : _words) {
+    for (const auto &desc : word.second.getDescriptorsByDb()) {
+      count += desc.second.rows;
+    }
+  }
+  std::cerr << "Total Number of points: " << count << std::endl;
 }
 
 void RTABMapAdapter::createRooms() {
+  assert(_words.empty() == false);
   for (const auto word : _words) {
     int wordId = word.first;
     for (const auto points : word.second.getPoints3Map()) {

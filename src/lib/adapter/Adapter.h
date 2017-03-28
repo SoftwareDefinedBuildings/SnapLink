@@ -17,20 +17,20 @@ public:
   /**
    * room ID : vector of images, indexed by image ID
    */
-  virtual const std::map<int, std::vector<Image>> &getImages() const = 0;
+  virtual const std::map<int, std::vector<Image>> &getImages() = 0;
 
   /**
    * word ID : word
    */
-  virtual const std::map<int, Word> &getWords() const = 0;
+  virtual const std::map<int, Word> &getWords() = 0;
 
   /**
    * room ID : room
    */
-  virtual const std::map<int, Room> &getRooms() const = 0;
+  virtual const std::map<int, Room> &getRooms() = 0;
 
   /**
    * room ID : vector of labels
    */
-  virtual const std::map<int, std::vector<Label>> &getLabels() const = 0;
+  virtual const std::map<int, std::vector<Label>> &getLabels() = 0;
 };
