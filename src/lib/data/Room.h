@@ -2,9 +2,9 @@
 
 #include "lib/data/Word.h"
 #include <map>
-#include <vector>
-#include <set>
 #include <opencv2/core/core.hpp>
+#include <set>
+#include <vector>
 
 class Room final {
 public:

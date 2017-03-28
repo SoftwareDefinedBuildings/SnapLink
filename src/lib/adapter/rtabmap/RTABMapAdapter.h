@@ -32,7 +32,6 @@ private:
   void createWords();
   void createRooms();
 
-
 private:
   int _nextImageId;
   // {room ID : {signature ID in database : image ID in memory}}

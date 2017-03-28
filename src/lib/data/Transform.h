@@ -11,8 +11,8 @@ public:
   explicit Transform();
 
   explicit Transform(float r11, float r12, float r13, float t14, //
-            float r21, float r22, float r23, float t24, //
-            float r31, float r32, float r33, float t34);
+                     float r21, float r22, float r23, float t24, //
+                     float r31, float r32, float r33, float t34);
 
   float r11() const;
   float r12() const;

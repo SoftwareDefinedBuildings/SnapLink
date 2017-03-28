@@ -6,8 +6,8 @@ class PerspectiveServer final : public proto::PerspectiveService::Service {
 public:
   bool init(std::string visibilityServerAddr, std::vector<std::string> dbfiles);
   grpc::Status onWord(grpc::ServerContext *context,
-                           const proto::WordMessage *request,
-                           proto::Empty *response) override;
+                      const proto::WordMessage *request,
+                      proto::Empty *response) override;
   void run(std::string perspectiveServerAddr);
 
 private:

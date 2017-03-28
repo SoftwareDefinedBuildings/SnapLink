@@ -1,13 +1,15 @@
 #pragma once
 
-#include "lib/data/Transform.h"
 #include "lib/data/CameraModel.h"
 #include <pcl/common/projection_matrix.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/filters/extract_indices.h>
+#include "lib/data/Transform.h"
+
 class Image {
 public:
-  explicit Image(int id, int roomId, const cv::Mat &image, const cv::Mat &depth, Transform &&pose, CameraModel &&camera);
+  explicit Image(int id, int roomId, const cv::Mat &image, const cv::Mat &depth,
+                 Transform &&pose, CameraModel &&camera);
 
   int getId() const;
   int getRoomId() const;
@@ -18,27 +20,27 @@ public:
   const pcl::PointCloud<pcl::PointXYZRGB>::Ptr &getCloud(int decimation) const;
 private:
   float getDepth(
-		const cv::Mat & depthImage,
-		float x, float y,
-		bool smoothing,
-		float maxZError,
-		bool estWithNeighborsIfNull) const;
+        const cv::Mat & depthImage,
+        float x, float y,
+        bool smoothing,
+        float maxZError,
+        bool estWithNeighborsIfNull) const;
   pcl::PointXYZ projectDepthTo3D(
-		const cv::Mat & depthImage,
-		float x, float y,
-		float cx, float cy,
-		float fx, float fy,
-		bool smoothing,
-		float maxZError) const;
+        const cv::Mat & depthImage,
+        float x, float y,
+        float cx, float cy,
+        float fx, float fy,
+        bool smoothing,
+        float maxZError) const;
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
-		const cv::Mat & imageRgb,
-		const cv::Mat & imageDepthIn,
-		const CameraModel & model,
-		int decimation,
-		float maxDepth,
-		float minDepth) const;
+        const cv::Mat & imageRgb,
+        const cv::Mat & imageDepthIn,
+        const CameraModel & model,
+        int decimation,
+        float maxDepth,
+        float minDepth) const;
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr removeNaNFromPointCloud(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) const;
+        const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) const;
 
 private:
   int _id;

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "lib/data/Word.h"
-#include <opencv2/flann.hpp>
 #include <memory>
+#include <opencv2/flann.hpp>
 
 class WordSearch final {
 public:
