@@ -1,4 +1,6 @@
 #include "vis/vis.h"
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/data/Image.h"
 #include "lib/data/Transform.h"
 #include "rtabmap/core/RtabmapEvent.h"
 #include <boost/program_options.hpp>
@@ -15,8 +17,6 @@
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UStl.h>
-#include "lib/adapter/rtabmap/RTABMapAdapter.h"
-#include "lib/data/Image.h"
 namespace po = boost::program_options;
 
 void printTransformMat(Transform t);
@@ -46,7 +46,7 @@ int vis(int argc, char *argv[]) {
   Image targetRoomImages = images.begin();
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
-  for(auto image: targetRoomImages) {
+  for (auto image : targetRoomImages) {
     const CameraModel cm = image.getCameraModel();
     const Transform pose = image.getPose();
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
@@ -99,10 +99,12 @@ int vis(int argc, char *argv[]) {
   //       new pcl::PointCloud<pcl::PointXYZRGB>);
   //   cv::Mat depthRaw = data.depthRaw();
   //   cv::Mat imageRaw = data.imageRaw();
-  //   // Todo Check what's the difference between my implementation and rtabmap's
+  //   // Todo Check what's the difference between my implementation and
+  //   rtabmap's
   //   // cloudFromDepthRGB()
   //   // My implementation is at the botom of this file
-  //   cloud = rtabmap::util3d::cloudFromDepthRGB(imageRaw, depthRaw, cm, 4, 0, 0,
+  //   cloud = rtabmap::util3d::cloudFromDepthRGB(imageRaw, depthRaw, cm, 4, 0,
+  //   0,
   //                                              nullptr);
   //   cloud = rtabmap::util3d::removeNaNFromPointCloud(cloud);
   //   cloud = rtabmap::util3d::transformPointCloud(cloud, cm.localTransform());
