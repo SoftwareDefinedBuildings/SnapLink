@@ -2,27 +2,15 @@
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
-#include "rtabmap/core/RtabmapEvent.h"
 #include <fstream>
 #include <iostream>
 #include <opencv2/viz.hpp>
 #include <pcl/common/projection_matrix.h>
+#include <pcl/common/transforms.h>
 #include <pcl/io/ply_io.h>
-#include <rtabmap/core/DBDriver.h>
-#include <rtabmap/core/Link.h>
-#include <rtabmap/core/Memory.h>
-#include <rtabmap/core/Optimizer.h>
-#include <rtabmap/core/util3d.h>
-#include <rtabmap/core/util3d_filtering.h>
-#include <rtabmap/core/util3d_transforms.h>
-#include <rtabmap/utilite/UStl.h>
 
 void printTransformMat(Transform t);
-std::vector<float> getPoseFromFileVector(std::string camaraPoseFile,
-                                         int resultId);
-cv::Mat_<float> makeCvMat(float a1, float a2, float a3, float a4, float a5,
-                          float a6, float a7, float a8, float a9, float a10,
-                          float a11, float a12);
+Transform readPoseFile(std::string camaraPoseFile, int resultId);
 cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
                                   float a5, float a6, float a7, float a8,
                                   float a9, float a10, float a11, float a12);
@@ -92,14 +80,8 @@ int Vis::run(int argc, char *argv[]) {
       new pcl::PointCloud<pcl::PointXYZRGB>);
   for (const auto &image : images.begin()->second) {
     auto cloud = image.getCloud(4);
-    Transform t = image.getPose();
-    rtabmap::Transform pose(image.getPose().r11(), image.getPose().r12(),
-                            image.getPose().r13(), image.getPose().x(), //
-                            image.getPose().r21(), image.getPose().r22(),
-                            image.getPose().r23(), image.getPose().y(), //
-                            image.getPose().r31(), image.getPose().r32(),
-                            image.getPose().r33(), image.getPose().z());
-    cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
+    const Transform &pose = image.getPose();
+    pcl::transformPointCloud(*cloud, *cloud, pose.toEigen4f());
     *assembledCloud += *cloud;
   }
 
@@ -119,10 +101,7 @@ int Vis::run(int argc, char *argv[]) {
 
   cv::viz::Viz3d myWindow("Coordinate Frame");
   myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-  std::vector<float> datas = getPoseFromFileVector(poseFile, poseIndex);
-  Transform transP(datas[0], datas[1], datas[2], datas[3], datas[4], datas[5],
-                   datas[6], datas[7], datas[8], datas[9], datas[10],
-                   datas[11]);
+  Tramsfrom transP = readPoseFile(poseFile, poseIndex);
   Transform transL(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
   Transform transPL = transP * transL * transL;
   std::cout << "transofrm PL is:\n";
@@ -164,8 +143,7 @@ void Vis::printUsage(const po::options_description &desc) {
             << desc << std::endl;
 }
 
-std::vector<float> getPoseFromFileVector(std::string camaraPoseFile,
-                                         int resultId) {
+Transform readPoseFile(std::string camaraPoseFile, int resultId) {
   std::ifstream fin(camaraPoseFile);
   if (fin.fail()) {
     std::cout << "Target file open failed";
@@ -193,14 +171,10 @@ std::vector<float> getPoseFromFileVector(std::string camaraPoseFile,
     }
   }
   fin.close();
-  return datas;
-}
 
-cv::Mat_<float> makeCvMat(float a1, float a2, float a3, float a4, float a5,
-                          float a6, float a7, float a8, float a9, float a10,
-                          float a11, float a12) {
-  return cv::Mat_<float>(3, 4) << a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11,
-         a12, 0, 0, 0, 1;
+  Transform pose(datas[0], datas[1], datas[2], datas[3], datas[4], datas[5],
+                 datas[6], datas[7], datas[8], datas[9], datas[10], datas[11]);
+  return pose;
 }
 
 cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
@@ -217,66 +191,3 @@ void printTransformMat(Transform t) {
   std::cout << " " << t.r31() << " " << t.r32() << " " << t.r33() << " "
             << t.z() << "\n";
 }
-
-// tried to add code to parse arguments
-// Parse arguments
-// std::string dbFile;
-//
-// po::options_description label("command options");
-// label.add_options() // use comment to force new line using formater
-//     ("help,h", "print help message") //
-//     ("dbfile", po::value<std::string>(&dbFile)->required(), "database file")
-//     ("P", po::value< std::vector<double> >(), "pose");
-//
-// po::positional_options_description pos;
-// pos.add("dbfile", 1);
-//
-// po::variables_map vm;
-// po::parsed_options parsed = po::command_line_parser(argc, argv)
-//                                 .options(label)
-//                                 .positional(pos)
-//                                 .allow_unregistered()
-//                                 .run();
-// po::store(parsed, vm);
-// po::notify(vm);
-//
-// // print invalid options
-// std::vector<std::string> unrecog =
-//     collect_unrecognized(parsed.options, po::exclude_positional);
-// if (unrecog.size() > 0) {
-//   printInvalid(unrecog);
-//   printUsage(label);
-//   return 1;
-// }
-//
-// if (vm.count("help")) {
-//   printUsage(label);
-//   return 0;
-// }
-
-// My implementation
-// cloud->height = depthRaw.rows;
-// cloud->width  = depthRaw.cols;
-// cloud->resize(cloud->height * cloud->width);
-//
-// for(int i = 0; i < depthRaw.rows; i++) {
-//   for(int j = 0; j < depthRaw.cols; j++) {
-//     pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(
-//               data.depthRaw(), i, j, cm.cx(), cm.cy(), cm.fx(), cm.fy(),
-//               smoothing);
-//     const unsigned char * bgr = imageRaw.ptr<unsigned char>(i,j);
-//     pcl::PointXYZRGB & pt = cloud->at(i*cloud->width + j);
-//     pt.x = pLocal.x;
-//     pt.y = pLocal.y;
-//     pt.z = pLocal.z;
-//     pt.b = bgr[0];
-//     pt.g = bgr[1];
-//     pt.r = bgr[2];
-//     if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z))
-//     {
-//       //std::cout<<"Depth value not valid\n";
-//
-//       pt.x = pt.y = pt.z = pt.b = pt.g = pt.r = 0;;
-//     }
-//   }
-// }
