@@ -9,8 +9,6 @@
 #include <pcl/common/transforms.h>
 #include <pcl/io/ply_io.h>
 
-void printTransformMat(Transform t);
-Transform readPoseFile(std::string camaraPoseFile, int resultId);
 cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
                                   float a5, float a6, float a7, float a8,
                                   float a9, float a10, float a11, float a12);
@@ -18,8 +16,7 @@ cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
 int Vis::run(int argc, char *argv[]) {
   // Parse arguments
   std::string dbFile;
-  std::string poseFile;
-  int poseIndex;
+  std::string poseStr;
 
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
@@ -27,19 +24,15 @@ int Vis::run(int argc, char *argv[]) {
 
   po::options_description hidden;
   hidden.add_options() // use comment to force new line using formater
-      ("dbfile", po::value<std::string>(&dbFile)->required(),
-       "database file") //
-      ("posefile", po::value<std::string>(&poseFile)->required(),
-       "pose file") //
-      ("poseindex", po::value<int>(&poseIndex)->required(), "pose index");
+      ("pose", po::value<std::string>(&poseStr)->required(),
+       "a string with 12 values of a pose") //
+      ("dbfile", po::value<std::string>(&dbFile)->required(), "database file");
 
   po::options_description all;
   all.add(visible).add(hidden);
 
   po::positional_options_description pos;
   pos.add("dbfile", 1);
-  pos.add("posefile", 1);
-  pos.add("poseindex", 1);
 
   po::variables_map vm;
   po::parsed_options parsed = po::command_line_parser(argc, argv)
@@ -101,11 +94,16 @@ int Vis::run(int argc, char *argv[]) {
 
   cv::viz::Viz3d myWindow("Coordinate Frame");
   myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-  Tramsfrom transP = readPoseFile(poseFile, poseIndex);
+  Transform transP;
+  if (!(std::istringstream(poseStr) >> transP)) {
+    std::cerr << "invalid pose input." << std::endl;
+    return 1;
+  }
+
+  std::cout << "transofrm P is:" << std::endl << transP << std::endl;
   Transform transL(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
   Transform transPL = transP * transL * transL;
-  std::cout << "transofrm PL is:\n";
-  printTransformMat(transPL);
+  std::cout << "transofrm PL is:" << std::endl << transPL << std::endl;
   cv::Affine3f cam_pose(
       makeCvMatRotation(transPL.r11(), transPL.r12(), transPL.r13(),
                         transPL.x(), transPL.r21(), transPL.r22(),
@@ -143,51 +141,8 @@ void Vis::printUsage(const po::options_description &desc) {
             << desc << std::endl;
 }
 
-Transform readPoseFile(std::string camaraPoseFile, int resultId) {
-  std::ifstream fin(camaraPoseFile);
-  if (fin.fail()) {
-    std::cout << "Target file open failed";
-  }
-
-  std::string dummy;
-  for (int i = 0; i < resultId; i++) {
-    std::getline(fin, dummy);
-    std::getline(fin, dummy);
-    std::getline(fin, dummy);
-    std::getline(fin, dummy);
-  }
-  fin >> dummy;
-  std::vector<float> datas;
-
-  std::cout << "Target item is " << dummy << "\n";
-  std::cout << "Pose read is:\n";
-  for (int i = 0; i < 12; i++) {
-    float temp;
-    fin >> temp;
-    datas.push_back(temp);
-    std::cout << datas[i] << "  ";
-    if ((i + 1) % 4 == 0) {
-      std::cout << "\n";
-    }
-  }
-  fin.close();
-
-  Transform pose(datas[0], datas[1], datas[2], datas[3], datas[4], datas[5],
-                 datas[6], datas[7], datas[8], datas[9], datas[10], datas[11]);
-  return pose;
-}
-
 cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
                                   float a5, float a6, float a7, float a8,
                                   float a9, float a10, float a11, float a12) {
   return cv::Mat_<float>(3, 3) << a1, a2, a3, a5, a6, a7, a9, a10, a11;
-}
-
-void printTransformMat(Transform t) {
-  std::cout << " " << t.r11() << " " << t.r12() << " " << t.r13() << " "
-            << t.x() << "\n";
-  std::cout << " " << t.r21() << " " << t.r22() << " " << t.r23() << " "
-            << t.y() << "\n";
-  std::cout << " " << t.r31() << " " << t.r32() << " " << t.r33() << " "
-            << t.z() << "\n";
 }

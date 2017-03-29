@@ -37,7 +37,7 @@ void Perspective::localize(const std::vector<int> &wordIds,
     std::cout << "Localization failed" << std::endl;
   }
 
-  std::cout << "transform= " << transform.prettyPrint() << std::endl;
+  std::cout << "transform :" << std::endl << transform << std::endl;
 }
 
 std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>

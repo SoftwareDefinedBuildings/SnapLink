@@ -22,7 +22,7 @@ std::vector<std::string> Visibility::process(int dbId,
 
   std::vector<std::string> results;
 
-  std::cout << "processing transform = " << pose.prettyPrint() << std::endl;
+  std::cout << "processing transform" << std::endl << pose << std::endl;
 
   std::vector<cv::Point2f> planePoints;
   std::vector<std::string> visibleLabels;

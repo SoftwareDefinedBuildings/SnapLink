@@ -34,17 +34,17 @@ public:
 
   Transform rotation() const;
 
-  std::string prettyPrint() const;
-
   Transform operator*(const Transform &t) const;
   Transform &operator*=(const Transform &t);
   bool operator==(const Transform &t) const;
   bool operator!=(const Transform &t) const;
+  friend std::ostream &operator<<(std::ostream &out, const Transform &t);
+  friend std::istream &operator>>(std::istream &in, Transform &t);
 
   Eigen::Matrix4f toEigen4f() const;
   Eigen::Affine3f toEigen3f() const;
 
-public:
+private:
   static Transform fromEigen4f(const Eigen::Matrix4f &matrix);
 
 private:
