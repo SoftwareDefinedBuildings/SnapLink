@@ -35,15 +35,12 @@ float Transform::y() const { return data()[7]; }
 float Transform::z() const { return data()[11]; }
 
 bool Transform::isNull() const {
-  if (_data.empty()) {
+  if (_data.empty() || cv::countNonZero(_data) == 0) {
     return true;
   }
 
-  if (cv::countNonZero(_data) == 0) {
-    return true;
-  }
-
-  for (int i = 0; i < 12; i++) {
+  assert(_data.total() == 12);
+  for (int i = 0; i < _data.total(); i++) {
     if (std::isnan(data()[i])) {
       return true;
     }

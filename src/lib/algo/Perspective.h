@@ -19,10 +19,10 @@ public:
                        int corrLimit = CORR_LIMIT,
                        double distRatio = DIST_RATIO);
 
-  void localize(const std::vector<int> &wordIds,
-                const std::vector<cv::KeyPoint> &keyPoints,
-                const cv::Mat &descriptors, const CameraModel &camera,
-                int roomId, Transform &transform) const;
+  Transform localize(const std::vector<int> &wordIds,
+                     const std::vector<cv::KeyPoint> &keyPoints,
+                     const cv::Mat &descriptors, const CameraModel &camera,
+                     int roomId) const;
 
 private:
   static std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>
