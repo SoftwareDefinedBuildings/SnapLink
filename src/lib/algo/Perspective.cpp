@@ -18,7 +18,6 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
   Transform pose;
 
   if (wordIds.size() == 0) {
-    std::cout << "image localization failed" << std::endl;
     return pose;
   }
 
@@ -35,11 +34,6 @@ Transform Perspective::localize(const std::vector<int> &wordIds,
 
   // 3D to 2D (PnP)
   pose = solvePnP(imagePoints, objectPoints, camera);
-  if (pose.isNull()) {
-    std::cout << "image localization failed" << std::endl;
-  } else {
-    std::cout << "image pose :" << std::endl << pose << std::endl;
-  }
 
   return pose;
 }

@@ -202,6 +202,7 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   }
 
   if (pose.isNull()) {
+    std::cerr << "image localization failed" << std::endl;
     long totalTime = Utility::getTime() - totalStartTime;
     Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                    perspectiveTime, -1);
@@ -218,6 +219,8 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   }
 
   long totalTime = Utility::getTime() - totalStartTime;
+
+  std::cout << "image pose :" << std::endl << pose << std::endl;
   Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                  perspectiveTime, visibilityTime);
 

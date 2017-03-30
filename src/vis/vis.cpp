@@ -126,6 +126,11 @@ int Vis::run(int argc, char *argv[]) {
     CameraModel camera("camera", fx, fy, cx, cy, image.size());
     camPose = localize(image, camera);
 
+    if (camPose.isNull()) {
+      std::cerr << "image localization failed" << std::endl;
+      return 1;
+    }
+
     // visualize camera
     cv::viz::WCameraPosition coord(scale);
     cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, scale);
@@ -148,7 +153,7 @@ int Vis::run(int argc, char *argv[]) {
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
   }
-  std::cerr << "camera pose is:" << std::endl << camPose << std::endl;
+  std::cerr << "image pose:" << std::endl << camPose << std::endl;
   window.spin();
 
   return 0;
