@@ -196,26 +196,16 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   {
     std::lock_guard<std::mutex> lock(_perspectiveMutex);
     startTime = Utility::getTime();
-    _perspective->localize(wordIds, keyPoints, descriptors, camera, roomId,
-                           pose);
+    pose =
+        _perspective->localize(wordIds, keyPoints, descriptors, camera, roomId);
     perspectiveTime = Utility::getTime() - startTime;
   }
 
-  std::string OutputnName = "410Demo.txt";
   if (pose.isNull()) {
+    std::cerr << "image localization failed" << std::endl;
     long totalTime = Utility::getTime() - totalStartTime;
     Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                    perspectiveTime, -1);
-
-    // for debug
-    std::ofstream fout(OutputnName, std::ios_base::app);
-    fout << "Null"
-         << "\n";
-    fout << "Null1\n";
-    fout << "Null2\n";
-    fout << "Null3\n";
-    fout.close();
-
     return results;
   }
 
@@ -229,19 +219,10 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   }
 
   long totalTime = Utility::getTime() - totalStartTime;
+
+  std::cout << "image pose :" << std::endl << pose << std::endl;
   Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                  perspectiveTime, visibilityTime);
-
-  // for debug
-  std::ofstream fout(OutputnName, std::ios_base::app);
-  fout << results.at(0) << "\n";
-  fout << pose.r11() << "  " << pose.r12() << "   " << pose.r13() << "   "
-       << pose.x() << "\n";
-  fout << pose.r21() << "  " << pose.r22() << "   " << pose.r23() << "   "
-       << pose.y() << "\n";
-  fout << pose.r31() << "  " << pose.r32() << "   " << pose.r33() << "   "
-       << pose.z() << "\n";
-  fout.close();
 
   return results;
 }

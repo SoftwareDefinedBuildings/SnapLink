@@ -1,5 +1,4 @@
 #include "lib/data/Transform.h"
-#include <pcl/common/eigen.h>
 
 Transform::Transform() = default;
 
@@ -36,15 +35,12 @@ float Transform::y() const { return data()[7]; }
 float Transform::z() const { return data()[11]; }
 
 bool Transform::isNull() const {
-  if (_data.empty()) {
+  if (_data.empty() || cv::countNonZero(_data) == 0) {
     return true;
   }
 
-  if (cv::countNonZero(_data) == 0) {
-    return true;
-  }
-
-  for (int i = 0; i < 12; i++) {
+  assert(_data.total() == 12);
+  for (int i = 0; i < _data.total(); i++) {
     if (std::isnan(data()[i])) {
       return true;
     }
@@ -52,8 +48,6 @@ bool Transform::isNull() const {
 
   return false;
 }
-
-const float *Transform::data() const { return (const float *)_data.data; }
 
 int Transform::size() const { return 12; }
 
@@ -63,18 +57,14 @@ Transform Transform::rotation() const {
                    data()[8], data()[9], data()[10], 0);
 }
 
-std::string Transform::prettyPrint() const {
-  if (this->isNull()) {
-    return "xyz=[null] rpy=[null]";
-  } else {
-    float x, y, z, roll, pitch, yaw;
-    pcl::getTranslationAndEulerAngles(toEigen3f(), x, y, z, roll, pitch, yaw);
-    std::ostringstream ss;
-    ss << "xyz=" << x << "," << y << "," << z << " rpy=" << roll << "," << pitch
-       << "," << yaw;
-    return ss.str();
-    ;
-  }
+Transform Transform::translation() const {
+  return Transform(0, 0, 0, data()[3], //
+                   0, 0, 0, data()[7], //
+                   0, 0, 0, data()[11]);
+}
+
+Transform Transform::inverse() const {
+  return fromEigen4f(toEigen4f().inverse());
 }
 
 Transform Transform::operator*(const Transform &t) const {
@@ -92,17 +82,43 @@ bool Transform::operator==(const Transform &t) const {
 
 bool Transform::operator!=(const Transform &t) const { return !(*this == t); }
 
+std::ostream &operator<<(std::ostream &out, const Transform &t) {
+  out << t._data << std::endl;
+  return out;
+}
+
+std::istream &operator>>(std::istream &in, Transform &t) {
+  float d[12];
+  for (int i = 0; i < 12; i++) {
+    if (!(in >> d[i])) {
+      in.setstate(std::ios_base::failbit);
+      return in;
+    }
+  }
+  if (!in.eof()) {
+    in.setstate(std::ios_base::failbit);
+    return in;
+  }
+  t._data = (cv::Mat_<float>(3, 4) << d[0], d[1], d[2], d[3], //
+             d[4], d[5], d[6], d[7],                          //
+             d[8], d[9], d[10], d[11]);
+  return in;
+}
+
 Eigen::Matrix4f Transform::toEigen4f() const {
   Eigen::Matrix4f m;
-  m << data()[0], data()[1], data()[2], data()[3], data()[4], data()[5],
-      data()[6], data()[7], data()[8], data()[9], data()[10], data()[11], 0, 0,
-      0, 1;
+  m << data()[0], data()[1], data()[2], data()[3],  //
+      data()[4], data()[5], data()[6], data()[7],   //
+      data()[8], data()[9], data()[10], data()[11], //
+      0, 0, 0, 1;
   return m;
 }
 
 Eigen::Affine3f Transform::toEigen3f() const {
   return Eigen::Affine3f(toEigen4f());
 }
+
+const float *Transform::data() const { return (const float *)_data.data; }
 
 Transform Transform::fromEigen4f(const Eigen::Matrix4f &matrix) {
   return Transform(matrix(0, 0), matrix(0, 1), matrix(0, 2), matrix(0, 3),

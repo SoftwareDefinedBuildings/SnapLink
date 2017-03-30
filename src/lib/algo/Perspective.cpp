@@ -11,13 +11,14 @@ Perspective::Perspective(const std::map<int, Room> &rooms,
     : _rooms(rooms), _words(words), _corrLimit(corrLimit),
       _distRatio(distRatio) {}
 
-void Perspective::localize(const std::vector<int> &wordIds,
-                           const std::vector<cv::KeyPoint> &keyPoints,
-                           const cv::Mat &descriptors,
-                           const CameraModel &camera, int roomId,
-                           Transform &transform) const {
+Transform Perspective::localize(const std::vector<int> &wordIds,
+                                const std::vector<cv::KeyPoint> &keyPoints,
+                                const cv::Mat &descriptors,
+                                const CameraModel &camera, int roomId) const {
+  Transform pose;
+
   if (wordIds.size() == 0) {
-    return;
+    return pose;
   }
 
   std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>> words2 =
@@ -32,12 +33,9 @@ void Perspective::localize(const std::vector<int> &wordIds,
             << ", objectPoints.size() = " << objectPoints.size() << std::endl;
 
   // 3D to 2D (PnP)
-  transform = solvePnP(imagePoints, objectPoints, camera);
-  if (transform.isNull()) {
-    std::cout << "Localization failed" << std::endl;
-  }
+  pose = solvePnP(imagePoints, objectPoints, camera);
 
-  std::cout << "transform= " << transform.prettyPrint() << std::endl;
+  return pose;
 }
 
 std::map<int, std::pair<std::vector<cv::KeyPoint>, cv::Mat>>

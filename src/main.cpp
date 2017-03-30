@@ -19,7 +19,8 @@ int main(int argc, char *argv[]) {
     } else if (std::string(argv[1]) == "dist") {
       // TODO
     } else if (std::string(argv[1]) == "vis") {
-      return vis(argc - 1, argv + 1);
+      Vis vis;
+      return vis.run(argc - 1, argv + 1);
     } else if (std::string(argv[1]) == "label") {
       return label(argc - 1, argv + 1);
     }

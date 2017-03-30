@@ -29,22 +29,24 @@ public:
 
   bool isNull() const;
 
-  const float *data() const;
   int size() const;
 
   Transform rotation() const;
-
-  std::string prettyPrint() const;
+  Transform translation() const;
+  Transform inverse() const;
 
   Transform operator*(const Transform &t) const;
   Transform &operator*=(const Transform &t);
   bool operator==(const Transform &t) const;
   bool operator!=(const Transform &t) const;
+  friend std::ostream &operator<<(std::ostream &out, const Transform &t);
+  friend std::istream &operator>>(std::istream &in, Transform &t);
 
   Eigen::Matrix4f toEigen4f() const;
   Eigen::Affine3f toEigen3f() const;
 
-public:
+private:
+  const float *data() const;
   static Transform fromEigen4f(const Eigen::Matrix4f &matrix);
 
 private:

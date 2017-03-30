@@ -11,7 +11,7 @@ find_package(Qt5Quick REQUIRED)
 find_package(Qt5Gui REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS viz core imgproc imgcodecs calib3d flann xfeatures2d)
-find_package(PCL 1.8 REQUIRED COMPONENTS common search io)
+find_package(PCL 1.8 REQUIRED COMPONENTS common search io filters)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(RTABMap REQUIRED)
 
