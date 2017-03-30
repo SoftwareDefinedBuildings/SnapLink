@@ -4,14 +4,11 @@
 #include "lib/data/Transform.h"
 #include <fstream>
 #include <iostream>
+#include <opencv2/core/eigen.hpp>
 #include <opencv2/viz.hpp>
 #include <pcl/common/projection_matrix.h>
 #include <pcl/common/transforms.h>
 #include <pcl/io/ply_io.h>
-
-cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
-                                  float a5, float a6, float a7, float a8,
-                                  float a9, float a10, float a11, float a12);
 
 int Vis::run(int argc, char *argv[]) {
   // Parse arguments
@@ -67,23 +64,24 @@ int Vis::run(int argc, char *argv[]) {
     return 1;
   }
 
+  // get point cloud
   const std::map<int, std::vector<Image>> &images = adapter.getImages();
   assert(images.size() == 1);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
   for (const auto &image : images.begin()->second) {
-    auto cloud = image.getCloud(4);
-    const Transform &pose = image.getPose();
-    pcl::transformPointCloud(*cloud, *cloud, pose.toEigen4f());
-    *assembledCloud += *cloud;
+    auto c = image.getCloud(4);
+    const Transform &p = image.getPose();
+    pcl::transformPointCloud(*c, *c, p.toEigen4f());
+    *cloud += *c;
   }
 
-  int totalSize = assembledCloud->size();
-  cv::Mat cloudXYZ(1, totalSize, CV_32FC3);
-  cv::Mat cloudBGR(1, totalSize, CV_8UC3);
+  int size = cloud->size();
+  cv::Mat cloudXYZ(1, size, CV_32FC3);
+  cv::Mat cloudBGR(1, size, CV_8UC3);
   cv::Point3f *XYZdata = cloudXYZ.ptr<cv::Point3f>();
-  for (int i = 0; i < totalSize; i++) {
-    pcl::PointXYZRGB &pt = assembledCloud->at(i);
+  for (int i = 0; i < size; i++) {
+    pcl::PointXYZRGB &pt = cloud->at(i);
     XYZdata[i].x = pt.x;
     XYZdata[i].y = pt.y;
     XYZdata[i].z = pt.z;
@@ -92,37 +90,33 @@ int Vis::run(int argc, char *argv[]) {
     cloudBGR.at<cv::Vec3b>(i)[2] = pt.r;
   }
 
-  cv::viz::Viz3d myWindow("Coordinate Frame");
-  myWindow.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-  Transform transP;
-  if (!(std::istringstream(poseStr) >> transP)) {
-    std::cerr << "invalid pose input." << std::endl;
+  // visualize camera
+  cv::viz::Viz3d window("CellMate");
+  window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
+  Transform pose;
+  if (!(std::istringstream(poseStr) >> pose)) {
+    std::cerr << "invalid pose input" << std::endl;
     return 1;
   }
 
-  std::cout << "transofrm P is:" << std::endl << transP << std::endl;
-  Transform transL(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-  Transform transPL = transP * transL * transL;
-  std::cout << "transofrm PL is:" << std::endl << transPL << std::endl;
-  cv::Affine3f cam_pose(
-      makeCvMatRotation(transPL.r11(), transPL.r12(), transPL.r13(),
-                        transPL.x(), transPL.r21(), transPL.r22(),
-                        transPL.r23(), transPL.y(), transPL.r31(),
-                        transPL.r32(), transPL.r33(), transPL.z()),
-      cv::Vec3f(transPL.x(), transPL.y(), transPL.z()));
-  std::cout << "camara pose\n";
-  std::cout << cam_pose.rotation() << std::endl;
-  std::cout << cam_pose.translation() << std::endl;
-  cv::viz::WCloud cloud_widget(cloudXYZ, cloudBGR);
-  cv::Affine3f cloud_pose_global =
-      cv::Affine3f().translate(cv::Vec3f(0.0f, 0.0f, 0.0f));
-  cv::viz::WCameraPosition cpw(0.5); // Coordinate axes
-  cv::viz::WCameraPosition cpw_frustum(
-      cv::Vec2f(0.889484, 0.523599)); // Camera frustum
-  myWindow.showWidget("CPW", cpw, cam_pose);
-  myWindow.showWidget("CPW_FRUSTUM", cpw_frustum, cam_pose);
-  myWindow.showWidget("Cellmate vis", cloud_widget, cloud_pose_global);
-  myWindow.spin();
+  Transform local(0, 0, 1, 0,  //
+                  -1, 0, 0, 0, //
+                  0, -1, 0, 0);
+  pose = pose * local.inverse();
+  std::cerr << "camera pose is:" << std::endl << pose << std::endl;
+
+  // construct and show widgets
+  float horizontal = 0.8;
+  float vertical = 0.6;
+  double scale = 0.5;
+  cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), scale);
+  cv::Affine3f poseAffine(pose.toEigen3f().data());
+  window.showWidget("frustum", frustum, poseAffine);
+
+  cv::viz::WCloud cloudWidget(cloudXYZ, cloudBGR);
+  window.showWidget("Cellmate vis", cloudWidget);
+  window.spin();
+
   return 0;
 }
 
@@ -139,10 +133,4 @@ void Vis::printUsage(const po::options_description &desc) {
             << std::endl
             << std::endl
             << desc << std::endl;
-}
-
-cv::Mat_<float> makeCvMatRotation(float a1, float a2, float a3, float a4,
-                                  float a5, float a6, float a7, float a8,
-                                  float a9, float a10, float a11, float a12) {
-  return cv::Mat_<float>(3, 3) << a1, a2, a3, a5, a6, a7, a9, a10, a11;
 }

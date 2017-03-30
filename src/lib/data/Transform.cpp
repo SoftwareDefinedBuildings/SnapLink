@@ -52,14 +52,22 @@ bool Transform::isNull() const {
   return false;
 }
 
-const float *Transform::data() const { return (const float *)_data.data; }
-
 int Transform::size() const { return 12; }
 
 Transform Transform::rotation() const {
   return Transform(data()[0], data()[1], data()[2], 0, //
                    data()[4], data()[5], data()[6], 0, //
                    data()[8], data()[9], data()[10], 0);
+}
+
+Transform Transform::translation() const {
+  return Transform(0, 0, 0, data()[3], //
+                   0, 0, 0, data()[7], //
+                   0, 0, 0, data()[11]);
+}
+
+Transform Transform::inverse() const {
+  return fromEigen4f(toEigen4f().inverse());
 }
 
 Transform Transform::operator*(const Transform &t) const {
@@ -112,6 +120,8 @@ Eigen::Matrix4f Transform::toEigen4f() const {
 Eigen::Affine3f Transform::toEigen3f() const {
   return Eigen::Affine3f(toEigen4f());
 }
+
+const float *Transform::data() const { return (const float *)_data.data; }
 
 Transform Transform::fromEigen4f(const Eigen::Matrix4f &matrix) {
   return Transform(matrix(0, 0), matrix(0, 1), matrix(0, 2), matrix(0, 3),

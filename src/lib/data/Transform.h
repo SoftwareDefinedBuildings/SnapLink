@@ -29,10 +29,11 @@ public:
 
   bool isNull() const;
 
-  const float *data() const;
   int size() const;
 
   Transform rotation() const;
+  Transform translation() const;
+  Transform inverse() const;
 
   Transform operator*(const Transform &t) const;
   Transform &operator*=(const Transform &t);
@@ -45,6 +46,7 @@ public:
   Eigen::Affine3f toEigen3f() const;
 
 private:
+  const float *data() const;
   static Transform fromEigen4f(const Eigen::Matrix4f &matrix);
 
 private:
