@@ -1,5 +1,9 @@
 #include "vis/vis.h"
-#include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/algo/Feature.h"
+#include "lib/algo/Perspective.h"
+#include "lib/algo/RoomSearch.h"
+#include "lib/algo/Visibility.h"
+#include "lib/algo/WordSearch.h"
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
 #include <fstream>
@@ -13,16 +17,22 @@
 int Vis::run(int argc, char *argv[]) {
   // Parse arguments
   std::string dbFile;
-  std::string poseStr;
+  std::string camPoseStr;
+  std::string imagePath;
+  std::string intrinsic;
 
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
+      ("campose", po::value<std::string>(&camPoseStr),
+       "a string of 12 values of the 3x4 camera pose") //
+      ("image", po::value<std::string>(&imagePath),
+       "image to be localized (overrides campose)") //
+      ("intrinsic", po::value<std::string>(&intrinsic),
+       "a string of 4 values of fx fy cx cy, required with image") //
       ("help,h", "print help message");
 
   po::options_description hidden;
   hidden.add_options() // use comment to force new line using formater
-      ("pose", po::value<std::string>(&poseStr)->required(),
-       "a string with 12 values of a pose") //
       ("dbfile", po::value<std::string>(&dbFile)->required(), "database file");
 
   po::options_description all;
@@ -57,15 +67,17 @@ int Vis::run(int argc, char *argv[]) {
   po::notify(vm);
 
   // Run the program
-  RTABMapAdapter adapter;
   std::set<std::string> dbFiles{dbFile};
-  if (!adapter.init(dbFiles)) {
+  if (!_adapter.init(dbFiles)) {
     std::cerr << "reading data failed";
     return 1;
   }
 
+  // create a visualization window
+  cv::viz::Viz3d window("CellMate");
+
   // get point cloud
-  const std::map<int, std::vector<Image>> &images = adapter.getImages();
+  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
   assert(images.size() == 1);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -90,31 +102,53 @@ int Vis::run(int argc, char *argv[]) {
     cloudBGR.at<cv::Vec3b>(i)[2] = pt.r;
   }
 
-  // visualize camera
-  cv::viz::Viz3d window("CellMate");
-  window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
-  Transform pose;
-  if (!(std::istringstream(poseStr) >> pose)) {
-    std::cerr << "invalid pose input" << std::endl;
-    return 1;
-  }
-
-  Transform local(0, 0, 1, 0,  //
-                  -1, 0, 0, 0, //
-                  0, -1, 0, 0);
-  pose = pose * local.inverse();
-  std::cerr << "camera pose is:" << std::endl << pose << std::endl;
-
-  // construct and show widgets
-  float horizontal = 0.8;
-  float vertical = 0.6;
-  double scale = 0.5;
-  cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), scale);
-  cv::Affine3f poseAffine(pose.toEigen3f().data());
-  window.showWidget("frustum", frustum, poseAffine);
-
+  // visualize point cloud
+  // window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
   cv::viz::WCloud cloudWidget(cloudXYZ, cloudBGR);
   window.showWidget("Cellmate vis", cloudWidget);
+
+  // get camera pose and frustum
+  Transform camPose;
+  const double scale = 0.5;
+  if (!imagePath.empty()) {
+    if (!camPoseStr.empty()) {
+      std::cerr << "using image, campose ignored" << std::endl;
+    }
+
+    cv::Mat image = cv::imread(imagePath);
+    float fx, fy, cx, cy;
+    auto in = std::istringstream(intrinsic);
+    if (!(in >> fx >> fy >> cx >> cy) || !in.eof()) {
+      std::cerr << "invalid intrinsic input" << std::endl;
+      return 1;
+    }
+
+    CameraModel camera("camera", fx, fy, cx, cy, image.size());
+    camPose = localize(image, camera);
+
+    // visualize camera
+    cv::viz::WCameraPosition coord(scale);
+    cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, scale);
+    std::cerr << "K:" << std::endl << camera.K() << std::endl;
+    cv::Affine3f poseAffine(camPose.toEigen3f().data());
+    window.showWidget("coord", coord, poseAffine);
+    window.showWidget("frustum", frustum, poseAffine);
+  } else if (!camPoseStr.empty()) {
+    if (!(std::istringstream(camPoseStr) >> camPose)) {
+      std::cerr << "invalid pose input" << std::endl;
+      return 1;
+    }
+
+    // visualize camera
+    const float horizontal = 0.889484;
+    const float vertical = 0.523599;
+    cv::viz::WCameraPosition coord(scale);
+    cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), scale);
+    cv::Affine3f poseAffine(camPose.toEigen3f().data());
+    window.showWidget("coord", coord, poseAffine);
+    window.showWidget("frustum", frustum, poseAffine);
+  }
+  std::cerr << "camera pose is:" << std::endl << camPose << std::endl;
   window.spin();
 
   return 0;
@@ -129,8 +163,35 @@ void Vis::printInvalid(const std::vector<std::string> &opts) {
 }
 
 void Vis::printUsage(const po::options_description &desc) {
-  std::cout << "cellmate vis [command options] db_file posefile poseindex"
-            << std::endl
+  std::cout << "cellmate vis [command options] db_file" << std::endl
             << std::endl
             << desc << std::endl;
+}
+
+Transform Vis::localize(const cv::Mat &image, const CameraModel &camera) {
+  const std::map<int, Word> &words = _adapter.getWords();
+  const std::map<int, Room> &rooms = _adapter.getRooms();
+  const std::map<int, std::vector<Label>> &labels = _adapter.getLabels();
+  Feature feature;
+  WordSearch wordSearch(words);
+  RoomSearch roomSearch(rooms, words);
+  Perspective perspective(rooms, words);
+  Visibility visibility(labels);
+
+  // feature extraction
+  std::vector<cv::KeyPoint> keyPoints;
+  cv::Mat descriptors;
+  feature.extract(image, keyPoints, descriptors);
+
+  // word search
+  std::vector<int> wordIds = wordSearch.search(descriptors);
+
+  // room search
+  int roomId = roomSearch.search(wordIds);
+
+  // PnP
+  Transform pose =
+      perspective.localize(wordIds, keyPoints, descriptors, camera, roomId);
+
+  return pose;
 }

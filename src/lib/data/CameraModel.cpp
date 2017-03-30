@@ -19,6 +19,8 @@ CameraModel::CameraModel(const std::string &name, double fx, double fy,
   _K.at<double>(1, 2) = cy;
 
   assert(!_K.empty());
+  assert(_K.rows == 3 && _K.cols == 3);
+  assert(_D.rows == 1 && _D.cols == 5);
 }
 
 const std::string &CameraModel::name() const { return _name; }
