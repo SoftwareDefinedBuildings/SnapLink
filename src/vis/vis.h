@@ -14,7 +14,8 @@ public:
 private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
-  Transform localize(const cv::Mat &image, const CameraModel &camera);
+  Transform localize(const cv::Mat &image, const CameraModel &camera,
+                     int featureLimit, int corrLimit, double distRatio);
   bool downsample(cv::Mat &image, double &scale);
 
 private:

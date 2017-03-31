@@ -20,16 +20,25 @@ int Vis::run(int argc, char *argv[]) {
   std::string camPoseStr;
   std::string imagePath;
   std::string intrinsic;
+  int featureLimit;
+  int corrLimit;
+  double distRatio;
 
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
-      ("campose", po::value<std::string>(&camPoseStr),
+      ("help,h", "print help message") //
+      ("cam-pose", po::value<std::string>(&camPoseStr),
        "a string of 12 values of the 3x4 camera pose") //
       ("image", po::value<std::string>(&imagePath),
-       "image to be localized (overrides campose)") //
+       "image to be localized (overrides cam-pose)") //
       ("intrinsic", po::value<std::string>(&intrinsic),
        "a string of 4 values of fx fy cx cy, required with image") //
-      ("help,h", "print help message");
+      ("feature-limit", po::value<int>(&featureLimit)->default_value(0),
+       "limit the number of features used") //
+      ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
+       "limit the number of corresponding 2D-3D points used") //
+      ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7),
+       "distance ratio used to create words");
 
   po::options_description hidden;
   hidden.add_options() // use comment to force new line using formater
@@ -110,7 +119,7 @@ int Vis::run(int argc, char *argv[]) {
   // get camera pose and frustum
   if (!imagePath.empty()) {
     if (!camPoseStr.empty()) {
-      std::cerr << "using image, campose ignored" << std::endl;
+      std::cerr << "using image, cam-pose ignored" << std::endl;
     }
 
     cv::Mat image = cv::imread(imagePath);
@@ -130,8 +139,10 @@ int Vis::run(int argc, char *argv[]) {
     imwrite("image.jpg", image);
     CameraModel camera("camera", fx / scale, fy / scale, cx / scale, cy / scale,
                        image.size());
-    std::cerr << "image intrinsic matrix:" << std::endl << camera.K() << std::endl;
-    Transform camPose = localize(image, camera);
+    std::cerr << "image intrinsic matrix:" << std::endl
+              << camera.K() << std::endl;
+    Transform camPose =
+        localize(image, camera, featureLimit, corrLimit, distRatio);
     if (camPose.isNull()) {
       std::cerr << "image localization failed (did you provide the correct "
                    "intrinsic matrix?)"
@@ -187,14 +198,15 @@ void Vis::printUsage(const po::options_description &desc) {
             << desc << std::endl;
 }
 
-Transform Vis::localize(const cv::Mat &image, const CameraModel &camera) {
+Transform Vis::localize(const cv::Mat &image, const CameraModel &camera,
+                        int featureLimit, int corrLimit, double distRatio) {
   const std::map<int, Word> &words = _adapter.getWords();
   const std::map<int, Room> &rooms = _adapter.getRooms();
   const std::map<int, std::vector<Label>> &labels = _adapter.getLabels();
-  Feature feature;
+  Feature feature(featureLimit);
   WordSearch wordSearch(words);
   RoomSearch roomSearch(rooms, words);
-  Perspective perspective(rooms, words);
+  Perspective perspective(rooms, words, corrLimit, distRatio);
   Visibility visibility(labels);
 
   // feature extraction
