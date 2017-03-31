@@ -108,8 +108,6 @@ int Vis::run(int argc, char *argv[]) {
   window.showWidget("Cellmate vis", cloudWidget);
 
   // get camera pose and frustum
-  Transform camPose;
-  const double scale = 0.5;
   if (!imagePath.empty()) {
     if (!camPoseStr.empty()) {
       std::cerr << "using image, campose ignored" << std::endl;
@@ -123,37 +121,53 @@ int Vis::run(int argc, char *argv[]) {
       return 1;
     }
 
-    CameraModel camera("camera", fx, fy, cx, cy, image.size());
-    camPose = localize(image, camera);
-
+    double scale;
+    if (!downsample(image, scale)) {
+      std::cerr << "image downsample failed" << std::endl;
+      return 1;
+    }
+    std::cerr << "image downsample ratio: " << scale << std::endl;
+    imwrite("image.jpg", image);
+    CameraModel camera("camera", fx / scale, fy / scale, cx / scale, cy / scale,
+                       image.size());
+    std::cerr << "image intrinsic matrix:" << std::endl << camera.K() << std::endl;
+    Transform camPose = localize(image, camera);
     if (camPose.isNull()) {
-      std::cerr << "image localization failed" << std::endl;
+      std::cerr << "image localization failed (did you provide the correct "
+                   "intrinsic matrix?)"
+                << std::endl;
       return 1;
     }
 
     // visualize camera
-    cv::viz::WCameraPosition coord(scale);
-    cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, scale);
-    std::cerr << "K:" << std::endl << camera.K() << std::endl;
+    const double visScale = 0.5;
+    cv::viz::WCameraPosition coord(visScale);
+    cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, visScale);
     cv::Affine3f poseAffine(camPose.toEigen3f().data());
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
+
+    std::cerr << "image pose:" << std::endl << camPose << std::endl;
   } else if (!camPoseStr.empty()) {
+    Transform camPose;
     if (!(std::istringstream(camPoseStr) >> camPose)) {
       std::cerr << "invalid pose input" << std::endl;
       return 1;
     }
 
     // visualize camera
+    const double visScale = 0.5;
     const float horizontal = 0.889484;
     const float vertical = 0.523599;
-    cv::viz::WCameraPosition coord(scale);
-    cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), scale);
+    cv::viz::WCameraPosition coord(visScale);
+    cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), visScale);
     cv::Affine3f poseAffine(camPose.toEigen3f().data());
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
+
+    std::cerr << "image pose:" << std::endl << camPose << std::endl;
   }
-  std::cerr << "image pose:" << std::endl << camPose << std::endl;
+
   window.spin();
 
   return 0;
@@ -199,4 +213,32 @@ Transform Vis::localize(const cv::Mat &image, const CameraModel &camera) {
       perspective.localize(wordIds, keyPoints, descriptors, camera, roomId);
 
   return pose;
+}
+
+bool Vis::downsample(cv::Mat &image, double &scale) {
+  cv::Size size = image.size();
+  std::cerr << "downsampling image. image width: " << image.size().width
+            << ", height: " << image.size().height << std::endl;
+  scale = 1;
+  const double width = 640;
+  const double height = 480;
+  if ((double)size.width / size.height == width / height) {
+    if (size.width > width) {
+      // downsample to target aspect ratio
+      scale = size.width / width;
+      cv::resize(image, image, cv::Size(width, height), 0, 0, cv::INTER_AREA);
+    }
+    return true;
+  } else if ((double)size.width / size.height == height / width) {
+    if (size.width > height) {
+      // downsample to target aspect ratio
+      scale = size.width / height;
+      cv::resize(image, image, cv::Size(height, width), 0, 0, cv::INTER_AREA);
+    }
+    return true;
+  }
+  std::cerr << "image downsample failed. image width: " << image.size().width
+            << ", height: " << image.size().height << std::endl;
+  // TODO image can have other aspect ratio
+  return false;
 }

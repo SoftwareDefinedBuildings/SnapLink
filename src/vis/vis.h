@@ -15,6 +15,7 @@ private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
   Transform localize(const cv::Mat &image, const CameraModel &camera);
+  bool downsample(cv::Mat &image, double &scale);
 
 private:
   RTABMapAdapter _adapter;

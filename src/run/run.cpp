@@ -202,7 +202,9 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   }
 
   if (pose.isNull()) {
-    std::cerr << "image localization failed" << std::endl;
+    std::cerr << "image localization failed (did you provide the correct "
+                 "intrinsic matrix?)"
+              << std::endl;
     long totalTime = Utility::getTime() - totalStartTime;
     Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                    perspectiveTime, -1);
