@@ -2,9 +2,9 @@
 
 #set -e
 
-yes Y | apt-get install python-imaging
-yes Y | apt-get install python-requests
-yes Y | apt-get install wget
+apt-get install -y python-imaging
+apt-get install -y python-requests
+apt-get install -y wget
 
 cmake ..
 make 
