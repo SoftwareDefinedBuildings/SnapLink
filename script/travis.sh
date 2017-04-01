@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+#set -e
 
 apt-get install python-imaging
 apt-get install python-requests
