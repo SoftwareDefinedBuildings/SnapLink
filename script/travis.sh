@@ -14,6 +14,23 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
 
 ./cellmate run $DATA_PATH/db/*.db & sleep 30 ; python ../test/http_client.py $DATA_PATH/test/ | tail -1 >  tail.txt
 
+
+
+result=1
+while read line; do
+    for word in $line; do
+        if [ $word = tests ]
+        then 
+            result=0
+        fi
+    done
+done <tail.txt
+
+if [ result -eq 1 ]
+then 
+    exit 1
+fi
+
 tail=$(head -n 1 tail.txt)
 read num1 num2 num3 <<<${tail//[^0-9]/ }
 accuracy=$(( num1 * 100 / num2))
@@ -23,14 +40,3 @@ then
 fi
 
 exit 0
-#result=1
-#while read line; do
-#    for word in $line; do
-#        if [ $word = tests ]
-#        then 
-#            result=0
-#        fi
-#    done
-#done <tail.txt
-
-#exit $result
