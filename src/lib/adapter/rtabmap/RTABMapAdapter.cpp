@@ -208,6 +208,7 @@ void RTABMapAdapter::createWords() {
       // convert them to 3D points in words
       int dummySigId = 1;
       // TODO: write our own word clustering
+      //
       std::list<int> wordIds = vwd.addNewWords(descriptors, dummySigId);
       vwd.update();
       size_t i = 0;
