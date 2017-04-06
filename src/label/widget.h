@@ -7,6 +7,7 @@
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Memory.h>
 #include <sqlite3.h>
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
 
 namespace Ui {
 class Widget;
@@ -46,6 +47,7 @@ private:
   rtabmap::DBDriver *_dbDriver;
   rtabmap::Memory _memory;
   std::map<int, rtabmap::Transform> _optimizedPoses;
+  RTABMapAdapter _adapter;
 };
 
 #endif // WIDGET_H

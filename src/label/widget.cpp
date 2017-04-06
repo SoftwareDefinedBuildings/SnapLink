@@ -18,6 +18,8 @@
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <string>
+#include "lib/data/Image.h"
+#include "lib/data/Transform.h"
 
 Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
   _ui->setupUi(this);
@@ -38,41 +40,55 @@ Widget::~Widget() {
 }
 
 bool Widget::init(std::string path) {
-  if (sqlite3_open(path.c_str(), &_db) != SQLITE_OK) {
-    std::cerr << "Could not open database" << std::endl;
-    return false;
+  std::set<std::string> dbFiles{path};
+  if (!_adapter.init(dbFiles)) {
+    std::cerr << "reading data failed";
+    return 1;
   }
-  if (!_dbDriver->openConnection(path)) {
-    std::cerr << "Could not open database" << std::endl;
-    return false;
-  }
+
+  // if (sqlite3_open(path.c_str(), &_db) != SQLITE_OK) {
+  //   std::cerr << "Could not open database" << std::endl;
+  //   return false;
+  // }
+  // if (!_dbDriver->openConnection(path)) {
+  //   std::cerr << "Could not open database" << std::endl;
+  //   return false;
+  // }
   createLabelTable();
 
-  if (!_memory.init(path)) {
-    std::cerr << "Error init memory" << std::endl;
-    return false;
-  }
+  // if (!_memory.init(path)) {
+  //   std::cerr << "Error init memory" << std::endl;
+  //   return false;
+  // }
 
   // get the graph
-  std::map<int, int> idMap =
-      _memory.getNeighborsId(_memory.getLastWorkingSignature()->id(), 0, 0);
-  std::map<int, rtabmap::Transform> poses;
-  std::multimap<int, rtabmap::Link> links;
-  _memory.getMetricConstraints(uKeysSet(idMap), poses, links);
-  std::cout << "poses read : " << idMap.size() << std::endl;
+  // std::map<int, int> idMap =
+  //     _memory.getNeighborsId(_memory.getLastWorkingSignature()->id(), 0, 0);
+  // std::map<int, rtabmap::Transform> poses;
+  // std::multimap<int, rtabmap::Link> links;
+  // _memory.getMetricConstraints(uKeysSet(idMap), poses, links);
+  // std::cout << "poses read : " << idMap.size() << std::endl;
+  //
+  //
+  // // optimize the graph
+  // rtabmap::Optimizer *optimizer =
+  //     rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
+  // std::multimap<int, rtabmap::Link> linksOut;
+  // optimizer->getConnectedGraph(poses.begin()->first, poses, links,
+  //                              _optimizedPoses, linksOut);
+  // std::cout << "poses optimized : " << _optimizedPoses.size() << std::endl;
 
-  // optimize the graph
-  rtabmap::Optimizer *optimizer =
-      rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
-  std::multimap<int, rtabmap::Link> linksOut;
-  optimizer->getConnectedGraph(poses.begin()->first, poses, links,
-                               _optimizedPoses, linksOut);
-  std::cout << "poses optimized : " << _optimizedPoses.size() << std::endl;
+
+  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  assert(images.size() == 1);
+  for (const auto &image : images.begin()->second) {
+    _optimizedPoses.insert(image.getId(), image.getPose());
+  }
 
   // get number of images in database
-  std::set<int> ids;
-  _dbDriver->getAllNodeIds(ids);
-  numImages = ids.size();
+  // std::set<int> ids;
+  // _dbDriver->getAllNodeIds(ids);
+  numImages = _optimizedPoses.size();
 
   if (numImages <= 0) {
     std::cerr << "Database does not have any images" << std::endl;
