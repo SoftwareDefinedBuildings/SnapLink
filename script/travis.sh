@@ -29,7 +29,7 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
           done
         done <tail.txt    
         
-        if [ result -eq 1 ]
+        if [ $result -eq 1 ]
         then 
             exit 1
         fi
