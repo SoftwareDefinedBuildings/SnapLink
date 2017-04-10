@@ -20,12 +20,11 @@
 #include <string>
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
+#include <pcl/common/transforms.h>
 
 Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
   _ui->setupUi(this);
 
-  // setup DBDriver
-  _dbDriver = rtabmap::DBDriver::create();
 
   // connect signals and slots
   connect(_ui->slider, SIGNAL(valueChanged(int)), this,
@@ -34,9 +33,7 @@ Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
 }
 
 Widget::~Widget() {
-  if (_db) {
-    sqlite3_close(_db);
-  }
+  _adapter.closeLabelDB();
 }
 
 bool Widget::init(std::string path) {
@@ -54,8 +51,10 @@ bool Widget::init(std::string path) {
   //   std::cerr << "Could not open database" << std::endl;
   //   return false;
   // }
-  createLabelTable();
 
+  if(!_adapter.createLabelTable()) {
+    UFATAL("Could not create label table");
+  }
   // if (!_memory.init(path)) {
   //   std::cerr << "Error init memory" << std::endl;
   //   return false;
@@ -82,7 +81,7 @@ bool Widget::init(std::string path) {
   const std::map<int, std::vector<Image>> &images = _adapter.getImages();
   assert(images.size() == 1);
   for (const auto &image : images.begin()->second) {
-    _optimizedPoses.insert(image.getId(), image.getPose());
+    _optimizedPoses.insert(std::pair<int, Transform> (image.getId(), image.getPose()));
   }
 
   // get number of images in database
@@ -106,18 +105,6 @@ bool Widget::init(std::string path) {
   return true;
 }
 
-void Widget::createLabelTable() {
-  std::string query;
-  query = "CREATE TABLE IF NOT EXISTS Labels (\n\t"
-          "labelName VARCHAR(255),\n\t"
-          "imgId INT,\n\t"
-          "x INT,\n\t"
-          "y INT\n); ";
-  int rc = sqlite3_exec(_db, query.c_str(), NULL, NULL, NULL);
-  if (rc != SQLITE_OK) {
-    UFATAL("Could not create label table");
-  }
-}
 
 void Widget::setSliderValue(int value) {
   _ui->label_id->setText(QString::number(value));
@@ -145,12 +132,7 @@ void Widget::saveLabel() {
   // convert again to verify label has depth
   pcl::PointXYZ pWorld;
   if (getPoint3World(imageId, x, y, pWorld)) {
-    std::stringstream saveQuery;
-    saveQuery << "INSERT INTO Labels VALUES ('" << label_name << "', '"
-              << label_id << "', '" << label_x << "', '" << label_y << "');";
-
-    int rc = sqlite3_exec(_db, saveQuery.str().c_str(), NULL, NULL, NULL);
-    if (rc != SQLITE_OK) {
+    if (!_adapter.addLabel(label_name, label_id, label_x, label_y)) {
       std::string msg = "Could not save label to label table";
       UWARN(msg.c_str());
       _ui->label_status->setText(msg.c_str());
@@ -168,15 +150,20 @@ void Widget::saveLabel() {
 }
 
 void Widget::showImage(int index) {
-  rtabmap::SensorData data;
-  _dbDriver->getNodeData(index, data);
-  data.uncompressData();
-  cv::Mat raw = data.imageRaw();
-
-  QImage image =
+  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  assert(images.size() == 1);
+  Image image = images.begin()->second[0];
+  for (const auto &singleImage : images.begin()->second) {
+    if(singleImage.getId() == index) {
+      image = singleImage;
+      break;
+    }
+  }
+  cv::Mat raw = image.getImage();
+  QImage qImage =
       QImage(raw.data, raw.cols, raw.rows, raw.step, QImage::Format_RGB888);
   QPixmap pixmap =
-      QPixmap::fromImage(image.rgbSwapped()); // need to change BGR -> RGBz
+      QPixmap::fromImage(qImage.rgbSwapped()); // need to change BGR -> RGBz
 
   _ui->label_img->setPixmap(pixmap);
 
@@ -244,26 +231,37 @@ void Widget::projectPoints() {
 
   // get sensorData for image
   int sliderVal = _ui->slider->value();
-  rtabmap::SensorData data;
-  _dbDriver->getNodeData(sliderVal, data);
-  data.uncompressData();
+  //rtabmap::SensorData data;
+  //_dbDriver->getNodeData(sliderVal, data);
+  //data.uncompressData();
 
   // get pose
-  rtabmap::Transform pose;
-  if (_optimizedPoses.find(data.id()) != _optimizedPoses.end()) {
-    pose = _optimizedPoses.at(data.id());
-  } else {
-    pose = _memory.getOdomPose(data.id(), true);
-  }
+  Transform pose;
+  //if (_optimizedPoses.find(data.id()) != _optimizedPoses.end()) {
+  pose = _optimizedPoses.at(sliderVal);
+  //} else {
+  //  pose = _memory.getOdomPose(data.id(), true);
+  //}
 
   if (pose.isNull()) {
     return;
   }
-
+  
+  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  assert(images.size() == 1);
+  Image image = images.begin()->second[0];
+  for (const auto &singleImage : images.begin()->second) {
+    if(singleImage.getId() == sliderVal) {
+      image = singleImage;
+      break;
+    }
+  }
+ 
+  cv::Mat raw = image.getImage(); 
   std::vector<cv::Point2f> planePoints;
-  const rtabmap::CameraModel &model = data.cameraModels()[0];
+  const CameraModel &model = image.getCameraModel();
   cv::Mat K = model.K();
-  rtabmap::Transform P = (pose * model.localTransform()).inverse();
+  Transform P = pose.inverse();
   cv::Mat R =
       (cv::Mat_<double>(3, 3) << (double)P.r11(), (double)P.r12(),
        (double)P.r13(), (double)P.r21(), (double)P.r22(), (double)P.r23(),
@@ -283,8 +281,8 @@ void Widget::projectPoints() {
   for (int i = 0; i < planePoints.size(); i++) {
     cv::Point2f point = planePoints[i];
     std::string label = labels.at(i);
-    if (point.x < 0 || point.x > data.imageRaw().rows || point.y < 0 ||
-        point.y > data.imageRaw().cols ||
+    if (point.x < 0 || point.x > raw.rows || point.y < 0 ||
+        point.y > raw.cols ||
         !Utility::isInFrontOfCamera(points[i], worldP)) {
       continue;
     }
@@ -297,50 +295,54 @@ void Widget::projectPoints() {
 /* Get all points in Labels table */
 bool Widget::getLabels(std::vector<cv::Point3f> &points,
                        std::vector<std::string> &labels) {
-  sqlite3_stmt *stmt = NULL;
-  int rc;
-
-  std::string sql = "SELECT * from Labels";
-  rc = sqlite3_prepare(_db, sql.c_str(), -1, &stmt, NULL);
-  if (rc != SQLITE_OK) {
-    UERROR("Could not read database: %s", sqlite3_errmsg(_db));
+  std::vector<int> imageIds;
+  std::vector<int> xList;
+  std::vector<int> yList;
+  std::vector<std::string> labelsCopy;
+  
+  bool retValue = _adapter.getLabels(imageIds, xList, yList, labelsCopy);
+  if(!retValue) {
     return false;
   }
 
-  while (sqlite3_step(stmt) == SQLITE_ROW) {
-    std::string label(
-        reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
-    int imageId = sqlite3_column_int(stmt, 1);
-    int x = sqlite3_column_int(stmt, 2);
-    int y = sqlite3_column_int(stmt, 3);
+  for(int i = 0; i < imageIds.size(); i++) {
     pcl::PointXYZ pWorld;
-    if (getPoint3World(imageId, x, y, pWorld)) {
+    if (getPoint3World(imageIds[i], xList[i], yList[i], pWorld)) {
       points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-      labels.push_back(label);
+      labels.push_back(labelsCopy[i]);
       UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y,
-             pWorld.z, label.c_str());
+             pWorld.z, labelsCopy[i].c_str());
     }
-  }
-
-  sqlite3_finalize(stmt);
-  return true;
+  } 
+  
+  return retValue;
 }
 
 /* TODO functions below are copied from server branch, should make functions
  * accessible and stop copying code */
 bool Widget::getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld) {
-  bool uncompressedData = true;
-  rtabmap::SensorData data = _memory.getNodeData(imageId, uncompressedData);
-  const rtabmap::CameraModel &cm = data.cameraModels()[0];
+  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  assert(images.size() == 1);
+  Image image = images.begin()->second[0];
+  for (const auto &singleImage : images.begin()->second) {
+    if(singleImage.getId() == imageId) {
+      image = singleImage;
+      break;
+    }
+  }
+
+  cv::Mat depthRaw = image.getDepth();
+  const CameraModel &cm = image.getCameraModel();  
   bool smoothing = false;
-  pcl::PointXYZ pLocal = rtabmap::util3d::projectDepthTo3D(
-      data.depthRaw(), x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing);
+  float maxError = 0.02f;
+  const pcl::PointXYZ &pLocal = image.projectDepthTo3D(
+      depthRaw, x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing, maxError);
   if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
     UWARN("Depth value not valid");
     return false;
   }
 
-  rtabmap::Transform poseWorld;
+  Transform poseWorld;
   if (_optimizedPoses.find(imageId) != _optimizedPoses.end()) {
     poseWorld = _optimizedPoses.at(imageId);
   } else {
@@ -353,7 +355,6 @@ bool Widget::getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld) {
     UWARN("Image pose is Null");
     return false;
   }
-  poseWorld = poseWorld * cm.localTransform();
-  pWorld = rtabmap::util3d::transformPoint(pLocal, poseWorld);
+  pWorld = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
   return true;
 }

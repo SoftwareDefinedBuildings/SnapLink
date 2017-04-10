@@ -11,6 +11,7 @@
 #include <rtabmap/core/VisualWord.h>
 #include <set>
 #include <typeinfo>
+#include <sqlite3.h>
 
 class RTABMapAdapter final : public Adapter {
 public:
@@ -23,14 +24,20 @@ public:
   const std::map<int, Word> &getWords() final;
   const std::map<int, Room> &getRooms() final;
   const std::map<int, std::vector<Label>> &getLabels() final;
-  // TODO addLabels()
-
+  bool addLabel(std::string label_name, std::string label_id, std::string label_x, std::string label_y);
+  bool getLabels(std::vector<int> &imageIds,
+                 std::vector<int> &xList,
+                 std::vector<int> &yList,
+                 std::vector<std::string> &labels);
+  bool createLabelTable();
+  void closeLabelDB();
 private:
   std::vector<Image> readRoomImages(const std::string &dbPath, int roomId);
   std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
 
   void createWords();
   void createRooms();
+
 
 private:
   int _nextImageId;
@@ -40,4 +47,6 @@ private:
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;
   std::map<int, std::vector<Label>> _labels;
+  sqlite3 *_labelDB;
+  std::string _labelPath;
 };

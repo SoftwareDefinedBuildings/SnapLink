@@ -31,8 +31,12 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     auto roomLabels = readRoomLabels(dbPath, roomId);
     _labels.emplace(roomId, std::move(roomLabels));
 
+    //Always remember one of the path in case of Labeling tool
+    _labelPath=dbPath;
+
     roomId++;
   }
+
 
   return true;
 }
@@ -253,4 +257,67 @@ void RTABMapAdapter::createRooms() {
       iter->second.addWordIds(std::vector<int>(1, wordId));
     }
   }
+}
+
+bool RTABMapAdapter::createLabelTable() {
+  if (sqlite3_open(_labelPath.c_str(), &_labelDB) != SQLITE_OK) {
+    std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database" << std::endl; 
+    return false;
+  }   
+  std::string query;
+  query = "CREATE TABLE IF NOT EXISTS Labels (\n\t"
+          "labelName VARCHAR(255),\n\t"
+          "imgId INT,\n\t"
+          "x INT,\n\t"
+          "y INT\n); ";
+  int rc = sqlite3_exec(_labelDB, query.c_str(), NULL, NULL, NULL);
+  return rc == SQLITE_OK;
+}
+
+bool RTABMapAdapter::addLabel(std::string label_name,
+                              std::string label_id,
+                              std::string label_x,
+                              std::string label_y) {
+  std::stringstream saveQuery;
+  saveQuery << "INSERT INTO Labels VALUES ('" << label_name << "', '"
+            << label_id << "', '" << label_x << "', '" << label_y << "');";
+
+  int rc = sqlite3_exec(_labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
+  return rc==SQLITE_OK;
+}
+
+void RTABMapAdapter::closeLabelDB() {
+  if (_labelDB) {
+    sqlite3_close(_labelDB);
+  }
+}
+
+bool RTABMapAdapter::getLabels(std::vector<int> &imageIds,
+                               std::vector<int> &xList,
+                               std::vector<int> &yList,
+                               std::vector<std::string> &labels) {
+  sqlite3_stmt *stmt = NULL;
+  int rc;
+
+  std::string sql = "SELECT * from Labels";
+  rc = sqlite3_prepare(_labelDB, sql.c_str(), -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
+    UERROR("Could not read database: %s", sqlite3_errmsg(_labelDB));
+    return false;
+  }
+
+  while (sqlite3_step(stmt) == SQLITE_ROW) {
+    std::string label(
+        reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
+    int imageId = sqlite3_column_int(stmt, 1);    
+    int x = sqlite3_column_int(stmt, 2);
+    int y = sqlite3_column_int(stmt, 3);
+    imageIds.push_back(imageId);
+    xList.push_back(x);
+    yList.push_back(y);
+    labels.push_back(label);
+  }
+ 
+  sqlite3_finalize(stmt);
+  return true;
 }

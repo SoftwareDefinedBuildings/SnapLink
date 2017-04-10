@@ -8,7 +8,7 @@
 #include <rtabmap/core/Memory.h>
 #include <sqlite3.h>
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
-
+#include "lib/data/Transform.h"
 namespace Ui {
 class Widget;
 }
@@ -30,7 +30,6 @@ private slots:
   void mousePressEvent(QMouseEvent *);
 
 private:
-  void createLabelTable(void);
   void showImage(int index);
   void setLabel(const QString &name);
   void showLabel(int x, int y, std::string label);
@@ -43,10 +42,7 @@ private:
   std::unique_ptr<Ui::Widget> _ui;
 
   int numImages;
-  sqlite3 *_db;
-  rtabmap::DBDriver *_dbDriver;
-  rtabmap::Memory _memory;
-  std::map<int, rtabmap::Transform> _optimizedPoses;
+  std::map<int, Transform> _optimizedPoses;
   RTABMapAdapter _adapter;
 };
 
