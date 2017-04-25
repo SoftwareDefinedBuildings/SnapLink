@@ -41,8 +41,8 @@ private:
 private:
   std::unique_ptr<Ui::Widget> _ui;
 
+  std::string _path;
   int numImages;
-  std::map<int, Transform> _optimizedPoses;
   RTABMapAdapter _adapter;
 };
 

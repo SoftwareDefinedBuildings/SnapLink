@@ -33,7 +33,6 @@ Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
 }
 
 Widget::~Widget() {
-  _adapter.closeLabelDB();
 }
 
 bool Widget::init(std::string path) {
@@ -43,61 +42,17 @@ bool Widget::init(std::string path) {
     return 1;
   }
 
-  // if (sqlite3_open(path.c_str(), &_db) != SQLITE_OK) {
-  //   std::cerr << "Could not open database" << std::endl;
-  //   return false;
-  // }
-  // if (!_dbDriver->openConnection(path)) {
-  //   std::cerr << "Could not open database" << std::endl;
-  //   return false;
-  // }
-
-  if(!_adapter.createLabelTable()) {
-    UFATAL("Could not create label table");
-  }
-  // if (!_memory.init(path)) {
-  //   std::cerr << "Error init memory" << std::endl;
-  //   return false;
-  // }
-
-  // get the graph
-  // std::map<int, int> idMap =
-  //     _memory.getNeighborsId(_memory.getLastWorkingSignature()->id(), 0, 0);
-  // std::map<int, rtabmap::Transform> poses;
-  // std::multimap<int, rtabmap::Link> links;
-  // _memory.getMetricConstraints(uKeysSet(idMap), poses, links);
-  // std::cout << "poses read : " << idMap.size() << std::endl;
-  //
-  //
-  // // optimize the graph
-  // rtabmap::Optimizer *optimizer =
-  //     rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeTORO);
-  // std::multimap<int, rtabmap::Link> linksOut;
-  // optimizer->getConnectedGraph(poses.begin()->first, poses, links,
-  //                              _optimizedPoses, linksOut);
-  // std::cout << "poses optimized : " << _optimizedPoses.size() << std::endl;
-
-
   const std::map<int, std::vector<Image>> &images = _adapter.getImages();
   assert(images.size() == 1);
-  for (const auto &image : images.begin()->second) {
-    _optimizedPoses.insert(std::pair<int, Transform> (image.getId(), image.getPose()));
-  }
-
-  // get number of images in database
-  // std::set<int> ids;
-  // _dbDriver->getAllNodeIds(ids);
-  numImages = _optimizedPoses.size();
+  numImages = images.begin()->second.size();
 
   if (numImages <= 0) {
     std::cerr << "Database does not have any images" << std::endl;
     return false;
   }
 
-  // image ID is 1-indexed
   _ui->slider->setRange(1, numImages);
 
-  // display first image
   showImage(1);
 
   setLabel("enter label name");
@@ -124,28 +79,17 @@ void Widget::saveLabel() {
     return;
   }
 
-  int imageId, x, y;
-  imageId = std::stoi(label_id);
-  x = std::stoi(label_x);
-  y = std::stoi(label_y);
-
-  // convert again to verify label has depth
-  pcl::PointXYZ pWorld;
-  if (getPoint3World(imageId, x, y, pWorld)) {
-    if (!_adapter.addLabel(label_name, label_id, label_x, label_y)) {
-      std::string msg = "Could not save label to label table";
-      UWARN(msg.c_str());
-      _ui->label_status->setText(msg.c_str());
-    } else {
-      _ui->label_status->setText("Saved label to database");
-
-      // display saved label on UI
-      projectPoints();
-    }
-  } else {
-    std::string msg = "Could not convert label";
+  //In the case of labeling tool, only 1 room is opened in adapter
+  int roomId = 0;
+  if (!_adapter.putLabel(roomId, label_name, label_id, label_x, label_y)) {
+    std::string msg = "Could not convert label or save label to label table";
     UWARN(msg.c_str());
     _ui->label_status->setText(msg.c_str());
+  } else {
+    _ui->label_status->setText("Saved label to database");
+
+    // display saved label on UI
+    projectPoints();
   }
 }
 
@@ -200,8 +144,10 @@ void Widget::mousePressEvent(QMouseEvent *event) {
   _ui->label_y->setText(QString::number(p.y()));
 
   int imageId = _ui->slider->value();
-  pcl::PointXYZ pWorld;
-  if (getPoint3World(imageId, p.x(), p.y(), pWorld)) {
+  cv::Point3f pWorld;
+  cv::Point2f xy(p.x(), p.y()); 
+  Image image = _adapter.getImages().at(0)[imageId];
+  if (Utility::getPoint3World(image, xy, pWorld)) {
     _ui->label_status->setText("3D conversion success!");
     _ui->pushButton->setEnabled(true);
   } else {
@@ -229,19 +175,11 @@ void Widget::projectPoints() {
     return;
   }
 
-  // get sensorData for image
   int sliderVal = _ui->slider->value();
-  //rtabmap::SensorData data;
-  //_dbDriver->getNodeData(sliderVal, data);
-  //data.uncompressData();
 
   // get pose
   Transform pose;
-  //if (_optimizedPoses.find(data.id()) != _optimizedPoses.end()) {
-  pose = _optimizedPoses.at(sliderVal);
-  //} else {
-  //  pose = _memory.getOdomPose(data.id(), true);
-  //}
+  pose = _adapter.getImages().at(0)[sliderVal].getPose();
 
   if (pose.isNull()) {
     return;
@@ -278,7 +216,7 @@ void Widget::projectPoints() {
                    P.r21(), P.r22(), P.r23(), P.y(), //
                    P.r31(), P.r32(), P.r33(), P.z());
 
-  for (int i = 0; i < planePoints.size(); i++) {
+  for (unsigned int i = 0; i < planePoints.size(); i++) {
     cv::Point2f point = planePoints[i];
     std::string label = labels.at(i);
     if (point.x < 0 || point.x > raw.rows || point.y < 0 ||
@@ -295,66 +233,18 @@ void Widget::projectPoints() {
 /* Get all points in Labels table */
 bool Widget::getLabels(std::vector<cv::Point3f> &points,
                        std::vector<std::string> &labels) {
-  std::vector<int> imageIds;
-  std::vector<int> xList;
-  std::vector<int> yList;
-  std::vector<std::string> labelsCopy;
   
-  bool retValue = _adapter.getLabels(imageIds, xList, yList, labelsCopy);
-  if(!retValue) {
+  const std::map<int, std::vector<Label>> &dbLabels = _adapter.getLabels();
+  if(dbLabels.size()!=1) {
     return false;
   }
-
-  for(int i = 0; i < imageIds.size(); i++) {
-    pcl::PointXYZ pWorld;
-    if (getPoint3World(imageIds[i], xList[i], yList[i], pWorld)) {
-      points.push_back(cv::Point3f(pWorld.x, pWorld.y, pWorld.z));
-      labels.push_back(labelsCopy[i]);
-      UDEBUG("Read point (%lf,%lf,%lf) with label %s", pWorld.x, pWorld.y,
-             pWorld.z, labelsCopy[i].c_str());
-    }
+  
+  for(const auto &label : dbLabels.begin()->second) {
+    points.push_back(label.getPoint3());
+    labels.push_back(label.getName());
+    UDEBUG("Read point (%lf,%lf,%lf) with label %s", label.getPoint3().x, label.getPoint3().y,
+           label.getPoint3().z, label.getName());
   } 
-  
-  return retValue;
-}
-
-/* TODO functions below are copied from server branch, should make functions
- * accessible and stop copying code */
-bool Widget::getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld) {
-  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
-  assert(images.size() == 1);
-  Image image = images.begin()->second[0];
-  for (const auto &singleImage : images.begin()->second) {
-    if(singleImage.getId() == imageId) {
-      image = singleImage;
-      break;
-    }
-  }
-
-  cv::Mat depthRaw = image.getDepth();
-  const CameraModel &cm = image.getCameraModel();  
-  bool smoothing = false;
-  float maxError = 0.02f;
-  const pcl::PointXYZ &pLocal = image.projectDepthTo3D(
-      depthRaw, x, y, cm.cx(), cm.cy(), cm.fx(), cm.fy(), smoothing, maxError);
-  if (std::isnan(pLocal.x) || std::isnan(pLocal.y) || std::isnan(pLocal.z)) {
-    UWARN("Depth value not valid");
-    return false;
-  }
-
-  Transform poseWorld;
-  if (_optimizedPoses.find(imageId) != _optimizedPoses.end()) {
-    poseWorld = _optimizedPoses.at(imageId);
-  } else {
-    UWARN("Image not optimized");
-    return false;
-    // poseWorld = _memory.getOdomPose(imageId, true);
-  }
-
-  if (poseWorld.isNull()) {
-    UWARN("Image pose is Null");
-    return false;
-  }
-  pWorld = pcl::transformPoint(pLocal, poseWorld.toEigen3f());
   return true;
 }
+

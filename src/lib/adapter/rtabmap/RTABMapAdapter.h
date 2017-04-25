@@ -24,17 +24,16 @@ public:
   const std::map<int, Word> &getWords() final;
   const std::map<int, Room> &getRooms() final;
   const std::map<int, std::vector<Label>> &getLabels() final;
-  bool addLabel(std::string label_name, std::string label_id, std::string label_x, std::string label_y);
-  bool getLabels(std::vector<int> &imageIds,
-                 std::vector<int> &xList,
-                 std::vector<int> &yList,
-                 std::vector<std::string> &labels);
-  bool createLabelTable();
-  void closeLabelDB();
+  bool putLabel(int roomId,
+                        std::string label_name, 
+                        std::string label_id, 
+                        std::string label_x, 
+                        std::string label_y) final;
 private:
   std::vector<Image> readRoomImages(const std::string &dbPath, int roomId);
   std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
 
+  sqlite3 *createLabelTable(int roomId);
   void createWords();
   void createRooms();
 
@@ -47,6 +46,7 @@ private:
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;
   std::map<int, std::vector<Label>> _labels;
+  std::map<int, std::string> _roomPaths;
   sqlite3 *_labelDB;
   std::string _labelPath;
 };
