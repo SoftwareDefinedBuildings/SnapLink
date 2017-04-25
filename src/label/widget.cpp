@@ -1,4 +1,6 @@
 #include "label/widget.h"
+#include "lib/data/Image.h"
+#include "lib/data/Transform.h"
 #include "lib/data/Transform.h"
 #include "lib/util/Utility.h"
 #include "ui_widget.h"
@@ -8,6 +10,7 @@
 #include <QPixmap>
 #include <QPoint>
 #include <iostream>
+#include <pcl/common/transforms.h>
 #include <rtabmap/core/CameraRGBD.h>
 #include <rtabmap/core/Odometry.h>
 #include <rtabmap/core/Optimizer.h>
@@ -18,13 +21,9 @@
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <string>
-#include "lib/data/Image.h"
-#include "lib/data/Transform.h"
-#include <pcl/common/transforms.h>
 
 Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
   _ui->setupUi(this);
-
 
   // connect signals and slots
   connect(_ui->slider, SIGNAL(valueChanged(int)), this,
@@ -32,8 +31,7 @@ Widget::Widget(QWidget *parent) : QWidget(parent), _ui(new Ui::Widget) {
   connect(_ui->pushButton, SIGNAL(released()), this, SLOT(saveLabel()));
 }
 
-Widget::~Widget() {
-}
+Widget::~Widget() {}
 
 bool Widget::init(std::string path) {
   std::set<std::string> dbFiles{path};
@@ -60,7 +58,6 @@ bool Widget::init(std::string path) {
   return true;
 }
 
-
 void Widget::setSliderValue(int value) {
   _ui->label_id->setText(QString::number(value));
   showImage(value);
@@ -79,7 +76,7 @@ void Widget::saveLabel() {
     return;
   }
 
-  //In the case of labeling tool, only 1 room is opened in adapter
+  // In the case of labeling tool, only 1 room is opened in adapter
   int roomId = 0;
   if (!_adapter.putLabel(roomId, label_name, label_id, label_x, label_y)) {
     std::string msg = "Could not convert label or save label to label table";
@@ -98,7 +95,7 @@ void Widget::showImage(int index) {
   assert(images.size() == 1);
   Image image = images.begin()->second[0];
   for (const auto &singleImage : images.begin()->second) {
-    if(singleImage.getId() == index) {
+    if (singleImage.getId() == index) {
       image = singleImage;
       break;
     }
@@ -145,7 +142,7 @@ void Widget::mousePressEvent(QMouseEvent *event) {
 
   int imageId = _ui->slider->value();
   cv::Point3f pWorld;
-  cv::Point2f xy(p.x(), p.y()); 
+  cv::Point2f xy(p.x(), p.y());
   Image image = _adapter.getImages().at(0)[imageId];
   if (Utility::getPoint3World(image, xy, pWorld)) {
     _ui->label_status->setText("3D conversion success!");
@@ -184,18 +181,18 @@ void Widget::projectPoints() {
   if (pose.isNull()) {
     return;
   }
-  
+
   const std::map<int, std::vector<Image>> &images = _adapter.getImages();
   assert(images.size() == 1);
   Image image = images.begin()->second[0];
   for (const auto &singleImage : images.begin()->second) {
-    if(singleImage.getId() == sliderVal) {
+    if (singleImage.getId() == sliderVal) {
       image = singleImage;
       break;
     }
   }
- 
-  cv::Mat raw = image.getImage(); 
+
+  cv::Mat raw = image.getImage();
   std::vector<cv::Point2f> planePoints;
   const CameraModel &model = image.getCameraModel();
   cv::Mat K = model.K();
@@ -220,8 +217,7 @@ void Widget::projectPoints() {
     cv::Point2f point = planePoints[i];
     std::string label = labels.at(i);
     if (point.x < 0 || point.x > raw.rows || point.y < 0 ||
-        point.y > raw.cols ||
-        !Utility::isInFrontOfCamera(points[i], worldP)) {
+        point.y > raw.cols || !Utility::isInFrontOfCamera(points[i], worldP)) {
       continue;
     }
 
@@ -233,18 +229,17 @@ void Widget::projectPoints() {
 /* Get all points in Labels table */
 bool Widget::getLabels(std::vector<cv::Point3f> &points,
                        std::vector<std::string> &labels) {
-  
+
   const std::map<int, std::vector<Label>> &dbLabels = _adapter.getLabels();
-  if(dbLabels.size()!=1) {
+  if (dbLabels.size() != 1) {
     return false;
   }
-  
-  for(const auto &label : dbLabels.begin()->second) {
+
+  for (const auto &label : dbLabels.begin()->second) {
     points.push_back(label.getPoint3());
     labels.push_back(label.getName());
-    UDEBUG("Read point (%lf,%lf,%lf) with label %s", label.getPoint3().x, label.getPoint3().y,
-           label.getPoint3().z, label.getName());
-  } 
+    UDEBUG("Read point (%lf,%lf,%lf) with label %s", label.getPoint3().x,
+           label.getPoint3().y, label.getPoint3().z, label.getName());
+  }
   return true;
 }
-
