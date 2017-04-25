@@ -300,6 +300,10 @@ bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
               << label_id << "', '" << label_x << "', '" << label_y << "');";
     int rc = sqlite3_exec(labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
     sqlite3_close(labelDB);
+    if(rc == SQLITE_OK) {
+      Label newLabel(roomId, point3, label_name);
+      _labels.at(roomId).push_back(newLabel);
+    }
     return rc == SQLITE_OK;
   } else {
     std::cerr << "Could not convert label" << std::endl;
