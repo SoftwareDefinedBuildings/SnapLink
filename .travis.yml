@@ -16,4 +16,6 @@ services:
 
 script:
   - docker pull ${DOCKER_IMAGE}
-  - docker run -v `pwd`:${CELLMATE_PATH} ${DOCKER_IMAGE} /bin/bash -c "PATH=${QT_PATH}:$PATH; cd ${CELLMATE_PATH}/build; cmake ..; make"
+  - docker run -v `pwd`:${CELLMATE_PATH} ${DOCKER_IMAGE} /bin/bash -c "PATH=${QT_PATH}:$PATH; cd ${CELLMATE_PATH}/script; chmod +x travis.sh; ./travis.sh "
+
+
