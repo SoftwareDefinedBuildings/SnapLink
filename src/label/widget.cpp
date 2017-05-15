@@ -176,11 +176,6 @@ void Widget::projectPoints() {
 
   // get pose
   Transform pose;
-  pose = _adapter.getImages().at(0)[sliderVal].getPose();
-
-  if (pose.isNull()) {
-    return;
-  }
 
   const std::map<int, std::vector<Image>> &images = _adapter.getImages();
   assert(images.size() == 1);
@@ -188,9 +183,11 @@ void Widget::projectPoints() {
   for (const auto &singleImage : images.begin()->second) {
     if (singleImage.getId() == sliderVal) {
       image = singleImage;
+      pose = image.getPose();
       break;
     }
   }
+
 
   cv::Mat raw = image.getImage();
   std::vector<cv::Point2f> planePoints;
@@ -213,15 +210,26 @@ void Widget::projectPoints() {
                    P.r21(), P.r22(), P.r23(), P.y(), //
                    P.r31(), P.r32(), P.r33(), P.z());
 
+  std::cout<<"There are "<<planePoints.size()<<" points in this plane\n";
   for (unsigned int i = 0; i < planePoints.size(); i++) {
+    std::cout<<"1\n";
     cv::Point2f point = planePoints[i];
+
+    std::cout<<"2\n";
+
     std::string label = labels.at(i);
+    std::cout<<"3\n";
     if (point.x < 0 || point.x > raw.rows || point.y < 0 ||
         point.y > raw.cols || !Utility::isInFrontOfCamera(points[i], worldP)) {
+      std::cout<<"4\n";
+      
       continue;
     }
-
+    
+    std::cout<<"5\n";
     // draw label on UI
+    std::cout<<"Label name:"<<label<<"\n";
+    std::cout<<point.x<<" "<<point.y<<"\n";
     showLabel((int)point.x, (int)point.y, label);
   }
 }
