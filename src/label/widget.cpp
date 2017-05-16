@@ -48,10 +48,11 @@ bool Widget::init(std::string path) {
     std::cerr << "Database does not have any images" << std::endl;
     return false;
   }
+  // Image ID starts from 0
+  _ui->slider->setRange(0, numImages - 1);
 
-  _ui->slider->setRange(1, numImages);
-
-  showImage(1);
+  _ui->label_id->setText("0");
+  showImage(0);
 
   setLabel("enter label name");
 
@@ -188,7 +189,6 @@ void Widget::projectPoints() {
     }
   }
 
-
   cv::Mat raw = image.getImage();
   std::vector<cv::Point2f> planePoints;
   const CameraModel &model = image.getCameraModel();
@@ -210,26 +210,19 @@ void Widget::projectPoints() {
                    P.r21(), P.r22(), P.r23(), P.y(), //
                    P.r31(), P.r32(), P.r33(), P.z());
 
-  std::cout<<"There are "<<planePoints.size()<<" points in this plane\n";
+  std::cout << "There are " << planePoints.size() << " points in this plane\n";
   for (unsigned int i = 0; i < planePoints.size(); i++) {
-    std::cout<<"1\n";
     cv::Point2f point = planePoints[i];
 
-    std::cout<<"2\n";
-
     std::string label = labels.at(i);
-    std::cout<<"3\n";
-    if (point.x < 0 || point.x > raw.rows || point.y < 0 ||
-        point.y > raw.cols || !Utility::isInFrontOfCamera(points[i], worldP)) {
-      std::cout<<"4\n";
-      
+    if (point.x < 0 || point.x > raw.cols || point.y < 0 ||
+        point.y > raw.rows) {
       continue;
     }
-    
-    std::cout<<"5\n";
+    if (!Utility::isInFrontOfCamera(points[i], worldP)) {
+      continue;
+    }
     // draw label on UI
-    std::cout<<"Label name:"<<label<<"\n";
-    std::cout<<point.x<<" "<<point.y<<"\n";
     showLabel((int)point.x, (int)point.y, label);
   }
 }
@@ -237,7 +230,6 @@ void Widget::projectPoints() {
 /* Get all points in Labels table */
 bool Widget::getLabels(std::vector<cv::Point3f> &points,
                        std::vector<std::string> &labels) {
-
   const std::map<int, std::vector<Label>> &dbLabels = _adapter.getLabels();
   if (dbLabels.size() != 1) {
     return false;
@@ -246,8 +238,9 @@ bool Widget::getLabels(std::vector<cv::Point3f> &points,
   for (const auto &label : dbLabels.begin()->second) {
     points.push_back(label.getPoint3());
     labels.push_back(label.getName());
-    UDEBUG("Read point (%lf,%lf,%lf) with label %s", label.getPoint3().x,
-           label.getPoint3().y, label.getPoint3().z, label.getName());
+    std::cout << "Read point " << label.getPoint3().x << " "
+              << label.getPoint3().y << " " << label.getPoint3().z << " "
+              << label.getName() << "\n";
   }
   return true;
 }
