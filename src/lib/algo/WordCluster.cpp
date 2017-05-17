@@ -1,7 +1,7 @@
 #include "lib/algo/WordCluster.h"
 
 WordCluster::WordCluster(int distRatio)
-    : _distRatio(distRatio), _hasNewData(false), _type(-1), _dim(-1) {}
+    : _distRatio(distRatio), _type(-1), _dim(-1), _nextIndex(0) {}
 
 void WordCluster::addDescriptors(std::vector<int> &&roomIds,
                                  std::vector<cv::Point3f> &&points3,
@@ -20,14 +20,11 @@ void WordCluster::addDescriptors(std::vector<int> &&roomIds,
   std::move(roomIds.begin(), roomIds.end(), std::back_inserter(_roomIds));
   std::move(points3.begin(), points3.end(), std::back_inserter(_points3));
   cv::vconcat(_descriptors, descriptors, _descriptors);
-
-  _hasNewData = true;
 }
 
 const std::map<int, Word> &WordCluster::getWords() {
-  if (_hasNewData) {
+  if (_descriptors.rows > _nextIndex) {
     createWords();
-    _hasNewData = false;
   }
   return _words;
 }
@@ -35,23 +32,12 @@ const std::map<int, Word> &WordCluster::getWords() {
 void WordCluster::createWords() {
   assert(!descriptors.empty());
 
-  int dupWordsCountFromDict = 0;
-  int dupWordsCountFromLast = 0;
-
   const unsigned int k = 2; // k nearest neighbors
 
-  cv::Mat newWords;
-  std::vector<int> newWordsId;
-
-  cv::Mat indices;
-  cv::Mat dists;
   std::vector<std::vector<cv::DMatch>> matches;
 
-  assert(!dists.empty());
-  assert(dists.cols == 2);
-
-  int nextId = 1;
-  for (int i = 0; i < descriptors.rows; i++) {
+  int nextId = 0;
+  for (int i = _nextIndex; i < descriptors.rows; i++) {
     bool newWord = false;
 
     cv::BFMatcher::BFMatcher matcher;
@@ -60,21 +46,17 @@ void WordCluster::createWords() {
     macher.knnMatch(descriptors.row(i),
                     descriptors(cv::Range(0, i), cv::Range::all()), matches, k);
 
-    std::multimap<float, int> dist2id;
-    for (int j = 0; j < dists.cols; ++j) {
-      float d = dists.at<float>(id, j);
-      if (d >= 0.0f) {
-        dist2id.insert(std::pair<float, int>(d, id));
-      } else {
-        break;
-      }
-    }
-
-    // Apply NNDR
-    float d1 = dists.at<float>(id, 0);
-    float d2 = dists.at<float>(id, 1);
-    if (d1 > _distRatio * d2) {
+    assert(matches.size() == 1);
+    if (matches.at(0).size() < 2) {
       newWord = true;
+    } else {
+      // Apply NNDR
+      float d1 = matches.at(0).at(0).distance;
+      float d2 = matches.at(0).at(1).distance;
+      assert(d1 <= d2);
+      if (d1 > _distRatio * d2) {
+        newWord = true;
+      }
     }
 
     int wordId;
@@ -83,11 +65,9 @@ void WordCluster::createWords() {
       nextId++;
       _words.emplace(wordId, Word(wordId));
     } else {
+      wordId = indexWordIdMap.at(matches.at(0).at(0).queryIdx);
     }
     _words.at(wordId).addPoint3(_roomIds.at(i), _points3.at(i),
                                 descriptors.row(i));
   }
-
-  _totalActiveReferences += _notIndexedWords.size();
-  return wordIds;
 }

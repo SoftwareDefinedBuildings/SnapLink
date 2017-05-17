@@ -222,8 +222,7 @@ void RTABMapAdapter::createWords() {
             auto ret = _words.emplace(wordId, Word(wordId));
             iter = ret.first;
           }
-          std::vector<cv::Point3f> points3(1, point3);
-          iter->second.addPoints3(roomId, points3, descriptor);
+          iter->second.addPoint3(roomId, point3, descriptor);
         }
         i++;
       }

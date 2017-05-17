@@ -83,7 +83,7 @@ bool Transform::operator==(const Transform &t) const {
 bool Transform::operator!=(const Transform &t) const { return !(*this == t); }
 
 std::ostream &operator<<(std::ostream &out, const Transform &t) {
-  out << t._data << std::endl;
+  out << t._data;
   return out;
 }
 

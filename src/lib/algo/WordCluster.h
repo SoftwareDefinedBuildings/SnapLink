@@ -17,11 +17,12 @@ private:
 
 private:
   double _distRatio;
-  bool _dataChanged;
-  std::map<int, Word> _words;
   int _type;
   int _dim;
+  int _nextIndex; // index of next data to process
+  std::map<int, Word> _words;
   std::vector<int> _roomIds;
   std::vector<cv::Point3f> _points3;
+  std::map<int, int> indexWordIdMap;
   cv::Mat _descriptors;
 };

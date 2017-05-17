@@ -1,34 +1,23 @@
 #include "lib/data/Word.h"
 #include <cassert>
 
-Word::Word(int id) : _id(id), _dataChanged(false) {}
+Word::Word(int id) : _id(id) {}
 
 void Word::addPoint3(int roomId, const cv::Point3f &point3,
                      cv::Mat descriptor) {
-  _points3Map[roomId].emplace(points3);
-  _allDescriptors.push_back(descriptor);
+  // roomId will be added if not exists
+  _points3Map[roomId].emplace_back(point3);
   _roomDescriptors[roomId].push_back(descriptor);
-  _dataChanged = true;
-}
+  _allDescriptors.push_back(descriptor);
 
-void Word::addPoints3(const std::vector<int> &roomIds,
-                      const std::vector<cv::Point3f> &points3,
-                      const cv::Mat &descriptors) {
-  assert(roomIds.size() == descriptors.rows);
-  assert(points3.size() == descriptors.rows);
-  for (int i = 0; i < roomIds.size(); i++) {
-    addPoint3(roomIds.at(i), points3.at(i), descriptors.row(i));
-  }
+  // maybe expensive
+  int axis = 0;
+  cv::reduce(_allDescriptors, _meanDescriptor, axis, CV_REDUCE_AVG);
 }
 
 int Word::getId() const { return _id; }
 
 const cv::Mat &Word::getMeanDescriptor() const {
-  if (_dataChanged) {
-    int axis = 0;
-    cv::reduce(_allDescriptors, _meanDescriptor, axis, CV_REDUCE_AVG);
-    _dataChanged = false;
-  }
   return _meanDescriptor;
 }
 
