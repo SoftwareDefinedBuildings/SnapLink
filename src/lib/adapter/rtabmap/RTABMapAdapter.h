@@ -42,6 +42,8 @@ private:
   int _nextImageId;
   // {room ID : {signature ID in database : image ID in memory}}
   std::map<int, std::map<int, int>> _sigImageIdMap;
+  // {room ID : {image ID in memory : signature ID in database}}
+  std::map<int, std::map<int, int>> _imageSigIdMap;
   std::map<int, std::vector<Image>> _images;
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;

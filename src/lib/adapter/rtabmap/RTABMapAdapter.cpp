@@ -136,6 +136,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
     images.emplace_back(imageId, roomId, image, depth, pose, camera);
     // insert if not exists
     _sigImageIdMap[roomId][sig->id()] = imageId;
+    _imageSigIdMap[roomId][imageId] = sig->id();
   }
 
   return images;
@@ -163,11 +164,12 @@ std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
     while (sqlite3_step(stmt) == SQLITE_ROW) {
       std::string name(
           reinterpret_cast<const char *>(sqlite3_column_text(stmt, 0)));
-      int imageId = sqlite3_column_int(stmt, 1);
+      int sigId = sqlite3_column_int(stmt, 1);
       int x = sqlite3_column_int(stmt, 2);
       int y = sqlite3_column_int(stmt, 3);
-
+      
       // throws out_of_range
+      int imageId = _sigImageIdMap.at(roomId).at(sigId);
       cv::Point3f point3;
       const Image &image = _images.at(roomId).at(imageId);
 
@@ -283,8 +285,9 @@ bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
                               std::string label_id, std::string label_x,
                               std::string label_y) {
   cv::Point3f point3;
-  int imageId, x, y;
+  int sigId,imageId, x, y;
   imageId = std::stoi(label_id);
+  sigId = _imageSigIdMap.at(roomId).at(imageId);
   x = std::stoi(label_x);
   y = std::stoi(label_y);
   if (Utility::getPoint3World(this->_images.at(roomId).at(imageId),
@@ -297,7 +300,7 @@ bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
     }
     std::stringstream saveQuery;
     saveQuery << "INSERT INTO Labels VALUES ('" << label_name << "', '"
-              << label_id << "', '" << label_x << "', '" << label_y << "');";
+              << sigId << "', '" << label_x << "', '" << label_y << "');";
     int rc = sqlite3_exec(labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
     sqlite3_close(labelDB);
     if (rc == SQLITE_OK) {
