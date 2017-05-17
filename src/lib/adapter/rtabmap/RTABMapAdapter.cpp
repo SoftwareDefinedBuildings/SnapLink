@@ -31,6 +31,8 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     auto roomLabels = readRoomLabels(dbPath, roomId);
     _labels.emplace(roomId, std::move(roomLabels));
 
+    _roomPaths.emplace(roomId, std::string(dbPath));
+
     roomId++;
   }
 
@@ -129,10 +131,12 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
                 lt.r31(), lt.r32(), lt.r33(), lt.o34());
     pose = pose * t;
 
-    int imageId = _nextImageId++;
+    int imageId = _nextImageId;
+    _nextImageId++;
     images.emplace_back(imageId, roomId, image, depth, pose, camera);
     // insert if not exists
     _sigImageIdMap[roomId][sig->id()] = imageId;
+    _imageSigIdMap[roomId][imageId] = sig->id();
   }
 
   return images;
@@ -163,7 +167,7 @@ std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
       int sigId = sqlite3_column_int(stmt, 1);
       int x = sqlite3_column_int(stmt, 2);
       int y = sqlite3_column_int(stmt, 3);
-
+      
       // throws out_of_range
       int imageId = _sigImageIdMap.at(roomId).at(sigId);
       cv::Point3f point3;
@@ -252,5 +256,60 @@ void RTABMapAdapter::createRooms() {
       }
       iter->second.addWordIds(std::vector<int>(1, wordId));
     }
+  }
+}
+
+sqlite3 *RTABMapAdapter::createLabelTable(int roomId) {
+  sqlite3 *labelDB;
+  if (sqlite3_open(this->_roomPaths.at(roomId).c_str(), &labelDB) !=
+      SQLITE_OK) {
+    std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database"
+              << std::endl;
+    return nullptr;
+  }
+  std::string query;
+  query = "CREATE TABLE IF NOT EXISTS Labels (\n\t"
+          "labelName VARCHAR(255),\n\t"
+          "imgId INT,\n\t"
+          "x INT,\n\t"
+          "y INT\n); ";
+  int rc = sqlite3_exec(labelDB, query.c_str(), NULL, NULL, NULL);
+  if (rc == SQLITE_OK) {
+    return labelDB;
+  } else {
+    return nullptr;
+  }
+}
+
+bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
+                              std::string label_id, std::string label_x,
+                              std::string label_y) {
+  cv::Point3f point3;
+  int sigId,imageId, x, y;
+  imageId = std::stoi(label_id);
+  sigId = _imageSigIdMap.at(roomId).at(imageId);
+  x = std::stoi(label_x);
+  y = std::stoi(label_y);
+  if (Utility::getPoint3World(this->_images.at(roomId).at(imageId),
+                              cv::Point2f(x, y), point3)) {
+    sqlite3 *labelDB = createLabelTable(roomId);
+    if (!labelDB) {
+      std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database"
+                << std::endl;
+      return false;
+    }
+    std::stringstream saveQuery;
+    saveQuery << "INSERT INTO Labels VALUES ('" << label_name << "', '"
+              << sigId << "', '" << label_x << "', '" << label_y << "');";
+    int rc = sqlite3_exec(labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
+    sqlite3_close(labelDB);
+    if (rc == SQLITE_OK) {
+      Label newLabel(roomId, point3, label_name);
+      _labels.at(roomId).push_back(newLabel);
+    }
+    return rc == SQLITE_OK;
+  } else {
+    std::cerr << "Could not convert label" << std::endl;
+    return false;
   }
 }

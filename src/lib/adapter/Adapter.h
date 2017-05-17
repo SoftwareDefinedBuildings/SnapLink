@@ -33,4 +33,6 @@ public:
    * room ID : vector of labels
    */
   virtual const std::map<int, std::vector<Label>> &getLabels() = 0;
+
+  virtual bool putLabel(int roomId, std::string, std::string, std::string, std::string) = 0;
 };
