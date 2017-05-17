@@ -17,9 +17,7 @@ void Word::addPoint3(int roomId, const cv::Point3f &point3,
 
 int Word::getId() const { return _id; }
 
-const cv::Mat &Word::getMeanDescriptor() const {
-  return _meanDescriptor;
-}
+const cv::Mat &Word::getMeanDescriptor() const { return _meanDescriptor; }
 
 const std::map<int, std::vector<cv::Point3f>> &Word::getPoints3Map() const {
   return _points3Map;

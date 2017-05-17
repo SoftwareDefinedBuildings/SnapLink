@@ -17,7 +17,7 @@ public:
   explicit Perspective(const std::map<int, Room> &rooms,
                        const std::map<int, Word> &words,
                        int corrLimit = CORR_LIMIT,
-                       double distRatio = DIST_RATIO);
+                       float distRatio = DIST_RATIO);
 
   Transform localize(const std::vector<int> &wordIds,
                      const std::vector<cv::KeyPoint> &keyPoints,
@@ -62,5 +62,5 @@ private:
   const std::map<int, Room> &_rooms;
   const std::map<int, Word> &_words;
   int _corrLimit;
-  double _distRatio;
+  float _distRatio;
 };

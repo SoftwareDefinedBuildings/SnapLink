@@ -1,4 +1,5 @@
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/algo/WordCluster.h"
 #include "lib/data/Room.h"
 #include "lib/data/Transform.h"
 #include "lib/data/Word.h"
@@ -19,7 +20,8 @@
 #include <sqlite3.h>
 #include <utility>
 
-RTABMapAdapter::RTABMapAdapter() : _nextImageId(0) {}
+RTABMapAdapter::RTABMapAdapter(float distRatio)
+    : _nextImageId(0), _distRatio(distRatio) {}
 
 bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
   int roomId = 0;
@@ -194,10 +196,12 @@ void RTABMapAdapter::createWords() {
   rtabmap::VWDictionary vwd;
   cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
 
+  std::vector<int> roomIds;
+  std::vector<cv::Point3f> points3;
+  cv::Mat descriptors;
   for (const auto &roomImages : _images) {
     int roomId = roomImages.first;
-    std::cerr << "Creating words for signatures in room " << roomId
-              << std::endl;
+    std::cerr << "Creating words for room " << roomId << std::endl;
     for (const auto &image : roomImages.second) {
       // compute 2D features
       std::vector<cv::KeyPoint> keyPoints;
@@ -205,29 +209,22 @@ void RTABMapAdapter::createWords() {
       detector->detectAndCompute(image.getImage(), cv::Mat(), keyPoints,
                                  descriptors);
 
-      // convert them to 3D points in words
-      int dummySigId = 1;
-      // TODO: write our own word clustering
-      //
-      std::list<int> wordIds = vwd.addNewWords(descriptors, dummySigId);
-      vwd.update();
-      size_t i = 0;
-      for (int wordId : wordIds) {
+      for (unsigned int i = 0; i < keyPoints.size(); i++) {
         cv::KeyPoint kp = keyPoints.at(i);
         cv::Mat descriptor = descriptors.row(i);
         cv::Point3f point3;
         if (Utility::getPoint3World(image, kp.pt, point3)) {
-          auto iter = _words.find(wordId);
-          if (iter == _words.end()) {
-            auto ret = _words.emplace(wordId, Word(wordId));
-            iter = ret.first;
-          }
-          iter->second.addPoint3(roomId, point3, descriptor);
+          roomIds.emplace_back(roomId);
+          points3.emplace_back(point3);
+          descriptors.push_back(descriptor);
         }
-        i++;
       }
     }
   }
+
+  // convert them to 3D points in words
+  WordCluster wordCluster(_distRatio);
+  _words = wordCluster.cluster(roomIds, points3, descriptors);
 
   std::cerr << "Total Number of words: " << _words.size() << std::endl;
   long count = 0;

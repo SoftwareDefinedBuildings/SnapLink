@@ -12,9 +12,11 @@
 #include <set>
 #include <typeinfo>
 
+#define DIST_RATIO 0.7
+
 class RTABMapAdapter final : public Adapter {
 public:
-  explicit RTABMapAdapter();
+  explicit RTABMapAdapter(float distRatio = DIST_RATIO);
 
   // read data from database files
   bool init(const std::set<std::string> &dbPaths) final;
@@ -34,6 +36,7 @@ private:
 
 private:
   int _nextImageId;
+  float _distRatio;
   // {room ID : {signature ID in database : image ID in memory}}
   std::map<int, std::map<int, int>> _sigImageIdMap;
   std::map<int, std::vector<Image>> _images;

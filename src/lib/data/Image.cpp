@@ -279,10 +279,10 @@ pcl::PointXYZ Image::projectDepthTo3D(const cv::Mat &depthImage, float x,
   float depth = getDepth(depthImage, x, y, smoothing, maxZError, false);
   if (depth > 0.0f) {
     // Use correct principal point from calibration
-    cx = cx > 0.0f ? cx
-                   : static_cast<float>(depthImage.cols / 2) - 0.5f; // cameraInfo.K.at(2)
-    cy = cy > 0.0f ? cy
-                   : static_cast<float>(depthImage.rows / 2) - 0.5f; // cameraInfo.K.at(5)
+    cx = cx > 0.0f ? cx : static_cast<float>(depthImage.cols / 2) -
+                              0.5f; // cameraInfo.K.at(2)
+    cy = cy > 0.0f ? cy : static_cast<float>(depthImage.rows / 2) -
+                              0.5f; // cameraInfo.K.at(5)
 
     // Fill in XYZ
     pt.x = (x - cx) * depth / fx;
