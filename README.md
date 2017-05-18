@@ -18,7 +18,7 @@ If you want to build your own environment, follow the [install script](script/in
 ### Compile
 Clone the CellMate server repository
 ```bash
-git clone https://github.com/SoftwareDefinedBuildings/CellMate_Server
+git clone https://github.com/SoftwareDefinedBuildings/CellMate
 ```
 Use cmake and make to compile in the [build/](build) folder
 ```bash
