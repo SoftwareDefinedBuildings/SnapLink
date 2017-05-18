@@ -103,7 +103,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
 
   // get signatures
   std::vector<Image> images;
-  std::cerr << "Read signatures from database..." << std::endl;
+  std::cerr << "Read signatures from database " << dbPath << std::endl;
   for (const auto &sigId : sigIds) {
     const rtabmap::Signature *sig = memory.getSignature(sigId);
     assert(sig != nullptr);
@@ -204,14 +204,14 @@ void RTABMapAdapter::createWords() {
     std::cerr << "Creating words for room " << roomId << std::endl;
     for (const auto &image : roomImages.second) {
       // compute 2D features
-      std::vector<cv::KeyPoint> keyPoints;
-      cv::Mat descriptors;
-      detector->detectAndCompute(image.getImage(), cv::Mat(), keyPoints,
-                                 descriptors);
+      std::vector<cv::KeyPoint> imgKeyPoints;
+      cv::Mat imgDescriptors;
+      detector->detectAndCompute(image.getImage(), cv::Mat(), imgKeyPoints,
+                                 imgDescriptors);
 
-      for (unsigned int i = 0; i < keyPoints.size(); i++) {
-        cv::KeyPoint kp = keyPoints.at(i);
-        cv::Mat descriptor = descriptors.row(i);
+      for (unsigned int i = 0; i < imgKeyPoints.size(); i++) {
+        cv::KeyPoint kp = imgKeyPoints.at(i);
+        cv::Mat descriptor = imgDescriptors.row(i);
         cv::Point3f point3;
         if (Utility::getPoint3World(image, kp.pt, point3)) {
           roomIds.emplace_back(roomId);

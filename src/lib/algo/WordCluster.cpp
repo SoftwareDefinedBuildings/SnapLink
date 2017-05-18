@@ -1,4 +1,5 @@
 #include "lib/algo/WordCluster.h"
+#include "lib/util/Utility.h"
 #include <opencv2/opencv.hpp>
 
 WordCluster::WordCluster(float distRatio) : _distRatio(distRatio) {}
@@ -13,21 +14,25 @@ WordCluster::cluster(const std::vector<int> &roomIds,
   assert(roomIds.size() == static_cast<unsigned int>(descriptors.rows));
 
   const unsigned int k = 2; // k nearest neighbors
-  std::vector<int> wordIds; // word Ids of all points
+  cv::Mat wordDescriptors;  // word Id is the row number
+
+  cv::BFMatcher matcher;
 
   int nextWordId = 0;
   for (int i = 0; i < descriptors.rows; i++) {
+    Utility::showProgress(static_cast<float>(i + 1) / descriptors.rows);
+
     bool newWord = false;
 
-    cv::BFMatcher matcher;
-
     std::vector<std::vector<cv::DMatch>> matches;
-    matcher.knnMatch(descriptors.row(i),
-                     descriptors(cv::Range(0, i), cv::Range::all()), matches,
-                     k);
+    if (!wordDescriptors.empty()) {
+      matcher.knnMatch(descriptors.row(i), wordDescriptors, matches, k);
+    }
 
-    assert(matches.size() == 1);
-    if (matches.at(0).size() < 2) {
+    assert(matches.size() <= 1);
+    if (matches.empty()) {
+      newWord = true;
+    } else if (matches.at(0).size() < 2) {
       newWord = true;
     } else {
       // Apply NNDR
@@ -45,12 +50,18 @@ WordCluster::cluster(const std::vector<int> &roomIds,
       nextWordId++;
       words.emplace(wordId, Word(wordId));
     } else {
-      wordId = wordIds.at(matches.at(0).at(0).queryIdx);
+      wordId = matches.at(0).at(0).queryIdx;
     }
     words.at(wordId).addPoint3(roomIds.at(i), points3.at(i),
                                descriptors.row(i));
-    wordIds.emplace_back(wordId);
+    assert(wordId <= wordDescriptors.rows);
+    if (wordId == wordDescriptors.rows) {
+      wordDescriptors.push_back(words.at(wordId).getMeanDescriptor());
+    } else if (wordId < wordDescriptors.rows) {
+      wordDescriptors.row(wordId) = words.at(wordId).getMeanDescriptor();
+    }
   }
+  std::cout << std::endl;
 
   return words;
 }

@@ -14,6 +14,9 @@ public:
   /* Returns current time in milliseconds. */
   static unsigned long long getTime();
 
+  /* show a progress bar, input is [0, 1]*/
+  static void showProgress(float progress);
+
   static bool getPoint3World(const Image &image, const cv::Point2f &point2,
                              cv::Point3f &point3);
 
