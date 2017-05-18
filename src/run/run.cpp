@@ -17,7 +17,7 @@ int Run::run(int argc, char *argv[]) {
   std::string bosswaveURI;
   int featureLimit;
   int corrLimit;
-  double distRatio;
+  float distRatio;
   std::vector<std::string> dbFiles;
 
   po::options_description visible("command options");
@@ -36,7 +36,7 @@ int Run::run(int argc, char *argv[]) {
        "limit the number of features used") //
       ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
        "limit the number of corresponding 2D-3D points used") //
-      ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7),
+      ("dist-ratio", po::value<float>(&distRatio)->default_value(0.7),
        "distance ratio used to create words");
 
   po::options_description hidden;
@@ -80,7 +80,7 @@ int Run::run(int argc, char *argv[]) {
   QCoreApplication app(argc, argv);
 
   std::cout << "reading data" << std::endl;
-  RTABMapAdapter adapter;
+  RTABMapAdapter adapter(distRatio);
   if (!adapter.init(std::set<std::string>(dbFiles.begin(), dbFiles.end()))) {
     std::cerr << "reading data failed";
     return 1;
@@ -202,7 +202,9 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   }
 
   if (pose.isNull()) {
-    std::cerr << "image localization failed" << std::endl;
+    std::cerr << "image localization failed (did you provide the correct "
+                 "intrinsic matrix?)"
+              << std::endl;
     long totalTime = Utility::getTime() - totalStartTime;
     Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                    perspectiveTime, -1);

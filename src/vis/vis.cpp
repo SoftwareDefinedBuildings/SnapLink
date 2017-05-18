@@ -20,16 +20,25 @@ int Vis::run(int argc, char *argv[]) {
   std::string camPoseStr;
   std::string imagePath;
   std::string intrinsic;
+  int featureLimit;
+  int corrLimit;
+  double distRatio;
 
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
-      ("campose", po::value<std::string>(&camPoseStr),
+      ("help,h", "print help message") //
+      ("cam-pose", po::value<std::string>(&camPoseStr),
        "a string of 12 values of the 3x4 camera pose") //
       ("image", po::value<std::string>(&imagePath),
-       "image to be localized (overrides campose)") //
+       "image to be localized (overrides cam-pose)") //
       ("intrinsic", po::value<std::string>(&intrinsic),
        "a string of 4 values of fx fy cx cy, required with image") //
-      ("help,h", "print help message");
+      ("feature-limit", po::value<int>(&featureLimit)->default_value(0),
+       "limit the number of features used") //
+      ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
+       "limit the number of corresponding 2D-3D points used") //
+      ("dist-ratio", po::value<double>(&distRatio)->default_value(0.7),
+       "distance ratio used to create words");
 
   po::options_description hidden;
   hidden.add_options() // use comment to force new line using formater
@@ -108,11 +117,9 @@ int Vis::run(int argc, char *argv[]) {
   window.showWidget("Cellmate vis", cloudWidget);
 
   // get camera pose and frustum
-  Transform camPose;
-  const double scale = 0.5;
   if (!imagePath.empty()) {
     if (!camPoseStr.empty()) {
-      std::cerr << "using image, campose ignored" << std::endl;
+      std::cerr << "using image, cam-pose ignored" << std::endl;
     }
 
     cv::Mat image = cv::imread(imagePath);
@@ -123,37 +130,55 @@ int Vis::run(int argc, char *argv[]) {
       return 1;
     }
 
-    CameraModel camera("camera", fx, fy, cx, cy, image.size());
-    camPose = localize(image, camera);
-
+    double scale;
+    if (!downsample(image, scale)) {
+      std::cerr << "image downsample failed" << std::endl;
+      return 1;
+    }
+    std::cerr << "image downsample ratio: " << scale << std::endl;
+    imwrite("image.jpg", image);
+    CameraModel camera("camera", fx / scale, fy / scale, cx / scale, cy / scale,
+                       image.size());
+    std::cerr << "image intrinsic matrix:" << std::endl
+              << camera.K() << std::endl;
+    Transform camPose =
+        localize(image, camera, featureLimit, corrLimit, distRatio);
     if (camPose.isNull()) {
-      std::cerr << "image localization failed" << std::endl;
+      std::cerr << "image localization failed (did you provide the correct "
+                   "intrinsic matrix?)"
+                << std::endl;
       return 1;
     }
 
     // visualize camera
-    cv::viz::WCameraPosition coord(scale);
-    cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, scale);
-    std::cerr << "K:" << std::endl << camera.K() << std::endl;
+    const double visScale = 0.5;
+    cv::viz::WCameraPosition coord(visScale);
+    cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, visScale);
     cv::Affine3f poseAffine(camPose.toEigen3f().data());
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
+
+    std::cerr << "image pose:" << std::endl << camPose << std::endl;
   } else if (!camPoseStr.empty()) {
+    Transform camPose;
     if (!(std::istringstream(camPoseStr) >> camPose)) {
       std::cerr << "invalid pose input" << std::endl;
       return 1;
     }
 
     // visualize camera
+    const double visScale = 0.5;
     const float horizontal = 0.889484;
     const float vertical = 0.523599;
-    cv::viz::WCameraPosition coord(scale);
-    cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), scale);
+    cv::viz::WCameraPosition coord(visScale);
+    cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), visScale);
     cv::Affine3f poseAffine(camPose.toEigen3f().data());
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
+
+    std::cerr << "image pose:" << std::endl << camPose << std::endl;
   }
-  std::cerr << "image pose:" << std::endl << camPose << std::endl;
+
   window.spin();
 
   return 0;
@@ -173,14 +198,15 @@ void Vis::printUsage(const po::options_description &desc) {
             << desc << std::endl;
 }
 
-Transform Vis::localize(const cv::Mat &image, const CameraModel &camera) {
+Transform Vis::localize(const cv::Mat &image, const CameraModel &camera,
+                        int featureLimit, int corrLimit, double distRatio) {
   const std::map<int, Word> &words = _adapter.getWords();
   const std::map<int, Room> &rooms = _adapter.getRooms();
   const std::map<int, std::vector<Label>> &labels = _adapter.getLabels();
-  Feature feature;
+  Feature feature(featureLimit);
   WordSearch wordSearch(words);
   RoomSearch roomSearch(rooms, words);
-  Perspective perspective(rooms, words);
+  Perspective perspective(rooms, words, corrLimit, distRatio);
   Visibility visibility(labels);
 
   // feature extraction
@@ -199,4 +225,32 @@ Transform Vis::localize(const cv::Mat &image, const CameraModel &camera) {
       perspective.localize(wordIds, keyPoints, descriptors, camera, roomId);
 
   return pose;
+}
+
+bool Vis::downsample(cv::Mat &image, double &scale) {
+  cv::Size size = image.size();
+  std::cerr << "downsampling image. image width: " << image.size().width
+            << ", height: " << image.size().height << std::endl;
+  scale = 1;
+  const double width = 640;
+  const double height = 480;
+  if ((double)size.width / size.height == width / height) {
+    if (size.width > width) {
+      // downsample to target aspect ratio
+      scale = size.width / width;
+      cv::resize(image, image, cv::Size(width, height), 0, 0, cv::INTER_AREA);
+    }
+    return true;
+  } else if ((double)size.width / size.height == height / width) {
+    if (size.width > height) {
+      // downsample to target aspect ratio
+      scale = size.width / height;
+      cv::resize(image, image, cv::Size(height, width), 0, 0, cv::INTER_AREA);
+    }
+    return true;
+  }
+  std::cerr << "image downsample failed. image width: " << image.size().width
+            << ", height: " << image.size().height << std::endl;
+  // TODO image can have other aspect ratio
+  return false;
 }
