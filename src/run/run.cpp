@@ -79,7 +79,7 @@ int Run::run(int argc, char *argv[]) {
   // Run the program
   QCoreApplication app(argc, argv);
 
-  std::cout << "reading data" << std::endl;
+  std::cout << "READING DATABASES" << std::endl;
   RTABMapAdapter adapter(distRatio);
   if (!adapter.init(std::set<std::string>(dbFiles.begin(), dbFiles.end()))) {
     std::cerr << "reading data failed";
@@ -90,7 +90,7 @@ int Run::run(int argc, char *argv[]) {
   const std::map<int, Room> &rooms = adapter.getRooms();
   const std::map<int, std::vector<Label>> &labels = adapter.getLabels();
 
-  std::cout << "initializing computing stages" << std::endl;
+  std::cout << "RUNNING COMPUTING ELEMENTS" << std::endl;
   _feature = std::make_unique<Feature>(featureLimit);
   _wordSearch = std::make_unique<WordSearch>(words);
   _roomSearch = std::make_unique<RoomSearch>(rooms, words);
@@ -222,7 +222,7 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
 
   long totalTime = Utility::getTime() - totalStartTime;
 
-  std::cout << "image pose :" << std::endl << pose << std::endl;
+  // std::cout << "image pose :" << std::endl << pose << std::endl;
   Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                  perspectiveTime, visibilityTime);
 

@@ -1,14 +1,14 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/data/Transform.h"
 #include <QWidget>
 #include <opencv2/core/core.hpp>
 #include <pcl/point_types.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Memory.h>
 #include <sqlite3.h>
-#include "lib/adapter/rtabmap/RTABMapAdapter.h"
-#include "lib/data/Transform.h"
 namespace Ui {
 class Widget;
 }
@@ -30,7 +30,7 @@ private slots:
   void mousePressEvent(QMouseEvent *);
 
 private:
-  void showImage(int index);
+  void showImage(int imageId);
   void setLabel(const QString &name);
   void showLabel(int x, int y, std::string label);
   void projectPoints(void);
