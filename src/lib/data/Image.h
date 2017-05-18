@@ -21,7 +21,7 @@ public:
   pcl::PointXYZ projectDepthTo3D(const cv::Mat &depthImage, float x, float y,
                                  float cx, float cy, float fx, float fy,
                                  bool smoothing, float maxZError) const;
-  
+
 private:
   float getDepth(const cv::Mat &depthImage, float x, float y, bool smoothing,
                  float maxZError, bool estWithNeighborsIfNull) const;

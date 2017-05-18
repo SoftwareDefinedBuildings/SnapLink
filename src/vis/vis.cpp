@@ -86,13 +86,14 @@ int Vis::run(int argc, char *argv[]) {
   cv::viz::Viz3d window("CellMate");
 
   // get point cloud
-  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  const auto &images = _adapter.getImages();
   assert(images.size() == 1);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
       new pcl::PointCloud<pcl::PointXYZRGB>);
-  for (const auto &image : images.begin()->second) {
-    auto c = image.getCloud(4);
-    const Transform &p = image.getPose();
+  for (const auto &image : images.at(0)) {
+    int decimation = 4;
+    auto c = image.second.getCloud(decimation);
+    const Transform &p = image.second.getPose();
     pcl::transformPointCloud(*c, *c, p.toEigen4f());
     *cloud += *c;
   }

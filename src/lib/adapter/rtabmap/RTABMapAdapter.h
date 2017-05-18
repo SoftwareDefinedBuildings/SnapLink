@@ -10,8 +10,8 @@
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/VisualWord.h>
 #include <set>
-#include <typeinfo>
 #include <sqlite3.h>
+#include <typeinfo>
 
 #define DIST_RATIO 0.7
 
@@ -22,23 +22,20 @@ public:
   // read data from database files
   bool init(const std::set<std::string> &dbPaths) final;
 
-  const std::map<int, std::vector<Image>> &getImages() final;
+  const std::map<int, std::map<int, Image>> &getImages() final;
   const std::map<int, Word> &getWords() final;
   const std::map<int, Room> &getRooms() final;
   const std::map<int, std::vector<Label>> &getLabels() final;
-  bool putLabel(int roomId,
-                        std::string label_name, 
-                        std::string label_id, 
-                        std::string label_x, 
-                        std::string label_y) final;
+  bool putLabel(int roomId, std::string label_name, std::string label_id,
+                std::string label_x, std::string label_y) final;
+
 private:
-  std::vector<Image> readRoomImages(const std::string &dbPath, int roomId);
+  std::map<int, Image> readRoomImages(const std::string &dbPath, int roomId);
   std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
 
   sqlite3 *createLabelTable(int roomId);
   void createWords();
   void createRooms();
-
 
 private:
   int _nextImageId;
@@ -47,7 +44,7 @@ private:
   std::map<int, std::map<int, int>> _sigImageIdMap;
   // {room ID : {image ID in memory : signature ID in database}}
   std::map<int, std::map<int, int>> _imageSigIdMap;
-  std::map<int, std::vector<Image>> _images;
+  std::map<int, std::map<int, Image>> _images;
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;
   std::map<int, std::vector<Label>> _labels;

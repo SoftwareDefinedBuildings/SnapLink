@@ -40,9 +40,9 @@ bool Widget::init(std::string path) {
     return 1;
   }
 
-  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  const auto &images = _adapter.getImages();
   assert(images.size() == 1);
-  numImages = images.begin()->second.size();
+  numImages = images.at(0).size();
 
   if (numImages <= 0) {
     std::cerr << "Database does not have any images" << std::endl;
@@ -91,16 +91,10 @@ void Widget::saveLabel() {
   }
 }
 
-void Widget::showImage(int index) {
-  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+void Widget::showImage(int imageId) {
+  const auto &images = _adapter.getImages();
   assert(images.size() == 1);
-  Image image = images.begin()->second[0];
-  for (const auto &singleImage : images.begin()->second) {
-    if (singleImage.getId() == index) {
-      image = singleImage;
-      break;
-    }
-  }
+  const Image &image = images.at(0).at(imageId);
   cv::Mat raw = image.getImage();
   QImage qImage =
       QImage(raw.data, raw.cols, raw.rows, raw.step, QImage::Format_RGB888);
@@ -144,7 +138,7 @@ void Widget::mousePressEvent(QMouseEvent *event) {
   int imageId = _ui->slider->value();
   cv::Point3f pWorld;
   cv::Point2f xy(p.x(), p.y());
-  Image image = _adapter.getImages().at(0)[imageId];
+  Image image = _adapter.getImages().at(0).at(imageId);
   if (Utility::getPoint3World(image, xy, pWorld)) {
     _ui->label_status->setText("3D conversion success!");
     _ui->pushButton->setEnabled(true);
@@ -178,16 +172,10 @@ void Widget::projectPoints() {
   // get pose
   Transform pose;
 
-  const std::map<int, std::vector<Image>> &images = _adapter.getImages();
+  const auto &images = _adapter.getImages();
   assert(images.size() == 1);
-  Image image = images.begin()->second[0];
-  for (const auto &singleImage : images.begin()->second) {
-    if (singleImage.getId() == sliderVal) {
-      image = singleImage;
-      pose = image.getPose();
-      break;
-    }
-  }
+  const Image &image = images.at(0).at(sliderVal);
+  pose = image.getPose();
 
   cv::Mat raw = image.getImage();
   std::vector<cv::Point2f> planePoints;
