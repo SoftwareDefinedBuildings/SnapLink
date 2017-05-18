@@ -1,9 +1,9 @@
 syntax = "proto3";
 
 import "ClientQueryMessage.proto";
-
+import "ServerRespondMessage.proto";
 package proto;
 
 service GrpcService {
-  rpc onClientQuery(ClientQueryMessage) return (ServerRespondMessage) {}
+  rpc onClientQuery(ClientQueryMessage) returns (ServerRespondMessage) {}
 }

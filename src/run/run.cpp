@@ -122,6 +122,17 @@ int Run::run(int argc, char *argv[]) {
         &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
   }
 
+  std::unique_ptr<FrontEnd> grpcFrontEnd;
+  if(grpc == true) {
+    std::cerr << "initializing GRPC front end" << std::endl;
+    grpcFrontEnd = std::make_unique<GrpcFrontEnd>(grpcServerAddr, MAX_CLIENTS);
+    if(grpcFrontEnd->start() == false) {
+      std::cerr << "starting GRPC front end failed";
+      return 1;
+    }
+    grpcFrontEnd->registerOnQuery(std::bind(
+        &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
+  }
   std::cout << "Initialization Done" << std::endl;
 
   return app.exec();

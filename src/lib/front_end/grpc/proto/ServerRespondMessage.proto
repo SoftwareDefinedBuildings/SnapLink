@@ -4,5 +4,5 @@ syntax = "proto3";
 package proto;
 
 message ServerRespondMessage {
-  string foundName;
+  string foundName = 1;
 }

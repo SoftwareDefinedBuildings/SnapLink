@@ -1,5 +1,5 @@
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
-#include "data/CameraModel.h"
+#include "lib/data/CameraModel.h"
 #include <opencv2/core/core.hpp>
 
 GrpcFrontEnd::GrpcFrontEnd(const std::string &grpcServerAddr, unsigned int maxClients) {
@@ -15,7 +15,7 @@ GrpcFrontEnd::~GrpcFrontEnd() {
 }
 
 bool GrpcFrontEnd::start() {
-  std::string server_address(featureServerAddr);
+  std::string server_address(_serverAddress);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
@@ -51,14 +51,14 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   
   std::vector<uchar> data(request->image().begin(), request->image().end());
   assert(data.size() > 0);
-  t bool copyData = false;
+  bool copyData = false;
   cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
   assert(image.type() == CV_8U);
   assert(image.channels() == 1);
-  double fx = request->cameramodel().fx();
-  double fy = request->cameramodel().fy();
-  double cx = request->cameramodel().cx();
-  double cy = request->cameramodel().cy();
+  double fx = request->fx();
+  double fy = request->fy();
+  double cx = request->cx();
+  double cy = request->cy();
   int width = image.cols;
   int height = image.rows;
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
@@ -66,9 +66,9 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   results = this->getOnQuery()(image, camera);
   
   
-  this->numClients--;  
+  this->_numClients--;  
   if (!results.empty()) {
-    response->set_foundName(results.at(0);
+    response->set_foundname(results.at(0));
     return grpc::Status::OK;
   } else {
     return grpc::Status::CANCELLED;
