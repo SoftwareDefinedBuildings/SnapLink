@@ -1,9 +1,21 @@
 syntax = "proto3";
 
-import "ClientQueryMessage.proto";
-import "ServerRespondMessage.proto";
-package proto;
+package cellmate_grpc;
 
 service GrpcService {
-  rpc onClientQuery(ClientQueryMessage) returns (ServerRespondMessage) {}
+    rpc onClientQuery(ClientQueryMessage) returns (ServerRespondMessage) {}
+}
+
+message ClientQueryMessage {
+  bytes image = 1;
+  double fx = 2;
+  double fy = 3;
+  double cx = 4;
+  double cy = 5;
+  uint32 width = 6;
+  uint32 height = 7;
+}
+
+message ServerRespondMessage {
+  string foundName = 1;
 }

@@ -58,26 +58,26 @@ include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libra
 include_directories(${CellMate_SOURCE_DIR})
 
 # Protobuf
-set(PROTO_PATH "${PROJECT_SOURCE_DIR}/src/lib/front_end/grpc/proto")
-set(PROTO_FILES "${PROTO_PATH}/*.proto")
-set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated/proto")
-file(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
-include_directories(SYSTEM ${GENERATED_PROTOBUF_PATH})
-set(GENERATED_PROTO_SOURCES
-    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.h"
-    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc")
+#set(PROTO_PATH "${PROJECT_SOURCE_DIR}/src/lib/front_end/grpc/proto")
+#set(PROTO_FILES "${PROTO_PATH}/*.proto")
+#set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated/proto")
+#file(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
+#include_directories(SYSTEM ${GENERATED_PROTOBUF_PATH})
+#set(GENERATED_PROTO_SOURCES
+#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.h"
+#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
+#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.h"
+#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc")
 
-set_source_files_properties(${GENERATED_PROTO_SOURCES} PROPERTIES COMPILE_FLAGS "-w")
+#set_source_files_properties(${GENERATED_PROTO_SOURCES} PROPERTIES COMPILE_FLAGS "-w")
 
-add_custom_command(
-    OUTPUT ${GENERATED_PROTO_SOURCES}
-    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-    ARGS "--proto_path=${PROTO_PATH}"
-         "--cpp_out=${GENERATED_PROTOBUF_PATH}"
-         "${PROTO_FILES}"
-    )
+#add_custom_command(
+#    OUTPUT ${GENERATED_PROTO_SOURCES}
+#    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+#    ARGS "--proto_path=${PROTO_PATH}"
+#         "--cpp_out=${GENERATED_PROTOBUF_PATH}"
+#         "${PROTO_FILES}"
+#    )
 
 # GRPC
 set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
@@ -111,8 +111,8 @@ add_custom_command(
     )
 
 set(SOURCES
-    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
-    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc"
+	#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
+	#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc"
     "${GENERATED_GRPC_PATH}/GrpcService.pb.cc"
     "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.cc"
     "${CellMate_SOURCE_DIR}/lib/front_end/http/HTTPFrontEnd.cpp"

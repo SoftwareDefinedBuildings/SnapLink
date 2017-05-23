@@ -1,10 +1,11 @@
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
 #include "lib/data/CameraModel.h"
 #include <opencv2/core/core.hpp>
+#include <string>
 
-GrpcFrontEnd::GrpcFrontEnd(const std::string &grpcServerAddr, unsigned int maxClients) {
+GrpcFrontEnd::GrpcFrontEnd(int grpcServerAddr, unsigned int maxClients) {
   _numClients = 0;
-  _serverAddress = grpcServerAddr;
+  _serverAddress = std::to_string(grpcServerAddr);
   _maxClients = maxClients; 
 }
 
@@ -15,11 +16,19 @@ GrpcFrontEnd::~GrpcFrontEnd() {
 }
 
 bool GrpcFrontEnd::start() {
+  std::cerr << "DEBUG: Grpc start()" << std::endl;
+  this->moveToThread(&_thread);
+  connect(&_thread, &QThread::started, this, &GrpcFrontEnd::run);
+  _thread.start();
+  return true;
+}
+
+void GrpcFrontEnd::run() {
   std::string server_address(_serverAddress);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  builder.AddListeningPort("0.0.0.0:"+server_address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(this);
@@ -31,7 +40,6 @@ bool GrpcFrontEnd::start() {
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
 }
-
 void GrpcFrontEnd::stop() {
   _numClients = 0;
   _serverAddress = "";
@@ -39,8 +47,9 @@ void GrpcFrontEnd::stop() {
 }
 
 grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
-                                         const proto::ClientQueryMessage *request,
-                                         proto::ServerRespondMessage *response) {
+                                         const cellmate_grpc::ClientQueryMessage *request,
+                                         cellmate_grpc::ServerRespondMessage *response) {
+
   {
     std::lock_guard<std::mutex> lock(_mutex);
     if (this->_numClients >= this->_maxClients) {
@@ -48,7 +57,6 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
     }
     this->_numClients++;
   }
-  
   std::vector<uchar> data(request->image().begin(), request->image().end());
   assert(data.size() > 0);
   bool copyData = false;

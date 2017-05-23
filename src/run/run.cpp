@@ -4,6 +4,7 @@
 #include "lib/data/Transform.h"
 #include "lib/front_end/bosswave/BWFrontEnd.h"
 #include "lib/front_end/http/HTTPFrontEnd.h"
+#include "lib/front_end/grpc/GrpcFrontEnd.h"
 #include "lib/util/Utility.h"
 #include <QCoreApplication>
 #include <cstdio>
@@ -13,6 +14,8 @@ int Run::run(int argc, char *argv[]) {
   // Parse arguments
   bool http;
   int httpPort;
+  bool grpc;
+  int grpcPort;
   bool bosswave;
   std::string bosswaveURI;
   int featureLimit;
@@ -23,10 +26,14 @@ int Run::run(int argc, char *argv[]) {
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
-      ("http,H", po::value<bool>(&http)->default_value(true),
+      ("http,H", po::value<bool>(&http)->default_value(false),
        "run HTTP front end") //
-      ("http-port", po::value<int>(&httpPort)->default_value(8080),
+      ("http-port", po::value<int>(&httpPort)->default_value(8081),
        "the port that HTTP front end binds to") //
+      ("grpc,G", po::value<bool>(&grpc)->default_value(true),
+       "run GRPC front end") //
+      ("grpc-port", po::value<int>(&grpcPort)->default_value(8080),
+       "the port that GRPC front end binds to") //
       ("bosswave,B", po::value<bool>(&bosswave)->default_value(false),
        "run BOSSWAVE front end") //
       ("bosswave-uri", po::value<std::string>(&bosswaveURI)
@@ -125,7 +132,7 @@ int Run::run(int argc, char *argv[]) {
   std::unique_ptr<FrontEnd> grpcFrontEnd;
   if(grpc == true) {
     std::cerr << "initializing GRPC front end" << std::endl;
-    grpcFrontEnd = std::make_unique<GrpcFrontEnd>(grpcServerAddr, MAX_CLIENTS);
+    grpcFrontEnd = std::make_unique<GrpcFrontEnd>(grpcPort, MAX_CLIENTS);
     if(grpcFrontEnd->start() == false) {
       std::cerr << "starting GRPC front end failed";
       return 1;
