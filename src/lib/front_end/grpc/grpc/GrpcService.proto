@@ -2,6 +2,9 @@ syntax = "proto3";
 
 package cellmate_grpc;
 
+option java_package = "edu.berkeley.cs.sdb.cellmate";
+option java_outer_classname = "CellmateProto";
+
 service GrpcService {
     rpc onClientQuery(ClientQueryMessage) returns (ServerRespondMessage) {}
 }
