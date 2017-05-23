@@ -2,7 +2,7 @@
 #include "lib/data/CameraModel.h"
 #include <opencv2/core/core.hpp>
 #include <string>
-
+const std::string GrpcFrontEnd::none = "None";
 GrpcFrontEnd::GrpcFrontEnd(int grpcServerAddr, unsigned int maxClients) {
   _numClients = 0;
   _serverAddress = std::to_string(grpcServerAddr);
@@ -53,7 +53,8 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   {
     std::lock_guard<std::mutex> lock(_mutex);
     if (this->_numClients >= this->_maxClients) {
-      return grpc::Status::CANCELLED;
+      response->set_foundname("Too many clients, server is busy");
+      return grpc::Status::OK;
     }
     this->_numClients++;
   }
@@ -61,6 +62,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   assert(data.size() > 0);
   bool copyData = false;
   cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+  //imwrite("image.jpg", image);
   assert(image.type() == CV_8U);
   assert(image.channels() == 1);
   double fx = request->fx();
@@ -75,12 +77,12 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   
   
   this->_numClients--;  
+  std::string result = none;
   if (!results.empty()) {
-    response->set_foundname(results.at(0));
-    return grpc::Status::OK;
-  } else {
-    return grpc::Status::CANCELLED;
+    result = std::move(results.at(0));
   }
+  response->set_foundname(result);
+  return grpc::Status::OK;
 }
 
 

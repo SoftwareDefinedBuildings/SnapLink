@@ -24,6 +24,7 @@ public slots:
   void run();
 
 private:
+  static const std::string none;
   QThread _thread;
   std::string _serverAddress;
   std::atomic<unsigned int> _numClients;
