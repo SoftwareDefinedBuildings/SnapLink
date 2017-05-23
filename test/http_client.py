@@ -60,17 +60,12 @@ def test_file(filename):
     r = requests.post(SERVER_ADDR, files=files)
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
-    resultFile = open("410DemoTest.txt", "a+")
     if r.text != obj_name:
         text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         print text
-        resultFile.write("fail: " + filename + " \n")
-        resultFile.close()
         return RESULT_FAIL, elapsed_time
     else:
         print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
-        resultFile.write("pass: " + filename + " \n")
-        resultFile.close()
         return RESULT_PASS, elapsed_time
 
 
