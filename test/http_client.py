@@ -10,7 +10,7 @@ import requests
 import time
 from PIL import Image, ExifTags
 
-SERVER_ADDR = "http://localhost:8081"
+SERVER_ADDR = "http://localhost:8080"
 
 RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1

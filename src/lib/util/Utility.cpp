@@ -5,7 +5,9 @@
 #include <rtabmap/core/util3d.h>
 #include <stddef.h>
 #include <sys/time.h>
-
+#include <zbar.h> 
+#include <opencv2/imgproc/imgproc.hpp>  
+#include <opencv2/core/core.hpp>
 unsigned long long Utility::getTime() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
@@ -40,4 +42,20 @@ bool Utility::isInFrontOfCamera(const cv::Point3f &point,
   pcl::PointXYZ pointPCL(point.x, point.y, point.z);
   pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, pose.toEigen3f());
   return newPointPCL.z > 0;
+}
+
+bool Utility::qrExtract(const cv::Mat &im, std::vector<std::string> &results) {
+  std::cout<<"Qr extracting\n";
+  zbar::ImageScanner scanner;   
+  scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);   
+  uchar *raw = (uchar *)im.data;
+  int width = im.cols;
+  int height = im.rows;
+  zbar::Image image(width, height, "Y800", raw, width * height);
+  int n = scanner.scan(image); 
+  for(zbar::Image::SymbolIterator symbol = image.symbol_begin();  symbol != image.symbol_end(); ++symbol) {
+  std::cout << "decoded " << symbol->get_type_name() << " symbol "<< symbol->get_data() << std::endl; 
+  results.push_back(symbol->get_data());
+  } 
+  return true; 
 }

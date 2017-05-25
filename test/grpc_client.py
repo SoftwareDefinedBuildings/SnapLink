@@ -19,7 +19,7 @@ import GrpcService_pb2
 import GrpcService_pb2_grpc
 
 
-SERVER_ADDR = "0.0.0.0:8080"
+SERVER_ADDR = "0.0.0.0:8081"
 
 RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1

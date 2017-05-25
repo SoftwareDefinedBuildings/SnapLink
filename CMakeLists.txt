@@ -5,7 +5,8 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
+set(CMAKE_MODULE_PATH ${ZBARCV_SOURCE_DIR})
+find_package(ZBar0)
 find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
@@ -25,6 +26,7 @@ set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
 set(INCLUDE_DIRS
+    ${ZBAR_INCLUDE_DIRS}
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
@@ -38,6 +40,7 @@ set(INCLUDE_DIRS
 )
 
 set(LIBRARIES
+    ${ZBAR_LIBRARY}
     ${PROTOBUF_LIBRARY}
     ${GRPC_LIBRARIES}
     ${Qt5Core_LIBRARIES}
@@ -56,28 +59,6 @@ set(CellMate_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/")
 
 include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries
 include_directories(${CellMate_SOURCE_DIR})
-
-# Protobuf
-#set(PROTO_PATH "${PROJECT_SOURCE_DIR}/src/lib/front_end/grpc/proto")
-#set(PROTO_FILES "${PROTO_PATH}/*.proto")
-#set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated/proto")
-#file(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
-#include_directories(SYSTEM ${GENERATED_PROTOBUF_PATH})
-#set(GENERATED_PROTO_SOURCES
-#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.h"
-#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
-#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.h"
-#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc")
-
-#set_source_files_properties(${GENERATED_PROTO_SOURCES} PROPERTIES COMPILE_FLAGS "-w")
-
-#add_custom_command(
-#    OUTPUT ${GENERATED_PROTO_SOURCES}
-#    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
-#    ARGS "--proto_path=${PROTO_PATH}"
-#         "--cpp_out=${GENERATED_PROTOBUF_PATH}"
-#         "${PROTO_FILES}"
-#    )
 
 # GRPC
 set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
@@ -111,8 +92,6 @@ add_custom_command(
     )
 
 set(SOURCES
-	#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
-	#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc"
     "${GENERATED_GRPC_PATH}/GrpcService.pb.cc"
     "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.cc"
     "${CellMate_SOURCE_DIR}/lib/front_end/http/HTTPFrontEnd.cpp"
@@ -145,7 +124,7 @@ set(SOURCES
 
 add_executable(cellmate ${SOURCES})
 
-target_link_libraries(cellmate ${LIBRARIES})
+target_link_libraries(cellmate ${LIBRARIES} zbar)
 
 set_property(TARGET cellmate PROPERTY CXX_STANDARD 14)
 

@@ -13,7 +13,7 @@ class Utility final {
 public:
   /* Returns current time in milliseconds. */
   static unsigned long long getTime();
-
+  static bool qrExtract(const cv::Mat &image, std::vector<std::string> &results);
   static bool getPoint3World(const Image &image, const cv::Point2f &point2,
                              cv::Point3f &point3);
 
