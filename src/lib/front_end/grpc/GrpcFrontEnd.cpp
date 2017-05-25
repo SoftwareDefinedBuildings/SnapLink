@@ -62,7 +62,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   assert(data.size() > 0);
   bool copyData = false;
   cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
-  //imwrite("image.jpg", image);
+  imwrite("image.jpg", image);
   assert(image.type() == CV_8U);
   assert(image.channels() == 1);
   double fx = request->fx();

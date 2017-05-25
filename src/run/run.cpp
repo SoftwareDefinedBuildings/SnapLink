@@ -131,7 +131,7 @@ int Run::run(int argc, char *argv[]) {
 
   std::unique_ptr<FrontEnd> grpcFrontEnd;
   if(grpc == true) {
-    std::cerr << "initializing GRPC front end" << std::endl;
+    std::cerr << "initializing GRPC front end"<<grpcPort << std::endl;
     grpcFrontEnd = std::make_unique<GrpcFrontEnd>(grpcPort, MAX_CLIENTS);
     if(grpcFrontEnd->start() == false) {
       std::cerr << "starting GRPC front end failed";

@@ -51,11 +51,13 @@ bool Utility::qrExtract(const cv::Mat &im, std::vector<std::string> &results) {
   uchar *raw = (uchar *)im.data;
   int width = im.cols;
   int height = im.rows;
+  std::cout<<"Widith = "<<width<<" Height = "<<height<<std::endl;
   zbar::Image image(width, height, "Y800", raw, width * height);
   int n = scanner.scan(image); 
+  std::cout<<"n is "<<n<<std::endl;
   for(zbar::Image::SymbolIterator symbol = image.symbol_begin();  symbol != image.symbol_end(); ++symbol) {
-  std::cout << "decoded " << symbol->get_type_name() << " symbol "<< symbol->get_data() << std::endl; 
-  results.push_back(symbol->get_data());
+    std::cout << "decoded " << symbol->get_type_name() << " symbol "<< symbol->get_data() << std::endl; 
+    results.push_back(symbol->get_data());
   } 
   return true; 
 }
