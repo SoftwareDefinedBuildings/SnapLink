@@ -28,11 +28,11 @@ int Run::run(int argc, char *argv[]) {
       ("help,h", "print help message") //
       ("http,H", po::value<bool>(&http)->default_value(true),
        "run HTTP front end") //
-      ("http-port", po::value<int>(&httpPort)->default_value(8081),
+      ("http-port", po::value<int>(&httpPort)->default_value(8080),
        "the port that HTTP front end binds to") //
       ("grpc,G", po::value<bool>(&grpc)->default_value(false),
        "run GRPC front end") //
-      ("grpc-port", po::value<int>(&grpcPort)->default_value(8080),
+      ("grpc-port", po::value<int>(&grpcPort)->default_value(8081),
        "the port that GRPC front end binds to") //
       ("bosswave,B", po::value<bool>(&bosswave)->default_value(false),
        "run BOSSWAVE front end") //
@@ -177,6 +177,10 @@ std::vector<std::string> Run::identify(const cv::Mat &image,
   long startTime;
   long totalStartTime = Utility::getTime();
 
+  // qr extraction
+  if(Utility::qrExtract(image, results)){
+    return results;
+  }
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;
