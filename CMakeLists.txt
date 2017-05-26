@@ -5,8 +5,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_MODULE_PATH ${ZBARCV_SOURCE_DIR})
-find_package(ZBar0)
+
 find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
@@ -23,10 +22,10 @@ set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 set(BW_INCLUDE_DIRS "/usr/local/Qt-5.8.0/qml/io/bw2/")
 set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
 
+set(ZBAR_LIBRARIES zbar)
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
 set(INCLUDE_DIRS
-    ${ZBAR_INCLUDE_DIRS}
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
@@ -40,7 +39,7 @@ set(INCLUDE_DIRS
 )
 
 set(LIBRARIES
-    ${ZBAR_LIBRARY}
+    ${ZBAR_LIBRARIES}
     ${PROTOBUF_LIBRARY}
     ${GRPC_LIBRARIES}
     ${Qt5Core_LIBRARIES}
@@ -105,6 +104,7 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/lib/data/Word.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Room.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Image.cpp"
+    "${CellMate_SOURCE_DIR}/lib/data/FoundItem.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/CameraModel.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/WordSearch.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/RoomSearch.cpp"
@@ -124,7 +124,7 @@ set(SOURCES
 
 add_executable(cellmate ${SOURCES})
 
-target_link_libraries(cellmate ${LIBRARIES} zbar)
+target_link_libraries(cellmate ${LIBRARIES})
 
 set_property(TARGET cellmate PROPERTY CXX_STANDARD 14)
 

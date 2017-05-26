@@ -72,14 +72,14 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   int width = image.cols;
   int height = image.rows;
   CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-  std::vector<std::string> results;
+  std::vector<FoundItem> results;
   results = this->getOnQuery()(image, camera);
   
   
   this->_numClients--;  
   std::string result = none;
   if (!results.empty()) {
-    result = std::move(results.at(0));
+    result = std::move(results.at(0).name());
   }
   response->set_foundname(result);
   return grpc::Status::OK;

@@ -1,19 +1,21 @@
 #pragma once
 
-#include "lib/data/Label.h"
 #include <list>
 #include <map>
 #include <memory>
 #include <numeric>
+#include <vector>
 
 class CameraModel;
 class Transform;
+class FoundItem;
+class Label;
 
 class Visibility final {
 public:
   explicit Visibility(const std::map<int, std::vector<Label>> &labels);
 
-  std::vector<std::string> process(int dbId, const CameraModel &camera,
+  std::vector<FoundItem> process(int dbId, const CameraModel &camera,
                                    const Transform &pose) const;
 
 private:

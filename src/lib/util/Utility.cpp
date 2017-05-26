@@ -1,6 +1,7 @@
 #include "lib/util/Utility.h"
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
+#include "lib/data/FoundItem.h"
 #include <pcl/common/transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <stddef.h>
@@ -44,7 +45,7 @@ bool Utility::isInFrontOfCamera(const cv::Point3f &point,
   return newPointPCL.z > 0;
 }
 
-bool Utility::qrExtract(const cv::Mat &im, std::vector<std::string> &results) {
+bool Utility::qrExtract(const cv::Mat &im, std::vector<FoundItem> &results) {
   std::cout<<"Qr extracting\n";
   zbar::ImageScanner scanner;   
   scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);   
@@ -57,7 +58,8 @@ bool Utility::qrExtract(const cv::Mat &im, std::vector<std::string> &results) {
   std::cout<<"n is "<<n<<std::endl;
   for(zbar::Image::SymbolIterator symbol = image.symbol_begin();  symbol != image.symbol_end(); ++symbol) {
     std::cout << "decoded " << symbol->get_type_name() << " symbol "<< symbol->get_data() << std::endl; 
-    results.push_back(symbol->get_data());
+    FoundItem item(symbol->get_data(), symbol->get_location_x(0), symbol->get_location_y(0));
+    results.push_back(item);
   } 
-  return true; 
+  return results.size() > 0;
 }
