@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package cellmate_grpc;
+
+option java_package = "edu.berkeley.cs.sdb.cellmate";
+option java_outer_classname = "CellmateProto";
+
+service GrpcService {
+    rpc onClientQuery(ClientQueryMessage) returns (ServerRespondMessage) {}
+}
+
+message ClientQueryMessage {
+  bytes image = 1;
+  double fx = 2;
+  double fy = 3;
+  double cx = 4;
+  double cy = 5;
+  uint32 width = 6;
+  uint32 height = 7;
+}
+
+message ServerRespondMessage {
+  string foundName = 1;
+}

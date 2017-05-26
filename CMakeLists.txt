@@ -6,6 +6,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(Qt5Gui REQUIRED)
@@ -21,6 +22,8 @@ set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
 set(BW_INCLUDE_DIRS "/usr/local/Qt-5.8.0/qml/io/bw2/")
 set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
 
+set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
+
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
@@ -35,6 +38,8 @@ set(INCLUDE_DIRS
 )
 
 set(LIBRARIES
+    ${PROTOBUF_LIBRARY}
+    ${GRPC_LIBRARIES}
     ${Qt5Core_LIBRARIES}
     ${Qt5Gui_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
@@ -49,10 +54,71 @@ set(LIBRARIES
 
 set(CellMate_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/")
 
+include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries
+include_directories(${CellMate_SOURCE_DIR})
+
+# Protobuf
+#set(PROTO_PATH "${PROJECT_SOURCE_DIR}/src/lib/front_end/grpc/proto")
+#set(PROTO_FILES "${PROTO_PATH}/*.proto")
+#set(GENERATED_PROTOBUF_PATH "${CMAKE_BINARY_DIR}/generated/proto")
+#file(MAKE_DIRECTORY ${GENERATED_PROTOBUF_PATH})
+#include_directories(SYSTEM ${GENERATED_PROTOBUF_PATH})
+#set(GENERATED_PROTO_SOURCES
+#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.h"
+#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
+#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.h"
+#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc")
+
+#set_source_files_properties(${GENERATED_PROTO_SOURCES} PROPERTIES COMPILE_FLAGS "-w")
+
+#add_custom_command(
+#    OUTPUT ${GENERATED_PROTO_SOURCES}
+#    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+#    ARGS "--proto_path=${PROTO_PATH}"
+#         "--cpp_out=${GENERATED_PROTOBUF_PATH}"
+#         "${PROTO_FILES}"
+#    )
+
+# GRPC
+set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
+set(GRPC_PATH "${PROJECT_SOURCE_DIR}/src/lib/front_end/grpc/grpc")
+set(GRPC_FILES "${GRPC_PATH}/*.proto")
+
+set(GENERATED_GRPC_PATH "${CMAKE_BINARY_DIR}/generated/grpc")
+file(MAKE_DIRECTORY ${GENERATED_GRPC_PATH})
+include_directories(SYSTEM ${GENERATED_GRPC_PATH})
+set(GENERATED_GRPC_SOURCES
+    "${GENERATED_GRPC_PATH}/GrpcService.pb.h"
+    "${GENERATED_GRPC_PATH}/GrpcService.pb.cc"
+    "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.h"
+    "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.cc")
+
+set_source_files_properties(${GENERATED_GRPC_SOURCES} PROPERTIES COMPILE_FLAGS "-w")
+
+add_custom_command(
+    OUTPUT ${GENERATED_GRPC_SOURCES}
+    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+    ARGS "--proto_path=${PROTO_PATH}"
+         "--proto_path=${GRPC_PATH}"
+         "--grpc_out=${GENERATED_GRPC_PATH}"
+         "--plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN_PATH}"
+         "${GRPC_FILES}"
+    COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
+    ARGS "--proto_path=${PROTO_PATH}"
+         "--proto_path=${GRPC_PATH}"
+         "--cpp_out=${GENERATED_GRPC_PATH}"
+         "${GRPC_FILES}"
+    )
+
 set(SOURCES
+	#    "${GENERATED_PROTOBUF_PATH}/ClientQueryMessage.pb.cc"
+	#    "${GENERATED_PROTOBUF_PATH}/ServerRespondMessage.pb.cc"
+    "${GENERATED_GRPC_PATH}/GrpcService.pb.cc"
+    "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.cc"
     "${CellMate_SOURCE_DIR}/lib/front_end/http/HTTPFrontEnd.cpp"
     "${CellMate_SOURCE_DIR}/lib/front_end/bosswave/BWFrontEnd.cpp"
     "${CellMate_SOURCE_DIR}/lib/front_end/bosswave/BWWorker.cpp"
+    "${CellMate_SOURCE_DIR}/lib/front_end/grpc/GrpcFrontEnd.cpp"
     "${CellMate_SOURCE_DIR}/lib/util/Utility.cpp"
     "${CellMate_SOURCE_DIR}/lib/adapter/rtabmap/RTABMapAdapter.cpp"
     "${CellMate_SOURCE_DIR}/lib/data/Transform.cpp"
@@ -74,8 +140,9 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/label/label.cpp"
     "${CellMate_SOURCE_DIR}/main.cpp")
 
-include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries
-include_directories(${CellMate_SOURCE_DIR})
+
+
+
 
 add_executable(cellmate ${SOURCES})
 

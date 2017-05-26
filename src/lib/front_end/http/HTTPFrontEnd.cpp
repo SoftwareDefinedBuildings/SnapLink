@@ -209,7 +209,7 @@ void HTTPFrontEnd::createData(const std::vector<char> &data, double fx,
   const bool copyData = false;
   image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
 
-  // imwrite("image.jpg", image);
+  //imwrite("image.jpg", image);
 
   int width = image.cols;
   int height = image.rows;
