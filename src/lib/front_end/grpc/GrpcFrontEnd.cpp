@@ -53,7 +53,9 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   {
     std::lock_guard<std::mutex> lock(_mutex);
     if (this->_numClients >= this->_maxClients) {
-      response->set_foundname("Too many clients, server is busy");
+      response->set_name("Too many clients, server is busy");
+      response->set_x(-1);
+      response->set_y(-1);
       return grpc::Status::OK;
     }
     this->_numClients++;
@@ -77,11 +79,15 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   
   
   this->_numClients--;  
-  std::string result = none;
   if (!results.empty()) {
-    result = std::move(results.at(0).name());
+    response->set_name(results[0].name());
+    response->set_x(results[0].x());
+    response->set_y(results[0].y());
+  } else {
+    response->set_name(none);
+    response->set_x(-1);
+    response->set_y(-1);
   }
-  response->set_foundname(result);
   return grpc::Status::OK;
 }
 

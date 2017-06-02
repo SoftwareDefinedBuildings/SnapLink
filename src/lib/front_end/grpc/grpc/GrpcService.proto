@@ -20,11 +20,8 @@ message ClientQueryMessage {
 }
 
 message ServerRespondMessage {
-  repeated  foundItem = 1;
-}
-
-message foundItem {
   string name = 1;
   double x = 2;
   double y = 3;
 }
+
