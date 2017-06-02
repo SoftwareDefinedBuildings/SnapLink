@@ -4,7 +4,7 @@
 #include "lib/util/Utility.h"
 #include <fstream>
 #include <iostream>
-#include <opencv/cv.h>
+#include <opencv2/opencv.hpp>
 #include <pcl/point_types.h>
 
 Visibility::Visibility(const std::map<int, std::vector<Label>> &labels)

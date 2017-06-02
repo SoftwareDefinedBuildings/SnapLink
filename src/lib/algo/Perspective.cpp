@@ -3,6 +3,7 @@
 #include "lib/data/Transform.h"
 #include "lib/util/Utility.h"
 #include <cassert>
+#include <opencv2/opencv.hpp>
 #include <pcl/common/transforms.h>
 
 Perspective::Perspective(const std::map<int, Room> &rooms,

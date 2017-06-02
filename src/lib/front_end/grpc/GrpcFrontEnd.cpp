@@ -1,8 +1,11 @@
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
 #include "lib/data/CameraModel.h"
+#include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <string>
+
 const std::string GrpcFrontEnd::none = "None";
+
 GrpcFrontEnd::GrpcFrontEnd(int grpcServerAddr, unsigned int maxClients) {
   _numClients = 0;
   _serverAddress = std::to_string(grpcServerAddr);
@@ -49,6 +52,7 @@ void GrpcFrontEnd::stop() {
 grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
                                          const cellmate_grpc::ClientQueryMessage *request,
                                          cellmate_grpc::ServerRespondMessage *response) {
+  (void) context; // ignore that variable without causing warnings
 
   {
     std::lock_guard<std::mutex> lock(_mutex);
