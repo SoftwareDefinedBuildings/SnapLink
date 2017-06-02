@@ -111,6 +111,7 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/lib/algo/Visibility.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/Feature.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/Perspective.cpp"
+    "${CellMate_SOURCE_DIR}/lib/algo/WordCluster.cpp"
     "${CellMate_SOURCE_DIR}/run/run.cpp"
     "${CellMate_SOURCE_DIR}/label/res/label_dot.qrc"
     "${CellMate_SOURCE_DIR}/label/widget.cpp"

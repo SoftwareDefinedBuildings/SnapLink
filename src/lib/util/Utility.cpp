@@ -15,6 +15,26 @@ unsigned long long Utility::getTime() {
   return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
+void Utility::showProgress(float progress) {
+  assert(progress >= 0);
+  assert(progress <= 1);
+  const int barWidth = 70;
+
+  std::cout << "[";
+  int pos = barWidth * progress;
+  for (int i = 0; i < barWidth; i++) {
+    if (i < pos) {
+      std::cout << "=";
+    } else if (i == pos) {
+      std::cout << ">";
+    } else {
+      std::cout << " ";
+    }
+  }
+  std::cout << "] " << static_cast<int>(progress * 100.0) << " %\r";
+  std::cout.flush();
+}
+
 bool Utility::getPoint3World(const Image &image, const cv::Point2f &point2,
                              cv::Point3f &point3) {
   Transform pose = image.getPose();

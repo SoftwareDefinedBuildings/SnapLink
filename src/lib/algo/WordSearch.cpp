@@ -7,7 +7,7 @@ WordSearch::WordSearch(const std::map<int, Word> &words)
 }
 
 std::vector<int> WordSearch::search(const cv::Mat &descriptors) const {
-  int k = 1;
+  const int k = 1;
   std::vector<int> resultIds(descriptors.rows, 0);
 
   if (_words.size() > 0 && descriptors.rows > 0) {

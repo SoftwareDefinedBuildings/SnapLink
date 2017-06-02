@@ -118,8 +118,6 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
 
     return respond(connection, result, MHD_HTTP_OK);
   }
-
-  return respond(connection, none, MHD_HTTP_BAD_REQUEST);
 }
 
 int HTTPFrontEnd::iteratePost(void *coninfo_cls, enum MHD_ValueKind kind,
