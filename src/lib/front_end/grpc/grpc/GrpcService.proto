@@ -20,5 +20,8 @@ message ClientQueryMessage {
 }
 
 message ServerRespondMessage {
-  string foundName = 1;
+  string name = 1;
+  double x = 2;
+  double y = 3;
 }
+

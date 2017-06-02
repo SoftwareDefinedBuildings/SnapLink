@@ -1,5 +1,6 @@
 #include "run/run.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
 #include "lib/data/Transform.h"
 #include "lib/front_end/bosswave/BWFrontEnd.h"
@@ -28,11 +29,11 @@ int Run::run(int argc, char *argv[]) {
       ("help,h", "print help message") //
       ("http,H", po::value<bool>(&http)->default_value(true),
        "run HTTP front end") //
-      ("http-port", po::value<int>(&httpPort)->default_value(8081),
+      ("http-port", po::value<int>(&httpPort)->default_value(8080),
        "the port that HTTP front end binds to") //
       ("grpc,G", po::value<bool>(&grpc)->default_value(false),
        "run GRPC front end") //
-      ("grpc-port", po::value<int>(&grpcPort)->default_value(8080),
+      ("grpc-port", po::value<int>(&grpcPort)->default_value(8081),
        "the port that GRPC front end binds to") //
       ("bosswave,B", po::value<bool>(&bosswave)->default_value(false),
        "run BOSSWAVE front end") //
@@ -105,6 +106,7 @@ int Run::run(int argc, char *argv[]) {
       std::make_unique<Perspective>(rooms, words, corrLimit, distRatio);
   _visibility = std::make_unique<Visibility>(labels);
 
+  
   std::unique_ptr<FrontEnd> httpFrontEnd;
   if (http == true) {
     std::cout << "initializing HTTP front end" << std::endl;
@@ -128,10 +130,10 @@ int Run::run(int argc, char *argv[]) {
     bwFrontEnd->registerOnQuery(std::bind(
         &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
   }
-
+  
   std::unique_ptr<FrontEnd> grpcFrontEnd;
   if(grpc == true) {
-    std::cerr << "initializing GRPC front end" << std::endl;
+    std::cerr << "initializing GRPC front end"<<grpcPort << std::endl;
     grpcFrontEnd = std::make_unique<GrpcFrontEnd>(grpcPort, MAX_CLIENTS);
     if(grpcFrontEnd->start() == false) {
       std::cerr << "starting GRPC front end failed";
@@ -170,13 +172,17 @@ void Run::printTime(long total, long feature, long wordSearch, long roomSearch,
 }
 
 // must be thread safe
-std::vector<std::string> Run::identify(const cv::Mat &image,
+std::vector<FoundItem> Run::identify(const cv::Mat &image,
                                        const CameraModel &camera) {
-  std::vector<std::string> results;
+  std::vector<FoundItem> results;
 
   long startTime;
   long totalStartTime = Utility::getTime();
 
+  // qr extraction
+  if(Utility::qrExtract(image, results)){
+    return results;
+  }
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;

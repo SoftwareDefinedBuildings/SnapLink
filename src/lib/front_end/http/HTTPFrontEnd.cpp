@@ -1,4 +1,5 @@
 #include "lib/front_end/http/HTTPFrontEnd.h"
+#include "lib/data/FoundItem.h"
 #include <cstdlib>
 #include <string.h>
 #include <strings.h>
@@ -90,7 +91,7 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
 
     return MHD_YES;
   } else {
-    std::vector<std::string> results;
+    std::vector<FoundItem> results;
 
     // all data are received
     if (!connInfo->imageRaw.empty()) {
@@ -112,7 +113,7 @@ int HTTPFrontEnd::answerConnection(void *cls, struct MHD_Connection *connection,
 
     std::string result = none;
     if (!results.empty()) {
-      result = std::move(results.at(0));
+      result = std::move(results.at(0).name());
     }
 
     return respond(connection, result, MHD_HTTP_OK);

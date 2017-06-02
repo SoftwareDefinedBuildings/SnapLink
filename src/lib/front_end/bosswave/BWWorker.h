@@ -15,12 +15,13 @@
 #define IMAGE_INIT_SIZE 100000
 #define BW_MSG_LENGTH 9
 
+class FoundItem;
 class BWWorker final : public QObject {
   Q_OBJECT
 
 public:
   explicit BWWorker(PMessage message,
-                    std::function<std::vector<std::string>(
+                    std::function<std::vector<FoundItem>(
                         const cv::Mat &image, const CameraModel &camera)>
                         onQuery,
                     std::atomic<unsigned int> &_numClients);
@@ -40,7 +41,7 @@ private:
 private:
   static const std::string none;
   PMessage _msg;
-  std::function<std::vector<std::string>(const cv::Mat &image,
+  std::function<std::vector<FoundItem>(const cv::Mat &image,
                                          const CameraModel &camera)>
       _onQuery;
   std::atomic<unsigned int> &_numClients;

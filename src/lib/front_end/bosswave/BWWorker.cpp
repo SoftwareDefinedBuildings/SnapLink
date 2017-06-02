@@ -1,9 +1,9 @@
 #include "lib/front_end/bosswave/BWWorker.h"
-
+#include "lib/data/FoundItem.h"
 const std::string BWWorker::none = "None";
 
 BWWorker::BWWorker(PMessage message,
-                   std::function<std::vector<std::string>(
+                   std::function<std::vector<FoundItem>(
                        const cv::Mat &image, const CameraModel &camera)>
                        onQuery,
                    std::atomic<unsigned int> &numClients)
@@ -42,11 +42,11 @@ void BWWorker::process() {
   }
 
   // blocking wait
-  std::vector<std::string> results = _onQuery(image, camera);
+  std::vector<FoundItem> results = _onQuery(image, camera);
 
   std::string result = none;
   if (!results.empty()) {
-    result = std::move(results.at(0));
+    result = std::move(results.at(0).name());
   }
 
   std::cerr << "DEBUG: emmiting done()" << std::endl;
