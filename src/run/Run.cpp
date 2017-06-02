@@ -1,5 +1,6 @@
 #include "run/Run.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
 #include "lib/data/Transform.h"
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
@@ -126,13 +127,17 @@ void Run::printTime(long total, long feature, long wordSearch, long roomSearch,
 }
 
 // must be thread safe
-std::vector<std::string> Run::identify(const cv::Mat &image,
+std::vector<FoundItem> Run::identify(const cv::Mat &image,
                                        const CameraModel &camera) {
-  std::vector<std::string> results;
+  std::vector<FoundItem> results;
 
   long startTime;
   long totalStartTime = Utility::getTime();
 
+  // qr extraction
+  if(Utility::qrExtract(image, results)){
+    return results;
+  }
   // feature extraction
   std::vector<cv::KeyPoint> keyPoints;
   cv::Mat descriptors;

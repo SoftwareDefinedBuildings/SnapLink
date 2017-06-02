@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import division
-
-import grpc
-import subprocess
 import glob
 import os
 import sys
@@ -13,13 +10,7 @@ import requests
 import time
 from PIL import Image, ExifTags
 
-subprocess.call(["python", "-m", "grpc_tools.protoc", "-I=../src/lib/front_end/grpc/grpc/", "--python_out=.", "--grpc_python_out=." , "../src/lib/front_end/grpc/grpc/GrpcService.proto"])
-
-import GrpcService_pb2
-import GrpcService_pb2_grpc
-
-
-SERVER_ADDR = "0.0.0.0:8081"
+SERVER_ADDR = "http://localhost:8080"
 
 RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1
@@ -64,19 +55,17 @@ def test_file(filename):
     _, jpg = cv2.imencode('.jpg', img)
 
     print filename, 'width:', width, 'height:', height
-    
-    channel = grpc.insecure_channel(SERVER_ADDR)
-    stub = GrpcService_pb2_grpc.GrpcServiceStub(channel)
+    files = {'file': (filename, jpg.tostring()), 'fx': str(562.25), 'fy': str(562.25), 'cx': str(240), 'cy': str(320)}
     t0 = time.time()
-    r = stub.onClientQuery(GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height))
+    r = requests.post(SERVER_ADDR, files=files)
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
-    if r.foundName != obj_name:
-        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.foundName, obj_name, elapsed_time)
+    if r.text != obj_name:
+        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         print text
         return RESULT_FAIL, elapsed_time
     else:
-        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.foundName, obj_name, elapsed_time)
+        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.text, obj_name, elapsed_time)
         return RESULT_PASS, elapsed_time
 
 
@@ -103,7 +92,6 @@ def test_dir(directory):
         print "No image found"
 
 if __name__ == "__main__":
-
     if len(sys.argv) == 2:
         path = sys.argv[-1]
         if os.path.isdir(path):

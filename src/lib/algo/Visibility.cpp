@@ -1,6 +1,8 @@
 #include "lib/algo/Visibility.h"
 #include "lib/data/CameraModel.h"
 #include "lib/data/Transform.h"
+#include "lib/data/FoundItem.h"
+#include "lib/data/Label.h"
 #include "lib/util/Utility.h"
 #include <fstream>
 #include <iostream>
@@ -10,7 +12,7 @@
 Visibility::Visibility(const std::map<int, std::vector<Label>> &labels)
     : _labels(labels) {}
 
-std::vector<std::string> Visibility::process(int dbId,
+std::vector<FoundItem> Visibility::process(int dbId,
                                              const CameraModel &camera,
                                              const Transform &pose) const {
   std::vector<cv::Point3f> points;
@@ -20,7 +22,7 @@ std::vector<std::string> Visibility::process(int dbId,
     names.emplace_back(label.getName());
   }
 
-  std::vector<std::string> results;
+  std::vector<FoundItem> results;
 
   std::cout << "processing transform" << std::endl << pose << std::endl;
 
@@ -70,6 +72,7 @@ std::vector<std::string> Visibility::process(int dbId,
     }
   }
 
+  std::string minlabel;
   if (!distances.empty()) {
     // find the label with minimum mean distance
     std::pair<std::string, std::vector<double>> minDist =
@@ -77,10 +80,13 @@ std::vector<std::string> Visibility::process(int dbId,
     std::string minlabel = minDist.first;
     std::cout << "Nearest label " << minlabel << " with mean distance "
               << CompareMeanDist::meanDist(minDist.second) << std::endl;
-    results.emplace_back(minlabel);
+    //results.emplace_back(minlabel);
   } else {
     std::cout << "No label is qualified" << std::endl;
   }
+
+  //TODO: right now x and y are hardcoded, and it only return 1 nearst result, need to modify it to return multiple, as well as position
+  results.push_back(FoundItem(minlabel, -1, -1));
   return results;
 }
 

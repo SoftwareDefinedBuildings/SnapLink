@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lib/data/CameraModel.h"
+#include "lib/data/FoundItem.h"
 #include <functional>
 #include <memory>
 #include <vector>
@@ -22,7 +23,7 @@ public:
   /**
    * register a callback function
    */
-  void registerOnQuery(std::function<std::vector<std::string>(
+  void registerOnQuery(std::function<std::vector<FoundItem>(
                            const cv::Mat &image, const CameraModel &camera)>
                            onQuery) {
     _onQuery = onQuery;
@@ -31,14 +32,14 @@ public:
   /**
    * call the callback function
    */
-  std::function<std::vector<std::string>(const cv::Mat &image,
+  std::function<std::vector<FoundItem>(const cv::Mat &image,
                                          const CameraModel &camera)>
   getOnQuery() {
     return _onQuery;
   }
 
 private:
-  std::function<std::vector<std::string>(const cv::Mat &image,
+  std::function<std::vector<FoundItem>(const cv::Mat &image,
                                          const CameraModel &camera)>
       _onQuery;
 };

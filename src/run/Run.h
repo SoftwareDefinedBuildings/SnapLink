@@ -15,7 +15,7 @@
 namespace po = boost::program_options;
 
 class CameraModel;
-
+class FoundItem;
 class Run final {
 public:
   int run(int argc, char *argv[]);
@@ -26,7 +26,7 @@ private:
   static void printTime(long total, long feature, long wordSearch,
                         long roomSearch, long perspective, long visibility);
   // must be thread-safe
-  std::vector<std::string> identify(const cv::Mat &image,
+  std::vector<FoundItem> identify(const cv::Mat &image,
                                     const CameraModel &camera);
 
 private:
