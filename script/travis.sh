@@ -5,7 +5,7 @@ set -e
 apt-get install -y python-imaging
 apt-get install -y python-requests
 apt-get install -y wget
-
+python -m pip install grpcio
 cmake ..
 
 make 
