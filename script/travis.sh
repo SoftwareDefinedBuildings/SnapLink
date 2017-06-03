@@ -1,12 +1,13 @@
 #!/bin/bash
 
-#set -e
+set -e
 
 apt-get install -y python-imaging
 apt-get install -y python-requests
 apt-get install -y wget
 
 cmake ..
+
 make 
 
 wget -r --no-parent https://people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
@@ -29,7 +30,7 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
           done
         done <tail.txt    
         
-        if [ $result -eq 1 ]
+        if [ $result -ne 0 ]
         then 
             exit 1
         fi
