@@ -9,7 +9,6 @@ import os
 import sys
 import numpy as np
 import cv2
-import requests
 import time
 from PIL import Image, ExifTags
 
@@ -30,13 +29,6 @@ def test_file(filename):
 
     img = Image.open(filename)
     width, height = img.size
-    if height/width == 480/640:
-        width, height = 640, 480
-    elif width/height == 480/640:
-        width, height = 480, 640
-    else:
-        print "wrong image aspect ratio"
-        return RESULT_BAD_FORMAT, 0
 
     for orientation in ExifTags.TAGS.keys():
         if ExifTags.TAGS[orientation]=='Orientation':
