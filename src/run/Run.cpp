@@ -1,10 +1,8 @@
-#include "run/run.h"
+#include "run/Run.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
 #include "lib/data/Transform.h"
-#include "lib/front_end/bosswave/BWFrontEnd.h"
-#include "lib/front_end/http/HTTPFrontEnd.h"
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
 #include "lib/util/Utility.h"
 #include <QCoreApplication>
@@ -13,12 +11,7 @@
 
 int Run::run(int argc, char *argv[]) {
   // Parse arguments
-  bool http;
-  int httpPort;
-  bool grpc;
-  int grpcPort;
-  bool bosswave;
-  std::string bosswaveURI;
+  int port;
   int featureLimit;
   int corrLimit;
   float distRatio;
@@ -27,19 +20,8 @@ int Run::run(int argc, char *argv[]) {
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
-      ("http,H", po::value<bool>(&http)->default_value(true),
-       "run HTTP front end") //
-      ("http-port", po::value<int>(&httpPort)->default_value(8080),
-       "the port that HTTP front end binds to") //
-      ("grpc,G", po::value<bool>(&grpc)->default_value(false),
-       "run GRPC front end") //
-      ("grpc-port", po::value<int>(&grpcPort)->default_value(8081),
+      ("port", po::value<int>(&port)->default_value(8080),
        "the port that GRPC front end binds to") //
-      ("bosswave,B", po::value<bool>(&bosswave)->default_value(false),
-       "run BOSSWAVE front end") //
-      ("bosswave-uri", po::value<std::string>(&bosswaveURI)
-                           ->default_value("scratch.ns/cellmate"),
-       "the URI that BOSSWAVE front end subscribes to") //
       ("feature-limit", po::value<int>(&featureLimit)->default_value(0),
        "limit the number of features used") //
       ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
@@ -106,42 +88,15 @@ int Run::run(int argc, char *argv[]) {
       std::make_unique<Perspective>(rooms, words, corrLimit, distRatio);
   _visibility = std::make_unique<Visibility>(labels);
 
-  
-  std::unique_ptr<FrontEnd> httpFrontEnd;
-  if (http == true) {
-    std::cout << "initializing HTTP front end" << std::endl;
-    httpFrontEnd = std::make_unique<HTTPFrontEnd>(httpPort, MAX_CLIENTS);
-    if (httpFrontEnd->start() == false) {
-      std::cerr << "starting HTTP front end failed";
-      return 1;
-    }
-    httpFrontEnd->registerOnQuery(std::bind(
-        &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
+  std::unique_ptr<FrontEnd> frontEnd;
+  std::cerr << "initializing GRPC front end" << std::endl;
+  frontEnd = std::make_unique<GrpcFrontEnd>(port, MAX_CLIENTS);
+  if(frontEnd->start() == false) {
+    std::cerr << "starting GRPC front end failed";
+    return 1;
   }
-
-  std::unique_ptr<FrontEnd> bwFrontEnd;
-  if (bosswave == true) {
-    std::cerr << "initializing BOSSWAVE front end" << std::endl;
-    bwFrontEnd = std::make_unique<BWFrontEnd>(bosswaveURI);
-    if (bwFrontEnd->start() == false) {
-      std::cerr << "starting BOSSWAVE front end failed";
-      return 1;
-    }
-    bwFrontEnd->registerOnQuery(std::bind(
-        &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
-  }
-  
-  std::unique_ptr<FrontEnd> grpcFrontEnd;
-  if(grpc == true) {
-    std::cerr << "initializing GRPC front end"<<grpcPort << std::endl;
-    grpcFrontEnd = std::make_unique<GrpcFrontEnd>(grpcPort, MAX_CLIENTS);
-    if(grpcFrontEnd->start() == false) {
-      std::cerr << "starting GRPC front end failed";
-      return 1;
-    }
-    grpcFrontEnd->registerOnQuery(std::bind(
-        &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
-  }
+  frontEnd->registerOnQuery(std::bind(
+      &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
   std::cout << "Initialization Done" << std::endl;
 
   return app.exec();

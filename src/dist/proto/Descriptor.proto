@@ -1,7 +1,0 @@
-syntax = "proto3";
-
-package proto;
-
-message Descriptor {
-  repeated float values = 1;
-}

@@ -7,6 +7,7 @@
 #include <mutex>  
 #include "GrpcService.grpc.pb.h"
 #include <grpc++/grpc++.h>
+
 class GrpcFrontEnd final : public QObject, public cellmate_grpc::GrpcService::Service, public FrontEnd{
   Q_OBJECT
 

@@ -1,16 +1,10 @@
-#include "label/label.h"
-#include "label/widget.h"
+#include "label/Labeler.h"
+#include "label/Widget.h"
 #include <QApplication>
 #include <QResource>
-#include <boost/program_options.hpp>
 #include <iostream>
 
-namespace po = boost::program_options;
-
-static void printInvalid(const std::vector<std::string> &opts);
-static void printUsage(const po::options_description &desc);
-
-int label(int argc, char *argv[]) {
+int Labeler::run(int argc, char *argv[]) {
   // Parse arguments
   std::string dbFile;
 
@@ -69,7 +63,7 @@ int label(int argc, char *argv[]) {
   return a.exec();
 }
 
-static void printInvalid(const std::vector<std::string> &opts) {
+void Labeler::printInvalid(const std::vector<std::string> &opts) {
   std::cerr << "invalid options: ";
   for (const auto &opt : opts) {
     std::cerr << opt << " ";
@@ -77,7 +71,7 @@ static void printInvalid(const std::vector<std::string> &opts) {
   std::cerr << std::endl;
 }
 
-static void printUsage(const po::options_description &desc) {
+void Labeler::printUsage(const po::options_description &desc) {
   std::cout << "cellmate label [command options] db_file" << std::endl
             << std::endl
             << desc << std::endl;
