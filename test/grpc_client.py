@@ -63,12 +63,12 @@ def test_file(filename):
     r = stub.onClientQuery(GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height))
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
-    if r.foundName != obj_name:
-        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.foundName, obj_name, elapsed_time)
+    if r.name != obj_name:
+        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name, obj_name, elapsed_time)
         print text
         return RESULT_FAIL, elapsed_time
     else:
-        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.foundName, obj_name, elapsed_time)
+        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name, obj_name, elapsed_time)
         return RESULT_PASS, elapsed_time
 
 
