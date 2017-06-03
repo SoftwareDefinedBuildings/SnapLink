@@ -41,7 +41,7 @@ source $HOME/.bashrc
 apt-get install -y libxt-dev
 
 # Clone VTK to the traget tag
-git clone -b v7.1.0 --single-branch --depth 1 https://github.com/Kitware/VTK $HOME/workspace/VTK
+git clone -b v7.1.1 --single-branch --depth 1 https://github.com/Kitware/VTK $HOME/workspace/VTK
 
 # Compile and install VTK with Qt
 mkdir -p $HOME/workspace/VTK/build
@@ -87,7 +87,7 @@ make install -j $(nproc)
 apt-get install -y libsqlite3-dev
 
 # Clone RTABMap to the target tag
-git clone -b 0.11.14 --single-branch --depth 1 https://github.com/introlab/rtabmap $HOME/workspace/rtabmap
+git clone -b 0.12.4 --single-branch --depth 1 https://github.com/introlab/rtabmap $HOME/workspace/rtabmap
 
 # Compile and install RTABMap 0.11.14
 mkdir -p $HOME/workspace/rtabmap/build
@@ -97,27 +97,8 @@ make -j $(nproc)
 make install -j $(nproc)
 
 
-## BOSSWAVE
-#Install prerequisites
-apt-get install -y curl
-
-# Install BOSSWAVE 2
-curl get.bw2.io/agent | bash
-
-# Clone qtlibbw, which is the C++ binding for BOSSWAVE, and its submodules
-git clone --recurse-submodules https://github.com/immesys/qtlibbw $HOME/workspace/qtlibbw
-
-# Compile and install qtlibbw
-mkdir -p $HOME/workspace/qtlibbw/build
-cd $HOME/workspace/qtlibbw/build
-$QT_PATH/bin/qmake ../bosswave.pro
-make -j $(nproc)
-make install -j $(nproc)
-cp $HOME/workspace/qtlibbw/*.h $QT_PATH/qml/io/bw2/
-
-
-## Libmicrohttpd
-apt-get install -y libmicrohttpd-dev
+## Libzbar
+apt-get install -y libzbar-dev
 
 
 ## GRPC and Protobuf
@@ -126,7 +107,7 @@ apt-get install -y libmicrohttpd-dev
 apt-get install -y autoconf libtool
 
 #Clone latest GRPC and init its submodules
-git clone -b v1.2.0 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $HOME/workspace/grpc
+git clone -b v1.3.4 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $HOME/workspace/grpc
 
 #Compile and install GRPC
 cd $HOME/workspace/grpc
