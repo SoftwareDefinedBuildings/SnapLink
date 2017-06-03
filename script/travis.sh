@@ -19,7 +19,7 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
     do
       if [ "$line" == "Initialization Done" ]
       then 
-        python ../test/http_client.py $DATA_PATH/test/ | tail -1 >  tail.txt
+        python ../test/grpc_client.py $DATA_PATH/test/ | tail -1 >  tail.txt
         result=1
         while read line; do
           for word in $line; do
