@@ -1,6 +1,6 @@
-#include "label/label.h"
-#include "run/run.h"
-#include "vis/vis.h"
+#include "label/Labeler.h"
+#include "run/Run.h"
+#include "vis/Visualizer.h"
 #include <boost/program_options.hpp>
 #include <iostream>
 
@@ -16,13 +16,12 @@ int main(int argc, char *argv[]) {
     if (std::string(argv[1]) == "run") {
       Run run;
       return run.run(argc - 1, argv + 1);
-    } else if (std::string(argv[1]) == "dist") {
-      // TODO
     } else if (std::string(argv[1]) == "vis") {
-      Vis vis;
-      return vis.run(argc - 1, argv + 1);
+      Visualizer visualizer;
+      return visualizer.run(argc - 1, argv + 1);
     } else if (std::string(argv[1]) == "label") {
-      return label(argc - 1, argv + 1);
+      Labeler labeler;
+      return labeler.run(argc - 1, argv + 1);
     }
   }
 

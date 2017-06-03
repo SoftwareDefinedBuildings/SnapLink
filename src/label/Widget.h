@@ -1,14 +1,13 @@
-#ifndef WIDGET_H
-#define WIDGET_H
+#pragma once
 
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
-#include "lib/data/Transform.h"
 #include <QWidget>
 #include <opencv2/core/core.hpp>
 #include <pcl/point_types.h>
 #include <rtabmap/core/DBDriver.h>
 #include <rtabmap/core/Memory.h>
 #include <sqlite3.h>
+
 namespace Ui {
 class Widget;
 }
@@ -45,5 +44,3 @@ private:
   int numImages;
   RTABMapAdapter _adapter;
 };
-
-#endif // WIDGET_H
