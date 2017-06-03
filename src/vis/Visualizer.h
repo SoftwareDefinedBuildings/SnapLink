@@ -7,7 +7,7 @@
 
 namespace po = boost::program_options;
 
-class Vis final {
+class Visualizer final {
 public:
   int run(int argc, char *argv[]);
 

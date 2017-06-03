@@ -1,4 +1,4 @@
-#include "vis/vis.h"
+#include "vis/Visualizer.h"
 #include "lib/algo/Feature.h"
 #include "lib/algo/Perspective.h"
 #include "lib/algo/RoomSearch.h"
@@ -14,7 +14,7 @@
 #include <pcl/common/transforms.h>
 #include <pcl/io/ply_io.h>
 
-int Vis::run(int argc, char *argv[]) {
+int Visualizer::run(int argc, char *argv[]) {
   // Parse arguments
   std::string dbFile;
   std::string camPoseStr;
@@ -185,7 +185,7 @@ int Vis::run(int argc, char *argv[]) {
   return 0;
 }
 
-void Vis::printInvalid(const std::vector<std::string> &opts) {
+void Visualizer::printInvalid(const std::vector<std::string> &opts) {
   std::cerr << "invalid options: ";
   for (const auto &opt : opts) {
     std::cerr << opt << " ";
@@ -193,13 +193,13 @@ void Vis::printInvalid(const std::vector<std::string> &opts) {
   std::cerr << std::endl;
 }
 
-void Vis::printUsage(const po::options_description &desc) {
+void Visualizer::printUsage(const po::options_description &desc) {
   std::cout << "cellmate vis [command options] db_file" << std::endl
             << std::endl
             << desc << std::endl;
 }
 
-Transform Vis::localize(const cv::Mat &image, const CameraModel &camera,
+Transform Visualizer::localize(const cv::Mat &image, const CameraModel &camera,
                         int featureLimit, int corrLimit, double distRatio) {
   const std::map<int, Word> &words = _adapter.getWords();
   const std::map<int, Room> &rooms = _adapter.getRooms();
@@ -228,7 +228,7 @@ Transform Vis::localize(const cv::Mat &image, const CameraModel &camera,
   return pose;
 }
 
-bool Vis::downsample(cv::Mat &image, double &scale) {
+bool Visualizer::downsample(cv::Mat &image, double &scale) {
   cv::Size size = image.size();
   std::cerr << "downsampling image. image width: " << image.size().width
             << ", height: " << image.size().height << std::endl;

@@ -1,4 +1,4 @@
-#include "label/widget.h"
+#include "label/Widget.h"
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
 #include "lib/data/Transform.h"
