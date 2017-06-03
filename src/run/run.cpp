@@ -27,11 +27,11 @@ int Run::run(int argc, char *argv[]) {
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
-      ("http,H", po::value<bool>(&http)->default_value(true),
+      ("http,H", po::value<bool>(&http)->default_value(false),
        "run HTTP front end") //
       ("http-port", po::value<int>(&httpPort)->default_value(8080),
        "the port that HTTP front end binds to") //
-      ("grpc,G", po::value<bool>(&grpc)->default_value(false),
+      ("grpc,G", po::value<bool>(&grpc)->default_value(true),
        "run GRPC front end") //
       ("grpc-port", po::value<int>(&grpcPort)->default_value(8081),
        "the port that GRPC front end binds to") //
