@@ -1,12 +1,14 @@
 #!/bin/bash
 
-#set -e
+set -e
 
 apt-get install -y python-imaging
-apt-get install -y python-requests
 apt-get install -y wget
+apt-get install -y python-pip
+python -m pip install grpcio-tools
 
 cmake ..
+
 make 
 
 wget -r --no-parent https://people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
@@ -18,7 +20,7 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
     do
       if [ "$line" == "Initialization Done" ]
       then 
-        python ../test/http_client.py $DATA_PATH/test/ | tail -1 >  tail.txt
+        python ../test/grpc_client.py $DATA_PATH/test/ | tail -1 >  tail.txt
         result=1
         while read line; do
           for word in $line; do
@@ -29,7 +31,7 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
           done
         done <tail.txt    
         
-        if [ $result -eq 1 ]
+        if [ $result -ne 0 ]
         then 
             exit 1
         fi

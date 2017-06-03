@@ -77,7 +77,7 @@ std::vector<FoundItem> Visibility::process(int dbId,
     // find the label with minimum mean distance
     std::pair<std::string, std::vector<double>> minDist =
         *min_element(distances.begin(), distances.end(), CompareMeanDist());
-    std::string minlabel = minDist.first;
+    minlabel = minDist.first;
     std::cout << "Nearest label " << minlabel << " with mean distance "
               << CompareMeanDist::meanDist(minDist.second) << std::endl;
     //results.emplace_back(minlabel);

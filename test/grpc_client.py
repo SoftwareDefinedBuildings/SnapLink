@@ -9,17 +9,18 @@ import os
 import sys
 import numpy as np
 import cv2
-import requests
 import time
 from PIL import Image, ExifTags
 
-subprocess.call(["python", "-m", "grpc_tools.protoc", "-I=../src/lib/front_end/grpc/grpc/", "--python_out=.", "--grpc_python_out=." , "../src/lib/front_end/grpc/grpc/GrpcService.proto"])
+currentDir = dir_path = os.path.dirname(os.path.realpath(__file__))
+rootDir = currentDir+"/../"
+subprocess.call(["python", "-m", "grpc_tools.protoc", "-I="+ rootDir + "/src/lib/front_end/grpc/grpc/", "--python_out=" + currentDir, "--grpc_python_out=" + currentDir , rootDir + "/src/lib/front_end/grpc/grpc/GrpcService.proto"])
 
 import GrpcService_pb2
 import GrpcService_pb2_grpc
 
 
-SERVER_ADDR = "0.0.0.0:8081"
+SERVER_ADDR = "0.0.0.0:8080"
 
 RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1
@@ -71,12 +72,12 @@ def test_file(filename):
     r = stub.onClientQuery(GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height))
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
-    if r.foundName != obj_name:
-        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.foundName, obj_name, elapsed_time)
+    if r.name != obj_name:
+        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name, obj_name, elapsed_time)
         print text
         return RESULT_FAIL, elapsed_time
     else:
-        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.foundName, obj_name, elapsed_time)
+        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name, obj_name, elapsed_time)
         return RESULT_PASS, elapsed_time
 
 
