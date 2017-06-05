@@ -3,5 +3,5 @@ MAINTAINER Kaifei Chen "kaifei@berkeley.edu"
 
 ADD install.sh /root
 
-RUN /bin/bash /root/install.sh && \
-    rm -rf $HOME/workspace
+RUN /bin/bash /root/install.sh $HOME/temp && \
+    rm -rf $HOME/temp
