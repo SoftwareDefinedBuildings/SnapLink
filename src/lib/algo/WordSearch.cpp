@@ -29,7 +29,7 @@ std::vector<int> WordSearch::search(const cv::Mat &descriptors) const {
     for (int i = 0; i < descriptors.rows; ++i) {
       float d = dists.at<float>(i, 0);
       int id = _mapIndexId.at(indices.at<int>(i, 0));
-      assert(d >= 0.0f && id > 0);
+      assert(d >= 0.0f);
       resultIds[i] = id;
     }
   }
