@@ -80,14 +80,14 @@ std::vector<FoundItem> Visibility::process(int dbId,
     std::string minlabel = minDist.first;
     std::cout << "Nearest label " << minlabel << " with mean distance "
               << CompareMeanDist::meanDist(minDist.second) << std::endl;
+    //TODO: right now x and y are hardcoded, and it only return 1 nearst result, need to modify it to return multiple, as well as position
+    results.push_back(FoundItem(minlabel, -1, -1, -1));
     //results.emplace_back(minlabel);
   } else {
     std::cout << "No label is qualified" << std::endl;
   }
 
-  //TODO: right now x and y are hardcoded, and it only return 1 nearst result, need to modify it to return multiple, as well as position
-  results.push_back(FoundItem(minlabel, -1, -1, -1));
-  return results;
+ return results;
 }
 
 double CompareMeanDist::meanDist(const std::vector<double> &vec) {
