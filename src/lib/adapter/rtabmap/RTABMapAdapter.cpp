@@ -1,4 +1,5 @@
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/algo/WordCluster.h"
 #include "lib/data/Room.h"
 #include "lib/data/Transform.h"
 #include "lib/data/Word.h"
@@ -19,7 +20,8 @@
 #include <sqlite3.h>
 #include <utility>
 
-RTABMapAdapter::RTABMapAdapter() : _nextImageId(0) {}
+RTABMapAdapter::RTABMapAdapter(float distRatio)
+    : _nextImageId(0), _distRatio(distRatio) {}
 
 bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
   int roomId = 0;
@@ -31,13 +33,15 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     auto roomLabels = readRoomLabels(dbPath, roomId);
     _labels.emplace(roomId, std::move(roomLabels));
 
+    _roomPaths.emplace(roomId, std::string(dbPath));
+
     roomId++;
   }
 
   return true;
 }
 
-const std::map<int, std::vector<Image>> &RTABMapAdapter::getImages() {
+const std::map<int, std::map<int, Image>> &RTABMapAdapter::getImages() {
   return _images;
 }
 
@@ -64,8 +68,10 @@ const std::map<int, std::vector<Label>> &RTABMapAdapter::getLabels() {
   return _labels;
 }
 
-std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
-                                                  int roomId) {
+std::map<int, Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
+                                                    int roomId) {
+  std::cerr << "reading images from database " << dbPath << std::endl;
+
   rtabmap::Memory memory;
   // TODO print more error message
   assert(memory.init(dbPath));
@@ -100,8 +106,7 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
   }
 
   // get signatures
-  std::vector<Image> images;
-  std::cerr << "Read signatures from database..." << std::endl;
+  std::map<int, Image> images;
   for (const auto &sigId : sigIds) {
     const rtabmap::Signature *sig = memory.getSignature(sigId);
     assert(sig != nullptr);
@@ -129,10 +134,12 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
                 lt.r31(), lt.r32(), lt.r33(), lt.o34());
     pose = pose * t;
 
-    int imageId = _nextImageId++;
-    images.emplace_back(imageId, roomId, image, depth, pose, camera);
+    int imageId = _nextImageId;
+    _nextImageId++;
+    images.emplace(imageId, Image(imageId, roomId, image, depth, pose, camera));
     // insert if not exists
     _sigImageIdMap[roomId][sig->id()] = imageId;
+    _imageSigIdMap[roomId][imageId] = sig->id();
   }
 
   return images;
@@ -140,6 +147,8 @@ std::vector<Image> RTABMapAdapter::readRoomImages(const std::string &dbPath,
 
 std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
                                                   int roomId) {
+  std::cerr << "reading labels from database " << dbPath << std::endl;
+
   std::vector<Label> labels;
 
   // SQLite C API
@@ -171,9 +180,9 @@ std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
 
       if (Utility::getPoint3World(image, cv::Point2f(x, y), point3)) {
         labels.emplace_back(roomId, point3, name);
-        std::cerr << "Read point (" << point3.x << "," << point3.y << ","
-                  << point3.z << ") with label " << name << " in database "
-                  << dbPath << std::endl;
+        // std::cerr << "Read point (" << point3.x << "," << point3.y << ","
+        //          << point3.z << ") with label " << name << " in database "
+        //          << dbPath << std::endl;
       }
     }
   } else {
@@ -188,55 +197,50 @@ std::vector<Label> RTABMapAdapter::readRoomLabels(const std::string &dbPath,
 }
 
 void RTABMapAdapter::createWords() {
+  std::cerr << "creating words for all rooms" << std::endl;
+
   assert(_images.empty() == false);
 
-  std::cerr << "Building Index for Words" << std::endl;
   rtabmap::VWDictionary vwd;
   cv::Ptr<cv::xfeatures2d::SURF> detector = cv::xfeatures2d::SURF::create();
 
+  std::vector<int> roomIds;
+  std::vector<cv::Point3f> points3;
+  cv::Mat descriptors;
   for (const auto &roomImages : _images) {
     int roomId = roomImages.first;
-    std::cerr << "Creating words for signatures in room " << roomId
-              << std::endl;
     for (const auto &image : roomImages.second) {
       // compute 2D features
-      std::vector<cv::KeyPoint> keyPoints;
-      cv::Mat descriptors;
-      detector->detectAndCompute(image.getImage(), cv::Mat(), keyPoints,
-                                 descriptors);
+      std::vector<cv::KeyPoint> imgKeyPoints;
+      cv::Mat imgDescriptors;
+      detector->detectAndCompute(image.second.getImage(), cv::Mat(),
+                                 imgKeyPoints, imgDescriptors);
 
-      // convert them to 3D points in words
-      int dummySigId = 1;
-      // TODO: write our own word clustering
-      std::list<int> wordIds = vwd.addNewWords(descriptors, dummySigId);
-      vwd.update();
-      size_t i = 0;
-      for (int wordId : wordIds) {
-        cv::KeyPoint kp = keyPoints.at(i);
-        cv::Mat descriptor = descriptors.row(i);
+      for (unsigned int i = 0; i < imgKeyPoints.size(); i++) {
+        cv::KeyPoint kp = imgKeyPoints.at(i);
+        cv::Mat descriptor = imgDescriptors.row(i);
         cv::Point3f point3;
-        if (Utility::getPoint3World(image, kp.pt, point3)) {
-          auto iter = _words.find(wordId);
-          if (iter == _words.end()) {
-            auto ret = _words.emplace(wordId, Word(wordId));
-            iter = ret.first;
-          }
-          std::vector<cv::Point3f> points3(1, point3);
-          iter->second.addPoints3(roomId, points3, descriptor);
+        if (Utility::getPoint3World(image.second, kp.pt, point3)) {
+          roomIds.emplace_back(roomId);
+          points3.emplace_back(point3);
+          descriptors.push_back(descriptor);
         }
-        i++;
       }
     }
   }
 
-  std::cerr << "Total Number of words: " << _words.size() << std::endl;
+  // convert them to 3D points in words
+  WordCluster wordCluster(_distRatio);
+  _words = wordCluster.cluster(roomIds, points3, descriptors);
+
+  std::cerr << "total number of words: " << _words.size() << std::endl;
   long count = 0;
   for (const auto &word : _words) {
     for (const auto &desc : word.second.getDescriptorsByDb()) {
       count += desc.second.rows;
     }
   }
-  std::cerr << "Total Number of points: " << count << std::endl;
+  std::cerr << "total number of 3D points: " << count << std::endl;
 }
 
 void RTABMapAdapter::createRooms() {
@@ -252,5 +256,60 @@ void RTABMapAdapter::createRooms() {
       }
       iter->second.addWordIds(std::vector<int>(1, wordId));
     }
+  }
+}
+
+sqlite3 *RTABMapAdapter::createLabelTable(int roomId) {
+  sqlite3 *labelDB;
+  if (sqlite3_open(this->_roomPaths.at(roomId).c_str(), &labelDB) !=
+      SQLITE_OK) {
+    std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database"
+              << std::endl;
+    return nullptr;
+  }
+  std::string query;
+  query = "CREATE TABLE IF NOT EXISTS Labels (\n\t"
+          "labelName VARCHAR(255),\n\t"
+          "imgId INT,\n\t"
+          "x INT,\n\t"
+          "y INT\n); ";
+  int rc = sqlite3_exec(labelDB, query.c_str(), NULL, NULL, NULL);
+  if (rc == SQLITE_OK) {
+    return labelDB;
+  } else {
+    return nullptr;
+  }
+}
+
+bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
+                              std::string label_id, std::string label_x,
+                              std::string label_y) {
+  cv::Point3f point3;
+  int sigId, imageId, x, y;
+  imageId = std::stoi(label_id);
+  sigId = _imageSigIdMap.at(roomId).at(imageId);
+  x = std::stoi(label_x);
+  y = std::stoi(label_y);
+  if (Utility::getPoint3World(_images.at(roomId).at(imageId), cv::Point2f(x, y),
+                              point3)) {
+    sqlite3 *labelDB = createLabelTable(roomId);
+    if (!labelDB) {
+      std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database"
+                << std::endl;
+      return false;
+    }
+    std::stringstream saveQuery;
+    saveQuery << "INSERT INTO Labels VALUES ('" << label_name << "', '" << sigId
+              << "', '" << label_x << "', '" << label_y << "');";
+    int rc = sqlite3_exec(labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
+    sqlite3_close(labelDB);
+    if (rc == SQLITE_OK) {
+      Label newLabel(roomId, point3, label_name);
+      _labels.at(roomId).push_back(newLabel);
+    }
+    return rc == SQLITE_OK;
+  } else {
+    std::cerr << "Could not convert label" << std::endl;
+    return false;
   }
 }

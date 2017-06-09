@@ -1,6 +1,6 @@
-#ifndef WIDGET_H
-#define WIDGET_H
+#pragma once
 
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
 #include <QWidget>
 #include <opencv2/core/core.hpp>
 #include <pcl/point_types.h>
@@ -29,8 +29,7 @@ private slots:
   void mousePressEvent(QMouseEvent *);
 
 private:
-  void createLabelTable(void);
-  void showImage(int index);
+  void showImage(int imageId);
   void setLabel(const QString &name);
   void showLabel(int x, int y, std::string label);
   void projectPoints(void);
@@ -41,11 +40,7 @@ private:
 private:
   std::unique_ptr<Ui::Widget> _ui;
 
+  std::string _path;
   int numImages;
-  sqlite3 *_db;
-  rtabmap::DBDriver *_dbDriver;
-  rtabmap::Memory _memory;
-  std::map<int, rtabmap::Transform> _optimizedPoses;
+  RTABMapAdapter _adapter;
 };
-
-#endif // WIDGET_H

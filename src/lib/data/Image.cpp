@@ -94,8 +94,10 @@ Image::cloudFromDepthRGB(const cv::Mat &imageRgb, const cv::Mat &imageDepthIn,
   cloud->is_dense = false;
   cloud->resize(cloud->height * cloud->width);
 
-  float rgbToDepthFactorX = float(imageRgb.cols) / float(imageDepth.cols);
-  float rgbToDepthFactorY = float(imageRgb.rows) / float(imageDepth.rows);
+  float rgbToDepthFactorX =
+      static_cast<float>(imageRgb.cols) / static_cast<float>(imageDepth.cols);
+  float rgbToDepthFactorY =
+      static_cast<float>(imageRgb.rows) / static_cast<float>(imageDepth.rows);
   float depthFx = model.fx() / rgbToDepthFactorX;
   float depthFy = model.fy() / rgbToDepthFactorY;
   float depthCx = model.cx() / rgbToDepthFactorX;
@@ -109,8 +111,8 @@ Image::cloudFromDepthRGB(const cv::Mat &imageRgb, const cv::Mat &imageDepthIn,
       pcl::PointXYZRGB &pt =
           cloud->at((h / decimation) * cloud->width + (w / decimation));
 
-      int x = int(w * rgbToDepthFactorX);
-      int y = int(h * rgbToDepthFactorY);
+      int x = static_cast<int>(w * rgbToDepthFactorX);
+      int y = static_cast<int>(h * rgbToDepthFactorY);
       assert(x >= 0 && x < imageRgb.cols && y >= 0 && y < imageRgb.rows);
       if (!mono) {
         const unsigned char *bgr = imageRgb.ptr<unsigned char>(y, x);
@@ -150,12 +152,12 @@ float Image::getDepth(const cv::Mat &depthImage, float x, float y,
   assert(!depthImage.empty());
   assert(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
 
-  int u = int(x + 0.5f);
-  int v = int(y + 0.5f);
-  if (u == depthImage.cols && x < float(depthImage.cols)) {
+  int u = static_cast<int>(x + 0.5f);
+  int v = static_cast<int>(y + 0.5f);
+  if (u == depthImage.cols && x < static_cast<float>(depthImage.cols)) {
     u = depthImage.cols - 1;
   }
-  if (v == depthImage.rows && y < float(depthImage.rows)) {
+  if (v == depthImage.rows && y < static_cast<float>(depthImage.rows)) {
     v = depthImage.rows - 1;
   }
 
@@ -185,7 +187,7 @@ float Image::getDepth(const cv::Mat &depthImage, float x, float y,
     if (depthImage.at<unsigned short>(v, u) > 0 &&
         depthImage.at<unsigned short>(v, u) <
             std::numeric_limits<unsigned short>::max()) {
-      depth = float(depthImage.at<unsigned short>(v, u)) * 0.001f;
+      depth = static_cast<float>(depthImage.at<unsigned short>(v, u)) * 0.001f;
     }
   } else {
     depth = depthImage.at<float>(v, u);
@@ -203,7 +205,8 @@ float Image::getDepth(const cv::Mat &depthImage, float x, float y,
             if (depthImage.at<unsigned short>(vv, uu) > 0 &&
                 depthImage.at<unsigned short>(vv, uu) <
                     std::numeric_limits<unsigned short>::max()) {
-              d = float(depthImage.at<unsigned short>(vv, uu)) * 0.001f;
+              d = static_cast<float>(depthImage.at<unsigned short>(vv, uu)) *
+                  0.001f;
             }
           } else {
             d = depthImage.at<float>(vv, uu);
@@ -212,7 +215,7 @@ float Image::getDepth(const cv::Mat &depthImage, float x, float y,
             if (tmp == 0.0f) {
               tmp = d;
               ++count;
-            } else if (fabs(d - tmp / float(count)) < maxZError) {
+            } else if (fabs(d - tmp / static_cast<float>(count)) < maxZError) {
               tmp += d;
               ++count;
             }
@@ -221,7 +224,7 @@ float Image::getDepth(const cv::Mat &depthImage, float x, float y,
       }
     }
     if (count > 1) {
-      depth = tmp / float(count);
+      depth = tmp / static_cast<float>(count);
     }
   }
 
@@ -237,7 +240,8 @@ float Image::getDepth(const cv::Mat &depthImage, float x, float y,
               if (depthImage.at<unsigned short>(vv, uu) > 0 &&
                   depthImage.at<unsigned short>(vv, uu) <
                       std::numeric_limits<unsigned short>::max()) {
-                d = float(depthImage.at<unsigned short>(vv, uu)) * 0.001f;
+                d = static_cast<float>(depthImage.at<unsigned short>(vv, uu)) *
+                    0.001f;
               }
             } else {
               d = depthImage.at<float>(vv, uu);
@@ -279,10 +283,10 @@ pcl::PointXYZ Image::projectDepthTo3D(const cv::Mat &depthImage, float x,
   float depth = getDepth(depthImage, x, y, smoothing, maxZError, false);
   if (depth > 0.0f) {
     // Use correct principal point from calibration
-    cx = cx > 0.0f ? cx
-                   : float(depthImage.cols / 2) - 0.5f; // cameraInfo.K.at(2)
-    cy = cy > 0.0f ? cy
-                   : float(depthImage.rows / 2) - 0.5f; // cameraInfo.K.at(5)
+    cx = cx > 0.0f ? cx : static_cast<float>(depthImage.cols / 2) -
+                              0.5f; // cameraInfo.K.at(2)
+    cy = cy > 0.0f ? cy : static_cast<float>(depthImage.rows / 2) -
+                              0.5f; // cameraInfo.K.at(5)
 
     // Fill in XYZ
     pt.x = (x - cx) * depth / fx;

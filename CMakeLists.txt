@@ -16,12 +16,6 @@ find_package(PCL 1.8 REQUIRED COMPONENTS common search io filters)
 find_package(Boost REQUIRED COMPONENTS program_options)
 find_package(RTABMap REQUIRED)
 
-set(MHD_INCLUDE_DIRS "/usr/include/")
-set(MHD_LIBRARIES "/usr/lib/x86_64-linux-gnu/libmicrohttpd.so")
-
-set(BW_INCLUDE_DIRS "/usr/local/Qt-5.8.0/qml/io/bw2/")
-set(BW_LIBRARIES "/usr/local/Qt-5.8.0/qml/io/bw2/libbosswave.so")
-
 set(ZBAR_LIBRARIES zbar)
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 
@@ -34,8 +28,6 @@ set(INCLUDE_DIRS
     ${PCL_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIR}
     ${RTABMap_INCLUDE_DIRS}
-    ${MHD_INCLUDE_DIRS}
-    ${BW_INCLUDE_DIRS}
 )
 
 set(LIBRARIES
@@ -50,8 +42,6 @@ set(LIBRARIES
     ${PCL_LIBRARIES}
     ${Boost_LIBRARIES}
     ${RTABMap_LIBRARIES}
-    ${MHD_LIBRARIES}
-    ${BW_LIBRARIES}
 )
 
 set(CellMate_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/")
@@ -93,9 +83,6 @@ add_custom_command(
 set(SOURCES
     "${GENERATED_GRPC_PATH}/GrpcService.pb.cc"
     "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.cc"
-    "${CellMate_SOURCE_DIR}/lib/front_end/http/HTTPFrontEnd.cpp"
-    "${CellMate_SOURCE_DIR}/lib/front_end/bosswave/BWFrontEnd.cpp"
-    "${CellMate_SOURCE_DIR}/lib/front_end/bosswave/BWWorker.cpp"
     "${CellMate_SOURCE_DIR}/lib/front_end/grpc/GrpcFrontEnd.cpp"
     "${CellMate_SOURCE_DIR}/lib/util/Utility.cpp"
     "${CellMate_SOURCE_DIR}/lib/adapter/rtabmap/RTABMapAdapter.cpp"
@@ -111,16 +98,13 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/lib/algo/Visibility.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/Feature.cpp"
     "${CellMate_SOURCE_DIR}/lib/algo/Perspective.cpp"
-    "${CellMate_SOURCE_DIR}/run/run.cpp"
+    "${CellMate_SOURCE_DIR}/lib/algo/WordCluster.cpp"
+    "${CellMate_SOURCE_DIR}/run/Run.cpp"
     "${CellMate_SOURCE_DIR}/label/res/label_dot.qrc"
-    "${CellMate_SOURCE_DIR}/label/widget.cpp"
-    "${CellMate_SOURCE_DIR}/vis/vis.cpp"
-    "${CellMate_SOURCE_DIR}/label/label.cpp"
+    "${CellMate_SOURCE_DIR}/label/Widget.cpp"
+    "${CellMate_SOURCE_DIR}/vis/Visualizer.cpp"
+    "${CellMate_SOURCE_DIR}/label/Labeler.cpp"
     "${CellMate_SOURCE_DIR}/main.cpp")
-
-
-
-
 
 add_executable(cellmate ${SOURCES})
 

@@ -9,17 +9,18 @@ import os
 import sys
 import numpy as np
 import cv2
-import requests
 import time
 from PIL import Image, ExifTags
 
-subprocess.call(["python", "-m", "grpc_tools.protoc", "-I=../src/lib/front_end/grpc/grpc/", "--python_out=.", "--grpc_python_out=." , "../src/lib/front_end/grpc/grpc/GrpcService.proto"])
+currentDir = dir_path = os.path.dirname(os.path.realpath(__file__))
+rootDir = currentDir+"/../"
+subprocess.call(["python", "-m", "grpc_tools.protoc", "-I="+ rootDir + "/src/lib/front_end/grpc/grpc/", "--python_out=" + currentDir, "--grpc_python_out=" + currentDir , rootDir + "/src/lib/front_end/grpc/grpc/GrpcService.proto"])
 
 import GrpcService_pb2
 import GrpcService_pb2_grpc
 
 
-SERVER_ADDR = "0.0.0.0:8081"
+SERVER_ADDR = "0.0.0.0:8080"
 
 RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1

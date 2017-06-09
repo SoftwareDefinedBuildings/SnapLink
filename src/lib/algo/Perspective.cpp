@@ -3,11 +3,12 @@
 #include "lib/data/Transform.h"
 #include "lib/util/Utility.h"
 #include <cassert>
+#include <opencv2/opencv.hpp>
 #include <pcl/common/transforms.h>
 
 Perspective::Perspective(const std::map<int, Room> &rooms,
                          const std::map<int, Word> &words, int corrLimit,
-                         double distRatio)
+                         float distRatio)
     : _rooms(rooms), _words(words), _corrLimit(corrLimit),
       _distRatio(distRatio) {}
 
@@ -157,9 +158,9 @@ bool Perspective::findMatchPoint3(
     return true;
   }
 
-  std::vector<std::pair<double, int>> dists;
+  std::vector<std::pair<float, int>> dists;
   for (int i = 0; i < words3.at(wordId).second.rows; i++) {
-    double dist =
+    float dist =
         cv::norm(descriptor, words3.at(wordId).second.row(i), cv::NORM_L2);
     dists.emplace_back(dist, i);
   }

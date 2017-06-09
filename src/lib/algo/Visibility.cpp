@@ -6,7 +6,7 @@
 #include "lib/util/Utility.h"
 #include <fstream>
 #include <iostream>
-#include <opencv/cv.h>
+#include <opencv2/opencv.hpp>
 #include <pcl/point_types.h>
 
 Visibility::Visibility(const std::map<int, std::vector<Label>> &labels)
@@ -77,7 +77,7 @@ std::vector<FoundItem> Visibility::process(int dbId,
     // find the label with minimum mean distance
     std::pair<std::string, std::vector<double>> minDist =
         *min_element(distances.begin(), distances.end(), CompareMeanDist());
-    std::string minlabel = minDist.first;
+    minlabel = minDist.first;
     std::cout << "Nearest label " << minlabel << " with mean distance "
               << CompareMeanDist::meanDist(minDist.second) << std::endl;
     //TODO: right now x and y are hardcoded, and it only return 1 nearst result, need to modify it to return multiple, as well as position

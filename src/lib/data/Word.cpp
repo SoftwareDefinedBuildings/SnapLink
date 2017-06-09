@@ -1,22 +1,28 @@
 #include "lib/data/Word.h"
 #include <cassert>
 
-Word::Word(int id) : _id(id) {}
+Word::Word(int id) : _id(id), _newData(false) {}
 
-void Word::addPoints3(int dbId, const std::vector<cv::Point3f> &points3,
-                      const cv::Mat &descriptors) {
-  assert(points3.size() == descriptors.rows);
-  _points3Map[dbId].insert(_points3Map[dbId].end(), points3.begin(),
-                           points3.end());
-  for (int i = 0; i < descriptors.rows; i++) {
-    cv::Mat row = descriptors.row(i).clone();
-    _allDescriptors.push_back(row);
-    _descriptorsByDb[dbId].push_back(row);
-  }
-  cv::reduce(_allDescriptors, _meanDescriptor, 0, CV_REDUCE_AVG);
+void Word::addPoint3(int roomId, const cv::Point3f &point3,
+                     cv::Mat descriptor) {
+  // roomId will be added if not exists
+  _points3Map[roomId].emplace_back(point3);
+  _roomDescriptors[roomId].push_back(descriptor);
+  _allDescriptors.push_back(descriptor);
+
+  _newData = true;
 }
 
 int Word::getId() const { return _id; }
+
+const cv::Mat &Word::getMeanDescriptor() {
+  if (_newData) {
+    int axis = 0;
+    cv::reduce(_allDescriptors, _meanDescriptor, axis, CV_REDUCE_AVG);
+    _newData = false;
+  }
+  return _meanDescriptor;
+}
 
 const cv::Mat &Word::getMeanDescriptor() const { return _meanDescriptor; }
 
@@ -25,5 +31,5 @@ const std::map<int, std::vector<cv::Point3f>> &Word::getPoints3Map() const {
 }
 
 const std::map<int, cv::Mat> &Word::getDescriptorsByDb() const {
-  return _descriptorsByDb;
+  return _roomDescriptors;
 }
