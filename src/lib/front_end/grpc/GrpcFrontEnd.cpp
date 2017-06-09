@@ -87,6 +87,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
     response->set_name(results[0].name());
     response->set_x(results[0].x());
     response->set_y(results[0].y());
+    response->set_width(results[0].width());
   } else {
     response->set_name(none);
     response->set_x(-1);
