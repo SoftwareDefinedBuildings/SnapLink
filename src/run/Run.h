@@ -28,7 +28,7 @@ private:
   // must be thread-safe
   std::vector<FoundItem> identify(const cv::Mat &image,
                                     const CameraModel &camera);
-
+  static bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
 private:
   std::unique_ptr<Feature> _feature;
   std::unique_ptr<WordSearch> _wordSearch;
