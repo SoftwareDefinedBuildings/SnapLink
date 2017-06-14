@@ -55,17 +55,13 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   cellmate_grpc::ClientQueryMessage request;
   while(stream->Read(&request)) {
     cellmate_grpc::ServerRespondMessage response;
-    std::vector<cellmate_grpc::ServerRespondMessage> responseList;
     {
       std::lock_guard<std::mutex> lock(_mutex);
       if (this->_numClients >= this->_maxClients) {
         response.set_name("Too many clients, server is busy");
         response.set_x(-1);
         response.set_y(-1);
-        responseList.push_back(response);
-        for(const cellmate_grpc::ServerRespondMessage & r : responseList) {
-          stream->Write(r);
-        }
+        stream->Write(response);
         continue;
       }
       this->_numClients++;
@@ -98,10 +94,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
       response.set_x(-1);
       response.set_y(-1);
     }
-    responseList.push_back(response);
-    for(const cellmate_grpc::ServerRespondMessage & r : responseList) {
-      stream->Write(r);
-    }
+    stream->Write(response);
   }
   return grpc::Status::OK;
 }
