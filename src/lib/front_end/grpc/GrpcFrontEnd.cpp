@@ -50,48 +50,58 @@ void GrpcFrontEnd::stop() {
 }
 
 grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
-                                         const cellmate_grpc::ClientQueryMessage *request,
-                                         cellmate_grpc::ServerRespondMessage *response) {
+                                         grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage, cellmate_grpc::ClientQueryMessage> *stream) {
   (void) context; // ignore that variable without causing warnings
-
-  {
-    std::lock_guard<std::mutex> lock(_mutex);
-    if (this->_numClients >= this->_maxClients) {
-      response->set_name("Too many clients, server is busy");
-      response->set_x(-1);
-      response->set_y(-1);
-      return grpc::Status::OK;
+  cellmate_grpc::ClientQueryMessage request;
+  while(stream->Read(&request)) {
+    cellmate_grpc::ServerRespondMessage response;
+    std::vector<cellmate_grpc::ServerRespondMessage> responseList;
+    {
+      std::lock_guard<std::mutex> lock(_mutex);
+      if (this->_numClients >= this->_maxClients) {
+        response.set_name("Too many clients, server is busy");
+        response.set_x(-1);
+        response.set_y(-1);
+        responseList.push_back(response);
+        for(const cellmate_grpc::ServerRespondMessage & r : responseList) {
+          stream->Write(r);
+        }
+        continue;
+      }
+      this->_numClients++;
     }
-    this->_numClients++;
-  }
-  std::vector<uchar> data(request->image().begin(), request->image().end());
-  assert(data.size() > 0);
-  bool copyData = false;
-  cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
-  imwrite("image.jpg", image);
-  assert(image.type() == CV_8U);
-  assert(image.channels() == 1);
-  double fx = request->fx();
-  double fy = request->fy();
-  double cx = request->cx();
-  double cy = request->cy();
-  int width = image.cols;
-  int height = image.rows;
-  CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-  std::vector<FoundItem> results;
-  results = this->getOnQuery()(image, camera);
-  
-  
-  this->_numClients--;  
-  if (!results.empty()) {
-    response->set_name(results[0].name());
-    response->set_x(results[0].x());
-    response->set_y(results[0].y());
-    response->set_width(results[0].width());
-  } else {
-    response->set_name(none);
-    response->set_x(-1);
-    response->set_y(-1);
+    std::vector<uchar> data(request.image().begin(), request.image().end());
+    assert(data.size() > 0);
+    bool copyData = false;
+    cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+    imwrite("image.jpg", image);
+    assert(image.type() == CV_8U);
+    assert(image.channels() == 1);
+    double fx = request.fx();
+    double fy = request.fy();
+    double cx = request.cx();
+    double cy = request.cy();
+    int width = image.cols;
+    int height = image.rows;
+    CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
+    std::vector<FoundItem> results;
+    results = this->getOnQuery()(image, camera);
+     
+    this->_numClients--;  
+    if (!results.empty()) {
+      response.set_name(results[0].name());
+      response.set_x(results[0].x());
+      response.set_y(results[0].y());
+      response.set_width(results[0].width());
+    } else {
+      response.set_name(none);
+      response.set_x(-1);
+      response.set_y(-1);
+    }
+    responseList.push_back(response);
+    for(const cellmate_grpc::ServerRespondMessage & r : responseList) {
+      stream->Write(r);
+    }
   }
   return grpc::Status::OK;
 }

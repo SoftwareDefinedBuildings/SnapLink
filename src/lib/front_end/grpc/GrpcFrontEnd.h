@@ -18,9 +18,7 @@ public:
   bool start() final;
   void stop() final;
   grpc::Status onClientQuery(grpc::ServerContext *context,
-                            const cellmate_grpc::ClientQueryMessage *request,
-                            cellmate_grpc::ServerRespondMessage *response);
-
+                            grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage, cellmate_grpc::ClientQueryMessage> *stream);
 public slots:
   void run();
 
