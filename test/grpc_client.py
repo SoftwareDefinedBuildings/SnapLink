@@ -26,7 +26,7 @@ RESULT_PASS = 0
 RESULT_BAD_FORMAT = 1
 RESULT_FAIL = 2
 
-def test_file(filename):
+def test_file(filename, stub):
     obj_name = os.path.basename(filename).split(".")[0]
 
     img = Image.open(filename)
@@ -66,10 +66,10 @@ def test_file(filename):
 
     print filename, 'width:', width, 'height:', height
     
-    channel = grpc.insecure_channel(SERVER_ADDR)
-    stub = GrpcService_pb2_grpc.GrpcServiceStub(channel)
     t0 = time.time()
-    r = stub.onClientQuery(GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height))
+    request = GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height)
+    rIter = stub.onClientQuery(iter([request]))
+    r = rIter.next()
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
     if r.name != obj_name:
@@ -81,7 +81,7 @@ def test_file(filename):
         return RESULT_PASS, elapsed_time
 
 
-def test_dir(directory):
+def test_dir(directory, stub):
     pass_count = 0
     bad_format_count = 0
     fail_count = 0
@@ -89,7 +89,7 @@ def test_dir(directory):
     for filename in glob.glob(os.path.join(directory, "*")):
         if not filename.endswith(".jpg") and not filename.endswith(".JPG"):
             continue
-        result, elapsed_time = test_file(filename)
+        result, elapsed_time = test_file(filename, stub)
         if result == RESULT_PASS:
             pass_count += 1
         elif result == RESULT_BAD_FORMAT:
@@ -104,13 +104,15 @@ def test_dir(directory):
         print "No image found"
 
 if __name__ == "__main__":
-
+    channel = grpc.insecure_channel(SERVER_ADDR)
+    stub = GrpcService_pb2_grpc.GrpcServiceStub(channel)
+    
     if len(sys.argv) == 2:
         path = sys.argv[-1]
         if os.path.isdir(path):
-            test_dir(path)
+            test_dir(path, stub)
         elif os.path.isfile(path):
-            test_file(path)
+            test_file(path, stub)
         else:
             print "Invalid path"
     else:
