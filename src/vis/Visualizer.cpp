@@ -200,7 +200,8 @@ void Visualizer::printUsage(const po::options_description &desc) {
 }
 
 Transform Visualizer::localize(const cv::Mat &image, const CameraModel &camera,
-                        int featureLimit, int corrLimit, double distRatio) {
+                               int featureLimit, int corrLimit,
+                               double distRatio) {
   const std::map<int, Word> &words = _adapter.getWords();
   const std::map<int, Room> &rooms = _adapter.getRooms();
   const std::map<int, std::vector<Label>> &labels = _adapter.getLabels();

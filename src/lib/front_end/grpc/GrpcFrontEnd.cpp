@@ -1,7 +1,7 @@
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
 #include "lib/data/CameraModel.h"
-#include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
 #include <string>
 
 const std::string GrpcFrontEnd::none = "None";
@@ -9,9 +9,8 @@ const std::string GrpcFrontEnd::none = "None";
 GrpcFrontEnd::GrpcFrontEnd(int grpcServerAddr, unsigned int maxClients) {
   _numClients = 0;
   _serverAddress = std::to_string(grpcServerAddr);
-  _maxClients = maxClients; 
+  _maxClients = maxClients;
 }
-
 
 GrpcFrontEnd::~GrpcFrontEnd() {
   std::cerr << "GrpcFrontEnd destructor" << std::endl;
@@ -31,14 +30,15 @@ void GrpcFrontEnd::run() {
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort("0.0.0.0:"+server_address, grpc::InsecureServerCredentials());
+  builder.AddListeningPort("0.0.0.0:" + server_address,
+                           grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(this);
   // Finally assemble the server.
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   std::cout << "Server listening on " << server_address << std::endl;
-    
+
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
@@ -49,11 +49,13 @@ void GrpcFrontEnd::stop() {
   _maxClients = 0;
 }
 
-grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
-                                         grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage, cellmate_grpc::ClientQueryMessage> *stream) {
-  (void) context; // ignore that variable without causing warnings
+grpc::Status GrpcFrontEnd::onClientQuery(
+    grpc::ServerContext *context,
+    grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage,
+                             cellmate_grpc::ClientQueryMessage> *stream) {
+  (void)context; // ignore that variable without causing warnings
   cellmate_grpc::ClientQueryMessage request;
-  while(stream->Read(&request) ) {
+  while (stream->Read(&request)) {
     cellmate_grpc::ServerRespondMessage response;
     {
       std::lock_guard<std::mutex> lock(_mutex);
@@ -82,8 +84,8 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
     CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
     std::vector<FoundItem> results;
     results = this->getOnQuery()(image, camera);
-     
-    this->_numClients--;  
+
+    this->_numClients--;
     if (!results.empty()) {
       response.set_name(results[0].name());
       response.set_x(results[0].x());
@@ -98,6 +100,3 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
   }
   return grpc::Status::OK;
 }
-
-
-

@@ -1,14 +1,14 @@
 #include "lib/util/Utility.h"
+#include "lib/data/FoundItem.h"
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
-#include "lib/data/FoundItem.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <pcl/common/transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <stddef.h>
 #include <sys/time.h>
-#include <zbar.h> 
-#include <opencv2/imgproc/imgproc.hpp>  
-#include <opencv2/core/core.hpp>
+#include <zbar.h>
 unsigned long long Utility::getTime() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
@@ -64,5 +64,3 @@ bool Utility::isInFrontOfCamera(const cv::Point3f &point,
   pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, pose.toEigen3f());
   return newPointPCL.z > 0;
 }
-
-
