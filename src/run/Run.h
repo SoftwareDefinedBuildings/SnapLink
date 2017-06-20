@@ -26,8 +26,9 @@ private:
   static void printTime(long total, long feature, long wordSearch,
                         long roomSearch, long perspective, long visibility);
   // must be thread-safe
+  // camera is optional, no image localization is performed if not provided
   std::vector<FoundItem> identify(const cv::Mat &image,
-                                    const CameraModel &camera);
+                                  const CameraModel *camera);
   static bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
   enum Mode{QR_ONLY, FULL_FUNCTIONING};
 private:

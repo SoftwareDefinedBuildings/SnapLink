@@ -140,7 +140,7 @@ void Run::printTime(long total, long feature, long wordSearch, long roomSearch,
 
 // must be thread safe
 std::vector<FoundItem> Run::identify(const cv::Mat &image,
-                                     const CameraModel &camera) {
+                                     const CameraModel *camera) {
   std::vector<FoundItem> results;
   std::vector<FoundItem> qrResults;
   long startTime;
@@ -149,7 +149,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   // qr extraction
   QFuture<bool> qrWatcher = QtConcurrent::run(qrExtract, image, &qrResults);
 
-  if (_mode == Run::FULL_FUNCTIONING) {
+  if (_mode == Run::FULL_FUNCTIONING && camera != nullptr) {
     // feature extraction
     std::vector<cv::KeyPoint> keyPoints;
     cv::Mat descriptors;
@@ -187,7 +187,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
     {
       std::lock_guard<std::mutex> lock(_perspectiveMutex);
       startTime = Utility::getTime();
-      pose = _perspective->localize(wordIds, keyPoints, descriptors, camera,
+      pose = _perspective->localize(wordIds, keyPoints, descriptors, *camera,
                                     roomId);
       perspectiveTime = Utility::getTime() - startTime;
     }
@@ -205,7 +205,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
       {
         std::lock_guard<std::mutex> lock(_visibilityMutex);
         startTime = Utility::getTime();
-        results = _visibility->process(roomId, camera, pose);
+        results = _visibility->process(roomId, *camera, pose);
         visibilityTime = Utility::getTime() - startTime;
       }
 
@@ -215,6 +215,8 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
       Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                      perspectiveTime, visibilityTime);
     }
+  } else {
+    std::cerr << "image localization not performed." << std::endl;
   }
 
   qrWatcher.waitForFinished();

@@ -72,13 +72,8 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     assert(data.size() > 0);
     bool copyData = false;
     cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
-    double fx = request.fx();
-    double fy = request.fy();
-    double cx = request.cx();
-    double cy = request.cy();
 
-    if (image.empty() || image.type() != CV_8U || image.channels() != 1 ||
-        fx <= 0 || fy <= 0 || cx < 0 || cy < 0) {
+    if (image.empty() || image.type() != CV_8U || image.channels() != 1) {
       response.set_name("Invalid query data");
       response.set_x(-1);
       response.set_y(-1);
@@ -90,9 +85,17 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     int width = image.cols;
     int height = image.rows;
 
-    CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
+    double fx = request.fx();
+    double fy = request.fy();
+    double cx = request.cx();
+    double cy = request.cy();
+    std::unique_ptr<CameraModel> camera;
+    if (fx > 0 && fy > 0 && cx >= 0 && cy >= 0) {
+      camera.reset(
+          new CameraModel("", fx, fy, cx, cy, cv::Size(width, height)));
+    }
     std::vector<FoundItem> results;
-    results = this->getOnQuery()(image, camera);
+    results = this->getOnQuery()(image, camera.get());
 
     this->_numClients--;
     if (!results.empty()) {
