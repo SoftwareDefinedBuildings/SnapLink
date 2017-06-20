@@ -1,14 +1,14 @@
 #include "lib/util/Utility.h"
+#include "lib/data/FoundItem.h"
 #include "lib/data/Image.h"
 #include "lib/data/Transform.h"
-#include "lib/data/FoundItem.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
 #include <pcl/common/transforms.h>
 #include <rtabmap/core/util3d.h>
 #include <stddef.h>
 #include <sys/time.h>
-#include <zbar.h> 
-#include <opencv2/imgproc/imgproc.hpp>  
-#include <opencv2/core/core.hpp>
+#include <zbar.h>
 unsigned long long Utility::getTime() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
@@ -63,23 +63,4 @@ bool Utility::isInFrontOfCamera(const cv::Point3f &point,
   pcl::PointXYZ pointPCL(point.x, point.y, point.z);
   pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, pose.toEigen3f());
   return newPointPCL.z > 0;
-}
-
-bool Utility::qrExtract(const cv::Mat &im, std::vector<FoundItem> &results) {
-  std::cout<<"Qr extracting\n";
-  zbar::ImageScanner scanner;   
-  scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);   
-  uchar *raw = (uchar *)im.data;
-  int width = im.cols;
-  int height = im.rows;
-  std::cout<<"Widith = "<<width<<" Height = "<<height<<std::endl;
-  zbar::Image image(width, height, "Y800", raw, width * height);
-  int n = scanner.scan(image); 
-  std::cout<<"n is "<<n<<std::endl;
-  for(zbar::Image::SymbolIterator symbol = image.symbol_begin();  symbol != image.symbol_end(); ++symbol) {
-    std::cout << "decoded " << symbol->get_type_name() << " symbol "<< symbol->get_data() << std::endl; 
-    FoundItem item(symbol->get_data(), symbol->get_location_x(0), symbol->get_location_y(0));
-    results.push_back(item);
-  } 
-  return results.size() > 0;
 }

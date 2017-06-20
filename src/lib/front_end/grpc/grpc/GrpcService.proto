@@ -6,7 +6,7 @@ option java_package = "edu.berkeley.cs.sdb.cellmate";
 option java_outer_classname = "CellmateProto";
 
 service GrpcService {
-    rpc onClientQuery(ClientQueryMessage) returns (ServerRespondMessage) {}
+    rpc onClientQuery(stream ClientQueryMessage) returns (stream ServerRespondMessage) {}
 }
 
 message ClientQueryMessage {
@@ -23,5 +23,6 @@ message ServerRespondMessage {
   string name = 1;
   double x = 2;
   double y = 3;
+  double width = 4;
 }
 

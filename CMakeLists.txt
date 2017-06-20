@@ -10,6 +10,7 @@ find_package(Protobuf REQUIRED)
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Quick REQUIRED)
 find_package(Qt5Gui REQUIRED)
+find_package(Qt5Concurrent REQUIRED)
 find_package(Qt5Widgets REQUIRED)
 find_package(OpenCV 3 REQUIRED COMPONENTS viz core imgproc imgcodecs calib3d flann xfeatures2d)
 find_package(PCL 1.8 REQUIRED COMPONENTS common search io filters)
@@ -22,6 +23,7 @@ set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
     ${Qt5Gui_INCLUDE_DIRS}
+    ${Qt5Concurrent_INCLUDE_DIRS}
     ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
@@ -36,6 +38,7 @@ set(LIBRARIES
     ${GRPC_LIBRARIES}
     ${Qt5Core_LIBRARIES}
     ${Qt5Gui_LIBRARIES}
+    ${Qt5Concurrent_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
     ${OpenCV_LIBRARIES}

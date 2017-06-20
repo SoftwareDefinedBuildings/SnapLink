@@ -28,7 +28,8 @@ private:
   // must be thread-safe
   std::vector<FoundItem> identify(const cv::Mat &image,
                                     const CameraModel &camera);
-
+  static bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
+  enum Mode{QR_ONLY, FULL_FUNCTIONING};
 private:
   std::unique_ptr<Feature> _feature;
   std::unique_ptr<WordSearch> _wordSearch;
@@ -41,4 +42,5 @@ private:
   std::mutex _roomSearchMutex;
   std::mutex _perspectiveMutex;
   std::mutex _visibilityMutex;
+  Run::Mode _mode;
 };
