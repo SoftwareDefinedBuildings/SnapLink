@@ -30,8 +30,18 @@ private:
   std::vector<FoundItem> identify(const cv::Mat &image,
                                   const CameraModel *camera);
   static bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
+
+
   enum Mode{QR_ONLY, FULL_FUNCTIONING};
+
 private:
+  int _port;
+  int _featureLimit;
+  int _corrLimit;
+  float _distRatio;
+  std::vector<std::string> _dbFiles;
+  bool _saveImage;
+
   std::unique_ptr<Feature> _feature;
   std::unique_ptr<WordSearch> _wordSearch;
   std::unique_ptr<RoomSearch> _roomSearch;

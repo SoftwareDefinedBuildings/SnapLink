@@ -14,27 +14,24 @@
 
 int Run::run(int argc, char *argv[]) {
   // Parse arguments
-  int port;
-  int featureLimit;
-  int corrLimit;
-  float distRatio;
-  std::vector<std::string> dbFiles;
 
   po::options_description visible("command options");
   visible.add_options() // use comment to force new line using formater
       ("help,h", "print help message") //
-      ("port", po::value<int>(&port)->default_value(8080),
+      ("port,p", po::value<int>(&_port)->default_value(8080),
        "the port that GRPC front end binds to") //
-      ("feature-limit", po::value<int>(&featureLimit)->default_value(0),
+      ("feature-limit,f", po::value<int>(&_featureLimit)->default_value(0),
        "limit the number of features used") //
-      ("corr-limit", po::value<int>(&corrLimit)->default_value(0),
+      ("corr-limit,c", po::value<int>(&_corrLimit)->default_value(0),
        "limit the number of corresponding 2D-3D points used") //
-      ("dist-ratio", po::value<float>(&distRatio)->default_value(0.7),
+      ("save-image,s", po::bool_switch(&_saveImage)->default_value(false),
+       "save images to files, which can causes significant delays.") //
+      ("dist-ratio,d", po::value<float>(&_distRatio)->default_value(0.7),
        "distance ratio used to create words");
 
   po::options_description hidden;
   hidden.add_options() // use comment to force new line using formater
-      ("dbfiles", po::value<std::vector<std::string>>(&dbFiles)
+      ("dbfiles", po::value<std::vector<std::string>>(&_dbFiles)
                       ->multitoken()
                       ->default_value(std::vector<std::string>(), ""),
        "database files");
@@ -75,11 +72,12 @@ int Run::run(int argc, char *argv[]) {
   std::map<int, Word> words;
   std::map<int, Room> rooms;
   std::map<int, std::vector<Label>> labels;
-  if (dbFiles.size()) {
+  if (_dbFiles.size()) {
     _mode = Run::FULL_FUNCTIONING;
     std::cout << "READING DATABASES" << std::endl;
-    RTABMapAdapter adapter(distRatio);
-    if (!adapter.init(std::set<std::string>(dbFiles.begin(), dbFiles.end()))) {
+    RTABMapAdapter adapter(_distRatio);
+    if (!adapter.init(
+            std::set<std::string>(_dbFiles.begin(), _dbFiles.end()))) {
       std::cerr << "reading data failed";
       return 1;
     }
@@ -89,11 +87,11 @@ int Run::run(int argc, char *argv[]) {
     labels = adapter.getLabels();
 
     std::cout << "RUNNING COMPUTING ELEMENTS" << std::endl;
-    _feature = std::make_unique<Feature>(featureLimit);
+    _feature = std::make_unique<Feature>(_featureLimit);
     _wordSearch = std::make_unique<WordSearch>(words);
     _roomSearch = std::make_unique<RoomSearch>(rooms, words);
     _perspective =
-        std::make_unique<Perspective>(rooms, words, corrLimit, distRatio);
+        std::make_unique<Perspective>(rooms, words, _corrLimit, _distRatio);
     _visibility = std::make_unique<Visibility>(labels);
   } else {
     _mode = Run::QR_ONLY;
@@ -102,7 +100,7 @@ int Run::run(int argc, char *argv[]) {
 
   std::unique_ptr<FrontEnd> frontEnd;
   std::cerr << "initializing GRPC front end" << std::endl;
-  frontEnd = std::make_unique<GrpcFrontEnd>(port, MAX_CLIENTS);
+  frontEnd = std::make_unique<GrpcFrontEnd>(_port, MAX_CLIENTS);
   if (frontEnd->start() == false) {
     std::cerr << "starting GRPC front end failed";
     return 1;
@@ -148,6 +146,11 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
 
   // qr extraction
   QFuture<bool> qrWatcher = QtConcurrent::run(qrExtract, image, &qrResults);
+
+  if (_saveImage) {
+    QtConcurrent::run(
+        [=]() { imwrite(std::to_string(Utility::getTime()) + ".jpg", image); });
+  }
 
   if (_mode == Run::FULL_FUNCTIONING && camera != nullptr) {
     // feature extraction

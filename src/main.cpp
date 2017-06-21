@@ -78,7 +78,6 @@ static void printUsage(const po::options_description &desc) {
             << desc << std::endl
             << "commands:" << std::endl
             << "  run        run cellmate" << std::endl
-            << "  dist       run a stage of cellmate" << std::endl
             << "  vis        visualize a datobase" << std::endl
             << "  label      label a database" << std::endl;
 }

@@ -81,7 +81,6 @@ grpc::Status GrpcFrontEnd::onClientQuery(
       continue;
     }
 
-    imwrite("image.jpg", image);
     int width = image.cols;
     int height = image.rows;
 
