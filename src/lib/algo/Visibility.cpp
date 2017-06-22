@@ -1,8 +1,8 @@
 #include "lib/algo/Visibility.h"
 #include "lib/data/CameraModel.h"
-#include "lib/data/Transform.h"
 #include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
+#include "lib/data/Transform.h"
 #include "lib/util/Utility.h"
 #include <fstream>
 #include <iostream>
@@ -12,9 +12,8 @@
 Visibility::Visibility(const std::map<int, std::vector<Label>> &labels)
     : _labels(labels) {}
 
-std::vector<FoundItem> Visibility::process(int dbId,
-                                             const CameraModel &camera,
-                                             const Transform &pose) const {
+std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
+                                           const Transform &pose) const {
   std::vector<cv::Point3f> points;
   std::vector<std::string> names;
   for (auto &label : _labels.at(dbId)) {
@@ -80,14 +79,15 @@ std::vector<FoundItem> Visibility::process(int dbId,
     minlabel = minDist.first;
     std::cout << "Nearest label " << minlabel << " with mean distance "
               << CompareMeanDist::meanDist(minDist.second) << std::endl;
-    //TODO: right now x and y are hardcoded, and it only return 1 nearst result, need to modify it to return multiple, as well as position
+    // TODO: right now x and y are hardcoded, and it only return 1 nearst
+    // result, need to modify it to return multiple, as well as position
     results.push_back(FoundItem(minlabel, -1, -1, -1));
-    //results.emplace_back(minlabel);
+    // results.emplace_back(minlabel);
   } else {
     std::cout << "No label is qualified" << std::endl;
   }
 
- return results;
+  return results;
 }
 
 double CompareMeanDist::meanDist(const std::vector<double> &vec) {
