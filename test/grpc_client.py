@@ -67,7 +67,7 @@ def test_file(filename, stub):
     print filename, 'width:', width, 'height:', height
     
     t0 = time.time()
-    request = GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height)
+    request = GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height, angle = 0)
     rIter = stub.onClientQuery(iter([request]))
     r = rIter.next()
     t1 = time.time()
