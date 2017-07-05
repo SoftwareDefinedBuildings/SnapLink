@@ -69,8 +69,10 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
     std::vector<uchar> data(request.image().begin(), request.image().end());
     assert(data.size() > 0);
     bool copyData = false;
-    cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
-    imwrite("image.jpg", image);
+    cv::Mat imageUnrotated = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+    imwrite("imageUnrotated.jpg", imageUnrotated);
+    cv::Mat image = rotateClockwise(imageUnrotated, request.angle());
+    imwrite("imageRotated.jpg", image);
     assert(image.type() == CV_8U);
     assert(image.channels() == 1);
     double fx = request.fx();
@@ -100,4 +102,19 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
 }
 
 
-
+cv::Mat GrpcFrontEnd::rotateClockwise(cv::Mat src, double angle) {
+  cv::Mat dst;
+  if(angle == 90) {
+    cv::transpose(src, dst);
+    cv::flip(dst, dst, 1);
+  } else if(angle == 180) {
+    cv::flip(src, dst, -1);
+  } else if(angle == 270) {
+    cv::transpose(src, dst);
+    cv::flip(dst, dst, 0);
+  } else {
+    //angle = 0, no need to rotation
+    dst = src;
+  }
+  return dst;
+}

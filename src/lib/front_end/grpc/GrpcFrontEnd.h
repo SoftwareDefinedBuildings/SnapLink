@@ -23,6 +23,8 @@ public slots:
   void run();
 
 private:
+  cv::Mat rotateClockwise(cv::Mat src, double angle);
+private:
   static const std::string none;
   QThread _thread;
   std::string _serverAddress;
