@@ -84,7 +84,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(grpc::ServerContext *context,
     CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
     std::vector<FoundItem> results;
     results = this->getOnQuery()(image, camera);
-     
+    rotateBack(results, request.angle(), width, height);     
     this->_numClients--;  
     if (!results.empty()) {
       response.set_name(results[0].name());
@@ -117,4 +117,31 @@ cv::Mat GrpcFrontEnd::rotateClockwise(cv::Mat src, double angle) {
     dst = src;
   }
   return dst;
+}
+
+void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results ,double angle, int width, int height) {
+  for(unsigned int i = 0; i < results.size(); i++) {
+    double oldX = results[i].x();
+    double oldY = results[i].y();
+    if(oldX == -1) {
+      continue;
+    }
+    if(angle == 90) {
+      //do nothing  
+    } else if(angle == 180) {
+      results[i].setX(oldY);
+      results[i].setY(width - oldX);
+     
+    } else if(angle == 270) {
+      results[i].setX(width - oldX);
+      results[i].setY(height - oldY);
+
+    } else {
+      //angle = 0
+      results[i].setX(height - oldY);
+      results[i].setY(oldX);
+    }
+    std::cout<<"Angle is "<<angle<<std::endl;
+    std::cout<<"After rotateback, x = "<<results[i].x() <<" y = "<<results[i].y()<<std::endl;
+  }
 }
