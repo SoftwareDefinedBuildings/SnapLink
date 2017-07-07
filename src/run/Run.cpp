@@ -239,12 +239,17 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
   int height = im.rows;
   std::cout << "Widith = " << width << " Height = " << height << std::endl;
   zbar::Image image(width, height, "Y800", raw, width * height);
+
   int n = scanner.scan(image);
   std::cout << "n is " << n << std::endl;
   for (zbar::Image::SymbolIterator symbol = image.symbol_begin();
        symbol != image.symbol_end(); ++symbol) {
     std::cout << "decoded " << symbol->get_type_name() << " symbol "
               << symbol->get_data() << std::endl;
+    //Zbar's coordinate system is topleft = (0,0)
+    //x axis is pointing to right
+    //y axis is pointing to bottom
+
     double x0 = symbol->get_location_x(0);
     double x1 = symbol->get_location_x(1);
     double x2 = symbol->get_location_x(2);

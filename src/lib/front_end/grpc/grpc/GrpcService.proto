@@ -17,6 +17,7 @@ message ClientQueryMessage {
   double cy = 5;
   uint32 width = 6;
   uint32 height = 7;
+  uint32 angle = 8;
 }
 
 message ServerRespondMessage {

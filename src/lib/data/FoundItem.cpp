@@ -15,3 +15,6 @@ const std::string &FoundItem::name() const { return _name; }
 double FoundItem::x() const { return _x; }
 double FoundItem::y() const { return _y; }
 double FoundItem::width() const { return _width; }
+void FoundItem::setX(double x) { _x = x; }
+void FoundItem::setY(double y) { _y = y; }
+void FoundItem::setWidth(double width) { _width = width; }

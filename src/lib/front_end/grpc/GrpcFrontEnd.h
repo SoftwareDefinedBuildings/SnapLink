@@ -8,6 +8,7 @@
 #include "GrpcService.grpc.pb.h"
 #include <grpc++/grpc++.h>
 
+class FoundItem;
 class GrpcFrontEnd final : public QObject, public cellmate_grpc::GrpcService::Service, public FrontEnd{
   Q_OBJECT
 
@@ -22,6 +23,9 @@ public:
 public slots:
   void run();
 
+private:
+  cv::Mat rotateClockwise(cv::Mat src, double angle);
+  void rotateBack(std::vector<FoundItem> &results ,double angle, int width, int height);
 private:
   static const std::string none;
   QThread _thread;

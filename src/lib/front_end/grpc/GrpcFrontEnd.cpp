@@ -71,7 +71,11 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     std::vector<uchar> data(request.image().begin(), request.image().end());
     assert(data.size() > 0);
     bool copyData = false;
-    cv::Mat image = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+
+    cv::Mat imageUnrotated = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
+//     imwrite("imageUnrotated.jpg", imageUnrotated);
+    cv::Mat image = rotateClockwise(imageUnrotated, request.angle());
+//     imwrite("imageRotated.jpg", image);
 
     if (image.empty() || image.type() != CV_8U || image.channels() != 1) {
       response.set_name("Invalid query data");
@@ -94,9 +98,11 @@ grpc::Status GrpcFrontEnd::onClientQuery(
           new CameraModel("", fx, fy, cx, cy, cv::Size(width, height)));
     }
     std::vector<FoundItem> results;
-    results = this->getOnQuery()(image, camera.get());
 
-    this->_numClients--;
+    results = this->getOnQuery()(image, camera.get());
+    rotateBack(results, request.angle(), width, height);     
+    this->_numClients--;  
+
     if (!results.empty()) {
       response.set_name(results[0].name());
       response.set_x(results[0].x());
@@ -111,3 +117,50 @@ grpc::Status GrpcFrontEnd::onClientQuery(
   }
   return grpc::Status::OK;
 }
+
+
+
+cv::Mat GrpcFrontEnd::rotateClockwise(cv::Mat src, double angle) {
+  cv::Mat dst;
+  if(angle == 90) {
+    cv::transpose(src, dst);
+    cv::flip(dst, dst, 1);
+  } else if(angle == 180) {
+    cv::flip(src, dst, -1);
+  } else if(angle == 270) {
+    cv::transpose(src, dst);
+    cv::flip(dst, dst, 0);
+  } else {
+    //angle = 0, no need to rotation
+    dst = src;
+  }
+  return dst;
+}
+
+void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results ,double angle, int width, int height) {
+  for(unsigned int i = 0; i < results.size(); i++) {
+    double oldX = results[i].x();
+    double oldY = results[i].y();
+    if(oldX == -1) {
+      continue;
+    }
+    if(angle == 90) {
+      //do nothing  
+    } else if(angle == 180) {
+      results[i].setX(oldY);
+      results[i].setY(width - oldX);
+     
+    } else if(angle == 270) {
+      results[i].setX(width - oldX);
+      results[i].setY(height - oldY);
+
+    } else {
+      //angle = 0
+      results[i].setX(height - oldY);
+      results[i].setY(oldX);
+    }
+    std::cout<<"Angle is "<<angle<<std::endl;
+    std::cout<<"After rotateback, x = "<<results[i].x() <<" y = "<<results[i].y()<<std::endl;
+  }
+}
+

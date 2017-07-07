@@ -10,6 +10,9 @@ public:
   double x() const;
   double y() const;
   double width() const;
+  void setX(double x);
+  void setY(double y);
+  void setWidth(double width);
 private:
   std::string _name;
   double _x;
