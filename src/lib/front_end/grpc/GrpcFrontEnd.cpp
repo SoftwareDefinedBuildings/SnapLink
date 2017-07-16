@@ -73,9 +73,9 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     bool copyData = false;
 
     cv::Mat imageUnrotated = imdecode(cv::Mat(data, copyData), cv::IMREAD_GRAYSCALE);
-//     imwrite("imageUnrotated.jpg", imageUnrotated);
+    imwrite("imageUnrotated.jpg", imageUnrotated);
     cv::Mat image = rotateClockwise(imageUnrotated, request.angle());
-//     imwrite("imageRotated.jpg", image);
+    imwrite("imageRotated.jpg", image);
 
     if (image.empty() || image.type() != CV_8U || image.channels() != 1) {
       response.set_name("Invalid query data");
@@ -107,7 +107,9 @@ grpc::Status GrpcFrontEnd::onClientQuery(
       response.set_name(results[0].name());
       response.set_x(results[0].x());
       response.set_y(results[0].y());
-      response.set_width(results[0].width());
+      response.set_size(results[0].size());
+      response.set_width(width > height? height : width);
+      response.set_height(width > height? width : height);
     } else {
       response.set_name(none);
       response.set_x(-1);
@@ -149,7 +151,6 @@ void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results ,double angle, int
     } else if(angle == 180) {
       results[i].setX(oldY);
       results[i].setY(width - oldX);
-     
     } else if(angle == 270) {
       results[i].setX(width - oldX);
       results[i].setY(height - oldY);

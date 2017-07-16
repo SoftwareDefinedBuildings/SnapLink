@@ -260,9 +260,9 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
     double y3 = symbol->get_location_y(3);
     double meanX = (x0 + x1 + x2 + x3) / 4;
     double meanY = (y0 + y1 + y2 + y3) / 4;
-    double width = (meanX - x0) > 0 ? (meanX - x0) : (x0 - meanX);
-    FoundItem item(symbol->get_data(), meanX, meanY, width);
-    std::cout << "Width is " << width << std::endl;
+    double size = (meanX - x0) > 0 ? (meanX - x0) : (x0 - meanX);
+    FoundItem item(symbol->get_data(), meanX, meanY, size, width, height);
+    std::cout << "Size is " << size << std::endl;
     std::cout << "X is " << meanX << std::endl;
     std::cout << "Y is " << meanY << std::endl;
     results->push_back(item);
