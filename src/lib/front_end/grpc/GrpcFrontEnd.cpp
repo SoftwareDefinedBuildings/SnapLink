@@ -108,7 +108,9 @@ grpc::Status GrpcFrontEnd::onClientQuery(
       response.set_name(results[0].name());
       response.set_x(results[0].x());
       response.set_y(results[0].y());
-      response.set_width(results[0].width());
+      response.set_size(results[0].size());
+      response.set_width(width > height? height : width);
+      response.set_height(width > height? width : height);
     } else {
       response.set_name(none);
       response.set_x(-1);
@@ -149,7 +151,6 @@ void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results, double angle,
     } else if (angle == 180) {
       results[i].setX(oldY);
       results[i].setY(width - oldX);
-
     } else if (angle == 270) {
       results[i].setX(width - oldX);
       results[i].setY(height - oldY);

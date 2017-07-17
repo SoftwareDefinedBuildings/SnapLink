@@ -53,7 +53,6 @@ int main(int argc, char *argv[]) {
 
   // check whether required options exist after handling help
   po::notify(vm);
-
   if (vm.count("version")) {
     std::cout << "cellmate version " << VERSION << std::endl;
     return 0;

@@ -24,6 +24,8 @@ message ServerRespondMessage {
   string name = 1;
   double x = 2;
   double y = 3;
-  double width = 4;
+  double size = 4;
+  double width = 5;
+  double height = 6;
 }
 
