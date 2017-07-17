@@ -148,7 +148,7 @@ int Visualizer::run(int argc, char *argv[]) {
     const double visScale = 0.5;
     cv::viz::WCameraPosition coord(visScale);
     cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, visScale);
-    cv::Affine3f poseAffine(camPose.toEigen3f().data());
+    cv::Affine3f poseAffine = camPose.toAffine3f();
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
 
@@ -166,7 +166,7 @@ int Visualizer::run(int argc, char *argv[]) {
     const float vertical = 0.523599;
     cv::viz::WCameraPosition coord(visScale);
     cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), visScale);
-    cv::Affine3f poseAffine(camPose.toEigen3f().data());
+    cv::Affine3f poseAffine = camPose.toAffine3f();
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
 
