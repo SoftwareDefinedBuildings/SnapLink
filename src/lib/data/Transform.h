@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <opencv2/core/core.hpp>
+#include <opencv2/viz.hpp>
 #include <string>
 #include <vector>
 
@@ -44,6 +45,8 @@ public:
 
   Eigen::Matrix4f toEigen4f() const;
   Eigen::Affine3f toEigen3f() const;
+  cv::Affine3f toAffine3f() const;
+
 
 private:
   const float *data() const;

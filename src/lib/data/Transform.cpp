@@ -118,6 +118,14 @@ Eigen::Affine3f Transform::toEigen3f() const {
   return Eigen::Affine3f(toEigen4f());
 }
 
+cv::Affine3f Transform::toAffine3f() const {
+  cv::Affine3f::Mat4 m(data()[0], data()[1], data()[2], data()[3],   //
+                       data()[4], data()[5], data()[6], data()[7],   //
+                       data()[8], data()[9], data()[10], data()[11], //
+                       0, 0, 0, 1);
+  return cv::Affine3f(m);
+}
+
 const float *Transform::data() const { return (const float *)_data.data; }
 
 Transform Transform::fromEigen4f(const Eigen::Matrix4f &matrix) {

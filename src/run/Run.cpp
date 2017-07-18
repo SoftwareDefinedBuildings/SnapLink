@@ -246,9 +246,9 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
        symbol != image.symbol_end(); ++symbol) {
     std::cout << "decoded " << symbol->get_type_name() << " symbol "
               << symbol->get_data() << std::endl;
-    //Zbar's coordinate system is topleft = (0,0)
-    //x axis is pointing to right
-    //y axis is pointing to bottom
+    // Zbar's coordinate system is topleft = (0,0)
+    // x axis is pointing to right
+    // y axis is pointing to bottom
 
     double x0 = symbol->get_location_x(0);
     double x1 = symbol->get_location_x(1);

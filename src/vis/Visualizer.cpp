@@ -131,15 +131,8 @@ int Visualizer::run(int argc, char *argv[]) {
       return 1;
     }
 
-    double scale;
-    if (!downsample(image, scale)) {
-      std::cerr << "image downsample failed" << std::endl;
-      return 1;
-    }
-    std::cerr << "image downsample ratio: " << scale << std::endl;
     imwrite("image.jpg", image);
-    CameraModel camera("camera", fx / scale, fy / scale, cx / scale, cy / scale,
-                       image.size());
+    CameraModel camera("camera", fx, fy, cx, cy, image.size());
     std::cerr << "image intrinsic matrix:" << std::endl
               << camera.K() << std::endl;
     Transform camPose =
@@ -155,7 +148,7 @@ int Visualizer::run(int argc, char *argv[]) {
     const double visScale = 0.5;
     cv::viz::WCameraPosition coord(visScale);
     cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), image, visScale);
-    cv::Affine3f poseAffine(camPose.toEigen3f().data());
+    cv::Affine3f poseAffine = camPose.toAffine3f();
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
 
@@ -173,7 +166,7 @@ int Visualizer::run(int argc, char *argv[]) {
     const float vertical = 0.523599;
     cv::viz::WCameraPosition coord(visScale);
     cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), visScale);
-    cv::Affine3f poseAffine(camPose.toEigen3f().data());
+    cv::Affine3f poseAffine = camPose.toAffine3f();
     window.showWidget("coord", coord, poseAffine);
     window.showWidget("frustum", frustum, poseAffine);
 
@@ -227,32 +220,4 @@ Transform Visualizer::localize(const cv::Mat &image, const CameraModel &camera,
       perspective.localize(wordIds, keyPoints, descriptors, camera, roomId);
 
   return pose;
-}
-
-bool Visualizer::downsample(cv::Mat &image, double &scale) {
-  cv::Size size = image.size();
-  std::cerr << "downsampling image. image width: " << image.size().width
-            << ", height: " << image.size().height << std::endl;
-  scale = 1;
-  const double width = 640;
-  const double height = 480;
-  if ((double)size.width / size.height == width / height) {
-    if (size.width > width) {
-      // downsample to target aspect ratio
-      scale = size.width / width;
-      cv::resize(image, image, cv::Size(width, height), 0, 0, cv::INTER_AREA);
-    }
-    return true;
-  } else if ((double)size.width / size.height == height / width) {
-    if (size.width > height) {
-      // downsample to target aspect ratio
-      scale = size.width / height;
-      cv::resize(image, image, cv::Size(height, width), 0, 0, cv::INTER_AREA);
-    }
-    return true;
-  }
-  std::cerr << "image downsample failed. image width: " << image.size().width
-            << ", height: " << image.size().height << std::endl;
-  // TODO image can have other aspect ratio
-  return false;
 }
