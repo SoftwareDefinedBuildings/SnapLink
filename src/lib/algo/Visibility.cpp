@@ -14,6 +14,11 @@ Visibility::Visibility(const std::map<int, std::vector<Label>> &labels)
 
 std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
                                            const Transform &pose) const {
+  std::vector<FoundItem> results;
+  if (_labels.at(dbId).empty()) {
+    return results;
+  }
+
   std::vector<cv::Point3f> points;
   std::vector<std::string> names;
   for (auto &label : _labels.at(dbId)) {
@@ -21,7 +26,6 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
     names.emplace_back(label.getName());
   }
 
-  std::vector<FoundItem> results;
 
   std::cout << "processing transform" << std::endl << pose << std::endl;
 
