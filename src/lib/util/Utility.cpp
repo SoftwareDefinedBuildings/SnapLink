@@ -59,8 +59,8 @@ bool Utility::compareCVPoint2f(cv::Point2f p1, cv::Point2f p2) {
 }
 
 bool Utility::isInFrontOfCamera(const cv::Point3f &point,
-                                const Transform &pose) {
+                                const Transform &poseInCamera) {
   pcl::PointXYZ pointPCL(point.x, point.y, point.z);
-  pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, pose.toEigen3f());
+  pcl::PointXYZ newPointPCL = pcl::transformPoint(pointPCL, poseInCamera.toEigen3f());
   return newPointPCL.z > 0;
 }
