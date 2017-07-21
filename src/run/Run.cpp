@@ -11,7 +11,8 @@
 #include <pthread.h>
 #include <utility>
 #include <zbar.h>
-
+#include "apriltags/CameraUtil.h"
+#include "apriltags/TagDetector.h"
 int Run::run(int argc, char *argv[]) {
   // Parse arguments
 
@@ -269,4 +270,13 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
   }
 
   return results->size() > 0;
+}
+
+bool Run::aprilExtract(const cv::Mat &im, const CameraModel *camera, cv::Mat& rvec, cv::Mat& tvec ) {
+  TagDetectorParams params;
+  TagFamily family("Tag36h11");
+  TagDetector detector(family, params);
+  cv::Point2d opticalCenter;
+  opticalCenter.x = camera;
+  detector.process(im, opticalCenter, detections);
 }
