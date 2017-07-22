@@ -19,6 +19,7 @@ find_package(RTABMap REQUIRED)
 
 set(ZBAR_LIBRARIES zbar)
 set(GRPC_LIBRARIES grpc++_unsecure grpc gpr)
+set(APRILTAG_LIBRARIES apriltags)
 
 set(INCLUDE_DIRS
     ${Qt5Core_INCLUDE_DIRS}
@@ -45,6 +46,7 @@ set(LIBRARIES
     ${PCL_LIBRARIES}
     ${Boost_LIBRARIES}
     ${RTABMap_LIBRARIES}
+    ${APRILTAG_LIBRARIES}
 )
 
 set(CellMate_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/")

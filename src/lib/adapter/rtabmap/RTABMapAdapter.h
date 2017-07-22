@@ -28,6 +28,8 @@ public:
   const std::map<int, std::vector<Label>> &getLabels() final;
   bool putLabel(int roomId, std::string label_name, std::string label_id,
                 std::string label_x, std::string label_y) final;
+  bool saveAprilTagPose(int roomId, long time, int code,
+        Transform pose); 
 
 private:
   std::map<int, Image> readRoomImages(const std::string &dbPath, int roomId);
@@ -36,7 +38,7 @@ private:
   sqlite3 *createLabelTable(int roomId);
   void createWords();
   void createRooms();
-
+  sqlite3 *createAprilTagPoseTable(int roomId);
 private:
   int _nextImageId;
   float _distRatio;

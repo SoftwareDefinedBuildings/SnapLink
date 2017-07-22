@@ -26,23 +26,26 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
     names.emplace_back(label.getName());
   }
 
-
   std::cout << "processing transform" << std::endl << pose << std::endl;
 
   std::vector<cv::Point2f> planePoints;
   std::vector<std::string> visibleLabels;
 
   cv::Mat K = camera.K();
-  // change the base coordiate of the transform from the world coordinate to the image coordinate
+  // change the base coordiate of the transform from the world coordinate to the
+  // image coordinate
   Transform poseInCamera = pose.inverse();
-  cv::Mat R = (cv::Mat_<double>(3, 3) << (double)poseInCamera.r11(), (double)poseInCamera.r12(),
-               (double)poseInCamera.r13(),                                         //
-               (double)poseInCamera.r21(), (double)poseInCamera.r22(), (double)poseInCamera.r23(), //
-               (double)poseInCamera.r31(), (double)poseInCamera.r32(), (double)poseInCamera.r33());
+  cv::Mat R = (cv::Mat_<double>(3, 3) << (double)poseInCamera.r11(),
+               (double)poseInCamera.r12(),
+               (double)poseInCamera.r13(), //
+               (double)poseInCamera.r21(), (double)poseInCamera.r22(),
+               (double)poseInCamera.r23(), //
+               (double)poseInCamera.r31(), (double)poseInCamera.r32(),
+               (double)poseInCamera.r33());
   cv::Mat rvec(1, 3, CV_64FC1);
   cv::Rodrigues(R, rvec);
-  cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)poseInCamera.x(), (double)poseInCamera.y(),
-                  (double)poseInCamera.z());
+  cv::Mat tvec = (cv::Mat_<double>(1, 3) << (double)poseInCamera.x(),
+                  (double)poseInCamera.y(), (double)poseInCamera.z());
 
   // do the projection
   cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);

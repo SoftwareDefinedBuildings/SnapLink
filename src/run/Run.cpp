@@ -1,5 +1,6 @@
 #include "run/Run.h"
-#include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "apriltags/CameraUtil.h"
+#include "apriltags/TagDetector.h"
 #include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
 #include "lib/data/Transform.h"
@@ -11,8 +12,6 @@
 #include <pthread.h>
 #include <utility>
 #include <zbar.h>
-#include "apriltags/CameraUtil.h"
-#include "apriltags/TagDetector.h"
 int Run::run(int argc, char *argv[]) {
   // Parse arguments
 
@@ -27,6 +26,8 @@ int Run::run(int argc, char *argv[]) {
        "limit the number of corresponding 2D-3D points used") //
       ("save-image,s", po::bool_switch(&_saveImage)->default_value(false),
        "save images to files, which can causes significant delays.") //
+      ("tag-size, z", po::value<double>(&_tagSize)->default_value(0.16),
+       "size of april-tags used in the room") //
       ("dist-ratio,d", po::value<float>(&_distRatio)->default_value(0.7),
        "distance ratio used to create words");
 
@@ -76,16 +77,16 @@ int Run::run(int argc, char *argv[]) {
   if (_dbFiles.size()) {
     _mode = Run::FULL_FUNCTIONING;
     std::cout << "READING DATABASES" << std::endl;
-    RTABMapAdapter adapter(_distRatio);
-    if (!adapter.init(
+    RTABMapAdapter _adapter = RTABMapAdapter(_distRatio);
+    if (!_adapter.init(
             std::set<std::string>(_dbFiles.begin(), _dbFiles.end()))) {
       std::cerr << "reading data failed";
       return 1;
     }
 
-    words = adapter.getWords();
-    rooms = adapter.getRooms();
-    labels = adapter.getLabels();
+    words = _adapter.getWords();
+    rooms = _adapter.getRooms();
+    labels = _adapter.getLabels();
 
     std::cout << "RUNNING COMPUTING ELEMENTS" << std::endl;
     _feature = std::make_unique<Feature>(_featureLimit);
@@ -148,6 +149,12 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   // qr extraction
   QFuture<bool> qrWatcher = QtConcurrent::run(qrExtract, image, &qrResults);
 
+  // apriltag extraction
+  std::vector<Transform> tagPosesInCameraFrame;
+  std::vector<int> codesOfTags;
+  QFuture<bool> aprilWatcher =
+      QtConcurrent::run(aprilExtract, image, camera, tagPosesInCameraFrame,
+                        _tagSize, codesOfTags);
   if (_saveImage) {
     QtConcurrent::run(
         [=]() { imwrite(std::to_string(Utility::getTime()) + ".jpg", image); });
@@ -218,12 +225,18 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
       // std::cout << "image pose :" << std::endl << pose << std::endl;
       Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
                      perspectiveTime, visibilityTime);
+      aprilWatcher.waitForFinished();
+      if (aprilWatcher.result()) {
+        calculateAndSaveAprilTagPose(tagPosesInCameraFrame, pose, codesOfTags,
+                                     roomId);
+      }
     }
   } else {
     std::cerr << "image localization not performed." << std::endl;
   }
 
   qrWatcher.waitForFinished();
+  aprilWatcher.waitForFinished();
   if (qrWatcher.result()) {
     results.insert(results.begin(), qrResults.begin(), qrResults.end());
   }
@@ -272,11 +285,64 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
   return results->size() > 0;
 }
 
-bool Run::aprilExtract(const cv::Mat &im, const CameraModel *camera, cv::Mat& rvec, cv::Mat& tvec ) {
+bool Run::aprilExtract(const cv::Mat &im, const CameraModel *camera,
+                       std::vector<Transform> &tagPosesInCameraFrame,
+                       double tagSize, std::vector<int> &codesOfTags) {
   TagDetectorParams params;
   TagFamily family("Tag36h11");
   TagDetector detector(family, params);
+  TagDetectionArray detections;
+
+  std::cout<<"1\n";
   cv::Point2d opticalCenter;
-  opticalCenter.x = camera;
+  opticalCenter.x = camera->cx();
+  opticalCenter.y = camera->cy();
+
+  std::cout<<"2\n";
   detector.process(im, opticalCenter, detections);
+
+  std::cout<<"3\n";
+  if (detections.size() > 0) {
+    cv::Mat r, t;
+    std::cout<<"4\n";
+    for (unsigned int i = 0; i < detections.size(); i++) {
+      std::cout<<"4.5\n";
+      camera->fx();
+      std::cout<<"4.6\n";
+      camera->fy();
+      std::cout<<"4.7\n";
+      detections[i].homography;
+      std::cout<<"4.8\n";
+      CameraUtil::homographyToPoseCV(camera->fx(), camera->fy(), tagSize,
+                                     detections[i].homography, r, t);
+      
+      std::cout<<"5\n";
+      Transform pose(r.at<double>(0, 0), r.at<double>(0, 1), r.at<double>(0, 2),
+                     t.at<double>(0, 0), r.at<double>(1, 0), r.at<double>(1, 1),
+                     r.at<double>(1, 2), t.at<double>(0, 1), r.at<double>(2, 0),
+                     r.at<double>(2, 1), r.at<double>(2, 2),
+                     t.at<double>(0, 2));
+      std::cout<<"6\n";
+      tagPosesInCameraFrame.push_back(pose);
+      
+      std::cout<<"7\n";
+      codesOfTags.push_back(detections[i].code);
+    }
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void Run::calculateAndSaveAprilTagPose(
+    std::vector<Transform> &tagPosesInCameraFrame, Transform &pose,
+    std::vector<int> codes, int roomId) {
+  
+  std::cout<<"April Tag detected--------------------------------------------------------\n";
+  for (unsigned int i = 0; i < tagPosesInCameraFrame.size(); i++) {
+    Transform tagPoseInModelFrame = pose * tagPosesInCameraFrame[i];
+    int code = codes[i];
+    long time = Utility::getTime();
+    _adapter.saveAprilTagPose(roomId, time, code, tagPoseInModelFrame);
+  }
 }

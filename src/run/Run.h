@@ -9,6 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <opencv2/core/core.hpp>
+#include "lib/adapter/rtabmap/RTABMapAdapter.h"
 
 #define MAX_CLIENTS 10
 
@@ -30,7 +31,10 @@ private:
   std::vector<FoundItem> identify(const cv::Mat &image,
                                   const CameraModel *camera);
   static bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
-
+  static bool aprilExtract(const cv::Mat &im, const CameraModel *camera,
+         std::vector<Transform> &poses, double tagSize, std::vector<int> &codesOfTags); 
+  
+  void calculateAndSaveAprilTagPose(std::vector<Transform> &tagPosesInCameraFrame, Transform &pose, std::vector<int> codes, int roomId);
 
   enum Mode{QR_ONLY, FULL_FUNCTIONING};
 
@@ -41,6 +45,8 @@ private:
   float _distRatio;
   std::vector<std::string> _dbFiles;
   bool _saveImage;
+  double _tagSize;
+  RTABMapAdapter _adapter;
 
   std::unique_ptr<Feature> _feature;
   std::unique_ptr<WordSearch> _wordSearch;

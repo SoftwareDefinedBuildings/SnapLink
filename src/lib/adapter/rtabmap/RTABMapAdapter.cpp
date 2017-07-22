@@ -313,3 +313,56 @@ bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
     return false;
   }
 }
+
+bool RTABMapAdapter::saveAprilTagPose(int roomId, long time, int code,
+                                      Transform pose) {
+  sqlite3 *labelDB = createAprilTagPoseTable(roomId);
+  if (!labelDB) {
+    std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database"
+              << std::endl;
+    return false;
+  }
+  std::stringstream saveQuery;
+  saveQuery << "INSERT INTO AprilTagPoses VALUES ('" << time << "', '" << code
+            << "', '" << pose.r11() << "', '" << pose.r12() << "', '"
+            << pose.r13() << "', '" << pose.r21() << "', '" << pose.r22()
+            << "', '" << pose.r23() << "', '" << pose.r31() << "', '"
+            << pose.r32() << "', '" << pose.r33() << "', '" << pose.x()
+            << "', '" << pose.y() << "', '" << pose.z() << "');";
+  int rc = sqlite3_exec(labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
+  sqlite3_close(labelDB);
+  return rc == SQLITE_OK;
+}
+
+sqlite3 *RTABMapAdapter::createAprilTagPoseTable(int roomId) {
+  sqlite3 *labelDB;
+  if (sqlite3_open(this->_roomPaths.at(roomId).c_str(), &labelDB) !=
+      SQLITE_OK) {
+    std::cerr
+        << "RTABMapAdapter::createAprilTagPoseTable()::Could not open database"
+        << std::endl;
+    return nullptr;
+  }
+  std::string query;
+  query = "CREATE TABLE IF NOT EXISTS AprilTagPoses (\n\t"
+          "timeStamp INT,\n\t"
+          "code INT,\n\t"
+          "r11 REAL,\n\t"
+          "r12 REAL,\n\t"
+          "r13 REAL,\n\t"
+          "r21 REAL,\n\t"
+          "r22 REAL,\n\t"
+          "r23 REAL,\n\t"
+          "r31 REAL,\n\t"
+          "r32 REAL,\n\t"
+          "r33 REAL,\n\t"
+          "x REAL,\n\t"
+          "y REAL,\n\t"
+          "z REAL\n); ";
+  int rc = sqlite3_exec(labelDB, query.c_str(), NULL, NULL, NULL);
+  if (rc == SQLITE_OK) {
+    return labelDB;
+  } else {
+    return nullptr;
+  }
+}
