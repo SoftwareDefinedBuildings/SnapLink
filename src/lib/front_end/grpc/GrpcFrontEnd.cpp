@@ -94,14 +94,10 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     std::cout << "Width = " << width << ", Height = " << height
               << " Cx = " << cx << " Cy = " << cy << std::endl;
 
-    std::unique_ptr<CameraModel> camera;
-    if (fx > 0 && fy > 0 && cx >= 0 && cy >= 0) {
-      camera.reset(
-          new CameraModel("", fx, fy, cx, cy, cv::Size(width, height)));
-    }
+    CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
     std::vector<FoundItem> results;
 
-    results = this->getOnQuery()(image, camera.get());
+    results = this->getOnQuery()(image, camera);
     rotateBack(results, request.angle(), width, height);
     this->_numClients--;
 

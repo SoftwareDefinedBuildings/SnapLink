@@ -14,7 +14,10 @@
 #define MAX_CLIENTS 10
 
 namespace po = boost::program_options;
-
+struct AprilPoseAndCode {
+  Transform pose;
+  int code;  
+};
 class CameraModel;
 class FoundItem;
 class Run final {
@@ -29,12 +32,12 @@ private:
   // must be thread-safe
   // camera is optional, no image localization is performed if not provided
   std::vector<FoundItem> identify(const cv::Mat &image,
-                                  const CameraModel *camera);
+                                  const CameraModel &camera);
   static bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
-  static bool aprilExtract(const cv::Mat &im, const CameraModel *camera,
-         std::vector<Transform> &poses, double tagSize, std::vector<int> &codesOfTags); 
+  static std::vector<AprilPoseAndCode> aprilExtract(const cv::Mat &im, const CameraModel &camera,
+         double tagSize); 
   
-  void calculateAndSaveAprilTagPose(std::vector<Transform> &tagPosesInCameraFrame, Transform &pose, std::vector<int> codes, int roomId);
+  void calculateAndSaveAprilTagPose(std::vector<AprilPoseAndCode> &tagPosesInCameraFrameAndCodes, Transform &pose,  int roomId);
 
   enum Mode{QR_ONLY, FULL_FUNCTIONING};
 
