@@ -36,5 +36,6 @@ const cv::Mat &CameraModel::D() const { return _D; }
 const cv::Size &CameraModel::getImageSize() const { return _imageSize; }
 
 bool CameraModel::isValid() const {
-  return _K.at<double>(0, 0) > 0 && _K.at<double>(1, 1) > 0 && _K.at<double>(0, 2) > 0 && _K.at<double>(1, 2) > 0;
-} 
+  return _K.at<double>(0, 0) > 0 && _K.at<double>(1, 1) > 0 &&
+         _K.at<double>(0, 2) > 0 && _K.at<double>(1, 2) > 0;
+}
