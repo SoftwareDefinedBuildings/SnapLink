@@ -34,6 +34,7 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     _labels.emplace(roomId, std::move(roomLabels));
 
     _roomPaths.emplace(roomId, std::string(dbPath));
+    
 
     roomId++;
   }
@@ -365,4 +366,8 @@ sqlite3 *RTABMapAdapter::createAprilTagPoseTable(int roomId) {
   } else {
     return nullptr;
   }
+}
+
+void RTABMapAdapter::createAprilTagMap(std::string dataPath) {
+  
 }
