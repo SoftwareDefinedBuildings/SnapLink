@@ -100,7 +100,6 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     results = this->getOnQuery()(image, camera);
     rotateBack(results, request.angle(), width, height);
     this->_numClients--;
-
     if (!results.empty()) {
       response.set_name(results[0].name());
       response.set_x(results[0].x());

@@ -34,9 +34,10 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     _labels.emplace(roomId, std::move(roomLabels));
 
     _roomPaths.emplace(roomId, std::string(dbPath));
-    
 
+    createAprilTagMap(dbPath, roomId);
     roomId++;
+
   }
 
   return true;
@@ -317,6 +318,17 @@ bool RTABMapAdapter::putLabel(int roomId, std::string label_name,
 
 bool RTABMapAdapter::saveAprilTagPose(int roomId, long time, int code,
                                       Transform pose) {
+  {
+    std::lock_guard<std::mutex> lock(_aprilTagMapMutex);
+    if (_aprilTagMap.count(code) > 0) {
+      _aprilTagMap[code].emplace(roomId, pose);
+    } else {
+      std::multimap<int, Transform> value;
+      value.emplace(roomId, pose);
+      _aprilTagMap.emplace(code, value);
+    }
+  }
+
   sqlite3 *labelDB = createAprilTagPoseTable(roomId);
   if (!labelDB) {
     std::cerr << "RTABMapAdapter::createLabelTable()::Could not open database"
@@ -368,6 +380,85 @@ sqlite3 *RTABMapAdapter::createAprilTagPoseTable(int roomId) {
   }
 }
 
-void RTABMapAdapter::createAprilTagMap(std::string dataPath) {
-  
+void RTABMapAdapter::createAprilTagMap(std::string dbPath, int roomId) {
+  std::cerr << "reading aprilTag poses from database " << dbPath << std::endl;
+
+  // SQLite C API
+  sqlite3 *db = nullptr;
+  sqlite3_stmt *stmt = nullptr;
+  int rc;
+
+  rc = sqlite3_open(dbPath.c_str(), &db);
+  if (rc != SQLITE_OK) {
+    std::cerr << "Could not open database " << sqlite3_errmsg(db) << std::endl;
+    sqlite3_close(db);
+    return;
+  }
+
+  std::string sql = "SELECT * from AprilTagPoses";
+  rc = sqlite3_prepare(db, sql.c_str(), -1, &stmt, nullptr);
+  if (rc == SQLITE_OK) {
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+      int code = sqlite3_column_int(stmt, 1);
+      double r11 = sqlite3_column_double(stmt, 2);
+      double r12 = sqlite3_column_double(stmt, 3);
+      double r13 = sqlite3_column_double(stmt, 4);
+      double r21 = sqlite3_column_double(stmt, 5);
+      double r22 = sqlite3_column_double(stmt, 6);
+      double r23 = sqlite3_column_double(stmt, 7);
+      double r31 = sqlite3_column_double(stmt, 8);
+      double r32 = sqlite3_column_double(stmt, 9);
+      double r33 = sqlite3_column_double(stmt, 10);
+      double x = sqlite3_column_double(stmt, 11);
+      double y = sqlite3_column_double(stmt, 12);
+      double z = sqlite3_column_double(stmt, 13);
+      Transform pose(r11, r12, r13, x, 
+                     r21,
+                     r22, r23, y,
+                     r31,
+                     r32, r33, z);
+      if (_aprilTagMap.count(code) > 0) {
+        _aprilTagMap[code].emplace(roomId, pose);
+      } else {
+        std::multimap<int, Transform> value;
+        value.emplace(roomId, pose);
+        _aprilTagMap.emplace(code, value);
+      }
+    }
+  } else {
+    std::cerr << "Could not read database " << dbPath << ":"
+              << sqlite3_errmsg(db) << std::endl;
+  }
+
+  sqlite3_finalize(stmt);
+  sqlite3_close(db);
+}
+
+std::pair<int, Transform> RTABMapAdapter::lookupAprilCode(int code) {
+  std::multimap<int, Transform> value;
+  {
+    std::lock_guard<std::mutex> lock(_aprilTagMapMutex);
+    if (_aprilTagMap.count(code) < 1) {
+      // the first time this tag code appears
+      // return roomId = -1 indicating not found
+      return std::pair<int, Transform>(-1, Transform());
+    }
+    value = _aprilTagMap[code];
+  }
+
+  int maxCount = 0;
+  std::multimap<int, Transform>::iterator maxRoomPosesIter;
+  //given a code, find the room with most occurence of this tag code
+  for (std::multimap<int, Transform>::iterator it = value.begin(), end = value.end();
+       it != end; it = value.upper_bound(it->first)) {
+    int roomId = it->first;
+    int count = value.count(roomId);
+    if(count > maxCount) {
+      maxCount = count;
+      maxRoomPosesIter = it;
+    }
+  }
+  int resultRoomId = maxRoomPosesIter->first;
+  Transform resultPose = maxRoomPosesIter->second;
+  return std::pair<int, Transform>(resultRoomId, resultPose);
 }

@@ -12,6 +12,7 @@
 #include <set>
 #include <sqlite3.h>
 #include <typeinfo>
+#include <mutex>
 
 #define DIST_RATIO 0.7
 
@@ -21,7 +22,6 @@ public:
 
   // read data from database files
   bool init(const std::set<std::string> &dbPaths) final;
-
   const std::map<int, std::map<int, Image>> &getImages() final;
   const std::map<int, Word> &getWords() final;
   const std::map<int, Room> &getRooms() final;
@@ -30,7 +30,8 @@ public:
                 std::string label_x, std::string label_y) final;
   bool saveAprilTagPose(int roomId, long time, int code,
         Transform pose); 
-
+  void createAprilTagMap(std::string dataPath, int roomId);
+  std::pair<int, Transform> lookupAprilCode(int code);
 private:
   std::map<int, Image> readRoomImages(const std::string &dbPath, int roomId);
   std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
@@ -47,10 +48,13 @@ private:
   // {room ID : {image ID in memory : signature ID in database}}
   std::map<int, std::map<int, int>> _imageSigIdMap;
   std::map<int, std::map<int, Image>> _images;
+  // {tag Code: {room ID in memory: tag pose in room model}}
+  std::map<int, std::multimap<int, Transform>> _aprilTagMap;
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;
   std::map<int, std::vector<Label>> _labels;
   std::map<int, std::string> _roomPaths;
   sqlite3 *_labelDB;
   std::string _labelPath;
+  std::mutex _aprilTagMapMutex;
 };

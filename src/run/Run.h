@@ -19,12 +19,12 @@ class FoundItem;
 class Run final {
 public:
   int run(int argc, char *argv[]);
-
+  ~Run();
 private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
-  static void printTime(long total, long feature, long wordSearch,
-                        long roomSearch, long perspective, long visibility);
+  static void printImageLocalTime(long total, long feature, long wordSearch,
+                        long roomSearch, long perspective);
   // must be thread-safe
   // camera is optional, no image localization is performed if not provided
   std::vector<FoundItem> identify(const cv::Mat &image,
@@ -33,7 +33,7 @@ private:
   
   void calculateAndSaveAprilTagPose(std::vector<Transform> aprilTagPosesInCamFrame,std::vector<int> aprilTagCodes,std::pair<int, Transform> imageLocResultPose);  
 
-  std::vector<std::pair<int, Transform>> aprilExtract(const cv::Mat &im, const CameraModel &camera, double tagSize,std::vector<Transform> *tagPoseInCamFrame std::vector<int> *tagCodes);
+  std::vector<std::pair<int, Transform>> aprilLocalize(const cv::Mat &im, const CameraModel &camera, double tagSize,std::vector<Transform> *tagPoseInCamFrame, std::vector<int> *tagCodes);
 
   std::pair<int, Transform> imageLocalize(const cv::Mat &image, const CameraModel &camera);
   enum Mode{QR_ONLY, FULL_FUNCTIONING};
@@ -46,7 +46,7 @@ private:
   std::vector<std::string> _dbFiles;
   bool _saveImage;
   double _tagSize;
-  RTABMapAdapter _adapter;
+  RTABMapAdapter *_adapter;
 
   std::unique_ptr<Feature> _feature;
   std::unique_ptr<WordSearch> _wordSearch;
