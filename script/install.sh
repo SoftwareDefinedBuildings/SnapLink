@@ -123,3 +123,15 @@ make install -j $(nproc)
 # Install protobuf compiled while comopiling GRPC
 cd $WORKSPACE/grpc/third_party/protobuf
 make install -j $(nproc)
+
+
+## AprilTags
+git clone -b master --single-branch --depth 1 https://github.com/swatbotics/apriltags-cpp.git $WORKSPACE/apriltags
+
+mkdir -p $WORKSPACE/apriltags/build
+cd $WORKSPACE/apriltags/build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make -j $(nproc)
+cp libapriltags.a /usr/local/lib/
+mkdir -p /usr/local/include/apriltags
+cp ../src/*h /usr/local/include/apriltags/
