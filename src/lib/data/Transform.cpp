@@ -1,6 +1,10 @@
 #include "lib/data/Transform.h"
 
-Transform::Transform() = default;
+Transform::Transform(){
+  _data = (cv::Mat_<float>(3, 4) << 0, 0, 0, 0, //
+           0, 0, 0, 0,                          //
+           0, 0, 0, 0);
+}
 
 Transform::Transform(float r11, float r12, float r13, float t14, //
                      float r21, float r22, float r23, float t24, //

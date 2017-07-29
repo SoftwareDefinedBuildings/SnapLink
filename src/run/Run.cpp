@@ -6,6 +6,7 @@
 #include "lib/data/Transform.h"
 #include "lib/front_end/grpc/GrpcFrontEnd.h"
 #include "lib/util/Utility.h"
+#include "lib/visualize/visualize.h"
 #include <QCoreApplication>
 #include <QtConcurrent>
 #include <cstdio>
@@ -28,6 +29,8 @@ int Run::run(int argc, char *argv[]) {
        "save images to files, which can causes significant delays.") //
       ("tag-size, z", po::value<double>(&_tagSize)->default_value(0.16),
        "size of april-tags used in the room") //
+      ("visualize,v", po::bool_switch(&_vis)->default_value(false),
+       "Visualize the 3D model and localized camera pose") //
       ("dist-ratio,d", po::value<float>(&_distRatio)->default_value(0.7),
        "distance ratio used to create words");
 
@@ -77,16 +80,19 @@ int Run::run(int argc, char *argv[]) {
   if (_dbFiles.size()) {
     _mode = Run::FULL_FUNCTIONING;
     std::cout << "READING DATABASES" << std::endl;
-    _adapter = new RTABMapAdapter(_distRatio);
+    _adapter = std::make_unique<RTABMapAdapter>(_distRatio);
     if (!_adapter->init(
             std::set<std::string>(_dbFiles.begin(), _dbFiles.end()))) {
       std::cerr << "reading data failed";
       return 1;
     }
 
+   
     words = _adapter->getWords();
     rooms = _adapter->getRooms();
     labels = _adapter->getLabels();
+    _visualize = std::make_unique<Visualize>(_adapter->getImages());
+    _visualize->startVis();
 
     std::cout << "RUNNING COMPUTING ELEMENTS" << std::endl;
     _feature = std::make_unique<Feature>(_featureLimit);
@@ -114,9 +120,7 @@ int Run::run(int argc, char *argv[]) {
   return app.exec();
 }
 
-Run::~Run() {
-  delete _adapter;
-}
+
 
 void Run::printInvalid(const std::vector<std::string> &opts) {
   std::cerr << "invalid options: ";
@@ -188,6 +192,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
       finalPose = imageLocResultPose.second;
       roomId = imageLocResultPose.first;
     }
+    _visualize->setPose(roomId, finalPose);
     if (finalPose.isNull()) {
       std::cerr << "image localization failed (did you provide the correct "
                    "intrinsic matrix?)"

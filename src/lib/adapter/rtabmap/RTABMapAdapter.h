@@ -32,6 +32,7 @@ public:
         Transform pose); 
   void createAprilTagMap(std::string dataPath, int roomId);
   std::pair<int, Transform> lookupAprilCode(int code);
+  int getDBCounts();
 private:
   std::map<int, Image> readRoomImages(const std::string &dbPath, int roomId);
   std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
@@ -57,4 +58,5 @@ private:
   sqlite3 *_labelDB;
   std::string _labelPath;
   std::mutex _aprilTagMapMutex;
+  int _dbCounts;
 };

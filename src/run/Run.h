@@ -9,6 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <opencv2/core/core.hpp>
+#include "lib/visualize/visualize.h"
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
 
 #define MAX_CLIENTS 10
@@ -19,7 +20,6 @@ class FoundItem;
 class Run final {
 public:
   int run(int argc, char *argv[]);
-  ~Run();
 private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
@@ -45,8 +45,10 @@ private:
   float _distRatio;
   std::vector<std::string> _dbFiles;
   bool _saveImage;
+  bool _vis;
   double _tagSize;
-  RTABMapAdapter *_adapter;
+  std::unique_ptr<RTABMapAdapter> _adapter;
+  std::unique_ptr<Visualize> _visualize;
 
   std::unique_ptr<Feature> _feature;
   std::unique_ptr<WordSearch> _wordSearch;

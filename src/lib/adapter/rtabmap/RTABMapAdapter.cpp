@@ -39,6 +39,7 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
     roomId++;
 
   }
+  _dbCounts = roomId;
 
   return true;
 }
@@ -461,4 +462,9 @@ std::pair<int, Transform> RTABMapAdapter::lookupAprilCode(int code) {
   int resultRoomId = maxRoomPosesIter->first;
   Transform resultPose = maxRoomPosesIter->second;
   return std::pair<int, Transform>(resultRoomId, resultPose);
+}
+
+
+int RTABMapAdapter::getDBCounts() {
+  return _dbCounts;
 }
