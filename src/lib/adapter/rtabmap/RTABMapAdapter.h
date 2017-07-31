@@ -32,6 +32,7 @@ public:
         Transform pose); 
   void createAprilTagMap(std::string dataPath, int roomId);
   std::pair<int, Transform> lookupAprilCode(int code);
+  std::vector<std::pair<int, Transform>> lookupAprilCodes(std::vector<int> codes);
   int getDBCounts();
 private:
   std::map<int, Image> readRoomImages(const std::string &dbPath, int roomId);

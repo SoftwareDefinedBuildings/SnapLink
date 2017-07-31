@@ -1,6 +1,4 @@
 #include "run/Run.h"
-#include "apriltags/CameraUtil.h"
-#include "apriltags/TagDetector.h"
 #include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
 #include "lib/data/Transform.h"
@@ -101,6 +99,7 @@ int Run::run(int argc, char *argv[]) {
     _perspective =
         std::make_unique<Perspective>(rooms, words, _corrLimit, _distRatio);
     _visibility = std::make_unique<Visibility>(labels);
+    _aprilTag = std::make_unique<Apriltag>(_tagSize);
   } else {
     _mode = Run::QR_ONLY;
     std::cout << "Only QR identification is enabled" << std::endl;
@@ -157,10 +156,10 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   std::vector<Transform> aprilTagPoses;
   std::vector<int> aprilTagCodes;
 
-  std::vector<std::pair<int, Transform>> aprilResultPose;
+  std::pair<std::vector<int>, std::vector<Transform>> aprilDetectResult;
   std::pair<int, Transform> imageLocResultPose;
 
-  QFuture<std::vector<std::pair<int, Transform>>> aprilLocalizeWatcher;
+  QFuture<std::pair<std::vector<int>, std::vector<Transform>>> aprilDetectWatcher;
   QFuture<std::pair<int, Transform>> imageLocalizeWatcher;
 
   // qr extraction
@@ -174,12 +173,17 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
 
   if (_mode == Run::FULL_FUNCTIONING && camera.isValid()) {
       // aprilTag extraction and localization
-    aprilLocalizeWatcher = QtConcurrent::run(this, &Run::aprilLocalize, image, camera, _tagSize,
-                          &aprilTagPoses, &aprilTagCodes);
+    aprilDetectWatcher = QtConcurrent::run(_aprilTag.get(), &Apriltag::aprilDetect, image, camera);
 
     imageLocalizeWatcher = QtConcurrent::run(this, &Run::imageLocalize, image, camera);
 
-    aprilResultPose = aprilLocalizeWatcher.result();
+    aprilDetectResult = aprilDetectWatcher.result();
+
+    //This lookup and localize part takes less than 1ms, so didn't put in another thread to run 
+    std::vector<Transform> tagPoseInCamFrame = aprilDetectResult.second;
+    std::vector<std::pair<int, Transform>>  tagPoseInModelFrame = _adapter->lookupAprilCodes(aprilDetectResult.first);
+    std::vector<std::pair<int, Transform>> aprilResultPose = _aprilTag->aprilLocalize(tagPoseInCamFrame, tagPoseInModelFrame);
+
     imageLocResultPose = imageLocalizeWatcher.result();
 
     Transform finalPose;
@@ -221,8 +225,8 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   std::cout << "Time Identify overall " << totalTime << " ms" <<std::endl;
   
   if (aprilTagPoses.size() > 0 && !imageLocResultPose.second.isNull()) {
-    QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose, aprilTagPoses,
-                      aprilTagCodes, imageLocResultPose);
+    QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose, aprilDetectResult.second,
+                      aprilDetectResult.first, imageLocResultPose);
   }
   return results;
 }
@@ -324,60 +328,60 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
   return results->size() > 0;
 }
 
-std::vector<std::pair<int, Transform>> Run::aprilLocalize(
-    const cv::Mat &im, const CameraModel &camera, double tagSize,
-    std::vector<Transform> *tagPoseInCamFrame, std::vector<int> *tagCodes) {
-  long totalStartTime = Utility::getTime();
-  long startTime;
+// std::vector<std::pair<int, Transform>> Run::aprilLocalize(
+//     const cv::Mat &im, const CameraModel &camera, double tagSize,
+//     std::vector<Transform> *tagPoseInCamFrame, std::vector<int> *tagCodes) {
+//   long totalStartTime = Utility::getTime();
+//   long startTime;
   
-  std::vector<std::pair<int, Transform>> results;
+//   std::vector<std::pair<int, Transform>> results;
 
-  TagDetectorParams params;
-  TagFamily family("Tag36h11");
-  TagDetector detector(family, params);
-  TagDetectionArray detections;
+//   TagDetectorParams params;
+//   TagFamily family("Tag36h11");
+//   TagDetector detector(family, params);
+//   TagDetectionArray detections;
 
-  cv::Point2d opticalCenter;
-  opticalCenter.x = camera.cx();
-  opticalCenter.y = camera.cy();
+//   cv::Point2d opticalCenter;
+//   opticalCenter.x = camera.cx();
+//   opticalCenter.y = camera.cy();
   
-  long aprilDetectionTime;
-  startTime = Utility::getTime();
-  detector.process(im, opticalCenter, detections);
-  aprilDetectionTime =  Utility::getTime() - startTime;
-  std::cout <<"Time aprilDetection " << aprilDetectionTime << " ms" << std::endl;
+//   long aprilDetectionTime;
+//   startTime = Utility::getTime();
+//   detector.process(im, opticalCenter, detections);
+//   aprilDetectionTime =  Utility::getTime() - startTime;
+//   std::cout <<"Time aprilDetection " << aprilDetectionTime << " ms" << std::endl;
 
-  cv::Mat rVec, t;
-  for (unsigned int i = 0; i < detections.size(); i++) {
-    CameraUtil::homographyToPoseCV(camera.fx(), camera.fy(), tagSize,
-                                   detections[i].homography, rVec, t);
-    cv::Mat r,dump;
-    cv::Rodrigues(rVec,r,dump);
-    Transform pose(r.at<double>(0, 0), r.at<double>(0, 1), r.at<double>(0, 2), t.at<double>(0, 0), //
-                   r.at<double>(1, 0), r.at<double>(1, 1), r.at<double>(1, 2), t.at<double>(0, 1), //
-                   r.at<double>(2, 0), r.at<double>(2, 1), r.at<double>(2, 2), t.at<double>(0, 2));
-    tagPoseInCamFrame->push_back(pose);
-    tagCodes->push_back(detections[i].code);
+//   cv::Mat rVec, t;
+//   for (unsigned int i = 0; i < detections.size(); i++) {
+//     CameraUtil::homographyToPoseCV(camera.fx(), camera.fy(), tagSize,
+//                                    detections[i].homography, rVec, t);
+//     cv::Mat r,dump;
+//     cv::Rodrigues(rVec,r,dump);
+//     Transform pose(r.at<double>(0, 0), r.at<double>(0, 1), r.at<double>(0, 2), t.at<double>(0, 0), //
+//                    r.at<double>(1, 0), r.at<double>(1, 1), r.at<double>(1, 2), t.at<double>(0, 1), //
+//                    r.at<double>(2, 0), r.at<double>(2, 1), r.at<double>(2, 2), t.at<double>(0, 2));
+//     tagPoseInCamFrame->push_back(pose);
+//     tagCodes->push_back(detections[i].code);
 
-    long aprilLookupTime;
-    startTime = Utility::getTime();
-    // pair<roomId, tagPoseInModelFrame>, roomId will be -1 if no such tag code
-    // exist in db
-    std::pair<int, Transform> tagPoseInModelFrame =
-        _adapter->lookupAprilCode(detections[i].code);
-    aprilLookupTime = Utility::getTime() - startTime;
-    std::cout <<"Time aprilLookup " << aprilLookupTime << " ms" << std::endl;
+//     long aprilLookupTime;
+//     startTime = Utility::getTime();
+//     // pair<roomId, tagPoseInModelFrame>, roomId will be -1 if no such tag code
+//     // exist in db
+//     std::pair<int, Transform> tagPoseInModelFrame =
+//         _adapter->lookupAprilCode(detections[i].code);
+//     aprilLookupTime = Utility::getTime() - startTime;
+//     std::cout <<"Time aprilLookup " << aprilLookupTime << " ms" << std::endl;
     
-    if (tagPoseInModelFrame.first >= 0) {
-      results.push_back(
-          std::make_pair(tagPoseInModelFrame.first,
-                         tagPoseInModelFrame.second * pose.inverse()));
-    }
-  }
-  long totalTime = Utility::getTime() - totalStartTime;
-  std::cout << "Time AprilLocalize overall " << totalTime << " ms" <<std::endl;
-  return results;
-}
+//     if (tagPoseInModelFrame.first >= 0) {
+//       results.push_back(
+//           std::make_pair(tagPoseInModelFrame.first,
+//                          tagPoseInModelFrame.second * pose.inverse()));
+//     }
+//   }
+//   long totalTime = Utility::getTime() - totalStartTime;
+//   std::cout << "Time AprilLocalize overall " << totalTime << " ms" <<std::endl;
+//   return results;
+// }
 
 void Run::calculateAndSaveAprilTagPose(
     std::vector<Transform> aprilTagPosesInCamFrame,
@@ -390,7 +394,7 @@ void Run::calculateAndSaveAprilTagPose(
 
     int roomId = imageLocResultPose.first;
     Transform camPoseInModelFrame = imageLocResultPose.second;
-    Transform tagPoseInModelFrame = camPoseInModelFrame * tagPoseInCamFrame;
+    Transform tagPoseInModelFrame = _aprilTag->calculateNewAprilTagPoseInModelFrame(camPoseInModelFrame, tagPoseInCamFrame);
     long time = Utility::getTime();
     _adapter->saveAprilTagPose(roomId, time, code, tagPoseInModelFrame);
   }

@@ -468,3 +468,12 @@ std::pair<int, Transform> RTABMapAdapter::lookupAprilCode(int code) {
 int RTABMapAdapter::getDBCounts() {
   return _dbCounts;
 }
+
+
+std::vector<std::pair<int, Transform>> RTABMapAdapter::lookupAprilCodes(std::vector<int> codes) {
+  std::vector<std::pair<int, Transform>> tagPoseInModelFrame;
+  for(auto code : codes) {
+    tagPoseInModelFrame.push_back(lookupAprilCode(code));
+  }
+  return tagPoseInModelFrame;
+}
