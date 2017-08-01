@@ -19,12 +19,11 @@ apt-get install -y git cmake build-essential
 apt-get build-dep -y qt5-default
 apt-get install -y libxcb-xinerama0-dev
 
-# Clone qt5, init repository, checkout to the target tag (only after init-repository has been run), and get all submodules
+# Clone qt5, checkout to the target tag, init repository
 git clone https://code.qt.io/qt/qt5.git $WORKSPACE/qt5
 cd $WORKSPACE/qt5
-perl init-repository
-git checkout tags/v5.8.0
-git submodule update
+git checkout tags/v5.9.1
+perl init-repository --module-subset=default,-qtwebkit,-qtwebkit-examples,-qtwebengine
 
 # Generate Makefile for open source project
 mkdir -p $WORKSPACE/qt5/build
@@ -36,7 +35,7 @@ make -j $(nproc)
 make install -j $(nproc)
 
 # Add QT binaries to PATH
-QT_PATH=/usr/local/Qt-5.8.0
+QT_PATH=/usr/local/Qt-5.9.1
 echo "export PATH=$PATH:$QT_PATH/bin" >> $HOME/.bashrc
 echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$QT_PATH/lib" >> $HOME/.bashrc
 source $HOME/.bashrc
@@ -47,7 +46,7 @@ source $HOME/.bashrc
 apt-get install -y libxt-dev
 
 # Clone VTK to the traget tag
-git clone -b v7.1.1 --single-branch --depth 1 https://github.com/Kitware/VTK $WORKSPACE/VTK
+git clone -b v8.0.0 --single-branch --depth 1 https://github.com/Kitware/VTK $WORKSPACE/VTK
 
 # Compile and install VTK with Qt
 mkdir -p $WORKSPACE/VTK/build
@@ -61,15 +60,15 @@ make install -j $(nproc)
 apt-get install -y python-dev python-numpy
 
 # Clone opencv to the target tag
-git clone -b 3.2.0 --single-branch --depth 1 https://github.com/opencv/opencv $WORKSPACE/opencv
+git clone -b 3.3.0-rc --single-branch --depth 1 https://github.com/opencv/opencv $WORKSPACE/opencv
 
 # Clone opencv_contrib at the target tag, which contains non-free modules (e.g., SURF)
-git clone -b 3.2.0 --single-branch --depth 1 https://github.com/opencv/opencv_contrib $WORKSPACE/opencv_contrib
+git clone -b 3.3.0-rc --single-branch --depth 1 https://github.com/opencv/opencv_contrib $WORKSPACE/opencv_contrib
 
 # Compile and install OpenCV with non-free modules (e.g., SURF)
 mkdir -p $WORKSPACE/opencv/build
 cd $WORKSPACE/opencv/build
-cmake -D CMAKE_BUILD_TYPE=RELEASE -D CMAKE_INSTALL_PREFIX=/usr/local -D WITH_VTK=ON -D OPENCV_EXTRA_MODULES_PATH=$WORKSPACE/opencv_contrib/modules ..
+cmake -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_CXX11=ON -DWITH_VTK=ON -DOPENCV_EXTRA_MODULES_PATH=$WORKSPACE/opencv_contrib/modules ..
 make -j $(nproc)
 make install -j $(nproc)
 
@@ -93,7 +92,7 @@ make install -j $(nproc)
 apt-get install -y libsqlite3-dev
 
 # Clone RTABMap to the target tag
-git clone -b 0.12.4 --single-branch --depth 1 https://github.com/introlab/rtabmap $WORKSPACE/rtabmap
+git clone -b 0.13.0 --single-branch --depth 1 https://github.com/introlab/rtabmap $WORKSPACE/rtabmap
 
 # Compile and install RTABMap 0.11.14
 mkdir -p $WORKSPACE/rtabmap/build
@@ -113,7 +112,7 @@ apt-get install -y libzbar-dev
 apt-get install -y autoconf libtool
 
 #Clone latest GRPC and init its submodules
-git clone -b v1.3.4 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $WORKSPACE/grpc
+git clone -b v1.4.2 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $WORKSPACE/grpc
 
 #Compile and install GRPC
 cd $WORKSPACE/grpc
