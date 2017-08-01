@@ -89,9 +89,12 @@ int Run::run(int argc, char *argv[]) {
     words = _adapter->getWords();
     rooms = _adapter->getRooms();
     labels = _adapter->getLabels();
-    _visualize = std::make_unique<Visualize>(_adapter->getImages());
-    _visualize->startVis();
 
+    if(_vis) {
+      _visualize = std::make_unique<Visualize>(_adapter->getImages());
+      QtConcurrent::run(_visualize.get(), &Visualize::startVis);
+    }
+    
     std::cout << "RUNNING COMPUTING ELEMENTS" << std::endl;
     _feature = std::make_unique<Feature>(_featureLimit);
     _wordSearch = std::make_unique<WordSearch>(words);
@@ -196,7 +199,11 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
       finalPose = imageLocResultPose.second;
       roomId = imageLocResultPose.first;
     }
-    _visualize->setPose(roomId, finalPose);
+
+    if(_vis) {
+      _visualize->setPose(roomId, finalPose);
+    }
+    
     if (finalPose.isNull()) {
       std::cerr << "image localization failed (did you provide the correct "
                    "intrinsic matrix?)"

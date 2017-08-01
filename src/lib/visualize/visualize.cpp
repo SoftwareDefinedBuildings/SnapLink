@@ -20,14 +20,8 @@ Visualize::~Visualize() {
 
 void Visualize::setPose(int roomId, Transform camPose) {
   {
-    cv::Affine3f poseAffine = camPose.toAffine3f();
-    std::lock_guard<std::mutex> lock(_windowMapMutex);
-    _windows[roomId].setWidgetPose("coord", poseAffine);
-    _windows[roomId].setWidgetPose("frustum", poseAffine);
-  }
-  {
-    std::lock_guard<std::mutex> lock(_xWindowMutex);
-    _windows[roomId].spinOnce(1, false);
+    std::lock_guard<std::mutex> lock(_posesMutex);
+    _poses[roomId] = camPose;
   }
 }
 
@@ -79,9 +73,21 @@ void Visualize::startVis() {
     _windows[roomId].showWidget("coord", coord, poseAffine);
     _windows[roomId].showWidget("frustum", frustum, poseAffine);
 
-    {
-      std::lock_guard<std::mutex> lock(_xWindowMutex);
-      _windows[roomId].spinOnce(1, false);
+  }
+
+  while(true) {
+    for(int roomId = 0; roomId < _totalCount; roomId++) {
+      {
+        std::lock_guard<std::mutex> lock(_windowMapMutex);
+        if(_windows[roomId].wasStopped()) {
+          return;
+        } else {
+          cv::Affine3f poseAffine = _poses[roomId].toAffine3f();
+          _windows[roomId].setWidgetPose("coord", poseAffine);
+          _windows[roomId].setWidgetPose("frustum", poseAffine);
+          _windows[roomId].spinOnce(1, false);
+        }
+      }
     }
   }
 }
@@ -89,6 +95,9 @@ void Visualize::startVis() {
 
 void Visualize::stopVis() {
 	for(unsigned int i = 0; i < _totalCount; i++) {
-    _windows[i].close();
+    {
+      std::lock_guard<std::mutex> lock(_windowMapMutex);
+      _windows[i].close();
+    }
   }
 }

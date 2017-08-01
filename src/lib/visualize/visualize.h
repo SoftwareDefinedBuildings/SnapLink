@@ -20,6 +20,8 @@ private:
 	std::mutex _windowMapMutex;
 	unsigned _totalCount;
 	std::map<int, std::map<int, Image>> _images;
-	std::mutex _xWindowMutex;
+	std::map<int, Transform> _poses;
+	std::mutex _posesMutex;
+
 
 };

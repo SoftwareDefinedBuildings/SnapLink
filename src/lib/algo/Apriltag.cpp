@@ -21,6 +21,8 @@ std::vector<std::pair<int, Transform>> Apriltag::aprilLocalize(
                          tagPoseInModelFrame[i].second * tagPoseInCamFrame[i].inverse()));
     }
   }
+
+  return camPoseInModelFrame;
 }
 
 std::pair<std::vector<int>, std::vector<Transform>> Apriltag::aprilDetect(const cv::Mat &im, const CameraModel &camera) {
