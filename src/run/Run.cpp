@@ -403,6 +403,6 @@ void Run::calculateAndSaveAprilTagPose(
     Transform camPoseInModelFrame = imageLocResultPose.second;
     Transform tagPoseInModelFrame = _aprilTag->calculateNewAprilTagPoseInModelFrame(camPoseInModelFrame, tagPoseInCamFrame);
     long time = Utility::getTime();
-    _adapter->saveAprilTagPose(roomId, time, code, tagPoseInModelFrame);
+    _adapter->saveAprilTagPose(roomId, time, code, tagPoseInModelFrame, 1);
   }
 }

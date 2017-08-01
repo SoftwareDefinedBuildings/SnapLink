@@ -27,7 +27,7 @@ void Visualize::setPose(int roomId, Transform camPose) {
 
 void Visualize::startVis() {
   
-  for(int roomId = 0; roomId < _totalCount; roomId++) {
+  for(unsigned int roomId = 0; roomId < _totalCount; roomId++) {
   	Transform camPose(1,0,0,0,0,1,0,0,0,0,1,0);
   	_windows[roomId] = cv::viz::Viz3d("Room " + std::to_string(roomId));
 
@@ -76,7 +76,7 @@ void Visualize::startVis() {
   }
 
   while(true) {
-    for(int roomId = 0; roomId < _totalCount; roomId++) {
+    for(unsigned int roomId = 0; roomId < _totalCount; roomId++) {
       {
         std::lock_guard<std::mutex> lock(_windowMapMutex);
         if(_windows[roomId].wasStopped()) {

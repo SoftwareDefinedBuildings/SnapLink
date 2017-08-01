@@ -14,7 +14,7 @@ std::vector<std::pair<int, Transform>> Apriltag::aprilLocalize(
         std::vector<std::pair<int, Transform>>  tagPoseInModelFrame) {
   std::vector<std::pair<int, Transform>> camPoseInModelFrame;
   assert(tagPoseInCamFrame.size() == tagPoseInModelFrame.size());
-  for(int i = 0; i < tagPoseInCamFrame.size(); i++) {
+  for(unsigned int i = 0; i < tagPoseInCamFrame.size(); i++) {
     if(tagPoseInModelFrame[i].first >= 0) {
     	camPoseInModelFrame.push_back(
           std::make_pair(tagPoseInModelFrame[i].first,
@@ -28,10 +28,16 @@ std::vector<std::pair<int, Transform>> Apriltag::aprilLocalize(
 std::pair<std::vector<int>, std::vector<Transform>> Apriltag::aprilDetect(const cv::Mat &im, const CameraModel &camera) {
   std::vector<Transform> tagPoseInCamFrame;
   std::vector<int> tagCodes;
+  
   cv::Point2d opticalCenter;
-  opticalCenter.x = camera.cx();
-  opticalCenter.y = camera.cy();
-
+  if(camera.isValid()) {
+    opticalCenter.x = camera.cx();
+    opticalCenter.y = camera.cy();
+  } else {
+    opticalCenter.x = im.cols/2;
+    opticalCenter.y = im.rows/2;
+  }
+  
   TagDetectionArray detections;
 
   TagDetectorParams params;
