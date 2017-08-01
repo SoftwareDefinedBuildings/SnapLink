@@ -6,6 +6,7 @@
 #include "lib/algo/Visibility.h"
 #include "lib/algo/WordSearch.h"
 #include "lib/algo/Apriltag.h"
+#include "lib/algo/QR.h"
 #include <boost/program_options.hpp>
 #include <memory>
 #include <mutex>
@@ -57,6 +58,7 @@ private:
   std::unique_ptr<Perspective> _perspective;
   std::unique_ptr<Visibility> _visibility;
   std::unique_ptr<Apriltag> _aprilTag;
+  std::unique_ptr<QR> _QR;
 
   std::mutex _featureMutex;
   std::mutex _wordSearchMutex;

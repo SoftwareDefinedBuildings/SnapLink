@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <pthread.h>
 #include <utility>
-#include <zbar.h>
+
 int Run::run(int argc, char *argv[]) {
   // Parse arguments
 
@@ -103,6 +103,7 @@ int Run::run(int argc, char *argv[]) {
         std::make_unique<Perspective>(rooms, words, _corrLimit, _distRatio);
     _visibility = std::make_unique<Visibility>(labels);
     _aprilTag = std::make_unique<Apriltag>(_tagSize);
+    _QR = std::make_unique<QR>();
   } else {
     _mode = Run::QR_ONLY;
     std::cout << "Only QR identification is enabled" << std::endl;
@@ -166,14 +167,16 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   QFuture<std::pair<int, Transform>> imageLocalizeWatcher;
 
   // qr extraction
-  QFuture<bool> qrWatcher =
-      QtConcurrent::run(this, &Run::qrExtract, image, &qrResults);
+  QFuture<std::vector<FoundItem>> qrWatcher = QtConcurrent::run(_QR.get(), &QR::QRdetect, image);
 
   if (_saveImage) {
     QtConcurrent::run(
         [=]() { imwrite(std::to_string(Utility::getTime()) + ".jpg", image); });
   }
 
+  if(!camera.isValid()) {
+    std::cerr << "Camera is invalid." << std::endl;
+  }
   if (_mode == Run::FULL_FUNCTIONING && camera.isValid()) {
       // aprilTag extraction and localization
     aprilDetectWatcher = QtConcurrent::run(_aprilTag.get(), &Apriltag::aprilDetect, image, camera);
@@ -224,7 +227,8 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
     std::cerr << "image localization not performed." << std::endl;
   }
 
-  if (qrWatcher.result()) {
+  qrResults = qrWatcher.result();
+  if (qrResults.size()>0) {
     results.insert(results.begin(), qrResults.begin(), qrResults.end());
   }
 
@@ -289,105 +293,50 @@ std::pair<int, Transform> Run::imageLocalize(const cv::Mat &image,
   return std::make_pair(roomId, pose);
 }
 
-bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
-  long totalStartTime = Utility::getTime();
- 
-  std::cout << "Qr extracting\n";
-  zbar::ImageScanner scanner;
-  scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
-  uchar *raw = (uchar *)im.data;
-  int width = im.cols;
-  int height = im.rows;
-  std::cout << "Widith = " << width << " Height = " << height << std::endl;
-  zbar::Image image(width, height, "Y800", raw, width * height);
-
-  int n = scanner.scan(image);
-  std::cout << "n is " << n << std::endl;
-  for (zbar::Image::SymbolIterator symbol = image.symbol_begin();
-       symbol != image.symbol_end(); ++symbol) {
-    std::cout << "decoded " << symbol->get_type_name() << " symbol "
-              << symbol->get_data() << std::endl;
-    // Zbar's coordinate system is topleft = (0,0)
-    // x axis is pointing to right
-    // y axis is pointing to bottom
-
-    double x0 = symbol->get_location_x(0);
-    double x1 = symbol->get_location_x(1);
-    double x2 = symbol->get_location_x(2);
-    double x3 = symbol->get_location_x(3);
-    double y0 = symbol->get_location_y(0);
-    double y1 = symbol->get_location_y(1);
-    double y2 = symbol->get_location_y(2);
-    double y3 = symbol->get_location_y(3);
-    double meanX = (x0 + x1 + x2 + x3) / 4;
-    double meanY = (y0 + y1 + y2 + y3) / 4;
-    double size = (meanX - x0) > 0 ? (meanX - x0) : (x0 - meanX);
-    FoundItem item(symbol->get_data(), meanX, meanY, size, width, height);
-    std::cout << "Size is " << size << std::endl;
-    std::cout << "X is " << meanX << std::endl;
-    std::cout << "Y is " << meanY << std::endl;
-    results->push_back(item);
-  }
-
-  long totalTime = Utility::getTime() - totalStartTime;
-  std::cout << "Time QR extract overall " << totalTime << " ms" <<std::endl;
-  
-  return results->size() > 0;
-}
-
-// std::vector<std::pair<int, Transform>> Run::aprilLocalize(
-//     const cv::Mat &im, const CameraModel &camera, double tagSize,
-//     std::vector<Transform> *tagPoseInCamFrame, std::vector<int> *tagCodes) {
+// bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
 //   long totalStartTime = Utility::getTime();
-//   long startTime;
-  
-//   std::vector<std::pair<int, Transform>> results;
+ 
+//   std::cout << "Qr extracting\n";
+//   zbar::ImageScanner scanner;
+//   scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
+//   uchar *raw = (uchar *)im.data;
+//   int width = im.cols;
+//   int height = im.rows;
+//   std::cout << "Widith = " << width << " Height = " << height << std::endl;
+//   zbar::Image image(width, height, "Y800", raw, width * height);
 
-//   TagDetectorParams params;
-//   TagFamily family("Tag36h11");
-//   TagDetector detector(family, params);
-//   TagDetectionArray detections;
+//   int n = scanner.scan(image);
+//   std::cout << "n is " << n << std::endl;
+//   for (zbar::Image::SymbolIterator symbol = image.symbol_begin();
+//        symbol != image.symbol_end(); ++symbol) {
+//     std::cout << "decoded " << symbol->get_type_name() << " symbol "
+//               << symbol->get_data() << std::endl;
+//     // Zbar's coordinate system is topleft = (0,0)
+//     // x axis is pointing to right
+//     // y axis is pointing to bottom
 
-//   cv::Point2d opticalCenter;
-//   opticalCenter.x = camera.cx();
-//   opticalCenter.y = camera.cy();
-  
-//   long aprilDetectionTime;
-//   startTime = Utility::getTime();
-//   detector.process(im, opticalCenter, detections);
-//   aprilDetectionTime =  Utility::getTime() - startTime;
-//   std::cout <<"Time aprilDetection " << aprilDetectionTime << " ms" << std::endl;
-
-//   cv::Mat rVec, t;
-//   for (unsigned int i = 0; i < detections.size(); i++) {
-//     CameraUtil::homographyToPoseCV(camera.fx(), camera.fy(), tagSize,
-//                                    detections[i].homography, rVec, t);
-//     cv::Mat r,dump;
-//     cv::Rodrigues(rVec,r,dump);
-//     Transform pose(r.at<double>(0, 0), r.at<double>(0, 1), r.at<double>(0, 2), t.at<double>(0, 0), //
-//                    r.at<double>(1, 0), r.at<double>(1, 1), r.at<double>(1, 2), t.at<double>(0, 1), //
-//                    r.at<double>(2, 0), r.at<double>(2, 1), r.at<double>(2, 2), t.at<double>(0, 2));
-//     tagPoseInCamFrame->push_back(pose);
-//     tagCodes->push_back(detections[i].code);
-
-//     long aprilLookupTime;
-//     startTime = Utility::getTime();
-//     // pair<roomId, tagPoseInModelFrame>, roomId will be -1 if no such tag code
-//     // exist in db
-//     std::pair<int, Transform> tagPoseInModelFrame =
-//         _adapter->lookupAprilCode(detections[i].code);
-//     aprilLookupTime = Utility::getTime() - startTime;
-//     std::cout <<"Time aprilLookup " << aprilLookupTime << " ms" << std::endl;
-    
-//     if (tagPoseInModelFrame.first >= 0) {
-//       results.push_back(
-//           std::make_pair(tagPoseInModelFrame.first,
-//                          tagPoseInModelFrame.second * pose.inverse()));
-//     }
+//     double x0 = symbol->get_location_x(0);
+//     double x1 = symbol->get_location_x(1);
+//     double x2 = symbol->get_location_x(2);
+//     double x3 = symbol->get_location_x(3);
+//     double y0 = symbol->get_location_y(0);
+//     double y1 = symbol->get_location_y(1);
+//     double y2 = symbol->get_location_y(2);
+//     double y3 = symbol->get_location_y(3);
+//     double meanX = (x0 + x1 + x2 + x3) / 4;
+//     double meanY = (y0 + y1 + y2 + y3) / 4;
+//     double size = (meanX - x0) > 0 ? (meanX - x0) : (x0 - meanX);
+//     FoundItem item(symbol->get_data(), meanX, meanY, size, width, height);
+//     std::cout << "Size is " << size << std::endl;
+//     std::cout << "X is " << meanX << std::endl;
+//     std::cout << "Y is " << meanY << std::endl;
+//     results->push_back(item);
 //   }
+
 //   long totalTime = Utility::getTime() - totalStartTime;
-//   std::cout << "Time AprilLocalize overall " << totalTime << " ms" <<std::endl;
-//   return results;
+//   std::cout << "Time QR extract overall " << totalTime << " ms" <<std::endl;
+  
+//   return results->size() > 0;
 // }
 
 void Run::calculateAndSaveAprilTagPose(
