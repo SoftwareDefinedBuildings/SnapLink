@@ -4,6 +4,8 @@
 #include "lib/algo/Apriltag.h"
 #include "lib/data/CameraModel.h"
 #include <opencv2/opencv.hpp>
+#include "lib/util/Utility.h"
+
 Apriltag::Apriltag(double tagSize) {
   _tagFamilyName =  "Tag36h11";
   _tagSize = tagSize;
@@ -12,6 +14,7 @@ Apriltag::Apriltag(double tagSize) {
 std::vector<std::pair<int, Transform>> Apriltag::aprilLocalize(
         std::vector<Transform> tagPoseInCamFrame,
         std::vector<std::pair<int, Transform>>  tagPoseInModelFrame) {
+  long totalStartTime = Utility::getTime();
   std::vector<std::pair<int, Transform>> camPoseInModelFrame;
   assert(tagPoseInCamFrame.size() == tagPoseInModelFrame.size());
   for(unsigned int i = 0; i < tagPoseInCamFrame.size(); i++) {
@@ -22,12 +25,17 @@ std::vector<std::pair<int, Transform>> Apriltag::aprilLocalize(
     }
   }
 
+  long totalTime = Utility::getTime() - totalStartTime;
+  std::cout << "Time Apriltag localize overall " << totalTime << " ms" <<std::endl;
+
   return camPoseInModelFrame;
 }
 
 std::pair<std::vector<int>, std::vector<Transform>> Apriltag::aprilDetect(const cv::Mat &im, const CameraModel &camera) {
   std::vector<Transform> tagPoseInCamFrame;
   std::vector<int> tagCodes;
+
+  long totalStartTime = Utility::getTime();
   
   cv::Point2d opticalCenter;
   if(camera.isValid()) {
@@ -57,6 +65,9 @@ std::pair<std::vector<int>, std::vector<Transform>> Apriltag::aprilDetect(const 
     tagCodes.push_back(detections[i].code);
   }
 
+  long totalTime = Utility::getTime() - totalStartTime;
+  std::cout << "Time Apriltag detect overall " << totalTime << " ms" <<std::endl;
+ 
   return std::pair<std::vector<int>, std::vector<Transform>>(tagCodes, tagPoseInCamFrame);
 }
 
