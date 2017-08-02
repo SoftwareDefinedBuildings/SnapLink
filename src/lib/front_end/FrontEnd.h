@@ -24,7 +24,7 @@ public:
    * register a callback function
    */
   void registerOnQuery(std::function<std::vector<FoundItem>(
-                           const cv::Mat &image, const CameraModel *camera)>
+                           const cv::Mat &image, const CameraModel &camera)>
                            onQuery) {
     _onQuery = onQuery;
   }
@@ -33,13 +33,13 @@ public:
    * call the callback function
    */
   std::function<std::vector<FoundItem>(const cv::Mat &image,
-                                         const CameraModel *camera)>
+                                         const CameraModel &camera)>
   getOnQuery() {
     return _onQuery;
   }
 
 private:
   std::function<std::vector<FoundItem>(const cv::Mat &image,
-                                         const CameraModel *camera)>
+                                         const CameraModel &camera)>
       _onQuery;
 };

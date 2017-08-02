@@ -212,7 +212,8 @@ Transform Perspective::solvePnP(const std::vector<cv::Point2f> &imagePoints,
                   tvec.at<double>(2));
 
     transform = std::move(pnp);
-    // change the base coordiate of the transform from the image coordinate to the world coordiante
+    // change the base coordiate of the transform from the image coordinate to
+    // the world coordiante
     transform = transform.inverse();
 
     // TODO: compute variance, which is the rms of reprojection errors

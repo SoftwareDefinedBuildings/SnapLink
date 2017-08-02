@@ -2,8 +2,8 @@
 
 FoundItem::FoundItem() = default;
 
-FoundItem::FoundItem(const std::string &name, double x, double y,
-                     double size, double width, double height) {
+FoundItem::FoundItem(const std::string &name, double x, double y, double size,
+                     double width, double height) {
   _name = name;
   _x = x;
   _y = y;

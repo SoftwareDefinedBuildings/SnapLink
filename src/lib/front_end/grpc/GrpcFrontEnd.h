@@ -26,6 +26,9 @@ public slots:
 private:
   cv::Mat rotateClockwise(cv::Mat src, double angle);
   void rotateBack(std::vector<FoundItem> &results ,double angle, int width, int height);
+  void setIntrinsics(double widht, double height, double angle, 
+                               double &fx, double&fy, double &cx, double &cy, 
+                                                    cellmate_grpc::ClientQueryMessage &request);
 private:
   static const std::string none;
   QThread _thread;

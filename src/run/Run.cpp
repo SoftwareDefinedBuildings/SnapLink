@@ -1,5 +1,6 @@
 #include "run/Run.h"
-#include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "apriltags/CameraUtil.h"
+#include "apriltags/TagDetector.h"
 #include "lib/data/FoundItem.h"
 #include "lib/data/Label.h"
 #include "lib/data/Transform.h"
@@ -11,7 +12,6 @@
 #include <pthread.h>
 #include <utility>
 #include <zbar.h>
-
 int Run::run(int argc, char *argv[]) {
   // Parse arguments
 
@@ -26,6 +26,8 @@ int Run::run(int argc, char *argv[]) {
        "limit the number of corresponding 2D-3D points used") //
       ("save-image,s", po::bool_switch(&_saveImage)->default_value(false),
        "save images to files, which can causes significant delays.") //
+      ("tag-size, z", po::value<double>(&_tagSize)->default_value(0.16),
+       "size of april-tags used in the room") //
       ("dist-ratio,d", po::value<float>(&_distRatio)->default_value(0.7),
        "distance ratio used to create words");
 
@@ -75,16 +77,16 @@ int Run::run(int argc, char *argv[]) {
   if (_dbFiles.size()) {
     _mode = Run::FULL_FUNCTIONING;
     std::cout << "READING DATABASES" << std::endl;
-    RTABMapAdapter adapter(_distRatio);
-    if (!adapter.init(
+    _adapter = new RTABMapAdapter(_distRatio);
+    if (!_adapter->init(
             std::set<std::string>(_dbFiles.begin(), _dbFiles.end()))) {
       std::cerr << "reading data failed";
       return 1;
     }
 
-    words = adapter.getWords();
-    rooms = adapter.getRooms();
-    labels = adapter.getLabels();
+    words = _adapter->getWords();
+    rooms = _adapter->getRooms();
+    labels = _adapter->getLabels();
 
     std::cout << "RUNNING COMPUTING ELEMENTS" << std::endl;
     _feature = std::make_unique<Feature>(_featureLimit);
@@ -112,6 +114,10 @@ int Run::run(int argc, char *argv[]) {
   return app.exec();
 }
 
+Run::~Run() {
+  delete _adapter;
+}
+
 void Run::printInvalid(const std::vector<std::string> &opts) {
   std::cerr << "invalid options: ";
   for (const auto &opt : opts) {
@@ -126,111 +132,150 @@ void Run::printUsage(const po::options_description &desc) {
             << desc << std::endl;
 }
 
-void Run::printTime(long total, long feature, long wordSearch, long roomSearch,
-                    long perspective, long visibility) {
-  std::cout << "Time overall: " << total << " ms" << std::endl;
+void Run::printImageLocalTime(long total, long feature, long wordSearch, long roomSearch,
+                    long perspective) {
+  std::cout << "Time ImageLocalize  overall: " << total << " ms" << std::endl;
   std::cout << "Time feature: " << feature << " ms" << std::endl;
   std::cout << "Time wordSearch: " << wordSearch << " ms" << std::endl;
   std::cout << "Time roomSearch: " << roomSearch << " ms" << std::endl;
   std::cout << "Time perspective: " << perspective << " ms" << std::endl;
-  std::cout << "Time visibility: " << visibility << " ms" << std::endl;
 }
 
 // must be thread safe
 std::vector<FoundItem> Run::identify(const cv::Mat &image,
-                                     const CameraModel *camera) {
+                                     const CameraModel &camera) {
+  std::cout<<"**********************************New Query Image****************************************\n";
   std::vector<FoundItem> results;
   std::vector<FoundItem> qrResults;
   long startTime;
   long totalStartTime = Utility::getTime();
 
+  std::vector<Transform> aprilTagPoses;
+  std::vector<int> aprilTagCodes;
+
+  std::vector<std::pair<int, Transform>> aprilResultPose;
+  std::pair<int, Transform> imageLocResultPose;
+
+  QFuture<std::vector<std::pair<int, Transform>>> aprilLocalizeWatcher;
+  QFuture<std::pair<int, Transform>> imageLocalizeWatcher;
+
   // qr extraction
-  QFuture<bool> qrWatcher = QtConcurrent::run(qrExtract, image, &qrResults);
+  QFuture<bool> qrWatcher =
+      QtConcurrent::run(this, &Run::qrExtract, image, &qrResults);
 
   if (_saveImage) {
     QtConcurrent::run(
         [=]() { imwrite(std::to_string(Utility::getTime()) + ".jpg", image); });
   }
 
-  if (_mode == Run::FULL_FUNCTIONING && camera != nullptr) {
-    // feature extraction
-    std::vector<cv::KeyPoint> keyPoints;
-    cv::Mat descriptors;
-    long featureTime;
-    {
-      std::lock_guard<std::mutex> lock(_featureMutex);
-      startTime = Utility::getTime();
-      _feature->extract(image, keyPoints, descriptors);
-      featureTime = Utility::getTime() - startTime;
-    }
+  if (_mode == Run::FULL_FUNCTIONING && camera.isValid()) {
+      // aprilTag extraction and localization
+    aprilLocalizeWatcher = QtConcurrent::run(this, &Run::aprilLocalize, image, camera, _tagSize,
+                          &aprilTagPoses, &aprilTagCodes);
 
-    // word search
-    std::vector<int> wordIds;
-    long wordSearchTime;
-    {
-      std::lock_guard<std::mutex> lock(_wordSearchMutex);
-      startTime = Utility::getTime();
-      wordIds = _wordSearch->search(descriptors);
-      wordSearchTime = Utility::getTime() - startTime;
-    }
+    imageLocalizeWatcher = QtConcurrent::run(this, &Run::imageLocalize, image, camera);
 
-    // room search
+    aprilResultPose = aprilLocalizeWatcher.result();
+    imageLocResultPose = imageLocalizeWatcher.result();
+
+    Transform finalPose;
     int roomId;
-    long roomSearchTime;
-    {
-      std::lock_guard<std::mutex> lock(_roomSearchMutex);
-      startTime = Utility::getTime();
-      roomId = _roomSearch->search(wordIds);
-      roomSearchTime = Utility::getTime() - startTime;
+    // Select the final pose to use in vis from multiple pose candidates
+    if(aprilResultPose.size() > 0) {
+      finalPose = aprilResultPose[0].second;
+      roomId = aprilResultPose[0].first;
+    } else {
+      finalPose = imageLocResultPose.second;
+      roomId = imageLocResultPose.first;
     }
-
-    // PnP
-    Transform pose;
-    long perspectiveTime;
-    {
-      std::lock_guard<std::mutex> lock(_perspectiveMutex);
-      startTime = Utility::getTime();
-      pose = _perspective->localize(wordIds, keyPoints, descriptors, *camera,
-                                    roomId);
-      perspectiveTime = Utility::getTime() - startTime;
-    }
-
-    if (pose.isNull()) {
+    if (finalPose.isNull()) {
       std::cerr << "image localization failed (did you provide the correct "
                    "intrinsic matrix?)"
                 << std::endl;
-      long totalTime = Utility::getTime() - totalStartTime;
-      Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
-                     perspectiveTime, -1);
     } else {
       // visibility
       long visibilityTime;
       {
         std::lock_guard<std::mutex> lock(_visibilityMutex);
         startTime = Utility::getTime();
-        results = _visibility->process(roomId, *camera, pose);
+        results = _visibility->process(roomId, camera, finalPose);
         visibilityTime = Utility::getTime() - startTime;
+        std::cout << "Time visibility "<< visibilityTime << " ms" <<std::endl;
       }
 
-      long totalTime = Utility::getTime() - totalStartTime;
-
-      // std::cout << "image pose :" << std::endl << pose << std::endl;
-      Run::printTime(totalTime, featureTime, wordSearchTime, roomSearchTime,
-                     perspectiveTime, visibilityTime);
     }
   } else {
     std::cerr << "image localization not performed." << std::endl;
   }
 
-  qrWatcher.waitForFinished();
   if (qrWatcher.result()) {
     results.insert(results.begin(), qrResults.begin(), qrResults.end());
   }
 
+  long totalTime = Utility::getTime() - totalStartTime;
+  std::cout << "Time Identify overall " << totalTime << " ms" <<std::endl;
+  
+  if (aprilTagPoses.size() > 0 && !imageLocResultPose.second.isNull()) {
+    QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose, aprilTagPoses,
+                      aprilTagCodes, imageLocResultPose);
+  }
   return results;
 }
 
+std::pair<int, Transform> Run::imageLocalize(const cv::Mat &image,
+                                             const CameraModel &camera) {
+  long totalStartTime = Utility::getTime();
+  long startTime;
+  // feature extraction
+  std::vector<cv::KeyPoint> keyPoints;
+  cv::Mat descriptors;
+  long featureTime;
+  {
+    std::lock_guard<std::mutex> lock(_featureMutex);
+    startTime = Utility::getTime();
+    _feature->extract(image, keyPoints, descriptors);
+    featureTime = Utility::getTime() - startTime;
+  }
+
+  // word search
+  std::vector<int> wordIds;
+  long wordSearchTime;
+  {
+    std::lock_guard<std::mutex> lock(_wordSearchMutex);
+    startTime = Utility::getTime();
+    wordIds = _wordSearch->search(descriptors);
+    wordSearchTime = Utility::getTime() - startTime;
+  }
+
+  // room search
+  int roomId;
+  long roomSearchTime;
+  {
+    std::lock_guard<std::mutex> lock(_roomSearchMutex);
+    startTime = Utility::getTime();
+    roomId = _roomSearch->search(wordIds);
+    roomSearchTime = Utility::getTime() - startTime;
+  }
+
+  // PnP
+  Transform pose;
+  long perspectiveTime;
+  {
+    std::lock_guard<std::mutex> lock(_perspectiveMutex);
+    startTime = Utility::getTime();
+    pose =
+        _perspective->localize(wordIds, keyPoints, descriptors, camera, roomId);
+    perspectiveTime = Utility::getTime() - startTime;
+  }
+
+  long totalTime = Utility::getTime() - totalStartTime;
+  printImageLocalTime(totalTime, featureTime, wordSearchTime, roomSearchTime, perspectiveTime);
+  return std::make_pair(roomId, pose);
+}
+
 bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
+  long totalStartTime = Utility::getTime();
+ 
   std::cout << "Qr extracting\n";
   zbar::ImageScanner scanner;
   scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
@@ -268,5 +313,80 @@ bool Run::qrExtract(const cv::Mat &im, std::vector<FoundItem> *results) {
     results->push_back(item);
   }
 
+  long totalTime = Utility::getTime() - totalStartTime;
+  std::cout << "Time QR extract overall " << totalTime << " ms" <<std::endl;
+  
   return results->size() > 0;
+}
+
+std::vector<std::pair<int, Transform>> Run::aprilLocalize(
+    const cv::Mat &im, const CameraModel &camera, double tagSize,
+    std::vector<Transform> *tagPoseInCamFrame, std::vector<int> *tagCodes) {
+  long totalStartTime = Utility::getTime();
+  long startTime;
+  
+  std::vector<std::pair<int, Transform>> results;
+
+  TagDetectorParams params;
+  TagFamily family("Tag36h11");
+  TagDetector detector(family, params);
+  TagDetectionArray detections;
+
+  cv::Point2d opticalCenter;
+  opticalCenter.x = camera.cx();
+  opticalCenter.y = camera.cy();
+  
+  long aprilDetectionTime;
+  startTime = Utility::getTime();
+  detector.process(im, opticalCenter, detections);
+  aprilDetectionTime =  Utility::getTime() - startTime;
+  std::cout <<"Time aprilDetection " << aprilDetectionTime << " ms" << std::endl;
+
+  cv::Mat rVec, t;
+  for (unsigned int i = 0; i < detections.size(); i++) {
+    CameraUtil::homographyToPoseCV(camera.fx(), camera.fy(), tagSize,
+                                   detections[i].homography, rVec, t);
+    cv::Mat r,dump;
+    cv::Rodrigues(rVec,r,dump);
+    Transform pose(r.at<double>(0, 0), r.at<double>(0, 1), r.at<double>(0, 2), t.at<double>(0, 0), //
+                   r.at<double>(1, 0), r.at<double>(1, 1), r.at<double>(1, 2), t.at<double>(0, 1), //
+                   r.at<double>(2, 0), r.at<double>(2, 1), r.at<double>(2, 2), t.at<double>(0, 2));
+    tagPoseInCamFrame->push_back(pose);
+    tagCodes->push_back(detections[i].code);
+
+    long aprilLookupTime;
+    startTime = Utility::getTime();
+    // pair<roomId, tagPoseInModelFrame>, roomId will be -1 if no such tag code
+    // exist in db
+    std::pair<int, Transform> tagPoseInModelFrame =
+        _adapter->lookupAprilCode(detections[i].code);
+    aprilLookupTime = Utility::getTime() - startTime;
+    std::cout <<"Time aprilLookup " << aprilLookupTime << " ms" << std::endl;
+    
+    if (tagPoseInModelFrame.first >= 0) {
+      results.push_back(
+          std::make_pair(tagPoseInModelFrame.first,
+                         tagPoseInModelFrame.second * pose.inverse()));
+    }
+  }
+  long totalTime = Utility::getTime() - totalStartTime;
+  std::cout << "Time AprilLocalize overall " << totalTime << " ms" <<std::endl;
+  return results;
+}
+
+void Run::calculateAndSaveAprilTagPose(
+    std::vector<Transform> aprilTagPosesInCamFrame,
+    std::vector<int> aprilTagCodes,
+    std::pair<int, Transform> imageLocResultPose) {
+
+  for (unsigned int i = 0; i < aprilTagPosesInCamFrame.size(); i++) {
+    Transform tagPoseInCamFrame = aprilTagPosesInCamFrame[i];
+    int code = aprilTagCodes[i];
+
+    int roomId = imageLocResultPose.first;
+    Transform camPoseInModelFrame = imageLocResultPose.second;
+    Transform tagPoseInModelFrame = camPoseInModelFrame * tagPoseInCamFrame;
+    long time = Utility::getTime();
+    _adapter->saveAprilTagPose(roomId, time, code, tagPoseInModelFrame);
+  }
 }

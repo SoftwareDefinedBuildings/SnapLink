@@ -89,28 +89,24 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     int width = image.cols;
     int height = image.rows;
 
-    double fx = request.fx();
-    double fy = request.fy();
-    double cx = request.cx();
-    double cy = request.cy();
-    std::unique_ptr<CameraModel> camera;
-    if (fx > 0 && fy > 0 && cx >= 0 && cy >= 0) {
-      camera.reset(
-          new CameraModel("", fx, fy, cx, cy, cv::Size(width, height)));
-    }
+    double fx, fy, cx, cy;
+    setIntrinsics(width, height, request.angle(), fx, fy, cx, cy, request);
+    std::cout << "Width = " << width << ", Height = " << height
+              << " Cx = " << cx << " Cy = " << cy << std::endl;
+
+    CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
     std::vector<FoundItem> results;
 
-    results = this->getOnQuery()(image, camera.get());
+    results = this->getOnQuery()(image, camera);
     rotateBack(results, request.angle(), width, height);
     this->_numClients--;
-
     if (!results.empty()) {
       response.set_name(results[0].name());
       response.set_x(results[0].x());
       response.set_y(results[0].y());
       response.set_size(results[0].size());
-      response.set_width(width > height? height : width);
-      response.set_height(width > height? width : height);
+      response.set_width(width > height ? height : width);
+      response.set_height(width > height ? width : height);
     } else {
       response.set_name(none);
       response.set_x(-1);
@@ -163,5 +159,25 @@ void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results, double angle,
     std::cout << "Angle is " << angle << std::endl;
     std::cout << "After rotateback, x = " << results[i].x()
               << " y = " << results[i].y() << std::endl;
+  }
+}
+
+void GrpcFrontEnd::setIntrinsics(double width, double height, double angle,
+                                 double &fx, double &fy, double &cx, double &cy,
+                                 cellmate_grpc::ClientQueryMessage &request) {
+  fx = request.fx();
+  fy = request.fy();
+  if (angle == 0) {
+    cx = request.cx();
+    cy = request.cy();
+  } else if (angle == 90) {
+    cx = width - request.cy();
+    cy = request.cx();
+  } else if (angle == 180) {
+    cx = width - request.cx();
+    cy = height - request.cy();
+  } else if (angle == 270) {
+    cx = request.cy();
+    cy = height - request.cx();
   }
 }

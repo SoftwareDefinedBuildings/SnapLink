@@ -19,7 +19,7 @@ public:
   const cv::Mat &D() const;
 
   const cv::Size &getImageSize() const;
-
+  bool isValid() const;
 private:
   std::string _name;
   cv::Mat _K;
