@@ -1,5 +1,6 @@
 #include "lib/visualize/visualize.h"
 #include "lib/data/Transform.h"
+#include "lib/data/CameraModel.h"
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/viz.hpp>
 
@@ -18,17 +19,24 @@ Visualize::~Visualize() {
   stopVis();
 }
 
-void Visualize::setPose(int roomId, Transform camPose) {
+void Visualize::setPose(int roomId, Transform camPose, cv::Mat image, CameraModel camera) {
   {
     std::lock_guard<std::mutex> lock(_posesMutex);
-    _poses[roomId] = camPose;
+    _posesAndImagesAndCameras[roomId] = std::make_tuple(camPose, image, camera);
   }
 }
 
 void Visualize::startVis() {
   
   for(unsigned int roomId = 0; roomId < _totalCount; roomId++) {
-  	Transform camPose(1,0,0,0,0,1,0,0,0,0,1,0);
+    Transform camPose = _images[roomId].begin()->second.getPose();
+    cv::Mat image = _images[roomId].begin()->second.getImage();
+    CameraModel camera = _images[roomId].begin()->second.getCameraModel();
+    {
+      std::lock_guard<std::mutex> lock(_posesMutex);
+      _posesAndImagesAndCameras[roomId] = std::make_tuple(camPose, image, camera);
+    }
+  	
   	_windows[roomId] = cv::viz::Viz3d("Room " + std::to_string(roomId));
 
     // get point cloud
@@ -65,11 +73,14 @@ void Visualize::startVis() {
 
     //visualize a camera
     const double visScale = 0.5;
-    const float horizontal = 0.889484;
-    const float vertical = 0.523599;
+    cv::viz::WCameraPosition frustum;
+    cv::Affine3f poseAffine;
+    {
+      std::lock_guard<std::mutex> lock(_posesMutex);
+      poseAffine = (std::get<0>(_posesAndImagesAndCameras[roomId])).toAffine3f();
+      frustum = cv::viz::WCameraPosition(cv::Matx33f(std::get<2>(_posesAndImagesAndCameras[roomId]).K()), std::get<1>(_posesAndImagesAndCameras[roomId]), visScale);
+    }
     cv::viz::WCameraPosition coord(visScale);
-    cv::viz::WCameraPosition frustum(cv::Vec2f(horizontal, vertical), visScale);
-    cv::Affine3f poseAffine = camPose.toAffine3f();
     _windows[roomId].showWidget("coord", coord, poseAffine);
     _windows[roomId].showWidget("frustum", frustum, poseAffine);
 
@@ -82,9 +93,17 @@ void Visualize::startVis() {
         if(_windows[roomId].wasStopped()) {
           return;
         } else {
-          cv::Affine3f poseAffine = _poses[roomId].toAffine3f();
+          const double visScale = 0.5;
+          cv::viz::WCameraPosition frustum;
+          cv::Affine3f poseAffine;
+          {
+            std::lock_guard<std::mutex> lock(_posesMutex);
+            poseAffine = (std::get<0>(_posesAndImagesAndCameras[roomId])).toAffine3f();
+            frustum = cv::viz::WCameraPosition(cv::Matx33f(std::get<2>(_posesAndImagesAndCameras[roomId]).K()), std::get<1>(_posesAndImagesAndCameras[roomId]), visScale);
+          }
+          _windows[roomId].removeWidget("frustum");
+          _windows[roomId].showWidget("frustum", frustum, poseAffine);
           _windows[roomId].setWidgetPose("coord", poseAffine);
-          _windows[roomId].setWidgetPose("frustum", poseAffine);
           _windows[roomId].spinOnce(1, false);
         }
       }

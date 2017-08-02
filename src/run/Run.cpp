@@ -204,7 +204,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
     }
 
     if(_vis) {
-      _visualize->setPose(roomId, finalPose);
+      _visualize->setPose(roomId, finalPose, image, camera);
     }
     
     if (finalPose.isNull()) {
