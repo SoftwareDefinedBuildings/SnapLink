@@ -29,9 +29,11 @@ public:
   bool putLabel(int roomId, std::string label_name, std::string label_id,
                 std::string label_x, std::string label_y) final;
   bool saveAprilTagPose(int roomId, long time, int code,
-        Transform pose); 
+        Transform pose, double error); 
   void createAprilTagMap(std::string dataPath, int roomId);
   std::pair<int, Transform> lookupAprilCode(int code);
+  std::vector<std::pair<int, Transform>> lookupAprilCodes(std::vector<int> codes);
+  int getDBCounts();
 private:
   std::map<int, Image> readRoomImages(const std::string &dbPath, int roomId);
   std::vector<Label> readRoomLabels(const std::string &dbPath, int roomId);
@@ -50,6 +52,7 @@ private:
   std::map<int, std::map<int, Image>> _images;
   // {tag Code: {room ID in memory: tag pose in room model}}
   std::map<int, std::multimap<int, Transform>> _aprilTagMap;
+  std::map<int, std::multimap<int, Transform>> _aprilTagMapPro;
   std::map<int, Word> _words;
   std::map<int, Room> _rooms;
   std::map<int, std::vector<Label>> _labels;
@@ -57,4 +60,5 @@ private:
   sqlite3 *_labelDB;
   std::string _labelPath;
   std::mutex _aprilTagMapMutex;
+  int _dbCounts;
 };
