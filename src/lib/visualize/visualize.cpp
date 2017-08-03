@@ -20,6 +20,12 @@ Visualize::~Visualize() {
 }
 
 void Visualize::setPose(int roomId, Transform camPose, cv::Mat image, CameraModel camera) {
+  std::vector<cv::Mat> matChannels;
+  cv::split(image, matChannels);
+  // create alpha channel
+  cv::Mat alpha = (matChannels.at(0) * 0) + 100;
+  matChannels.push_back(alpha);
+  cv::merge(matChannels, image);
   {
     std::lock_guard<std::mutex> lock(_posesMutex);
     _posesAndImagesAndCameras[roomId] = std::make_tuple(camPose, image, camera);
