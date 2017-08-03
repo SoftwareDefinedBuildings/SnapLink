@@ -22,7 +22,7 @@ int Run::run(int argc, char *argv[]) {
       ("feature-limit,f", po::value<int>(&_featureLimit)->default_value(0),
        "limit the number of features used") //
       ("visualize,v", po::value<int>(&_visCount)->default_value(0),
-       "Show localized camera pose in 3D model up to n latest pose") //
+       "Show localized camera pose in 3D model up to n latest poses") //
       ("corr-limit,c", po::value<int>(&_corrLimit)->default_value(0),
        "limit the number of corresponding 2D-3D points used") //
       ("save-image,s", po::bool_switch(&_saveImage)->default_value(false),
@@ -157,9 +157,6 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   long startTime;
   long totalStartTime = Utility::getTime();
 
-  std::vector<Transform> aprilTagPoses;
-  std::vector<int> aprilTagCodes;
-
   std::pair<std::vector<int>, std::vector<Transform>> aprilDetectResult;
   std::pair<int, Transform> imageLocResultPose;
 
@@ -235,7 +232,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   long totalTime = Utility::getTime() - totalStartTime;
   std::cout << "Time Identify overall " << totalTime << " ms" <<std::endl;
   
-  if (aprilTagPoses.size() > 0 && !imageLocResultPose.second.isNull()) {
+  if (aprilDetectResult.first.size() > 0 && !imageLocResultPose.second.isNull()) {
     QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose, aprilDetectResult.second,
                       aprilDetectResult.first, imageLocResultPose);
   }

@@ -37,13 +37,16 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
 
     _roomPaths.emplace(roomId, std::string(dbPath));
 
+    createAprilTagPoseTable(roomId);
     createAprilTagMap(dbPath, roomId);
     
     if(_aprilTagMapPro[roomId].empty()) {
-      for(std::map<int, Image>::iterator it=roomImages.begin(); it!=roomImages.end(); ++it) {
+      std::cout<<"AprilTagMapPro is empty\n";
+      for(std::map<int, Image>::iterator it=_images[roomId].begin(); it!=_images[roomId].end(); ++it) {
         Image image = it->second;
         std::pair<std::vector<int>, std::vector<Transform>> aprilTagDetectResults = aprilTag.aprilDetect(image.getImage(), image.getCameraModel());
         for(unsigned int i = 0; i < aprilTagDetectResults.first.size(); i++) {
+          std::cout<<"Detected aprilTag\n";
           int code = aprilTagDetectResults.first[i];
           Transform tagPoseInModelFrame = image.getPose() * aprilTagDetectResults.second[i];
           saveAprilTagPose(roomId, Utility::getTime(), code, tagPoseInModelFrame, 0);
