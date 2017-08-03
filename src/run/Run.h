@@ -47,7 +47,7 @@ private:
   float _distRatio;
   std::vector<std::string> _dbFiles;
   bool _saveImage;
-  bool _vis;
+  int _visCount;
   double _tagSize;
   std::unique_ptr<RTABMapAdapter> _adapter;
   std::unique_ptr<Visualize> _visualize;
