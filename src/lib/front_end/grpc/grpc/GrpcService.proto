@@ -21,10 +21,10 @@ message ClientQueryMessage {
 }
 
 message ServerRespondMessage {
-  string name = 1;
-  double x = 2;
-  double y = 3;
-  double size = 4;
+  repeated string name = 1;
+  repeated double x = 2;
+  repeated double y = 3;
+  repeated double size = 4;
   double width = 5;
   double height = 6;
 }
