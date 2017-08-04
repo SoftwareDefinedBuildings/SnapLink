@@ -18,6 +18,7 @@ std::vector<std::pair<int, Transform>> Apriltag::aprilLocalize(
   std::vector<std::pair<int, Transform>> camPoseInModelFrame;
   assert(tagPoseInCamFrame.size() == tagPoseInModelFrame.size());
   for(unsigned int i = 0; i < tagPoseInCamFrame.size(); i++) {
+    // first = -1 means the tag is not found in db and tagPoseMap
     if(tagPoseInModelFrame[i].first >= 0) {
     	camPoseInModelFrame.push_back(
           std::make_pair(tagPoseInModelFrame[i].first,

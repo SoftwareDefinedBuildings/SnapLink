@@ -10,9 +10,11 @@
 
 #include <QtConcurrent>
 
-Visualize::Visualize(std::map<int, std::map<int, Image>> images) {
+Visualize::Visualize(std::map<int, std::map<int, Image>> images, int count) {
   _images = images;
   _totalCount = _images.size();
+  _visCount = count;
+  _widgetNameCounter = 0;
 }
 
 Visualize::~Visualize() {
@@ -69,21 +71,6 @@ void Visualize::startVis() {
     // window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
     cv::viz::WCloud cloudWidget(cloudXYZ, cloudBGR);
     _windows[roomId].showWidget("cloudWidget", cloudWidget);
-
-
-    //visualize a camera
-    const double visScale = 0.5;
-    cv::viz::WCameraPosition frustum;
-    cv::Affine3f poseAffine;
-    {
-      std::lock_guard<std::mutex> lock(_posesMutex);
-      poseAffine = (std::get<0>(_posesAndImagesAndCameras[roomId])).toAffine3f();
-      frustum = cv::viz::WCameraPosition(cv::Matx33f(std::get<2>(_posesAndImagesAndCameras[roomId]).K()), std::get<1>(_posesAndImagesAndCameras[roomId]), visScale);
-    }
-    cv::viz::WCameraPosition coord(visScale);
-    _windows[roomId].showWidget("coord", coord, poseAffine);
-    _windows[roomId].showWidget("frustum", frustum, poseAffine);
-
   }
 
   while(true) {
@@ -93,17 +80,36 @@ void Visualize::startVis() {
         if(_windows[roomId].wasStopped()) {
           return;
         } else {
+          //visualize a camera
           const double visScale = 0.5;
-          cv::viz::WCameraPosition frustum;
-          cv::Affine3f poseAffine;
+          Transform pose;
+          cv::Mat im;
+          CameraModel camera;
           {
             std::lock_guard<std::mutex> lock(_posesMutex);
-            poseAffine = (std::get<0>(_posesAndImagesAndCameras[roomId])).toAffine3f();
-            frustum = cv::viz::WCameraPosition(cv::Matx33f(std::get<2>(_posesAndImagesAndCameras[roomId]).K()), std::get<1>(_posesAndImagesAndCameras[roomId]), visScale);
+            pose = std::get<0>(_posesAndImagesAndCameras[roomId]);
+            im = std::get<1>(_posesAndImagesAndCameras[roomId]);
+            camera = std::get<2>(_posesAndImagesAndCameras[roomId]);
           }
-          _windows[roomId].removeWidget("frustum");
-          _windows[roomId].showWidget("frustum", frustum, poseAffine);
-          _windows[roomId].setWidgetPose("coord", poseAffine);
+          if(!_widgetNameMap[roomId].empty() && _widgetNameMap[roomId].back().second == pose) {
+            // do nothing, because this pose is already showed in window
+          } else {
+            // pop front if the queue is full
+            if(_widgetNameMap[roomId].size() >= _visCount) {
+              std::string name = _widgetNameMap[roomId].front().first;
+              _widgetNameMap[roomId].pop();
+              _windows[roomId].removeWidget("frustum"+name);
+              _windows[roomId].removeWidget("coord"+name);
+            } 
+            // add new pose to queue
+            std::string name = std::to_string(_widgetNameCounter++);
+            cv::Affine3f poseAffine = pose.toAffine3f();
+            _widgetNameMap[roomId].push(std::pair<std::string, Transform>(name, pose));
+            cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), im, visScale);
+            cv::viz::WCameraPosition coord(visScale);
+            _windows[roomId].showWidget("frustum"+name, frustum, poseAffine);
+            _windows[roomId].showWidget("coord"+name, coord, poseAffine);
+          }
           _windows[roomId].spinOnce(1, false);
         }
       }

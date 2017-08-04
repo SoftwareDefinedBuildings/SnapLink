@@ -21,14 +21,14 @@ int Run::run(int argc, char *argv[]) {
        "the port that GRPC front end binds to") //
       ("feature-limit,f", po::value<int>(&_featureLimit)->default_value(0),
        "limit the number of features used") //
+      ("visualize,v", po::value<int>(&_visCount)->default_value(0),
+       "Show localized camera pose in 3D model up to n latest poses") //
       ("corr-limit,c", po::value<int>(&_corrLimit)->default_value(0),
        "limit the number of corresponding 2D-3D points used") //
       ("save-image,s", po::bool_switch(&_saveImage)->default_value(false),
        "save images to files, which can causes significant delays.") //
       ("tag-size, z", po::value<double>(&_tagSize)->default_value(0.16),
        "size of april-tags used in the room") //
-      ("visualize,v", po::bool_switch(&_vis)->default_value(false),
-       "Visualize the 3D model and localized camera pose") //
       ("dist-ratio,d", po::value<float>(&_distRatio)->default_value(0.7),
        "distance ratio used to create words");
 
@@ -90,8 +90,8 @@ int Run::run(int argc, char *argv[]) {
     rooms = _adapter->getRooms();
     labels = _adapter->getLabels();
 
-    if(_vis) {
-      _visualize = std::make_unique<Visualize>(_adapter->getImages());
+    if(_visCount > 0) {
+      _visualize = std::make_unique<Visualize>(_adapter->getImages(),  _visCount);
       QtConcurrent::run(_visualize.get(), &Visualize::startVis);
     }
     
@@ -157,9 +157,6 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   long startTime;
   long totalStartTime = Utility::getTime();
 
-  std::vector<Transform> aprilTagPoses;
-  std::vector<int> aprilTagCodes;
-
   std::pair<std::vector<int>, std::vector<Transform>> aprilDetectResult;
   std::pair<int, Transform> imageLocResultPose;
 
@@ -203,7 +200,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
       roomId = imageLocResultPose.first;
     }
 
-    if(_vis) {
+    if(_visCount > 0) {
       _visualize->setPose(roomId, finalPose, image, camera);
     }
     
@@ -235,7 +232,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
   long totalTime = Utility::getTime() - totalStartTime;
   std::cout << "Time Identify overall " << totalTime << " ms" <<std::endl;
   
-  if (aprilTagPoses.size() > 0 && !imageLocResultPose.second.isNull()) {
+  if (aprilDetectResult.first.size() > 0 && !imageLocResultPose.second.isNull()) {
     QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose, aprilDetectResult.second,
                       aprilDetectResult.first, imageLocResultPose);
   }
