@@ -72,12 +72,12 @@ def test_file(filename, stub):
     r = rIter.next()
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
-    if r.name != obj_name:
-        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name, obj_name, elapsed_time)
+    if r.name[0] != obj_name:
+        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name[0], obj_name, elapsed_time)
         print text
         return RESULT_FAIL, elapsed_time
     else:
-        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name, obj_name, elapsed_time)
+        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name[0], obj_name, elapsed_time)
         return RESULT_PASS, elapsed_time
 
 

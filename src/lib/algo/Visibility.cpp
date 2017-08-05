@@ -29,7 +29,6 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
   std::cout << "processing transform" << std::endl << pose << std::endl;
 
   std::vector<cv::Point2f> planePoints;
-  std::vector<std::string> visibleLabels;
 
   cv::Mat K = camera.K();
   // change the base coordiate of the transform from the world coordinate to the
@@ -53,23 +52,19 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
   // find points in the image
   int width = camera.getImageSize().width;
   int height = camera.getImageSize().height;
-  std::map<std::string, std::vector<double>> distances;
-  std::map<std::string, std::vector<cv::Point2f>> labelPoints;
   cv::Point2f center(width / 2, height / 2);
-
+  std::map<double, std::pair<std::string, cv::Point2f>> resultMap;
   for (unsigned int i = 0; i < points.size(); ++i) {
     std::string name = names[i];
     // if (uIsInBounds(int(planePoints[i].x), 0, width) &&
     //        uIsInBounds(int(planePoints[i].y), 0, height))
     if (true) {
       if (Utility::isInFrontOfCamera(points[i], poseInCamera)) {
-        visibleLabels.emplace_back(name);
         double dist = cv::norm(planePoints[i] - center);
-        distances[name].emplace_back(dist);
-        labelPoints[name].emplace_back(planePoints[i]);
+        resultMap[dist] = std::pair<std::string, cv::Point2f>(name, planePoints[i]);
         std::cout << "Find label " << name << " at (" << planePoints[i].x << ","
                   << planePoints[i].y << ")" << std::endl;
-      } else {
+        } else {
         std::cout << "Label " << name << " invalid at (" << planePoints[i].x
                   << "," << planePoints[i].y << ")"
                   << " because it is from the back of the camera" << std::endl;
@@ -79,23 +74,16 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
                 << "," << planePoints[i].y << ")" << std::endl;
     }
   }
-
-  std::string minlabel;
-  if (!distances.empty()) {
-    // find the label with minimum mean distance
-    std::pair<std::string, std::vector<double>> minDist =
-        *min_element(distances.begin(), distances.end(), CompareMeanDist());
-    minlabel = minDist.first;
-    std::cout << "Nearest label " << minlabel << " with mean distance "
-              << CompareMeanDist::meanDist(minDist.second) << std::endl;
-    // TODO: right now x and y are hardcoded, and it only return 1 nearst
-    // result, need to modify it to return multiple, as well as position
-    results.push_back(FoundItem(minlabel, labelPoints[minlabel][0].x, labelPoints[minlabel][0].y, width/10, width, height));
-    // results.emplace_back(minlabel);
+  double size;
+  if(width>height) {
+    size = height/10;
   } else {
-    std::cout << "No label is qualified" << std::endl;
+    size = width/10;
   }
-
+  for(std::map<double, std::pair<std::string, cv::Point2f>>::iterator it=resultMap.begin(); it!=resultMap.end(); ++it) {
+    std::pair<std::string, cv::Point2f> result = it->second;
+    results.push_back(FoundItem(result.first, result.second.x, result.second.y, size , width, height));
+  } 
   return results;
 }
 
