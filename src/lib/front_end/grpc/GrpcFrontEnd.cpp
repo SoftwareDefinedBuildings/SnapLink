@@ -60,9 +60,11 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     {
       std::lock_guard<std::mutex> lock(_mutex);
       if (this->_numClients >= this->_maxClients) {
-        response.set_name("Too many clients, server is busy");
-        response.set_x(-1);
-        response.set_y(-1);
+        response.add_name("Too many clients, server is busy");
+        response.add_x(-1);
+        response.add_y(-1);
+        response.set_width(-1);
+        response.set_height(-1);
         stream->Write(response);
         continue;
       }
@@ -79,9 +81,11 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     //     imwrite("imageRotated.jpg", image);
 
     if (image.empty() || image.type() != CV_8U || image.channels() != 1) {
-      response.set_name("Invalid query data");
-      response.set_x(-1);
-      response.set_y(-1);
+      response.add_name("Invalid query data");
+      response.add_x(-1);
+      response.add_y(-1);
+      response.set_width(-1);
+      response.set_height(-1);
       stream->Write(response);
       continue;
     }
@@ -101,16 +105,20 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     rotateBack(results, request.angle(), width, height);
     this->_numClients--;
     if (!results.empty()) {
-      response.set_name(results[0].name());
-      response.set_x(results[0].x());
-      response.set_y(results[0].y());
-      response.set_size(results[0].size());
+      for(unsigned int i = 0; i < results.size(); i++) {
+        response.add_name(results[i].name());
+        response.add_x(results[i].x());
+        response.add_y(results[i].y());
+        response.add_size(results[i].size());
+      }
       response.set_width(width > height ? height : width);
       response.set_height(width > height ? width : height);
     } else {
-      response.set_name(none);
-      response.set_x(-1);
-      response.set_y(-1);
+      response.add_name(none);
+      response.add_x(-1);
+      response.add_y(-1);
+      response.set_width(width > height ? height : width);
+      response.set_height(width > height ? width : height);
     }
     stream->Write(response);
   }
