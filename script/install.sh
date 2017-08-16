@@ -92,7 +92,7 @@ make install -j $(nproc)
 apt-get install -y libsqlite3-dev
 
 # Clone RTABMap to the target tag
-git clone -b 0.13.0 --single-branch --depth 1 https://github.com/introlab/rtabmap $WORKSPACE/rtabmap
+git clone -b 0.13.2 --single-branch --depth 1 https://github.com/introlab/rtabmap $WORKSPACE/rtabmap
 
 # Compile and install RTABMap 0.11.14
 mkdir -p $WORKSPACE/rtabmap/build
@@ -112,7 +112,7 @@ apt-get install -y libzbar-dev
 apt-get install -y autoconf libtool
 
 #Clone latest GRPC and init its submodules
-git clone -b v1.4.2 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $WORKSPACE/grpc
+git clone -b v1.3.4 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $WORKSPACE/grpc
 
 #Compile and install GRPC
 cd $WORKSPACE/grpc
