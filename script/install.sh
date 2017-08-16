@@ -112,7 +112,7 @@ apt-get install -y libzbar-dev
 apt-get install -y autoconf libtool
 
 #Clone latest GRPC and init its submodules
-git clone -b v1.3.4 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $WORKSPACE/grpc
+git clone -b v1.2.0 --single-branch --depth 1 --recurse-submodules https://github.com/grpc/grpc $WORKSPACE/grpc
 
 #Compile and install GRPC
 cd $WORKSPACE/grpc
