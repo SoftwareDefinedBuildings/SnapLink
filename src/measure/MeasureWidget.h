@@ -21,12 +21,10 @@ public:
 
   bool init(std::string path);
 
-  // QString getLabel() const;
 
 private slots:
   void setSlider1Value(int);
   void setSlider2Value(int);
-//   void saveLabel();
 
 
 protected:
@@ -35,12 +33,7 @@ private:
   void mouseClicked(int windowId, QMouseEvent *event);
   void showImage(int windowId, int imageId);
   void showDistance();
-  // void setLabel(const QString &name);
-  // void showLabel(int x, int y, std::string label);
-  // void projectPoints(void);
-  // bool getLabels(std::vector<cv::Point3f> &points,
-  //                std::vector<std::string> &labels);
-  // bool getPoint3World(int imageId, int x, int y, pcl::PointXYZ &pWorld);
+
 
 private:
   std::unique_ptr<Ui::MeasureWidget> _ui;

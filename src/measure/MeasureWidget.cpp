@@ -32,7 +32,6 @@ MeasureWidget::MeasureWidget(QWidget *parent) : QWidget(parent), _ui(new Ui::Mea
           SLOT(setSlider1Value(int)));
   connect(_ui->slider2, SIGNAL(valueChanged(int)), this,
           SLOT(setSlider2Value(int)));
-  // connect(_ui->pushButton, SIGNAL(released()), this, SLOT(saveLabel()));
 }
 
 MeasureWidget::~MeasureWidget() {}
@@ -98,33 +97,6 @@ bool MeasureWidget::eventFilter(QObject *obj, QEvent *event) {
   }
 }
 
-// void Widget::saveLabel() {
-//   std::string label_name = _ui->lineEdit_label->text().toStdString();
-//   std::string label_id = _ui->label_id->text().toStdString();
-//   std::string label_x = _ui->label_x->text().toStdString();
-//   std::string label_y = _ui->label_y->text().toStdString();
-
-//   if (label_name.length() == 0) {
-//     std::string msg = "Label name empty";
-//     UWARN(msg.c_str());
-//     _ui->label_status->setText(msg.c_str());
-//     return;
-//   }
-
-//   // In the case of labeling tool, only 1 room is opened in adapter
-//   int roomId = 0;
-//   if (!_adapter.putLabel(roomId, label_name, label_id, label_x, label_y)) {
-//     std::string msg = "Could not convert label or save label to label table";
-//     UWARN(msg.c_str());
-//     _ui->label_status->setText(msg.c_str());
-//   } else {
-//     _ui->label_status->setText("Saved label to database");
-
-//     // display saved label on UI
-//     projectPoints();
-//   }
-// }
-
 void MeasureWidget::showImage(int windowId, int imageId) {
   const auto &images = _adapter.getImages();
   assert(images.size() == 1);
@@ -141,29 +113,6 @@ void MeasureWidget::showImage(int windowId, int imageId) {
     _ui->image2->setPixmap(pixmap);
   }
 }
-
-// void Widget::showLabel(int x, int y, std::string label) {
-//   // get Pixmap drawn on UI
-//   QPixmap *imagePixmap = (QPixmap *)_ui->label_img->pixmap();
-//   QPainter painter(imagePixmap);
-
-//   // superimpose label dot on image
-//   QImage dot(":/square.jpg");
-//   QPixmap dotmap = QPixmap::fromImage(dot);
-
-//   // draw dot at center of label point
-//   int drawX = x - (dot.width() / 2);
-//   int drawY = y - (dot.height() / 2);
-//   painter.drawPixmap(drawX, drawY, dotmap);
-
-//   painter.setFont(QFont("Arial", 8, QFont::Bold));
-//   QPen penHText(QColor(0, 255, 0)); // green
-//   painter.setPen(penHText);
-//   painter.drawText(QPoint(drawX, drawY), label.c_str());
-
-//   // update image displayed on UI
-//   _ui->label_img->setPixmap(*imagePixmap);
-// }
 
 void MeasureWidget::mouseClicked(int windowId, QMouseEvent *event) {
   const QPoint p = event->pos();
@@ -236,85 +185,3 @@ void MeasureWidget::showDistance() {
     _ui->distance->setText("Distance: Unavailable because at least one 3D point not located successfully");
   }
 }
-
-// void Widget::setLabel(const QString &name) {
-//   _ui->lineEdit_label->setText(name);
-// }
-
-// QString Widget::getLabel() const { return _ui->lineEdit_label->text(); }
-
-// /* Project points on image */
-// void Widget::projectPoints() {
-//   // get list of points
-//   std::vector<cv::Point3f> points;
-//   std::vector<std::string> labels;
-//   if (!getLabels(points, labels) || points.size() == 0 ||
-//       points.size() != labels.size()) {
-//     return;
-//   }
-
-//   int sliderVal = _ui->slider->value();
-
-//   // get pose
-//   Transform pose;
-
-//   const auto &images = _adapter.getImages();
-//   assert(images.size() == 1);
-//   const Image &image = images.at(0).at(sliderVal);
-//   pose = image.getPose();
-
-//   cv::Mat raw = image.getImage();
-//   std::vector<cv::Point2f> planePoints;
-//   const CameraModel &model = image.getCameraModel();
-//   cv::Mat K = model.K();
-//   Transform P = pose.inverse();
-//   cv::Mat R =
-//       (cv::Mat_<double>(3, 3) << (double)P.r11(), (double)P.r12(),
-//        (double)P.r13(), (double)P.r21(), (double)P.r22(), (double)P.r23(),
-//        (double)P.r31(), (double)P.r32(), (double)P.r33());
-//   cv::Mat rvec(1, 3, CV_64FC1);
-//   cv::Rodrigues(R, rvec);
-//   cv::Mat tvec =
-//       (cv::Mat_<double>(1, 3) << (double)P.x(), (double)P.y(), (double)P.z());
-
-//   // do the projection
-//   cv::projectPoints(points, rvec, tvec, K, cv::Mat(), planePoints);
-
-//   Transform worldP(P.r11(), P.r12(), P.r13(), P.x(), //
-//                    P.r21(), P.r22(), P.r23(), P.y(), //
-//                    P.r31(), P.r32(), P.r33(), P.z());
-
-//   std::cout << "There are " << planePoints.size() << " points in this plane\n";
-//   for (unsigned int i = 0; i < planePoints.size(); i++) {
-//     cv::Point2f point = planePoints[i];
-
-//     std::string label = labels.at(i);
-//     if (point.x < 0 || point.x > raw.cols || point.y < 0 ||
-//         point.y > raw.rows) {
-//       continue;
-//     }
-//     if (!Utility::isInFrontOfCamera(points[i], worldP)) {
-//       continue;
-//     }
-//     // draw label on UI
-//     showLabel((int)point.x, (int)point.y, label);
-//   }
-// }
-
-// /* Get all points in Labels table */
-// bool Widget::getLabels(std::vector<cv::Point3f> &points,
-//                        std::vector<std::string> &labels) {
-//   const std::map<int, std::vector<Label>> &dbLabels = _adapter.getLabels();
-//   if (dbLabels.size() != 1) {
-//     return false;
-//   }
-
-//   for (const auto &label : dbLabels.begin()->second) {
-//     points.push_back(label.getPoint3());
-//     labels.push_back(label.getName());
-//     std::cout << "Read point " << label.getPoint3().x << " "
-//               << label.getPoint3().y << " " << label.getPoint3().z << " "
-//               << label.getName() << "\n";
-//   }
-//   return true;
-// }
