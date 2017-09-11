@@ -112,6 +112,8 @@ set(SOURCES
     "${CellMate_SOURCE_DIR}/label/Widget.cpp"
     "${CellMate_SOURCE_DIR}/vis/Visualizer.cpp"
     "${CellMate_SOURCE_DIR}/label/Labeler.cpp"
+    "${CellMate_SOURCE_DIR}/measure/Measure.cpp"
+    "${CellMate_SOURCE_DIR}/measure/MeasureWidget.cpp"
     "${CellMate_SOURCE_DIR}/main.cpp")
 
 add_executable(cellmate ${SOURCES})

@@ -1,4 +1,5 @@
 #include "label/Labeler.h"
+#include "measure/Measure.h"
 #include "run/Run.h"
 #include "vis/Visualizer.h"
 #include <boost/program_options.hpp>
@@ -22,6 +23,9 @@ int main(int argc, char *argv[]) {
     } else if (std::string(argv[1]) == "label") {
       Labeler labeler;
       return labeler.run(argc - 1, argv + 1);
+    } else if (std::string(argv[1]) == "measure") {
+      Measure measure;
+      return measure.run(argc - 1, argv + 1);
     }
   }
 
