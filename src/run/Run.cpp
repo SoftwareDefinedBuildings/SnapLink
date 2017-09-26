@@ -149,11 +149,12 @@ void Run::printImageLocalTime(long total, long feature, long wordSearch, long ro
 }
 
 // must be thread safe
-std::vector<FoundItem> Run::identify(const cv::Mat &image,
+std::pair<Transform, std::vector<FoundItem>> Run::identify(const cv::Mat &image,
                                      const CameraModel &camera) {
   std::cout<<"**********************************New Query Image****************************************\n";
   std::vector<FoundItem> results;
   std::vector<FoundItem> qrResults;
+  Transform finalPose;
   long startTime;
   long totalStartTime = Utility::getTime();
 
@@ -189,7 +190,6 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
 
     imageLocResultPose = imageLocalizeWatcher.result();
 
-    Transform finalPose;
     int roomId;
     // Select the final pose to use in vis from multiple pose candidates
     if(aprilResultPose.size() > 0) {
@@ -236,7 +236,7 @@ std::vector<FoundItem> Run::identify(const cv::Mat &image,
     QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose, aprilDetectResult.second,
                       aprilDetectResult.first, imageLocResultPose);
   }
-  return results;
+  return std::make_pair(finalPose, results);
 }
 
 std::pair<int, Transform> Run::imageLocalize(const cv::Mat &image,

@@ -29,7 +29,7 @@ private:
                         long roomSearch, long perspective);
   // must be thread-safe
   // camera is optional, no image localization is performed if not provided
-  std::vector<FoundItem> identify(const cv::Mat &image,
+  std::pair<Transform, std::vector<FoundItem>> identify(const cv::Mat &image,
                                   const CameraModel &camera);
   bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
   

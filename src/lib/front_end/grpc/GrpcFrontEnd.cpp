@@ -57,6 +57,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(
   cellmate_grpc::ClientQueryMessage request;
   while (stream->Read(&request)) {
     cellmate_grpc::ServerRespondMessage response;
+    response.set_id(request.id());
     {
       std::lock_guard<std::mutex> lock(_mutex);
       if (this->_numClients >= this->_maxClients) {
@@ -99,11 +100,30 @@ grpc::Status GrpcFrontEnd::onClientQuery(
               << " Cx = " << cx << " Cy = " << cy << std::endl;
 
     CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-    std::vector<FoundItem> results;
+    std::pair<Transform, std::vector<FoundItem>> result;
 
-    results = this->getOnQuery()(image, camera);
+    result = this->getOnQuery()(image, camera);
+    Transform imagePose = result.first;
+    std::vector<FoundItem> results = result.second;
     rotateBack(results, request.angle(), width, height);
     this->_numClients--;
+    if (!imagePose.isNull()) {
+      response.set_poseavailable(true);
+      response.set_r11(imagePose.r11());
+      response.set_r12(imagePose.r12());
+      response.set_r13(imagePose.r13());
+      response.set_r21(imagePose.r21());
+      response.set_r22(imagePose.r22());
+      response.set_r23(imagePose.r23());
+      response.set_r31(imagePose.r31());
+      response.set_r32(imagePose.r32());
+      response.set_r33(imagePose.r33());
+      response.set_tx(imagePose.x());
+      response.set_ty(imagePose.y());
+      response.set_tz(imagePose.z());
+    } else {
+      response.set_poseavailable(false);
+    }
     if (!results.empty()) {
       for(unsigned int i = 0; i < results.size(); i++) {
         response.add_name(results[i].name());

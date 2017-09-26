@@ -2,6 +2,7 @@
 
 #include "lib/data/CameraModel.h"
 #include "lib/data/FoundItem.h"
+#include "lib/data/Transform.h"
 #include <functional>
 #include <memory>
 #include <vector>
@@ -23,7 +24,7 @@ public:
   /**
    * register a callback function
    */
-  void registerOnQuery(std::function<std::vector<FoundItem>(
+  void registerOnQuery(std::function<std::pair<Transform, std::vector<FoundItem>>(
                            const cv::Mat &image, const CameraModel &camera)>
                            onQuery) {
     _onQuery = onQuery;
@@ -32,14 +33,14 @@ public:
   /**
    * call the callback function
    */
-  std::function<std::vector<FoundItem>(const cv::Mat &image,
+  std::function<std::pair<Transform, std::vector<FoundItem>>(const cv::Mat &image,
                                          const CameraModel &camera)>
   getOnQuery() {
     return _onQuery;
   }
 
 private:
-  std::function<std::vector<FoundItem>(const cv::Mat &image,
+  std::function<std::pair<Transform, std::vector<FoundItem>>(const cv::Mat &image,
                                          const CameraModel &camera)>
       _onQuery;
 };
