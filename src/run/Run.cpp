@@ -116,8 +116,9 @@ int Run::run(int argc, char *argv[]) {
     std::cerr << "starting GRPC front end failed";
     return 1;
   }
-  frontEnd->registerOnQuery(std::bind(
+  frontEnd->registerOnIdentify(std::bind(
       &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
+  frontEnd->registerOnGetLabels(std::bind(&Run::getLabels, this));
   std::cout << "Initialization Done" << std::endl;
 
   return app.exec();
@@ -305,4 +306,8 @@ void Run::calculateAndSaveAprilTagPose(
     long time = Utility::getTime();
     _adapter->saveAprilTagPose(roomId, time, code, tagPoseInModelFrame, 1);
   }
+}
+
+std::map<int, std::vector<Label>> Run::getLabels() {
+  return _adapter->getLabels();
 }

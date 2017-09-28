@@ -31,6 +31,7 @@ private:
   // camera is optional, no image localization is performed if not provided
   std::pair<Transform, std::vector<FoundItem>> identify(const cv::Mat &image,
                                   const CameraModel &camera);
+  std::map<int, std::vector<Label>> getLabels();
   bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
   
   void calculateAndSaveAprilTagPose(std::vector<Transform> aprilTagPosesInCamFrame,std::vector<int> aprilTagCodes,std::pair<int, Transform> imageLocResultPose);  

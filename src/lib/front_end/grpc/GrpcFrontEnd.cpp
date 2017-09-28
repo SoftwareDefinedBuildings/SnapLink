@@ -48,7 +48,30 @@ void GrpcFrontEnd::stop() {
   _serverAddress = "";
   _maxClients = 0;
 }
-
+grpc::Status GrpcFrontEnd::getModels(
+    grpc::ServerContext *context,
+    const cellmate_grpc::Empty *empty,
+    cellmate_grpc::Models *models) {
+  (void)context; // ignore that variable without causing warnings
+  
+  std::map<int, std::vector<Label>> labels = this->getOnGetLabels()();
+  for (std::map<int, std::vector<Label>>::iterator it = labels.begin(); 
+          it!=labels.end(); ++it) {
+    int roomId = it->first;
+    std::vector<Label> labelsInRoom = it->second;
+    cellmate_grpc::Model *model = models->add_models();;
+    model->set_id(roomId);
+    for(auto singleLabel : labelsInRoom) {
+      cellmate_grpc::Label* label = model->add_labels();
+      label->set_name(singleLabel.getName());
+      label->set_x(singleLabel.getPoint3().x); 
+      label->set_y(singleLabel.getPoint3().y);
+      label->set_z(singleLabel.getPoint3().z);
+      label->set_roomid(singleLabel.getRoomId());
+    }
+  }
+  return grpc::Status::OK;
+}
 grpc::Status GrpcFrontEnd::onClientQuery(
     grpc::ServerContext *context,
     grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage,
@@ -102,7 +125,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(
     CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
     std::pair<Transform, std::vector<FoundItem>> result;
 
-    result = this->getOnQuery()(image, camera);
+    result = this->getOnIdentify()(image, camera);
     Transform imagePose = result.first;
     std::vector<FoundItem> results = result.second;
     rotateBack(results, request.angle(), width, height);
