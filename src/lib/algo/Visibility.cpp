@@ -82,7 +82,7 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
   }
   for(std::map<double, std::pair<std::string, cv::Point2f>>::iterator it=resultMap.begin(); it!=resultMap.end(); ++it) {
     std::pair<std::string, cv::Point2f> result = it->second;
-    results.push_back(FoundItem(result.first, result.second.x, result.second.y, size , width, height));
+    results.push_back(FoundItem(result.first, result.second.x, result.second.y, size , width, height, dbId));
   } 
   return results;
 }

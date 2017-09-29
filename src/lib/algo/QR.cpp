@@ -38,7 +38,7 @@ std::vector<FoundItem> QR::QRdetect(const cv::Mat &im) {
     double meanX = (x0 + x1 + x2 + x3) / 4;
     double meanY = (y0 + y1 + y2 + y3) / 4;
     double size = (meanX - x0) > 0 ? (meanX - x0) : (x0 - meanX);
-    FoundItem item(symbol->get_data(), meanX, meanY, size, width, height);
+    FoundItem item(symbol->get_data(), meanX, meanY, size, width, height, -1);
     std::cout << "Size is " << size << std::endl;
     std::cout << "X is " << meanX << std::endl;
     std::cout << "Y is " << meanY << std::endl;

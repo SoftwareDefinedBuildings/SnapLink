@@ -27,7 +27,7 @@ message Label {
   double x = 2;
   double y = 3;
   double z = 4;
-  uint32 roomId = 5;
+  int32 roomId = 5;
 }
 
 message ClientQueryMessage {
@@ -63,5 +63,6 @@ message ServerRespondMessage {
   float ty = 18;
   float tz = 19;
   uint64 id = 20;
+  int32 roomId = 21;
 }
 

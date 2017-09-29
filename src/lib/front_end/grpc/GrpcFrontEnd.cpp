@@ -156,6 +156,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(
       }
       response.set_width(width > height ? height : width);
       response.set_height(width > height ? width : height);
+      response.set_roomid(results[0].roomId());
     } else {
       response.add_name(none);
       response.add_x(-1);
