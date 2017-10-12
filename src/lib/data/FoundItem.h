@@ -4,7 +4,7 @@ class FoundItem final {
 public:
   explicit FoundItem();
   
-  explicit FoundItem(const std::string &name, double x, double y, double size, double width, double height);
+  explicit FoundItem(const std::string &name, double x, double y, double size, double width, double height, int roomId);
 
   const std::string &name() const;
   double x() const;
@@ -12,11 +12,13 @@ public:
   double size() const;
   double width() const;
   double height() const;
+  int roomId() const;
   void setX(double x);
   void setY(double y);
   void setSize(double size);
   void setWidth(double width);
   void setHeight(double height);
+  void setRoomId(int roomId);
 private:
   std::string _name;
   double _x;
@@ -24,4 +26,5 @@ private:
   double _size;
   double _width;
   double _height;
+  int _roomId;
 };

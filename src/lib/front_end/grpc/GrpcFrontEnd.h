@@ -20,6 +20,11 @@ public:
   void stop() final;
   grpc::Status onClientQuery(grpc::ServerContext *context,
                             grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage, cellmate_grpc::ClientQueryMessage> *stream);
+  
+  grpc::Status getModels(
+    grpc::ServerContext *context,
+    const cellmate_grpc::Empty *empty,
+    cellmate_grpc::Models *models); 
 public slots:
   void run();
 
