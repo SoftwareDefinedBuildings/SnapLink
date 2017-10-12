@@ -1,24 +1,24 @@
-# CellMate : Visual Appliance Identification and Control in Smart Buildings
-[![Build Status](https://travis-ci.com/kaifeichen/CellMate.svg?token=XjizLR77Z2rgJhyHZZ73&branch=master)](https://travis-ci.com/kaifeichen/CellMate)
+# SnapLink : Visual Appliance Identification and Control in Smart Buildings
+[![Build Status](https://travis-ci.com/kaifeichen/SnapLink.svg?token=XjizLR77Z2rgJhyHZZ73&branch=master)](https://travis-ci.com/kaifeichen/SnapLink)
 
-## What is CellMate? 
-CellMate is a system that allows you to interact with smart building appliances by taking pictures of them.
+## What is SnapLink? 
+SnapLink is a system that allows you to interact with smart building appliances by taking pictures of them.
 
 
-## How to Run CellMate server?
+## How to Run SnapLink server?
 
 ### Server Environment
-The easiest way to run CellMate server is using the prebuilt [docker image](https://hub.docker.com/r/kaifeichen/cellmate/). To get the docker image, run
+The easiest way to run SnapLink server is using the prebuilt [docker image](https://hub.docker.com/r/kaifeichen/snaplink/). To get the docker image, run
 ```bash
-docker pull kaifeichen/cellmate
+docker pull kaifeichen/snaplink
 ```
 
 If you want to build your own environment, follow the [install script](script/install.sh).
 
 ### Compile
-Clone the CellMate server repository
+Clone the SnapLink server repository
 ```bash
-git clone https://github.com/SoftwareDefinedBuildings/CellMate
+git clone https://github.com/SoftwareDefinedBuildings/SnapLink
 ```
 Use cmake and make to compile in the [build/](build) folder
 ```bash
@@ -31,61 +31,23 @@ make -j $(nproc)
 ### Run
 
 #### standalone
-To run the cellmat server
+To run a SnapLink server
 ```bash
-cellmate run [db_file...]
+snaplink run [db_file...]
 ```
 
 Here is an example that runs it with all data in *~/data/buildsys16/*:
 ```bash
-cellmate run `find ~/data/buildsys16/ -iname *.db`
+snaplink run `find ~/data/buildsys16/ -iname *.db`
 ```
 
 
-## CellMate Server API
+## SnapLink Server API
 
-CellMate server has a HTTP fron end and a [BOSSWAVE](https://github.com/immesys/bw2) front end.
+SnapLink server has a GRPC front end.
 
-### HTTP
-You can identify an appliance with a HTTP POST of a HTTP message of type `multipart/form-data` type.
-
-#### Resource URL
-`http://$SERVER_IP:SERVER_PORT`
-
-#### Parameters
-| Name | Required | Description |
-|:----:|:--------:|:-----------:|
-| file | required | content of image in JPEG format, a filename is optional |
-| fx   | required | fx of the intrincis matrix of the image |
-| fy   | required | fy of the intrincis matrix of the image |
-| cy   | required | cx of the intrincis matrix of the image |
-| cy   | required | cy of the intrincis matrix of the image |
-
-#### Return Data
-Return data is a string of the ID of the identified appliance.
-
-### BOSSWAVE
-You can also identify an appliance with a [MessagePack](http://msgpack.org/) payload using BOSSWAVE
-
-#### BOSSWAVE Topic
-`scratch.ns/cellmate`
-
-#### MessagePack Parameters
-| Name | Required | BOSSWAVE Type | Description |
-|:----:|:--------:|:-------------:|:-----------:|
-| file | required | 64.0.0.0 | content of image in JPEG format, a filename is optional |
-| identity | required | 64.0.0.0 | an UUID of the image, which is used in the response topic |
-| fx   | required | 64.0.0.0 | fx of the intrincis matrix of the image |
-| fy   | required | 64.0.0.0 | fy of the intrincis matrix of the image |
-| cy   | required | 64.0.0.0 | cx of the intrincis matrix of the image |
-| cy   | required | 64.0.0.0 | cy of the intrincis matrix of the image |
-
-#### Return Data
-Return data is a string of the ID of the identified appliance. It is published to BOSSWAVE topic `scratch.ns/cellmate/$IDENTITY`, where `$IDENTITY` is the `identity` sent in the request.
-
-
-## Do you have CellMate client?
-Yes! There is an [Android client](https://github.com/SoftwareDefinedBuildings/CellMate_Android). 
+## Do you have SnapLink client?
+Yes! There is an [Android client](https://github.com/SoftwareDefinedBuildings/SnapLink_Android). 
 There are also python clients for both BOSSWAVE and HTTP in the [test/](test) folder.
 
 
@@ -136,4 +98,4 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ## Questions? 
 
-Please Email Kaifei Chen <kaifei@berkeley.edu>
+Please Email Kaifei Chen <kaifei@berkeley.edu> or Tong Li <sasrwas@berkeley.edu>
