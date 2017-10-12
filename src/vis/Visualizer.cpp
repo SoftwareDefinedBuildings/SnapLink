@@ -83,7 +83,7 @@ int Visualizer::run(int argc, char *argv[]) {
   }
 
   // create a visualization window
-  cv::viz::Viz3d window("CellMate");
+  cv::viz::Viz3d window("SnapLink");
 
   // get point cloud
   const auto &images = _adapter.getImages();
@@ -115,7 +115,7 @@ int Visualizer::run(int argc, char *argv[]) {
   // visualize point cloud
   // window.showWidget("Coordinate Widget", cv::viz::WCoordinateSystem());
   cv::viz::WCloud cloudWidget(cloudXYZ, cloudBGR);
-  window.showWidget("Cellmate vis", cloudWidget);
+  window.showWidget("SnapLink vis", cloudWidget);
 
   // get camera pose and frustum
   if (!imagePath.empty()) {
@@ -187,7 +187,7 @@ void Visualizer::printInvalid(const std::vector<std::string> &opts) {
 }
 
 void Visualizer::printUsage(const po::options_description &desc) {
-  std::cout << "cellmate vis [command options] db_file" << std::endl
+  std::cout << "snaplink vis [command options] db_file" << std::endl
             << std::endl
             << desc << std::endl;
 }

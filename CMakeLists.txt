@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1.0)
-project(CellMate)
+project(SnapLink)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -49,10 +49,10 @@ set(LIBRARIES
     ${APRILTAG_LIBRARIES}
 )
 
-set(CellMate_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/")
+set(SnapLink_SOURCE_DIR "${PROJECT_SOURCE_DIR}/src/")
 
 include_directories(SYSTEM ${INCLUDE_DIRS}) # to avoid warnings from other libraries
-include_directories(${CellMate_SOURCE_DIR})
+include_directories(${SnapLink_SOURCE_DIR})
 
 # GRPC
 set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
@@ -88,38 +88,38 @@ add_custom_command(
 set(SOURCES
     "${GENERATED_GRPC_PATH}/GrpcService.pb.cc"
     "${GENERATED_GRPC_PATH}/GrpcService.grpc.pb.cc"
-    "${CellMate_SOURCE_DIR}/lib/front_end/grpc/GrpcFrontEnd.cpp"
-    "${CellMate_SOURCE_DIR}/lib/util/Utility.cpp"
-    "${CellMate_SOURCE_DIR}/lib/adapter/rtabmap/RTABMapAdapter.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/Transform.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/Label.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/Word.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/Room.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/Image.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/FoundItem.cpp"
-    "${CellMate_SOURCE_DIR}/lib/data/CameraModel.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/WordSearch.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/RoomSearch.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/Visibility.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/Feature.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/Perspective.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/WordCluster.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/Apriltag.cpp"
-    "${CellMate_SOURCE_DIR}/lib/algo/QR.cpp"
-    "${CellMate_SOURCE_DIR}/lib/visualize/visualize.cpp"
-    "${CellMate_SOURCE_DIR}/run/Run.cpp"
-    "${CellMate_SOURCE_DIR}/label/res/label_dot.qrc"
-    "${CellMate_SOURCE_DIR}/label/Widget.cpp"
-    "${CellMate_SOURCE_DIR}/vis/Visualizer.cpp"
-    "${CellMate_SOURCE_DIR}/label/Labeler.cpp"
-    "${CellMate_SOURCE_DIR}/measure/Measure.cpp"
-    "${CellMate_SOURCE_DIR}/measure/MeasureWidget.cpp"
-    "${CellMate_SOURCE_DIR}/main.cpp")
+    "${SnapLink_SOURCE_DIR}/lib/front_end/grpc/GrpcFrontEnd.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/util/Utility.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/adapter/rtabmap/RTABMapAdapter.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/Transform.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/Label.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/Word.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/Room.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/Image.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/FoundItem.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/data/CameraModel.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/WordSearch.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/RoomSearch.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/Visibility.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/Feature.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/Perspective.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/WordCluster.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/Apriltag.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/algo/QR.cpp"
+    "${SnapLink_SOURCE_DIR}/lib/visualize/visualize.cpp"
+    "${SnapLink_SOURCE_DIR}/run/Run.cpp"
+    "${SnapLink_SOURCE_DIR}/label/res/label_dot.qrc"
+    "${SnapLink_SOURCE_DIR}/label/Widget.cpp"
+    "${SnapLink_SOURCE_DIR}/vis/Visualizer.cpp"
+    "${SnapLink_SOURCE_DIR}/label/Labeler.cpp"
+    "${SnapLink_SOURCE_DIR}/measure/Measure.cpp"
+    "${SnapLink_SOURCE_DIR}/measure/MeasureWidget.cpp"
+    "${SnapLink_SOURCE_DIR}/main.cpp")
 
-add_executable(cellmate ${SOURCES})
+add_executable(snaplink ${SOURCES})
 
-target_link_libraries(cellmate ${LIBRARIES})
+target_link_libraries(snaplink ${LIBRARIES})
 
-set_property(TARGET cellmate PROPERTY CXX_STANDARD 14)
+set_property(TARGET snaplink PROPERTY CXX_STANDARD 14)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic")

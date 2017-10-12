@@ -51,12 +51,12 @@ void GrpcFrontEnd::stop() {
 
 grpc::Status GrpcFrontEnd::onClientQuery(
     grpc::ServerContext *context,
-    grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage,
-                             cellmate_grpc::ClientQueryMessage> *stream) {
+    grpc::ServerReaderWriter<snaplink_grpc::ServerRespondMessage,
+                             snaplink_grpc::ClientQueryMessage> *stream) {
   (void)context; // ignore that variable without causing warnings
-  cellmate_grpc::ClientQueryMessage request;
+  snaplink_grpc::ClientQueryMessage request;
   while (stream->Read(&request)) {
-    cellmate_grpc::ServerRespondMessage response;
+    snaplink_grpc::ServerRespondMessage response;
     {
       std::lock_guard<std::mutex> lock(_mutex);
       if (this->_numClients >= this->_maxClients) {
@@ -172,7 +172,7 @@ void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results, double angle,
 
 void GrpcFrontEnd::setIntrinsics(double width, double height, double angle,
                                  double &fx, double &fy, double &cx, double &cy,
-                                 cellmate_grpc::ClientQueryMessage &request) {
+                                 snaplink_grpc::ClientQueryMessage &request) {
   fx = request.fx();
   fy = request.fy();
   if (angle == 0) {

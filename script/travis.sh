@@ -15,7 +15,7 @@ wget -r --no-parent https://people.eecs.berkeley.edu/~kaifei/download/buildsys16
 DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
 
 
-./cellmate run $DATA_PATH/db/*.db |
+./snaplink run $DATA_PATH/db/*.db |
   while IFS= read -r line
     do
       if [ "$line" == "Initialization Done" ]
@@ -40,10 +40,10 @@ DATA_PATH=people.eecs.berkeley.edu/~kaifei/download/buildsys16/410_demo/
         accuracy=$(( num1 * 100 / num2))
         if [ $accuracy -lt 90 ]
         then
-          pkill -f cellmate
+          pkill -f snaplink
           exit 1
         fi
-        pkill -f cellmate
+        pkill -f snaplink
         exit 0
       fi
     done

@@ -72,7 +72,7 @@ void Labeler::printInvalid(const std::vector<std::string> &opts) {
 }
 
 void Labeler::printUsage(const po::options_description &desc) {
-  std::cout << "cellmate label [command options] db_file" << std::endl
+  std::cout << "snaplink label [command options] db_file" << std::endl
             << std::endl
             << desc << std::endl;
 }

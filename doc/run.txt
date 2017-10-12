@@ -1,5 +1,5 @@
 USAGE:
-  cellmate run [command options...] database...
+  snaplink run [command options...] database...
 
 COMMAND OPTIONS:
   --help                          Print this help message

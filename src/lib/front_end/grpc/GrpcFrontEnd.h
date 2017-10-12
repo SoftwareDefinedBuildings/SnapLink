@@ -9,7 +9,7 @@
 #include <grpc++/grpc++.h>
 
 class FoundItem;
-class GrpcFrontEnd final : public QObject, public cellmate_grpc::GrpcService::Service, public FrontEnd{
+class GrpcFrontEnd final : public QObject, public snaplink_grpc::GrpcService::Service, public FrontEnd{
   Q_OBJECT
 
 public:
@@ -19,7 +19,7 @@ public:
   bool start() final;
   void stop() final;
   grpc::Status onClientQuery(grpc::ServerContext *context,
-                            grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage, cellmate_grpc::ClientQueryMessage> *stream);
+                            grpc::ServerReaderWriter<snaplink_grpc::ServerRespondMessage, snaplink_grpc::ClientQueryMessage> *stream);
 public slots:
   void run();
 
@@ -28,7 +28,7 @@ private:
   void rotateBack(std::vector<FoundItem> &results ,double angle, int width, int height);
   void setIntrinsics(double widht, double height, double angle, 
                                double &fx, double&fy, double &cx, double &cy, 
-                                                    cellmate_grpc::ClientQueryMessage &request);
+                                                    snaplink_grpc::ClientQueryMessage &request);
 private:
   static const std::string none;
   QThread _thread;

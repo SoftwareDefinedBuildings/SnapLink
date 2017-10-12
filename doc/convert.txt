@@ -1,5 +1,5 @@
 USAGE:
-  cellmate convert [command options...] source... database
+  snaplink convert [command options...] source... database
 
 COMMAND OPTIONS:
   --help                  Print this help message
