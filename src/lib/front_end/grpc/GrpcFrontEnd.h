@@ -19,7 +19,12 @@ public:
   bool start() final;
   void stop() final;
   grpc::Status onClientQuery(grpc::ServerContext *context,
-                            grpc::ServerReaderWriter<snaplink_grpc::ServerRespondMessage, snaplink_grpc::ClientQueryMessage> *stream);
+                             grpc::ServerReaderWriter<snaplink_grpc::ServerRespondMessage, snaplink_grpc::ClientQueryMessage> *stream);
+  
+  grpc::Status getModels(
+    grpc::ServerContext *context,
+    const snaplink_grpc::Empty *empty,
+    snaplink_grpc::Models *models); 
 public slots:
   void run();
 

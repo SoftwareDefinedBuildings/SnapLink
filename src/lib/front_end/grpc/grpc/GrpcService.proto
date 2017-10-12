@@ -6,7 +6,28 @@ option java_package = "edu.berkeley.cs.sdb.snaplink";
 option java_outer_classname = "SnapLinkProto";
 
 service GrpcService {
-    rpc onClientQuery(stream ClientQueryMessage) returns (stream ServerRespondMessage) {}
+  rpc onClientQuery(stream ClientQueryMessage) returns (stream ServerRespondMessage) {}
+  rpc getModels(Empty) returns (Models) {}
+}
+
+message Empty {
+}
+
+message Models {
+  repeated Model models = 1;
+}
+
+message Model {
+  uint32 id = 1;
+  repeated Label labels = 2;
+}
+
+message Label {
+  string name = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+  int32 roomId = 5;
 }
 
 message ClientQueryMessage {
@@ -18,6 +39,7 @@ message ClientQueryMessage {
   uint32 width = 6;
   uint32 height = 7;
   uint32 angle = 8;
+  uint64 id = 9;
 }
 
 message ServerRespondMessage {
@@ -27,5 +49,20 @@ message ServerRespondMessage {
   repeated double size = 4;
   double width = 5;
   double height = 6;
+  bool poseAvailable = 7;
+  float r11 = 8;
+  float r12 = 9;
+  float r13 = 10;
+  float r21 = 11;
+  float r22 = 12;
+  float r23 = 13;
+  float r31 = 14;
+  float r32 = 15;
+  float r33 = 16;
+  float tx = 17;
+  float ty = 18;
+  float tz = 19;
+  uint64 id = 20;
+  int32 roomId = 21;
 }
 
