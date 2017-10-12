@@ -61,10 +61,11 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
     if (true) {
       if (Utility::isInFrontOfCamera(points[i], poseInCamera)) {
         double dist = cv::norm(planePoints[i] - center);
-        resultMap[dist] = std::pair<std::string, cv::Point2f>(name, planePoints[i]);
+        resultMap[dist] =
+            std::pair<std::string, cv::Point2f>(name, planePoints[i]);
         std::cout << "Find label " << name << " at (" << planePoints[i].x << ","
                   << planePoints[i].y << ")" << std::endl;
-        } else {
+      } else {
         std::cout << "Label " << name << " invalid at (" << planePoints[i].x
                   << "," << planePoints[i].y << ")"
                   << " because it is from the back of the camera" << std::endl;
@@ -75,15 +76,18 @@ std::vector<FoundItem> Visibility::process(int dbId, const CameraModel &camera,
     }
   }
   double size;
-  if(width>height) {
-    size = height/10;
+  if (width > height) {
+    size = height / 10;
   } else {
-    size = width/10;
+    size = width / 10;
   }
-  for(std::map<double, std::pair<std::string, cv::Point2f>>::iterator it=resultMap.begin(); it!=resultMap.end(); ++it) {
+  for (std::map<double, std::pair<std::string, cv::Point2f>>::iterator it =
+           resultMap.begin();
+       it != resultMap.end(); ++it) {
     std::pair<std::string, cv::Point2f> result = it->second;
-    results.push_back(FoundItem(result.first, result.second.x, result.second.y, size , width, height, dbId));
-  } 
+    results.push_back(FoundItem(result.first, result.second.x, result.second.y,
+                                size, width, height, dbId));
+  }
   return results;
 }
 

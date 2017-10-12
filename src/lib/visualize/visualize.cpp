@@ -1,6 +1,6 @@
 #include "lib/visualize/visualize.h"
-#include "lib/data/Transform.h"
 #include "lib/data/CameraModel.h"
+#include "lib/data/Transform.h"
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/viz.hpp>
 
@@ -17,11 +17,10 @@ Visualize::Visualize(std::map<int, std::map<int, Image>> images, int count) {
   _widgetNameCounter = 0;
 }
 
-Visualize::~Visualize() {
-  stopVis();
-}
+Visualize::~Visualize() { stopVis(); }
 
-void Visualize::setPose(int roomId, Transform camPose, cv::Mat image, CameraModel camera) {
+void Visualize::setPose(int roomId, Transform camPose, cv::Mat image,
+                        CameraModel camera) {
   {
     std::lock_guard<std::mutex> lock(_posesMutex);
     _posesAndImagesAndCameras[roomId] = std::make_tuple(camPose, image, camera);
@@ -29,22 +28,23 @@ void Visualize::setPose(int roomId, Transform camPose, cv::Mat image, CameraMode
 }
 
 void Visualize::startVis() {
-  
-  for(unsigned int roomId = 0; roomId < _totalCount; roomId++) {
+
+  for (unsigned int roomId = 0; roomId < _totalCount; roomId++) {
     Transform camPose = _images[roomId].begin()->second.getPose();
     cv::Mat image = _images[roomId].begin()->second.getImage();
     CameraModel camera = _images[roomId].begin()->second.getCameraModel();
     {
       std::lock_guard<std::mutex> lock(_posesMutex);
-      _posesAndImagesAndCameras[roomId] = std::make_tuple(camPose, image, camera);
+      _posesAndImagesAndCameras[roomId] =
+          std::make_tuple(camPose, image, camera);
     }
-  	
-  	_windows[roomId] = cv::viz::Viz3d("Room " + std::to_string(roomId));
+
+    _windows[roomId] = cv::viz::Viz3d("Room " + std::to_string(roomId));
 
     // get point cloud
     const std::map<int, Image> &images = _images[roomId];
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(
-      new pcl::PointCloud<pcl::PointXYZRGB>);
+        new pcl::PointCloud<pcl::PointXYZRGB>);
     for (const auto &image : images) {
       int decimation = 4;
       auto c = image.second.getCloud(decimation);
@@ -73,14 +73,14 @@ void Visualize::startVis() {
     _windows[roomId].showWidget("cloudWidget", cloudWidget);
   }
 
-  while(true) {
-    for(unsigned int roomId = 0; roomId < _totalCount; roomId++) {
+  while (true) {
+    for (unsigned int roomId = 0; roomId < _totalCount; roomId++) {
       {
         std::lock_guard<std::mutex> lock(_windowMapMutex);
-        if(_windows[roomId].wasStopped()) {
+        if (_windows[roomId].wasStopped()) {
           return;
         } else {
-          //visualize a camera
+          // visualize a camera
           const double visScale = 0.5;
           Transform pose;
           cv::Mat im;
@@ -91,24 +91,27 @@ void Visualize::startVis() {
             im = std::get<1>(_posesAndImagesAndCameras[roomId]);
             camera = std::get<2>(_posesAndImagesAndCameras[roomId]);
           }
-          if(!_widgetNameMap[roomId].empty() && _widgetNameMap[roomId].back().second == pose) {
+          if (!_widgetNameMap[roomId].empty() &&
+              _widgetNameMap[roomId].back().second == pose) {
             // do nothing, because this pose is already showed in window
           } else {
             // pop front if the queue is full
-            if(_widgetNameMap[roomId].size() >= _visCount) {
+            if (_widgetNameMap[roomId].size() >= _visCount) {
               std::string name = _widgetNameMap[roomId].front().first;
               _widgetNameMap[roomId].pop();
-              _windows[roomId].removeWidget("frustum"+name);
-              _windows[roomId].removeWidget("coord"+name);
-            } 
+              _windows[roomId].removeWidget("frustum" + name);
+              _windows[roomId].removeWidget("coord" + name);
+            }
             // add new pose to queue
             std::string name = std::to_string(_widgetNameCounter++);
             cv::Affine3f poseAffine = pose.toAffine3f();
-            _widgetNameMap[roomId].push(std::pair<std::string, Transform>(name, pose));
-            cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), im, visScale);
+            _widgetNameMap[roomId].push(
+                std::pair<std::string, Transform>(name, pose));
+            cv::viz::WCameraPosition frustum(cv::Matx33f(camera.K()), im,
+                                             visScale);
             cv::viz::WCameraPosition coord(visScale);
-            _windows[roomId].showWidget("frustum"+name, frustum, poseAffine);
-            _windows[roomId].showWidget("coord"+name, coord, poseAffine);
+            _windows[roomId].showWidget("frustum" + name, frustum, poseAffine);
+            _windows[roomId].showWidget("coord" + name, coord, poseAffine);
           }
           _windows[roomId].spinOnce(1, false);
         }
@@ -117,9 +120,8 @@ void Visualize::startVis() {
   }
 }
 
-
 void Visualize::stopVis() {
-	for(unsigned int i = 0; i < _totalCount; i++) {
+  for (unsigned int i = 0; i < _totalCount; i++) {
     {
       std::lock_guard<std::mutex> lock(_windowMapMutex);
       _windows[i].close();

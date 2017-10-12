@@ -48,23 +48,23 @@ void GrpcFrontEnd::stop() {
   _serverAddress = "";
   _maxClients = 0;
 }
-grpc::Status GrpcFrontEnd::getModels(
-    grpc::ServerContext *context,
-    const snaplink_grpc::Empty *empty,
-    snaplink_grpc::Models *models) {
+grpc::Status GrpcFrontEnd::getModels(grpc::ServerContext *context,
+                                     const snaplink_grpc::Empty *empty,
+                                     snaplink_grpc::Models *models) {
   (void)context; // ignore that variable without causing warnings
-  
+
   std::map<int, std::vector<Label>> labels = this->getOnGetLabels()();
-  for (std::map<int, std::vector<Label>>::iterator it = labels.begin(); 
-          it!=labels.end(); ++it) {
+  for (std::map<int, std::vector<Label>>::iterator it = labels.begin();
+       it != labels.end(); ++it) {
     int roomId = it->first;
     std::vector<Label> labelsInRoom = it->second;
-    snaplink_grpc::Model *model = models->add_models();;
+    snaplink_grpc::Model *model = models->add_models();
+    ;
     model->set_id(roomId);
-    for(auto singleLabel : labelsInRoom) {
-      snaplink_grpc::Label* label = model->add_labels();
+    for (auto singleLabel : labelsInRoom) {
+      snaplink_grpc::Label *label = model->add_labels();
       label->set_name(singleLabel.getName());
-      label->set_x(singleLabel.getPoint3().x); 
+      label->set_x(singleLabel.getPoint3().x);
       label->set_y(singleLabel.getPoint3().y);
       label->set_z(singleLabel.getPoint3().z);
       label->set_roomid(singleLabel.getRoomId());
@@ -148,7 +148,7 @@ grpc::Status GrpcFrontEnd::onClientQuery(
       response.set_poseavailable(false);
     }
     if (!results.empty()) {
-      for(unsigned int i = 0; i < results.size(); i++) {
+      for (unsigned int i = 0; i < results.size(); i++) {
         response.add_name(results[i].name());
         response.add_x(results[i].x());
         response.add_y(results[i].y());
