@@ -50,8 +50,8 @@ void GrpcFrontEnd::stop() {
 }
 grpc::Status GrpcFrontEnd::getModels(
     grpc::ServerContext *context,
-    const cellmate_grpc::Empty *empty,
-    cellmate_grpc::Models *models) {
+    const snaplink_grpc::Empty *empty,
+    snaplink_grpc::Models *models) {
   (void)context; // ignore that variable without causing warnings
   
   std::map<int, std::vector<Label>> labels = this->getOnGetLabels()();
@@ -59,10 +59,10 @@ grpc::Status GrpcFrontEnd::getModels(
           it!=labels.end(); ++it) {
     int roomId = it->first;
     std::vector<Label> labelsInRoom = it->second;
-    cellmate_grpc::Model *model = models->add_models();;
+    snaplink_grpc::Model *model = models->add_models();;
     model->set_id(roomId);
     for(auto singleLabel : labelsInRoom) {
-      cellmate_grpc::Label* label = model->add_labels();
+      snaplink_grpc::Label* label = model->add_labels();
       label->set_name(singleLabel.getName());
       label->set_x(singleLabel.getPoint3().x); 
       label->set_y(singleLabel.getPoint3().y);
