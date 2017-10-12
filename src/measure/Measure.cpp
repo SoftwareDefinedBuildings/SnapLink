@@ -71,7 +71,7 @@ void Measure::printInvalid(const std::vector<std::string> &opts) {
 }
 
 void Measure::printUsage(const po::options_description &desc) {
-  std::cout << "cellmate Measure [command options] db_file" << std::endl
+  std::cout << "snaplink measure [command options] db_file" << std::endl
             << std::endl
             << desc << std::endl;
 }

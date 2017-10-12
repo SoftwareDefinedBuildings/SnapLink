@@ -135,7 +135,7 @@ void Run::printInvalid(const std::vector<std::string> &opts) {
 }
 
 void Run::printUsage(const po::options_description &desc) {
-  std::cout << "cellmate run [command options] db_file..." << std::endl
+  std::cout << "snaplink run [command options] db_file..." << std::endl
             << std::endl
             << desc << std::endl;
 }

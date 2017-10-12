@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
   // check whether required options exist after handling help
   po::notify(vm);
   if (vm.count("version")) {
-    std::cout << "cellmate version " << VERSION << std::endl;
+    std::cout << "snaplink version " << VERSION << std::endl;
     return 0;
   }
 
@@ -75,12 +75,12 @@ static void printInvalid(const std::vector<std::string> &opts) {
 }
 
 static void printUsage(const po::options_description &desc) {
-  std::cout << "cellmate [global options] command [command options]"
+  std::cout << "snaplink [global options] command [command options]"
             << std::endl
             << std::endl
             << desc << std::endl
             << "commands:" << std::endl
-            << "  run        run cellmate" << std::endl
+            << "  run        run snaplink" << std::endl
             << "  vis        visualize a datobase" << std::endl
             << "  label      label a database" << std::endl;
 }

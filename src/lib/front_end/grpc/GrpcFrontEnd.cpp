@@ -50,8 +50,8 @@ void GrpcFrontEnd::stop() {
 }
 grpc::Status GrpcFrontEnd::getModels(
     grpc::ServerContext *context,
-    const cellmate_grpc::Empty *empty,
-    cellmate_grpc::Models *models) {
+    const snaplink_grpc::Empty *empty,
+    snaplink_grpc::Models *models) {
   (void)context; // ignore that variable without causing warnings
   
   std::map<int, std::vector<Label>> labels = this->getOnGetLabels()();
@@ -59,10 +59,10 @@ grpc::Status GrpcFrontEnd::getModels(
           it!=labels.end(); ++it) {
     int roomId = it->first;
     std::vector<Label> labelsInRoom = it->second;
-    cellmate_grpc::Model *model = models->add_models();;
+    snaplink_grpc::Model *model = models->add_models();;
     model->set_id(roomId);
     for(auto singleLabel : labelsInRoom) {
-      cellmate_grpc::Label* label = model->add_labels();
+      snaplink_grpc::Label* label = model->add_labels();
       label->set_name(singleLabel.getName());
       label->set_x(singleLabel.getPoint3().x); 
       label->set_y(singleLabel.getPoint3().y);
@@ -74,12 +74,12 @@ grpc::Status GrpcFrontEnd::getModels(
 }
 grpc::Status GrpcFrontEnd::onClientQuery(
     grpc::ServerContext *context,
-    grpc::ServerReaderWriter<cellmate_grpc::ServerRespondMessage,
-                             cellmate_grpc::ClientQueryMessage> *stream) {
+    grpc::ServerReaderWriter<snaplink_grpc::ServerRespondMessage,
+                             snaplink_grpc::ClientQueryMessage> *stream) {
   (void)context; // ignore that variable without causing warnings
-  cellmate_grpc::ClientQueryMessage request;
+  snaplink_grpc::ClientQueryMessage request;
   while (stream->Read(&request)) {
-    cellmate_grpc::ServerRespondMessage response;
+    snaplink_grpc::ServerRespondMessage response;
     response.set_id(request.id());
     {
       std::lock_guard<std::mutex> lock(_mutex);
@@ -216,7 +216,7 @@ void GrpcFrontEnd::rotateBack(std::vector<FoundItem> &results, double angle,
 
 void GrpcFrontEnd::setIntrinsics(double width, double height, double angle,
                                  double &fx, double &fy, double &cx, double &cy,
-                                 cellmate_grpc::ClientQueryMessage &request) {
+                                 snaplink_grpc::ClientQueryMessage &request) {
   fx = request.fx();
   fy = request.fy();
   if (angle == 0) {
