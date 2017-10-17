@@ -56,7 +56,7 @@ include_directories(${SnapLink_SOURCE_DIR})
 
 # GRPC
 set(GRPC_CPP_PLUGIN_PATH "/usr/local/bin/grpc_cpp_plugin")
-set(GRPC_PATH "${PROJECT_SOURCE_DIR}/src/lib/front_end/grpc/grpc")
+set(GRPC_PATH "${PROJECT_SOURCE_DIR}/src/proto")
 set(GRPC_FILES "${GRPC_PATH}/*.proto")
 
 set(GENERATED_GRPC_PATH "${CMAKE_BINARY_DIR}/generated/grpc")

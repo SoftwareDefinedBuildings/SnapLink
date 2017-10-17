@@ -53,6 +53,8 @@ bool Transform::isNull() const {
   return false;
 }
 
+const float *Transform::data() const { return (const float *)_data.data; }
+
 int Transform::size() const { return 12; }
 
 Transform Transform::rotation() const {
@@ -129,8 +131,6 @@ cv::Affine3f Transform::toAffine3f() const {
                        0, 0, 0, 1);
   return cv::Affine3f(m);
 }
-
-const float *Transform::data() const { return (const float *)_data.data; }
 
 Transform Transform::fromEigen4f(const Eigen::Matrix4f &matrix) {
   return Transform(matrix(0, 0), matrix(0, 1), matrix(0, 2), matrix(0, 3),

@@ -9,7 +9,7 @@
 #include <grpc++/grpc++.h>
 
 class FoundItem;
-class GrpcFrontEnd final : public QObject, public snaplink_grpc::GrpcService::Service, public FrontEnd{
+class GrpcFrontEnd final : public QObject, public snaplink_grpc::GrpcService::Service, public FrontEnd {
   Q_OBJECT
 
 public:
@@ -18,22 +18,20 @@ public:
 
   bool start() final;
   void stop() final;
-  grpc::Status onClientQuery(grpc::ServerContext *context,
-                             grpc::ServerReaderWriter<snaplink_grpc::ServerRespondMessage, snaplink_grpc::ClientQueryMessage> *stream);
+  grpc::Status localize(grpc::ServerContext *context,
+                             grpc::ServerReaderWriter<snaplink_grpc::LocalizationResponse, snaplink_grpc::LocalizationRequest> *stream);
   
-  grpc::Status getModels(
+  grpc::Status getLabels(
     grpc::ServerContext *context,
     const snaplink_grpc::Empty *empty,
-    snaplink_grpc::Models *models); 
+    snaplink_grpc::GetLabelsResponse *response); 
 public slots:
   void run();
 
 private:
-  cv::Mat rotateClockwise(cv::Mat src, double angle);
-  void rotateBack(std::vector<FoundItem> &results ,double angle, int width, int height);
-  void setIntrinsics(double widht, double height, double angle, 
-                               double &fx, double&fy, double &cx, double &cy, 
-                                                    snaplink_grpc::ClientQueryMessage &request);
+  cv::Mat rotateImage(cv::Mat src, int orientation); // orinentation is EXIF orientation
+  void updateIntrinsics(int width, int height, int orientation, float &cx, float &cy);
+
 private:
   static const std::string none;
   QThread _thread;

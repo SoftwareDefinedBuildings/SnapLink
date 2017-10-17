@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package snaplink_grpc;
+
+option java_package = "edu.berkeley.cs.sdb.snaplink";
+option java_outer_classname = "SnapLinkProto";
+
+service GrpcService {
+  rpc localize(stream LocalizationRequest) returns (stream LocalizationResponse) {}
+  rpc getLabels(Empty) returns (GetLabelsResponse) {}
+}
+
+message Empty {
+}
+
+message Matrix {
+  uint32 rows = 1;
+  uint32 cols = 2;
+  repeated float data = 3;
+}
+
+message CameraModel {
+  float fx = 1;
+  float fy = 2;
+  float cx = 3;
+  float cy = 4;
+}
+
+message Label {
+  uint32 db_id = 1;
+  float x = 2; // 3D point x
+  float y = 3; // 3D point y
+  float z = 4; // 3D point z
+  string name = 5;
+}
+
+message Labels {
+  repeated Label labels = 1;
+}
+
+// an identified item, for test purpose only
+message Item {
+  string name = 1;
+  float x = 2; // 2D pixel x
+  float y = 3; // 2D pixel y
+  float size = 4;
+}
+
+message LocalizationRequest {
+  uint64 request_id = 1;
+  bytes image = 2; // JPEG bytes
+  uint32 orientation = 3; // JPEG EXIF orientation
+  CameraModel camera = 4;
+}
+
+message LocalizationResponse {
+  uint64 request_id = 1;
+  bool success = 2;
+  uint32 db_id = 3;
+  Matrix pose = 4;
+  repeated Item items = 5; // for test purpose only
+  uint32 width = 6;
+  uint32 height = 7;
+}
+
+message GetLabelsResponse {
+  map<uint32, Labels> labels_map = 1;
+}

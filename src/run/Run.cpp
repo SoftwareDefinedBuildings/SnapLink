@@ -116,8 +116,9 @@ int Run::run(int argc, char *argv[]) {
     std::cerr << "starting GRPC front end failed";
     return 1;
   }
-  frontEnd->registerOnIdentify(std::bind(
-      &Run::identify, this, std::placeholders::_1, std::placeholders::_2));
+  frontEnd->registerOnLocalize(
+      std::bind(&Run::localize, this, std::placeholders::_1,
+                std::placeholders::_2, std::placeholder::_3));
   frontEnd->registerOnGetLabels(std::bind(&Run::getLabels, this));
   std::cout << "Initialization Done" << std::endl;
 
@@ -148,10 +149,10 @@ void Run::printImageLocalTime(long total, long feature, long wordSearch,
 }
 
 // must be thread safe
-std::pair<Transform, std::vector<FoundItem>>
-Run::identify(const cv::Mat &image, const CameraModel &camera) {
-  std::cout << "**********************************New Query "
-               "Image****************************************\n";
+std::pair<int, Transform> Run::localize(const cv::Mat &image,
+                                        const CameraModel &camera,
+                                        std::vector<FoundItem> *items) {
+  std::cout << "***New Query Image***" << std::endl;
   std::vector<FoundItem> results;
   std::vector<FoundItem> qrResults;
   Transform finalPose;
