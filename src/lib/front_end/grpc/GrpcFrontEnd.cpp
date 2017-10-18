@@ -30,7 +30,8 @@ void GrpcFrontEnd::run() {
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
-  builder.AddListeningPort("0.0.0.0:" + server_address, grpc::InsecureServerCredentials());
+  builder.AddListeningPort("0.0.0.0:" + server_address,
+                           grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(this);

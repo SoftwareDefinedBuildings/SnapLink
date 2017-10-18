@@ -76,7 +76,8 @@ int Run::run(int argc, char *argv[]) {
   std::map<int, std::vector<Label>> labels;
   std::cout << "READING DATABASES" << std::endl;
   _adapter = std::make_unique<RTABMapAdapter>(_distRatio);
-  if (!_adapter->init(std::set<std::string>(_dbFiles.begin(), _dbFiles.end()))) {
+  if (!_adapter->init(
+          std::set<std::string>(_dbFiles.begin(), _dbFiles.end()))) {
     std::cerr << "reading data failed";
     return 1;
   }
@@ -86,8 +87,7 @@ int Run::run(int argc, char *argv[]) {
   labels = _adapter->getLabels();
 
   if (_visCount > 0) {
-    _visualize =
-        std::make_unique<Visualize>(_adapter->getImages(), _visCount);
+    _visualize = std::make_unique<Visualize>(_adapter->getImages(), _visCount);
     QtConcurrent::run(_visualize.get(), &Visualize::startVis);
   }
 
@@ -102,7 +102,8 @@ int Run::run(int argc, char *argv[]) {
   _QR = std::make_unique<QR>();
 
   std::cerr << "initializing GRPC front end" << std::endl;
-  std::unique_ptr<FrontEnd> frontEnd = std::make_unique<GrpcFrontEnd>(_port, MAX_CLIENTS);
+  std::unique_ptr<FrontEnd> frontEnd =
+      std::make_unique<GrpcFrontEnd>(_port, MAX_CLIENTS);
   if (frontEnd->start() == false) {
     std::cerr << "starting GRPC front end failed";
     return 1;
@@ -144,7 +145,8 @@ std::pair<int, Transform> Run::localize(const cv::Mat &image,
   std::pair<std::vector<int>, std::vector<Transform>> aprilDetectResult;
   std::pair<int, Transform> imageLocResultPose;
 
-  QFuture<std::pair<std::vector<int>, std::vector<Transform>>> aprilDetectWatcher;
+  QFuture<std::pair<std::vector<int>, std::vector<Transform>>>
+      aprilDetectWatcher;
   QFuture<std::pair<int, Transform>> imageLocalizeWatcher;
 
   // qr extraction
@@ -152,26 +154,32 @@ std::pair<int, Transform> Run::localize(const cv::Mat &image,
       QtConcurrent::run(_QR.get(), &QR::QRdetect, image);
 
   if (_saveImage) {
-    QtConcurrent::run([=]() { imwrite(std::to_string(Utility::getTime()) + ".jpg", image); });
+    QtConcurrent::run(
+        [=]() { imwrite(std::to_string(Utility::getTime()) + ".jpg", image); });
   }
 
   if (!camera.isValid()) {
     std::cerr << "Warning: Camera is invalid." << std::endl;
   } else {
     // aprilTag extraction and localization
-    aprilDetectWatcher = QtConcurrent::run(_aprilTag.get(), &Apriltag::aprilDetect, image, camera);
-    imageLocalizeWatcher = QtConcurrent::run(this, &Run::imageLocalize, image, camera);
+    aprilDetectWatcher = QtConcurrent::run(
+        _aprilTag.get(), &Apriltag::aprilDetect, image, camera);
+    imageLocalizeWatcher =
+        QtConcurrent::run(this, &Run::imageLocalize, image, camera);
 
     aprilDetectResult = aprilDetectWatcher.result();
-    // This lookup and localize part takes less than 1ms, so didn't put in another thread to run
+    // This lookup and localize part takes less than 1ms, so didn't put in
+    // another thread to run
     std::vector<Transform> tagPoseInCamFrame = aprilDetectResult.second;
-    std::vector<std::pair<int, Transform>> tagPoseInModelFrame = _adapter->lookupAprilCodes(aprilDetectResult.first);
-    std::vector<std::pair<int, Transform>> aprilResultPose = _aprilTag->aprilLocalize(tagPoseInCamFrame, tagPoseInModelFrame);
+    std::vector<std::pair<int, Transform>> tagPoseInModelFrame =
+        _adapter->lookupAprilCodes(aprilDetectResult.first);
+    std::vector<std::pair<int, Transform>> aprilResultPose =
+        _aprilTag->aprilLocalize(tagPoseInCamFrame, tagPoseInModelFrame);
 
     imageLocResultPose = imageLocalizeWatcher.result();
 
     // Select the final pose to use in vis from multiple pose candidates
-    // Prioritize the pose derived from April Tag 
+    // Prioritize the pose derived from April Tag
     if (aprilResultPose.size() > 0) {
       // TODO multiple april tags
       dbId = aprilResultPose[0].first;
@@ -205,7 +213,8 @@ std::pair<int, Transform> Run::localize(const cv::Mat &image,
   long totalTime = Utility::getTime() - totalStartTime;
   std::cout << "Time Localization overall " << totalTime << " ms" << std::endl;
 
-  if (aprilDetectResult.first.size() > 0 && !imageLocResultPose.second.isNull()) {
+  if (aprilDetectResult.first.size() > 0 &&
+      !imageLocResultPose.second.isNull()) {
     QtConcurrent::run(this, &Run::calculateAndSaveAprilTagPose,
                       aprilDetectResult.second, aprilDetectResult.first,
                       imageLocResultPose);
