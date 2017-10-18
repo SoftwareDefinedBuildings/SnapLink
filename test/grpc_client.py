@@ -14,7 +14,7 @@ from PIL import Image, ExifTags
 
 currentDir = dir_path = os.path.dirname(os.path.realpath(__file__))
 rootDir = currentDir+"/../"
-subprocess.call(["python", "-m", "grpc_tools.protoc", "-I="+ rootDir + "/src/lib/front_end/grpc/grpc/", "--python_out=" + currentDir, "--grpc_python_out=" + currentDir , rootDir + "/src/lib/front_end/grpc/grpc/GrpcService.proto"])
+subprocess.call(["python", "-m", "grpc_tools.protoc", "-I="+ rootDir + "/src/proto/", "--python_out=" + currentDir, "--grpc_python_out=" + currentDir , rootDir + "/src/proto/GrpcService.proto"])
 
 import GrpcService_pb2
 import GrpcService_pb2_grpc
@@ -67,17 +67,25 @@ def test_file(filename, stub):
     print filename, 'width:', width, 'height:', height
     
     t0 = time.time()
-    request = GrpcService_pb2.ClientQueryMessage(image=jpg.tostring(), fx=562.25, fy=562.25, cx=240, cy=320, width=width,height=height, angle = 0)
-    rIter = stub.onClientQuery(iter([request]))
+    request = GrpcService_pb2.LocalizationRequest(image=jpg.tostring(), orientation = 1)
+    request.camera.fx=562.25
+    request.camera.fy=562.25
+    request.camera.cx=240
+    request.camera.cy=320
+    rIter = stub.localize(iter([request]))
     r = rIter.next()
     t1 = time.time()
     elapsed_time = round((t1 - t0)*1000, 2)
-    if r.name[0] != obj_name:
-        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name[0], obj_name, elapsed_time)
+    if len(r.items) == 0:
+        text = "test failed. response = None, obj = {0}, elapsed time = {1} milliseconds".format(obj_name, elapsed_time)
+        print text
+        return RESULT_FAIL, elapsed_time
+    if r.items[0].name != obj_name:
+        text = "test failed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.items[0].name, obj_name, elapsed_time)
         print text
         return RESULT_FAIL, elapsed_time
     else:
-        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.name[0], obj_name, elapsed_time)
+        print "test passed. response = {0}, obj = {1}, elapsed time = {2} milliseconds".format(r.items[0].name, obj_name, elapsed_time)
         return RESULT_PASS, elapsed_time
 
 

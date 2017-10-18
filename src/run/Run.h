@@ -19,18 +19,17 @@
 namespace po = boost::program_options;
 class CameraModel;
 class FoundItem;
+
 class Run final {
 public:
   int run(int argc, char *argv[]);
 private:
   static void printInvalid(const std::vector<std::string> &opts);
   static void printUsage(const po::options_description &desc);
-  static void printImageLocalTime(long total, long feature, long wordSearch,
-                        long roomSearch, long perspective);
+
   // must be thread-safe
   // camera is optional, no image localization is performed if not provided
-  std::pair<Transform, std::vector<FoundItem>> identify(const cv::Mat &image,
-                                  const CameraModel &camera);
+  std::pair<int, Transform> localize(const cv::Mat &image, const CameraModel &camera, std::vector<FoundItem> *items); 
   std::map<int, std::vector<Label>> getLabels();
   bool qrExtract(const cv::Mat &image, std::vector<FoundItem> *results);
   
@@ -39,7 +38,6 @@ private:
   std::vector<std::pair<int, Transform>> aprilLocalize(const cv::Mat &im, const CameraModel &camera, double tagSize,std::vector<Transform> *tagPoseInCamFrame, std::vector<int> *tagCodes);
 
   std::pair<int, Transform> imageLocalize(const cv::Mat &image, const CameraModel &camera);
-  enum Mode{QR_ONLY, FULL_FUNCTIONING};
 
 private:
   int _port;
@@ -66,5 +64,4 @@ private:
   std::mutex _roomSearchMutex;
   std::mutex _perspectiveMutex;
   std::mutex _visibilityMutex;
-  Run::Mode _mode;
 };

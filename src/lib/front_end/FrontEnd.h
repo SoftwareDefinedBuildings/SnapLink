@@ -54,7 +54,6 @@ public:
     return _getLabelsFunc;
   }
 
-
 private:
   LocalizeFunc _localizeFunc;
   GetLabelsFunc _getLabelsFunc;
