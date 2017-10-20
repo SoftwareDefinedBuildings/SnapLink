@@ -19,7 +19,7 @@ GrpcFrontEnd::~GrpcFrontEnd() {
 
 bool GrpcFrontEnd::start() {
   std::cerr << "DEBUG: Grpc start()" << std::endl;
-  this->moveToThread(&_thread);
+  moveToThread(&_thread);
   connect(&_thread, &QThread::started, this, &GrpcFrontEnd::run);
   _thread.start();
   return true;
@@ -55,27 +55,21 @@ grpc::Status GrpcFrontEnd::localize(
     grpc::ServerReaderWriter<snaplink_grpc::LocalizationResponse,
                              snaplink_grpc::LocalizationRequest> *stream) {
   (void)context; // ignore that variable without causing warnings
-  std::cout<<"Localize triggered\n";
+
+  {
+    std::lock_guard<std::mutex> lock(_mutex);
+    if (_numClients >= _maxClients) {
+      return grpc::Status::CANCELLED;
+    } else {
+      _numClients++;
+    }
+  }
+
   snaplink_grpc::LocalizationRequest request;
   while (stream->Read(&request)) {
     snaplink_grpc::LocalizationResponse response;
     response.set_request_id(request.request_id());
     response.set_success(false);
-
-    bool canServe = true;
-    {
-      std::lock_guard<std::mutex> lock(_mutex);
-      if (this->_numClients >= this->_maxClients) {
-        canServe = false;
-      } else {
-        this->_numClients++;
-      }
-    }
-
-    if (canServe == false) {
-      stream->Write(response);
-      continue;
-    }
 
     std::vector<uchar> data(request.image().begin(), request.image().end());
 
@@ -91,19 +85,18 @@ grpc::Status GrpcFrontEnd::localize(
 
     int width = image.cols;
     int height = image.rows;
+    response.set_width0(width);
+    response.set_height0(height);
     float fx = request.camera().fx();
     float fy = request.camera().fy();
-    float cx = request.camera().cy();
+    float cx = request.camera().cx();
     float cy = request.camera().cy();
     updateIntrinsics(width, height, request.orientation(), cx, cy);
     std::cout << "Width = " << width << ", Height = " << height
               << " Cx = " << cx << " Cy = " << cy << std::endl;
-
     CameraModel camera("", fx, fy, cx, cy, cv::Size(width, height));
-
-    std::pair<int, Transform> result;
     std::vector<FoundItem> items;
-    result = this->localizeFunc()(image, camera, &items);
+    std::pair<int, Transform>result = localizeFunc()(image, camera, &items);
 
     int dbId = result.first;
     Transform pose = result.second;
@@ -132,12 +125,13 @@ grpc::Status GrpcFrontEnd::localize(
     response.set_height(width > height ? width : height);
 
     stream->Write(response);
-
-    {
-      std::lock_guard<std::mutex> lock(_mutex);
-      this->_numClients--;
-    }
   }
+
+  {
+    std::lock_guard<std::mutex> lock(_mutex);
+    _numClients--;
+  }
+
   return grpc::Status::OK;
 }
 
@@ -147,10 +141,10 @@ GrpcFrontEnd::getLabels(grpc::ServerContext *context,
                         snaplink_grpc::GetLabelsResponse *response) {
   (void)context; // ignore that variable without causing warnings
 
-
+  std::cout<<"getLabels triggered\n";
   // TODO cache this
-  std::map<int, std::vector<Label>> labelsMap = this->getLabelsFunc()();
-  auto map = *response->mutable_labels_map();
+  std::map<int, std::vector<Label>> labelsMap = getLabelsFunc()();
+  auto &map = *response->mutable_labels_map();
   for (const auto &labels : labelsMap) {
     int dbId = labels.first;
     map[dbId] = snaplink_grpc::Labels();
@@ -161,9 +155,10 @@ GrpcFrontEnd::getLabels(grpc::ServerContext *context,
       newLabel->set_y(label.getPoint3().y);
       newLabel->set_z(label.getPoint3().z);
       newLabel->set_name(label.getName());
+      std::cout<<"label name:" << label.getName() <<std::endl;
     }
   }
-  std::cout<<"6\n";
+  std::cout<<response->labels_map_size()<<" is the size of the map\n";
   return grpc::Status::OK;
 }
 
