@@ -55,6 +55,7 @@ grpc::Status GrpcFrontEnd::localize(
     grpc::ServerReaderWriter<snaplink_grpc::LocalizationResponse,
                              snaplink_grpc::LocalizationRequest> *stream) {
   (void)context; // ignore that variable without causing warnings
+  std::cout<<"Localize triggered\n";
   snaplink_grpc::LocalizationRequest request;
   while (stream->Read(&request)) {
     snaplink_grpc::LocalizationResponse response;
@@ -107,7 +108,7 @@ grpc::Status GrpcFrontEnd::localize(
     int dbId = result.first;
     Transform pose = result.second;
     if (pose.isNull()) {
-      !stream->Write(response);
+      stream->Write(response);
       continue;
     }
 
@@ -146,13 +147,15 @@ GrpcFrontEnd::getLabels(grpc::ServerContext *context,
                         snaplink_grpc::GetLabelsResponse *response) {
   (void)context; // ignore that variable without causing warnings
 
+
   // TODO cache this
   std::map<int, std::vector<Label>> labelsMap = this->getLabelsFunc()();
+  auto map = *response->mutable_labels_map();
   for (const auto &labels : labelsMap) {
     int dbId = labels.first;
+    map[dbId] = snaplink_grpc::Labels();
     for (const auto &label : labels.second) {
-      snaplink_grpc::Label *newLabel =
-          response->mutable_labels_map()->at(dbId).add_labels();
+      snaplink_grpc::Label *newLabel = map[dbId].add_labels();
       newLabel->set_db_id(label.getDbId());
       newLabel->set_x(label.getPoint3().x);
       newLabel->set_y(label.getPoint3().y);
@@ -160,6 +163,7 @@ GrpcFrontEnd::getLabels(grpc::ServerContext *context,
       newLabel->set_name(label.getName());
     }
   }
+  std::cout<<"6\n";
   return grpc::Status::OK;
 }
 

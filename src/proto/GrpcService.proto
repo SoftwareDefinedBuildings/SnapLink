@@ -61,6 +61,9 @@ message LocalizationResponse {
   repeated Item items = 5; // for test purpose only
   uint32 width = 6;
   uint32 height = 7;
+  uint32 angle = 8;
+  double width0 = 9;
+  double height0 = 10;
 }
 
 message GetLabelsResponse {
