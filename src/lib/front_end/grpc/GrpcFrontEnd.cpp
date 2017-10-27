@@ -82,7 +82,7 @@ grpc::Status GrpcFrontEnd::localize(
 
     // TODO add orientation into JPEG, so we don't need to rotate ourselves
     image = rotateImage(image, request.orientation());
-
+    imwrite("imageRotated.jpg", image);
     int width = image.cols;
     int height = image.rows;
     response.set_width0(width);
