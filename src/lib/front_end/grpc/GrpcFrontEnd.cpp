@@ -139,7 +139,8 @@ grpc::Status
 GrpcFrontEnd::getLabels(grpc::ServerContext *context,
                         const snaplink_grpc::Empty *empty,
                         snaplink_grpc::GetLabelsResponse *response) {
-  (void)context; // ignore that variable without causing warnings
+  (void)context; // avoid causing warnings
+  (void)empty; // avoid causing warnings
 
   std::cout<<"getLabels triggered\n";
   // TODO cache this
