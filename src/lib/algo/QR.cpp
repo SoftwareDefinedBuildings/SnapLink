@@ -1,13 +1,13 @@
-#include "lib/data/FoundItem.h"
 #include "lib/algo/QR.h"
+#include "lib/data/FoundItem.h"
 #include "lib/util/Utility.h"
-#include <zbar.h>
 #include <iostream>
+#include <zbar.h>
 
 std::vector<FoundItem> QR::QRdetect(const cv::Mat &im) {
   std::vector<FoundItem> results;
   long totalStartTime = Utility::getTime();
- 
+
   std::cout << "Qr extracting\n";
   zbar::ImageScanner scanner;
   scanner.set_config(zbar::ZBAR_NONE, zbar::ZBAR_CFG_ENABLE, 1);
@@ -46,7 +46,7 @@ std::vector<FoundItem> QR::QRdetect(const cv::Mat &im) {
   }
 
   long totalTime = Utility::getTime() - totalStartTime;
-  std::cout << "Time QR extract overall " << totalTime << " ms" <<std::endl;
-  
+  std::cout << "Time QR extract overall " << totalTime << " ms" << std::endl;
+
   return results;
 }

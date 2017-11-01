@@ -1,13 +1,17 @@
 #pragma once
 
+#include <vector>
+#include <opencv2/core/core.hpp>
+
 class Transform;
 class CameraModel;
+
 class Apriltag final {
 public:
   explicit Apriltag(double tagSize); 
 
   std::vector<std::pair<int, Transform>> aprilLocalize(
-  	std::vector<Transform> tagPoseInCamFrame,
+      std::vector<Transform> tagPoseInCamFrame,
     std::vector<std::pair<int, Transform>>  tagPoseInModelFrame);
 
   //This function take in a query image and camera model

@@ -31,6 +31,7 @@ public:
   bool isNull() const;
 
   int size() const;
+  const float *data() const;
 
   Transform rotation() const;
   Transform translation() const;
@@ -49,7 +50,6 @@ public:
 
 
 private:
-  const float *data() const;
   static Transform fromEigen4f(const Eigen::Matrix4f &matrix);
 
 private:

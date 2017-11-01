@@ -2,6 +2,7 @@
 
 set -e
 
+apt-get update
 apt-get install -y python-imaging
 apt-get install -y wget
 apt-get install -y python-pip

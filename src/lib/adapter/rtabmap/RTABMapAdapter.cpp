@@ -1,10 +1,10 @@
 #include "lib/adapter/rtabmap/RTABMapAdapter.h"
+#include "lib/algo/Apriltag.h"
 #include "lib/algo/WordCluster.h"
 #include "lib/data/Room.h"
 #include "lib/data/Transform.h"
 #include "lib/data/Word.h"
 #include "lib/util/Utility.h"
-#include "lib/algo/Apriltag.h"
 #include <opencv2/xfeatures2d.hpp>
 #include <pcl/common/centroid.h>
 #include <pcl/common/common.h>
@@ -25,7 +25,7 @@ RTABMapAdapter::RTABMapAdapter(float distRatio)
     : _nextImageId(0), _distRatio(distRatio) {}
 
 bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
-  Apriltag aprilTag(0.16); 
+  Apriltag aprilTag(0.16);
   int roomId = 0;
   for (const auto &dbPath : dbPaths) {
     // a room is a DB (for now)
@@ -39,21 +39,26 @@ bool RTABMapAdapter::init(const std::set<std::string> &dbPaths) {
 
     createAprilTagPoseTable(roomId);
     createAprilTagMap(dbPath, roomId);
-    
-    if(_aprilTagMapPro[roomId].empty()) {
-      std::cout<<"AprilTagMapPro is empty\n";
-      for(std::map<int, Image>::iterator it=_images[roomId].begin(); it!=_images[roomId].end(); ++it) {
+
+    if (_aprilTagMapPro[roomId].empty()) {
+      std::cout << "AprilTagMapPro is empty\n";
+      for (std::map<int, Image>::iterator it = _images[roomId].begin();
+           it != _images[roomId].end(); ++it) {
         Image image = it->second;
-        std::pair<std::vector<int>, std::vector<Transform>> aprilTagDetectResults = aprilTag.aprilDetect(image.getImage(), image.getCameraModel());
-        for(unsigned int i = 0; i < aprilTagDetectResults.first.size(); i++) {
-          std::cout<<"Detected aprilTag\n";
+        std::pair<std::vector<int>, std::vector<Transform>>
+            aprilTagDetectResults =
+                aprilTag.aprilDetect(image.getImage(), image.getCameraModel());
+        for (unsigned int i = 0; i < aprilTagDetectResults.first.size(); i++) {
+          std::cout << "Detected aprilTag\n";
           int code = aprilTagDetectResults.first[i];
-          Transform tagPoseInModelFrame = image.getPose() * aprilTagDetectResults.second[i];
-          saveAprilTagPose(roomId, Utility::getTime(), code, tagPoseInModelFrame, 0);
+          Transform tagPoseInModelFrame =
+              image.getPose() * aprilTagDetectResults.second[i];
+          saveAprilTagPose(roomId, Utility::getTime(), code,
+                           tagPoseInModelFrame, 0);
         }
       }
     }
-    
+
     roomId++;
   }
   _dbCounts = roomId;
@@ -338,7 +343,7 @@ bool RTABMapAdapter::saveAprilTagPose(int roomId, long time, int code,
                                       Transform pose, double error) {
   {
     std::lock_guard<std::mutex> lock(_aprilTagMapMutex);
-    if(error == 0) {
+    if (error == 0) {
       if (_aprilTagMapPro.count(code) > 0) {
         _aprilTagMapPro[code].emplace(roomId, pose);
       } else {
@@ -347,7 +352,7 @@ bool RTABMapAdapter::saveAprilTagPose(int roomId, long time, int code,
         _aprilTagMapPro.emplace(code, value);
       }
     } else {
-       if (_aprilTagMap.count(code) > 0) {
+      if (_aprilTagMap.count(code) > 0) {
         _aprilTagMap[code].emplace(roomId, pose);
       } else {
         std::multimap<int, Transform> value;
@@ -355,7 +360,6 @@ bool RTABMapAdapter::saveAprilTagPose(int roomId, long time, int code,
         _aprilTagMap.emplace(code, value);
       }
     }
-   
   }
 
   sqlite3 *labelDB = createAprilTagPoseTable(roomId);
@@ -370,7 +374,8 @@ bool RTABMapAdapter::saveAprilTagPose(int roomId, long time, int code,
             << pose.r13() << "', '" << pose.r21() << "', '" << pose.r22()
             << "', '" << pose.r23() << "', '" << pose.r31() << "', '"
             << pose.r32() << "', '" << pose.r33() << "', '" << pose.x()
-            << "', '" << pose.y() << "', '" << pose.z() << "', '" << error << "');";
+            << "', '" << pose.y() << "', '" << pose.z() << "', '" << error
+            << "');";
   int rc = sqlite3_exec(labelDB, saveQuery.str().c_str(), NULL, NULL, NULL);
   sqlite3_close(labelDB);
   return rc == SQLITE_OK;
@@ -443,12 +448,8 @@ void RTABMapAdapter::createAprilTagMap(std::string dbPath, int roomId) {
       double y = sqlite3_column_double(stmt, 12);
       double z = sqlite3_column_double(stmt, 13);
       double error = sqlite3_column_int(stmt, 14);
-      Transform pose(r11, r12, r13, x, 
-                     r21,
-                     r22, r23, y,
-                     r31,
-                     r32, r33, z);
-      if(error == 0) {
+      Transform pose(r11, r12, r13, x, r21, r22, r23, y, r31, r32, r33, z);
+      if (error == 0) {
         if (_aprilTagMapPro.count(code) > 0) {
           _aprilTagMapPro[code].emplace(roomId, pose);
         } else {
@@ -479,7 +480,7 @@ std::pair<int, Transform> RTABMapAdapter::lookupAprilCode(int code) {
   std::multimap<int, Transform> value;
   {
     std::lock_guard<std::mutex> lock(_aprilTagMapMutex);
-    if(_aprilTagMapPro.count(code) > 0) {
+    if (_aprilTagMapPro.count(code) > 0) {
       value = _aprilTagMapPro[code];
     } else {
       if (_aprilTagMap.count(code) > 0) {
@@ -494,12 +495,13 @@ std::pair<int, Transform> RTABMapAdapter::lookupAprilCode(int code) {
 
   int maxCount = 0;
   std::multimap<int, Transform>::iterator maxRoomPosesIter;
-  //given a code, find the room with most occurence of this tag code
-  for (std::multimap<int, Transform>::iterator it = value.begin(), end = value.end();
+  // given a code, find the room with most occurence of this tag code
+  for (std::multimap<int, Transform>::iterator it = value.begin(),
+                                               end = value.end();
        it != end; it = value.upper_bound(it->first)) {
     int roomId = it->first;
     int count = value.count(roomId);
-    if(count > maxCount) {
+    if (count > maxCount) {
       maxCount = count;
       maxRoomPosesIter = it;
     }
@@ -509,15 +511,12 @@ std::pair<int, Transform> RTABMapAdapter::lookupAprilCode(int code) {
   return std::pair<int, Transform>(resultRoomId, resultPose);
 }
 
+int RTABMapAdapter::getDBCounts() { return _dbCounts; }
 
-int RTABMapAdapter::getDBCounts() {
-  return _dbCounts;
-}
-
-
-std::vector<std::pair<int, Transform>> RTABMapAdapter::lookupAprilCodes(std::vector<int> codes) {
+std::vector<std::pair<int, Transform>>
+RTABMapAdapter::lookupAprilCodes(std::vector<int> codes) {
   std::vector<std::pair<int, Transform>> tagPoseInModelFrame;
-  for(auto code : codes) {
+  for (auto code : codes) {
     tagPoseInModelFrame.push_back(lookupAprilCode(code));
   }
   return tagPoseInModelFrame;
